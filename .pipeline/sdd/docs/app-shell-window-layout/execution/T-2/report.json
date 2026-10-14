@@ -6,10 +6,16 @@
   "status": "done",
   "producedBy": "sdd-build-business-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "26a3fe18c3aba9bb5cc7050df2add98617cd48afeac2abf6fc5f563e55b75681",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "0626dbba1debc8671ab3d626c7c2308eb38fe0d5ee43282ab82f0fbd86331a0e"
+      }
+    ]
   },
   "createdAt": "2026-10-14T20:53:18Z",
-  "updatedAt": "2026-10-14T20:53:18Z",
+  "updatedAt": "2026-10-14T20:53:35Z",
   "data": {
     "taskId": "T-2",
     "type": "test",
@@ -41,8 +47,18 @@
       ]
     },
     "troubleshooting": [
-      "No custom compositeOver written: androidx.compose.ui.graphics.compositeOver is what the renderer actually uses, so re-deriving it would measure something never drawn.",
-      "Compose packs sRGB Color at 8 bits/channel, so composited results quantise. Float-exact maths and the Kotlin measurement diverge by up to 0.0082 on the 40 composited pairings (worst: dark seg-over-surface 1.1980 vs 1.1898). Baselines for those use the real Kotlin measurements; all 68 non-composited pairings matched the orchestrator's independent computation exactly."
+      {
+        "at": "WcagContrast.kt",
+        "issue": "No custom compositeOver written: androidx.compose.ui.graphics.compositeOver is what the renderer actually uses, so re-deriving it would measure something never drawn.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "info"
+      },
+      {
+        "at": "PaletteContrastTest.kt",
+        "issue": "Compose packs sRGB Color at 8 bits/channel, so composited results quantise. Float-exact maths and the Kotlin measurement diverge by up to 0.0082 on the 40 composited pairings (worst: dark seg-over-surface 1.1980 vs 1.1898). Baselines for those use the real Kotlin measurements; all 68 non-composited pairings matched the orchestrator's independent computation exactly.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "info"
+      }
     ],
     "needsHumanReview": {
       "required": true,
@@ -60,6 +76,6 @@
     "type": "auto",
     "approvedBy": "sdd-build-business-implement",
     "approved": true,
-    "at": "2026-10-14T20:53:18Z"
+    "at": "2026-10-14T20:53:35Z"
   }
 }

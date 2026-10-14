@@ -6,10 +6,16 @@
   "status": "done",
   "producedBy": "sdd-build-business-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "3f1972004b187fb1019dd48deb9642a5a84d4fac5df483ecbd23fb841e2c173f",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "0626dbba1debc8671ab3d626c7c2308eb38fe0d5ee43282ab82f0fbd86331a0e"
+      }
+    ]
   },
   "createdAt": "2026-10-14T20:53:19Z",
-  "updatedAt": "2026-10-14T20:53:19Z",
+  "updatedAt": "2026-10-14T20:53:36Z",
   "data": {
     "taskId": "T-8",
     "type": "business-logic",
@@ -58,7 +64,12 @@
       ]
     },
     "troubleshooting": [
-      "commonTest needed kotlinx-coroutines-test for runTest (suspend getData/setData); added alongside multiplatform-settings-test, both wired into data-preference-impl commonTest in the same change per version-catalog-hygiene.md."
+      {
+        "at": "data-preference-impl/build.gradle.kts",
+        "issue": "commonTest needed kotlinx-coroutines-test for runTest (suspend getData/setData); added alongside multiplatform-settings-test, both wired into data-preference-impl commonTest in the same change per version-catalog-hygiene.md.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "info"
+      }
     ],
     "needsHumanReview": {
       "required": false,
@@ -72,6 +83,6 @@
     "type": "auto",
     "approvedBy": "sdd-build-business-implement",
     "approved": true,
-    "at": "2026-10-14T20:53:19Z"
+    "at": "2026-10-14T20:53:36Z"
   }
 }

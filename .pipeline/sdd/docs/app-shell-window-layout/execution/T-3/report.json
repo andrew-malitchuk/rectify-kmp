@@ -6,10 +6,16 @@
   "status": "done",
   "producedBy": "sdd-build-business-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "bcd25254e4c14d323233d2aff2e676b8c16417607f4e3d30bba9bd27674bd403",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "0626dbba1debc8671ab3d626c7c2308eb38fe0d5ee43282ab82f0fbd86331a0e"
+      }
+    ]
   },
   "createdAt": "2026-10-14T20:53:18Z",
-  "updatedAt": "2026-10-14T20:53:18Z",
+  "updatedAt": "2026-10-14T20:53:36Z",
   "data": {
     "taskId": "T-3",
     "type": "business-logic",
@@ -49,7 +55,12 @@
       ]
     },
     "troubleshooting": [
-      "CONFLICTING_JVM_DECLARATIONS: the plan's contract declared both `var panelWidth private set` and `fun setPanelWidth(Dp)` - identical JVM signature setPanelWidth-0680j_4(F)V. Resolved by backing panelWidth with a private state field and exposing a read-only val; the public API in the plan is unchanged."
+      {
+        "at": "ShellState.kt",
+        "issue": "CONFLICTING_JVM_DECLARATIONS: the plan's contract declared both `var panelWidth private set` and `fun setPanelWidth(Dp)` - identical JVM signature setPanelWidth-0680j_4(F)V. Resolved by backing panelWidth with a private state field and exposing a read-only val; the public API in the plan is unchanged.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "warn"
+      }
     ],
     "needsHumanReview": {
       "required": false,
@@ -67,6 +78,6 @@
     "type": "auto",
     "approvedBy": "sdd-build-business-implement",
     "approved": true,
-    "at": "2026-10-14T20:53:18Z"
+    "at": "2026-10-14T20:53:36Z"
   }
 }

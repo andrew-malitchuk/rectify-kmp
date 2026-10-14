@@ -6,10 +6,16 @@
   "status": "done",
   "producedBy": "sdd-build-business-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "12c5f13b168f16a62e7f9987353bc9ae6c580c20e8054d87df0c289286feb800",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "0626dbba1debc8671ab3d626c7c2308eb38fe0d5ee43282ab82f0fbd86331a0e"
+      }
+    ]
   },
   "createdAt": "2026-10-14T20:53:19Z",
-  "updatedAt": "2026-10-14T20:53:19Z",
+  "updatedAt": "2026-10-14T20:53:36Z",
   "data": {
     "taskId": "T-9",
     "type": "business-logic",
@@ -41,9 +47,24 @@
       ]
     },
     "troubleshooting": [
-      "ThemePreferenceMapper's KDoc was already wrong before this change (claimed 'Falls back to null' while the code fell back to ThemeModel.Light). Fixed in passing.",
-      "STALE DOC INTRODUCED BY THIS TASK: .claude/rules/mappers.md line 18 documents ThemePreferenceMapper.toModel as defaulting to ThemeModel.Light. Now wrong. Executor correctly did not edit a project rules file on its own authority; orchestrator routed it to the terminal wave.",
-      "App.kt calls AppTheme(mode = themeMode) single-arg today, not the two-arg AppTheme(mode, reducedMotion) the brief described. Call site left alone."
+      {
+        "at": "ThemePreferenceMapper.kt",
+        "issue": "ThemePreferenceMapper's KDoc was already wrong before this change (claimed 'Falls back to null' while the code fell back to ThemeModel.Light). Fixed in passing.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "info"
+      },
+      {
+        "at": ".claude/rules/mappers.md",
+        "issue": "STALE DOC INTRODUCED BY THIS TASK: .claude/rules/mappers.md line 18 documents ThemePreferenceMapper.toModel as defaulting to ThemeModel.Light. Now wrong. Executor correctly did not edit a project rules file on its own authority; orchestrator routed it to the terminal wave.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "warn"
+      },
+      {
+        "at": "App.kt",
+        "issue": "App.kt calls AppTheme(mode = themeMode) single-arg today, not the two-arg AppTheme(mode, reducedMotion) the brief described. Call site left alone.",
+        "resolution": "See issue text; handled in-task or routed onward.",
+        "severity": "info"
+      }
     ],
     "needsHumanReview": {
       "required": false,
@@ -57,6 +78,6 @@
     "type": "auto",
     "approvedBy": "sdd-build-business-implement",
     "approved": true,
-    "at": "2026-10-14T20:53:19Z"
+    "at": "2026-10-14T20:53:36Z"
   }
 }
