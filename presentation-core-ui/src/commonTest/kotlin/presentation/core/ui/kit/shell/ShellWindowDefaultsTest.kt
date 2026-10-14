@@ -28,8 +28,12 @@ class ShellWindowDefaultsTest {
     }
 
     @Test
-    fun `traffic light inset is 78`() {
-        assertEquals(78.dp, ShellWindowDefaults.TrafficLightInset)
+    fun `traffic light inset clears the macOS window controls`() {
+        // Measured against design comp 02, not guessed: macOS puts the green light's right
+        // edge at 68dp and the comp starts the first control at 102dp. SegmentedButtonGroup
+        // contributes ~3dp of its own leading padding, so the inset is 99dp. At the earlier
+        // 78dp the first control landed at 81dp — only 13dp clear of the lights.
+        assertEquals(99.dp, ShellWindowDefaults.TrafficLightInset)
     }
 
     @Test

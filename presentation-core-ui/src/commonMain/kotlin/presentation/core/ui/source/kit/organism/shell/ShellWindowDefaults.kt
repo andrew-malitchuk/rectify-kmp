@@ -28,8 +28,16 @@ public object ShellWindowDefaults {
     /** Side-panel width before the user has ever dragged the handle. */
     public val PanelDefaultWidth: Dp = 320.dp
 
-    /** Leading toolbar padding that keeps content clear of the macOS traffic lights. */
-    public val TrafficLightInset: Dp = 78.dp
+    /**
+     * Leading toolbar padding that keeps content clear of the macOS traffic lights.
+     *
+     * Measured from the design comp rather than guessed: macOS puts the green light's right
+     * edge at 68dp, and the comp starts the first control at 102dp — a 34dp breathing gap.
+     * The segmented group contributes ~3dp of its own leading padding, so the inset itself
+     * is 99dp. At the previous 78dp the first control sat at 81dp, only 13dp clear of the
+     * lights and 21dp left of the comp.
+     */
+    public val TrafficLightInset: Dp = 99.dp
 }
 
 /**
