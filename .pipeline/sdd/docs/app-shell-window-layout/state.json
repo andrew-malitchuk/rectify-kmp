@@ -1,6 +1,6 @@
 {
   "spec": "app-shell-window-layout",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -16,6 +16,12 @@
     },
     "validation": {
       "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped"
     }
   },
   "steps": {

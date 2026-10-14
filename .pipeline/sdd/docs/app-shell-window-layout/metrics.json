@@ -1,6 +1,6 @@
 {
   "spec": "app-shell-window-layout",
-  "updatedAt": "2026-10-14T22:39:08Z",
+  "updatedAt": "2026-10-14T23:08:48Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -98,11 +98,19 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 177333,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1470999,
+    "tokens": 1648332,
     "durationMs": 0,
-    "invocations": 16
+    "invocations": 17
   }
 }
