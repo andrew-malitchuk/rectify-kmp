@@ -32,7 +32,35 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "worktreeBranch": "task/wave-1",
+      "wave": 1,
+      "mergedAt": "wave-1"
+    },
+    "T-2": {
+      "status": "done",
+      "worktreeBranch": "task/wave-2a",
+      "wave": 2,
+      "needsHumanReview": true
+    },
+    "T-3": {
+      "status": "done",
+      "worktreeBranch": "task/wave-2a",
+      "wave": 2
+    },
+    "T-8": {
+      "status": "done",
+      "worktreeBranch": "task/wave-2b",
+      "wave": 2
+    },
+    "T-9": {
+      "status": "done",
+      "worktreeBranch": "task/wave-2b",
+      "wave": 2
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",

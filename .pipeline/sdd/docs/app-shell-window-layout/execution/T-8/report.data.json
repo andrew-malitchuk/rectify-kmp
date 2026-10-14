@@ -1,0 +1,58 @@
+{
+  "taskId": "T-8",
+  "type": "business-logic",
+  "outcome": "success",
+  "touchedPaths": [
+    "data-preference-api/src/commonMain/kotlin/data/preference/api/source/model/SidePanelWidthPreference.kt",
+    "data-preference-api/src/commonMain/kotlin/data/preference/api/source/datasource/SidePanelWidthPreferenceSource.kt",
+    "data-preference-impl/src/commonMain/kotlin/data/preference/impl/source/datasource/SidePanelWidthPreferenceSourceImpl.kt",
+    "data-preference-impl/src/commonMain/kotlin/data/preference/impl/di/DataPreferenceImplModule.kt",
+    "data-preference-impl/build.gradle.kts",
+    "data-preference-impl/src/commonTest/kotlin/data/preference/impl/SidePanelWidthPreferenceSourceTest.kt",
+    "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/SidePanelWidthPreferenceMapper.kt",
+    "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/ConfigureRepositoryImpl.kt",
+    "data-repository-impl/src/commonTest/kotlin/data/repository/impl/SidePanelWidthPreferenceMapperTest.kt",
+    "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/ConfigureRepository.kt",
+    "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/configuration/GetSidePanelWidthUseCase.kt",
+    "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/configuration/SetSidePanelWidthUseCase.kt",
+    "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/configuration/GetSidePanelWidthUseCaseImpl.kt",
+    "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/configuration/SetSidePanelWidthUseCaseImpl.kt",
+    "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/di/DomainUseCaseImplModule.kt",
+    "gradle/libs.versions.toml"
+  ],
+  "testRun": {
+    "command": "./gradlew :data-preference-impl:desktopTest :data-repository-impl:desktopTest",
+    "passed": true,
+    "output": "SidePanelWidthPreferenceSourceTest tests=5 f=0 e=0; SidePanelWidthPreferenceMapperTest tests=2 f=0 e=0. Also green: :domain-usecase-impl:compileKotlinDesktop, :compose-application:compileKotlinDesktop, :desktop-application:compileKotlin."
+  },
+  "implementation": {
+    "filesChanged": [
+      "see touchedPaths"
+    ],
+    "summary": "New pref_side_panel_width (Int dp, default 320) mirroring the pref_theme chain file-for-file: Resource + typed PreferenceSource, SourceImpl with MutableStateFlow seeded from settings.getIntOrNull, Koin binding appended to dataPreferenceImplModule, ModelResourceMapper<Int,SidePanelWidthPreference>, getSidePanelWidth/setSidePanelWidth appended to ConfigureRepository(+Impl), Get/SetSidePanelWidthUseCase(+Impl) via resultLauncher(Failure.Technical::Preference), bindings appended to domainUseCaseImplModule. Plain Int model so no new domain model class. No observe* variant. No clamping - T-3 owns it. pref_theme's key untouched.",
+    "reusedFromRegistry": [
+      {
+        "registryRef": "data-preference-impl#ThemePreferenceSourceImpl",
+        "how": "Copied verbatim as the SourceImpl shape (StateFlow seeding, getData re-read, const val KEY_*)"
+      },
+      {
+        "registryRef": "data-repository-impl#LanguagePreferenceMapper",
+        "how": "Precedent for a plain (non-Model) domain type in a mapper"
+      },
+      {
+        "registryRef": "domain-usecase-impl#resultLauncher",
+        "how": "Error wrapping for both use cases; no new error plumbing"
+      }
+    ]
+  },
+  "troubleshooting": [
+    "commonTest needed kotlinx-coroutines-test for runTest (suspend getData/setData); added alongside multiplatform-settings-test, both wired into data-preference-impl commonTest in the same change per version-catalog-hygiene.md."
+  ],
+  "needsHumanReview": {
+    "required": false,
+    "reason": ""
+  },
+  "linkedAC": [
+    "AC-39"
+  ]
+}

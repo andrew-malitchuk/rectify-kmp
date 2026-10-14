@@ -1,0 +1,43 @@
+{
+  "taskId": "T-9",
+  "type": "business-logic",
+  "outcome": "success",
+  "touchedPaths": [
+    "domain-core/src/commonMain/kotlin/domain/core/source/model/ThemeModel.kt",
+    "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/ThemePreferenceMapper.kt",
+    "data-repository-impl/src/commonTest/kotlin/data/repository/impl/ThemePreferenceMapperTest.kt",
+    "compose-application/src/commonMain/kotlin/dev/rectify/io/source/app/App.kt"
+  ],
+  "testRun": {
+    "command": "./gradlew :data-repository-impl:desktopTest",
+    "passed": true,
+    "output": "ThemePreferenceMapperTest tests=6 f=0 e=0 (light->Light, dark->Dark, materialu->System, system->System, garbage/empty->System, toResource(System).theme==\"materialu\")"
+  },
+  "implementation": {
+    "filesChanged": [
+      "ThemeModel.kt",
+      "ThemePreferenceMapper.kt",
+      "ThemePreferenceMapperTest.kt",
+      "App.kt"
+    ],
+    "summary": "ThemeModel.MaterialU renamed to ThemeModel.System with its STORED value kept as \"materialu\" (no orphaned preference, per preferences.md). ThemePreferenceMapper.toModel fallback flipped Light -> System, which is what actually makes the already-shipped ThemePreference.DEFAULT_THEME (\"system\") resolve to system appearance - this one line is the real FR-18 delivery. App.kt when-branch renamed; null branch and collectAsState(initial) moved from ThemeMode.Light to ThemeMode.System. No new key; system-appearance detection NOT re-implemented (AppTheme already does it via isSystemInDarkTheme()).",
+    "reusedFromRegistry": [
+      {
+        "registryRef": "presentation-core-styling#AppTheme/ThemeMode",
+        "how": "ThemeMode.System already resolves via isSystemInDarkTheme(); nothing added"
+      }
+    ]
+  },
+  "troubleshooting": [
+    "ThemePreferenceMapper's KDoc was already wrong before this change (claimed 'Falls back to null' while the code fell back to ThemeModel.Light). Fixed in passing.",
+    "STALE DOC INTRODUCED BY THIS TASK: .claude/rules/mappers.md line 18 documents ThemePreferenceMapper.toModel as defaulting to ThemeModel.Light. Now wrong. Executor correctly did not edit a project rules file on its own authority; orchestrator routed it to the terminal wave.",
+    "App.kt calls AppTheme(mode = themeMode) single-arg today, not the two-arg AppTheme(mode, reducedMotion) the brief described. Call site left alone."
+  ],
+  "needsHumanReview": {
+    "required": false,
+    "reason": ""
+  },
+  "linkedAC": [
+    "AC-35"
+  ]
+}
