@@ -1,6 +1,6 @@
 {
   "spec": "app-shell-window-layout",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"

@@ -21,7 +21,7 @@ class ShellTabTest {
     }
 
     @Test
-    fun `labels are the shipped copy, not SidebarTabs KDoc 'Annotations'`() {
+    fun `labels are the shipped copy - not SidebarTabs KDoc Annotations`() {
         assertEquals("Notes", ShellTab.Notes.label)
         assertEquals("Payload", ShellTab.Payload.label)
         assertEquals("History", ShellTab.History.label)

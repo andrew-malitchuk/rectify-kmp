@@ -87,7 +87,7 @@ class PaletteContrastTest {
     }
 
     @Test
-    fun `every pairing in both palettes is measured, none silently skipped`() {
+    fun `every pairing in both palettes is measured - none silently skipped`() {
         assertEquals(54, lightPairings().size)
         assertEquals(54, darkPairings().size)
     }

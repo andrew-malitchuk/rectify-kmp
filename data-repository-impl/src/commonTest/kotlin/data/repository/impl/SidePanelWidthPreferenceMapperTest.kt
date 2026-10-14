@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 class SidePanelWidthPreferenceMapperTest {
 
     @Test
-    fun `round trips the lower bound, the default and the upper bound`() {
+    fun `round trips the lower bound the default and the upper bound`() {
         listOf(260, 320, 480).forEach { widthDp ->
             val resource = SidePanelWidthPreferenceMapper.toResource.map(widthDp)
 
