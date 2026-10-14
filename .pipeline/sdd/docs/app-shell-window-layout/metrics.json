@@ -1,6 +1,6 @@
 {
   "spec": "app-shell-window-layout",
-  "updatedAt": "2026-10-14T19:32:32Z",
+  "updatedAt": "2026-10-14T20:32:05Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -50,11 +50,35 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 121513,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 101698,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 168264,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 801448,
+    "tokens": 1192923,
     "durationMs": 0,
-    "invocations": 6
+    "invocations": 9
   }
 }

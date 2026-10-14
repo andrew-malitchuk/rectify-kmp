@@ -1,11 +1,14 @@
 {
   "spec": "app-shell-window-layout",
-  "currentStage": "plan",
+  "currentStage": "execution",
   "stages": {
     "preparation": {
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },
@@ -23,6 +26,9 @@
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },

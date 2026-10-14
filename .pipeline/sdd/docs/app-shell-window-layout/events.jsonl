@@ -14,3 +14,11 @@
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-14T18:59:47Z", "spec": "app-shell-window-layout"}
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 219157, "at": "2026-10-14T19:32:19Z", "spec": "app-shell-window-layout"}
 {"stage": "plan", "event": "end", "at": "2026-10-14T19:32:19Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "event": "start", "at": "2026-10-14T19:32:41Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-14T19:33:15Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 121513, "at": "2026-10-14T19:40:13Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-14T19:40:13Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 101698, "at": "2026-10-14T19:45:29Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-14T19:45:29Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 168264, "at": "2026-10-14T20:32:05Z", "spec": "app-shell-window-layout"}
+{"stage": "backlog", "event": "end", "at": "2026-10-14T20:32:05Z", "spec": "app-shell-window-layout"}
