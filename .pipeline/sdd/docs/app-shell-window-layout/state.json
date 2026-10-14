@@ -1,0 +1,34 @@
+{
+  "spec": "app-shell-window-layout",
+  "currentStage": "preparation",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    }
+  },
+  "tasks": {},
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  }
+}

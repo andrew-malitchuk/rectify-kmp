@@ -1,0 +1,236 @@
+# app-shell-window-layout — preparation
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | preparation |
+| step | preparation |
+| status | done |
+| producedBy | sdd-build-preparation-compile |
+| schemaVersion | 1 |
+| createdAt | 2026-10-14T18:39:14Z |
+| updatedAt | 2026-10-14T18:41:19Z |
+
+## Gate
+
+### type
+
+human
+
+### approved
+
+true
+
+### approvedBy
+
+human
+
+## Provenance
+
+### selfHash
+
+b2550ab6226dcf9b1e5cedd7badbf431cb6b43c8f30680dd1585dadbc579ebb0
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| preparation/input.json | 5e31b6387e3b1c79bd434c100ad248431396d5d1df5006f81b0b4252e2c9c385 |
+| preparation/clarify.json | 44fd97a33c244db67d1873155524fd79164b87ebf87f5cf968493cb9578dbf30 |
+| preparation/brainstorm.json | 176b11f1773a5f657da270cca15e1b23f29d805c8770c5f554a7bfa333bcb554 |
+
+## Data
+
+### summary
+
+App Shell & Canonical Window Layout: the macOS Compose Desktop window shell (toolbar frame, bezel-less live-mirror stage, resizable three-tab side panel, status bar) that every downstream Rectify feature renders inside, wired to the existing presentation-core-styling light/dark token system. Consolidates 12 FR (FR-11..FR-21, FR-23), 3 NFR (NFR-9..NFR-11), 12 AC (AC-12, AC-30..AC-40), 5 scenarios (SC-1..SC-5) and 5 assumptions (AS-1..AS-5) from clarify with the chosen architecture from brainstorm. All six brainstorm-gate decisions (build location, window chrome, state management, persistence, test scope, green-signal hue) are now binding. Build location SUPERSEDES the original pipeline working directory: the deliverable is built in /Users/andrew-malitchuk/StudioProjects/rectify-kmp, and the .pipeline/ SDD workspace is relocated there before Stage 2 planning proceeds -- Documents/rectify is not the build target. This is overwhelmingly an assembly job: ~109 existing presentation-core-ui components, the full theme/token system, a working desktop entry point, and a working preference-persistence chain are reused as-is; the genuinely new work is the shell organism, the resize handle with persistence, full-size-content window chrome, Cmd+1/2/3 shortcuts, and the repo's first automated test suite (including a WCAG contrast sweep).
+
+### problemStatement
+
+No shared window shell exists yet. All 16 catalog screens and every downstream feature (device discovery, annotation, payload, history) need a single canonical layout to render inside; without it each feature would improvise its own window chrome. A complete light/dark design-token system (ThemeColor, AppTheme) and ~109 Rectify-specific UI-kit components authored from the same style guide already exist in rectify-kmp (presentation-core-styling / presentation-core-ui) -- this shell must be built there and wire into them rather than re-author or fork them.
+
+### confirmedRequirements
+
+#### functional
+
+| id | text |
+| --- | --- |
+| FR-11 | Use the canonical 'Rectify Window' layout: a bezel-less live mirror with a side panel exposing exactly three tabs (Notes, Payload, History). |
+| FR-12 | Render a toolbar frame (top, full width) hosting placeholder slots for: window traffic-light region, platform switch (Android \| iOS), device indicator, staged counter, Clear control, and Resolve & Send control -- all stub-rendered, non-functional in this deliverable. |
+| FR-13 | Render a status bar frame (bottom, full width) hosting a left tool-version/status text slot and a right app-version text slot, stub-rendered with static placeholder text. |
+| FR-14 | Render the bezel-less live-mirror stage region filling the remaining window area between toolbar and status bar, including its empty-state (no device) placeholder presentation. |
+| FR-15 | Render the three-tab side panel (Notes, Payload, History) adjacent to the stage, only once a mirroring session is live; the panel is absent in pre-mirror/empty-state presentations. Its width is resizable (FR-20) and persisted (FR-21). |
+| FR-16 | Support switching the active side-panel tab by click, and by Cmd+1 / Cmd+2 / Cmd+3 keyboard shortcuts, defaulting to the Notes tab when the panel first appears. |
+| FR-17 | Set the application window's initial size to 1240x820 and its minimum resizable size to 1024x700. |
+| FR-18 | Select the active theme (light/dark) by following macOS system appearance by default (ThemeMode.System), with a manual override toggle (toolbar or status bar control) that persists across app relaunch. |
+| FR-19 | Adopt the existing Rectify UI Kit design-token system (presentation-core-styling module: ThemeColor, attributeLightColorPalette, attributeDarkColorPalette, AppTheme, ThemeMode) for this shell's light/dark palettes rather than authoring new tokens; wire theme selection (FR-18) through AppTheme(mode, ...). |
+| FR-20 | Make the side panel's width user-resizable via a drag handle on the boundary between the stage and the panel, clamped to a minimum of 260px and a maximum of 480px. |
+| FR-21 | Persist the side panel's current width across app relaunch -- restore it to its last-set value on next launch, or to a documented default width on first run. |
+| FR-23 | The four signal colors (annotate/red, sentFixed/green, warnStillOff/orange, measure/blue) render identically in both light and dark themes per the adopted token system; theme contrast parity (NFR-9/AC-30) is achieved via surface/ink token pairing per theme, not by varying the signal-color values between themes. |
+
+#### nonFunctional
+
+| id | category | text |
+| --- | --- | --- |
+| NFR-9 | ux | All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes. |
+| NFR-10 | compatibility | v1 targets macOS only; no Windows/Linux builds. rectify-kmp's Android/iOS targets are not in scope for this deliverable even though the host repo carries them. |
+| NFR-11 | accessibility | Every surface/ink token pairing and every signal-color-on-surface pairing, in both light and dark themes, meets WCAG AA contrast: >=4.5:1 for text against its background, >=3:1 for non-text UI components (borders, icons, focus indicators) against adjacent colors. |
+
+### acceptanceCriteria
+
+| id | text | priority | verificationMethod | confirmed |
+| --- | --- | --- | --- | --- |
+| AC-12 | Given the canonical window layout is confirmed, then the side panel exposes exactly three tabs: Notes, Payload, History, over a bezel-less mirror. | must | inspection | true |
+| AC-30 | Given the user toggles light/dark theme, then all screens render correctly in both themes with consistent signal colors (red/green/orange/blue) and no unreadable contrast regions. | must | inspection | true |
+| AC-31 | Given no mirroring session is active, when the window is displayed, then the side panel is not rendered at all; the toolbar shows its stubbed 'No device' state and the bezel-less stage shows the empty-state placeholder region, matching both cached design screenshots. | must | inspection | true |
+| AC-32 | Given a mirroring session becomes active, when the side panel first appears, then the Notes tab is the active/selected tab by default. | should | inspection | true |
+| AC-33 | Given the side panel is visible, when the user presses Cmd+1, Cmd+2, or Cmd+3, then the Notes, Payload, or History tab (respectively) becomes active, in addition to click-to-switch. | should | test | true |
+| AC-34 | Given the application window, then its initial size is 1240x820, it is user-resizable, and it cannot be resized below 1024x700. | must | inspection | true |
+| AC-35 | Given the user toggles the manual theme override control, then the app switches between light and dark palettes immediately without restart, and the chosen theme persists across app relaunch; absent a manual override, the app follows macOS system appearance (ThemeMode.System). | must | test | true |
+| AC-36 | Given the existing Rectify UI Kit token system (attributeLightColorPalette / attributeDarkColorPalette in presentation-core-styling), then this deliverable adopts it as-is -- every neutral token (bg, chrome, stage, surface, pop, ink, ink2, ink3, primary, primaryHover, primaryPress, onPrimary, focus, line, line2, hover, seg, codeBg) and every signal token (annotate, sentFixed, warnStillOff, measure) is used unmodified, and surface/ink contrast in both palettes meets WCAG AA (>=4.5:1 text, >=3:1 non-text). | must | inspection | true |
+| AC-37 | Given the toolbar and status bar are rendered, then their content is limited to stubbed/static placeholder slots in this deliverable -- the platform switch, device indicator, staged counter, Clear control, Resolve & Send control, and tool-version status line render in a fixed, non-functional placeholder state with no live adb/idb/device wiring. | must | inspection | true |
+| AC-38 | Given the side panel is visible, when the user drags the handle between the stage and panel, then the panel width adjusts live and is clamped between 260px and 480px (the drag cannot push it narrower or wider than those bounds). | must | test | true |
+| AC-39 | Given the user has resized the side panel and then relaunches the app, then the panel reopens at the previously set width (not reset to a default) the next time a mirroring session makes it visible. | must | test | true |
+| AC-40 | Given light or dark theme is active, then each signal color (annotate/red, sentFixed/green, warnStillOff/orange, measure/blue) -- identical in both themes per the adopted token system -- meets WCAG AA contrast against its paired surface/ink tokens in that theme (>=3:1 for non-text indicators such as dots/icons, >=4.5:1 where rendered as text); parity is verified through surface/ink pairing per theme, not by asserting different signal values between themes. | must | inspection | true |
+
+### scope
+
+#### in
+
+- Build location: this deliverable is built inside /Users/andrew-malitchuk/StudioProjects/rectify-kmp; the .pipeline/ SDD workspace is relocated into that repository before Stage 2 planning begins so spec, code and design system share one git repo. Documents/rectify is NOT the build target. Stage 4 writes code and Stage 5 runs tests inside rectify-kmp.
+- Toolbar frame (top, full width) with named stubbed slots: traffic-light inset, platform switch, device indicator, staged counter, Clear, Resolve & Send (FR-12, AC-37).
+- Status bar frame (bottom, full width) with stubbed left tool-version/status text and right app-version text (FR-13, AC-37).
+- Bezel-less live-mirror stage region filling the space between toolbar and status bar, including its empty-state placeholder presentation (FR-14, AC-31).
+- Three-tab side panel (Notes, Payload, History) rendered only while a mirroring session is active; absent pre-mirror (FR-11, FR-15, AC-12, AC-31, AC-32).
+- Side-panel tab switching by click and by Cmd+1/Cmd+2/Cmd+3, defaulting to Notes (FR-16, AC-32, AC-33).
+- Window initial size 1240x820, minimum resizable size 1024x700 (FR-17, AC-34).
+- Light/dark theme selection following macOS system appearance by default, with a manual override that persists across relaunch (FR-18, AC-35).
+- Adoption of the existing presentation-core-styling token system (ThemeColor, attributeLightColorPalette, attributeDarkColorPalette, AppTheme, ThemeMode) unmodified, including WCAG AA contrast verification (FR-19, AC-36, AC-40, NFR-9, NFR-11).
+- Side-panel width resizable via a drag handle, clamped to 260-480px, persisted across relaunch, written on drag-end only (FR-20, FR-21, AC-38, AC-39).
+- Signal-color parity across both themes using the adopted, unmodified token values (FR-23, AC-30, AC-40).
+- macOS native window chrome with full-size-content client properties (apple.awt.fullWindowContent / transparentTitleBar) placing OS traffic lights inside the Rectify toolbar behind a reserved leading inset.
+- Plain Compose state hoisting (rememberShellState) for shell state (active tab, panel width) -- no new Gradle module, no Orbit MVI.
+- One new persisted preference (pref_side_panel_width, Int dp, default 320) added through the existing PreferenceSource -> mapper -> repository -> use-case chain; pref_theme reused unchanged except its default flips from Light to System.
+- The repository's first test suite: kotlin.test wired once into the Library/Feature convention plugins, pure-function tests (clamp, shortcut mapping, preference round-trip, window constants, three-tab assertion), and an automated WCAG contrast sweep over both shipped palettes living in presentation-core-styling's own commonTest.
+
+#### out
+
+- Device discovery, adb/idb detection logic, and device-picker content (belongs to android-device-discovery-mirroring).
+- Notes, Payload, and History tab CONTENT -- only the three-tab frame/slots are in scope here.
+- Annotation tooling on the mirrored stage.
+- Resolve & Send / MCP wiring and behavior -- the toolbar only reserves the control slot.
+- Windows/Linux builds (NFR-10).
+- Live wiring of toolbar/status bar to real tool-version or device state -- stubbed placeholder content only (FR-12, FR-13, AC-37).
+- Authoring new light/dark token values or signal colors -- this deliverable adopts the existing presentation-core-styling (Rectify UI Kit) palette and AppTheme as-is (FR-19, AC-36).
+- Compose UI-test harness (runComposeUiTest/ui-test-junit4) and macOS native packaging (nativeDistributions/packageDmg) -- not part of this deliverable's test or build scope; the former is deliberately excluded (decision below), the latter is a known future gap.
+
+### constraints
+
+| type | text |
+| --- | --- |
+| tech | This deliverable is built inside /Users/andrew-malitchuk/StudioProjects/rectify-kmp, not /Users/andrew-malitchuk/Documents/rectify. The .pipeline/ SDD workspace is relocated into rectify-kmp prior to Stage 2 so spec, code and the design system share one git repo; Stage 4 writes code and Stage 5 runs tests there. |
+| tech | Kotlin + Compose Multiplatform Desktop (JVM 21), macOS host via compose.desktop.currentOs -- resolved by operator dictation; no AppKit/SwiftUI/Electron. |
+| tech | Carry forward the proven platform choices from the rectify-poc reference (Compose Desktop window lifecycle, JVM 21, kotlinx-serialization) without preserving its module structure verbatim; adopt rectify-kmp conventions (core/ vs source/, explicitApi()) as the plan calls for. |
+| tech | Theming must adopt the existing Rectify UI Kit token system (presentation-core-styling: ThemeColor, attributeLightColorPalette, attributeDarkColorPalette, AppTheme) rather than a new one; every token is read only behind the Theme singleton from @Composable scope -- never a literal Color(0x...), raw .dp, or hardcoded TextStyle at a call site (.claude/rules/design-tokens.md). |
+| business | v1 ships macOS only (NFR-10). |
+
+### assumptions
+
+| id | text |
+| --- | --- |
+| AS-1 | The 1240x820 window size and the OKLCH signal-color values captured as 'unverified design context' in the upstream PRD handoff are confirmed spec as of the clarify survey. |
+| AS-2 | Device discovery, device-picker content, annotation, and payload/history tab content are implemented entirely in downstream specs (e.g., android-device-discovery-mirroring); this deliverable only defines the slots/frames those features render into. |
+| AS-3 | macOS system-appearance (light/dark) detection is available through Compose Multiplatform Desktop / Skiko APIs (isSystemInDarkTheme()) on JVM 21 without additional native interop -- already proven by rectify-kmp's AppTheme / ThemeMode.System. NOT yet directly observed as a live, running appearance switch on a shipped desktop build; treat as an open verification item (see openRisks). |
+| AS-4 | This deliverable depends on and adopts the existing Rectify UI Kit design-token system (presentation-core-styling module in rectify-kmp: ThemeColor, attributeLightColorPalette, attributeDarkColorPalette, AppTheme, ThemeMode) rather than authoring a new palette. The four signal colors (annotate, sentFixed, warnStillOff, measure) are identical across light and dark themes by design, so theme contrast parity (NFR-9/AC-30) is achieved via the surface/ink tokens, not by varying signal values between themes. |
+| AS-5 | AppTheme's own function-parameter default is ThemeMode.Dark ('the primary Rectify experience' per its KDoc); this shell passes ThemeMode.System explicitly per FR-18's survey-confirmed default, overriding AppTheme's parameter default rather than relying on it, with a persisted manual override on top. |
+
+### dependencies
+
+| on | note |
+| --- | --- |
+| android-device-discovery-mirroring | Downstream spec consumes this shell's toolbar device-indicator slot and stage region; not a blocking dependency for this deliverable. |
+| Claude Design project 'Rectify Screens' | Cached screenshots (01-first-run-platform-source.png, 02-empty-no-device.png) are the authoritative visual reference for toolbar/status-bar/stage composition; URL must not be re-fetched. |
+| presentation-core-styling and presentation-core-ui (rectify-kmp repository) | Source of the existing light/dark token system (ThemeColor, attributeLightColorPalette, attributeDarkColorPalette, AppTheme) and ~109 Rectify-specific UI-kit components (SidebarTabs, SegmentedButtonGroup, DeviceChip, CounterBadge, StatusLine, StatusPill, KeyCap) this deliverable adopts and assembles rather than re-authors. Formerly a cross-repository dependency (clarify's open question 4); RESOLVED by the build-location decision -- consumed as a plain in-repo project dependency once the shell is built inside rectify-kmp, satisfying 'unmodified' adoption by construction rather than by discipline. |
+| :desktop-application / runDesktopApp() / initKoin() (rectify-kmp) | The existing macOS entry point (./gradlew :desktop-application:run) this deliverable extends with window size/min-size/key handling rather than creating from scratch. |
+| multiplatform-settings preference chain (data-preference-api/-impl, data-repository-impl, domain-usecase-api in rectify-kmp) | Existing end-to-end desktop persistence (PreferencesSettings on node dev.rectify.io, pref_theme) this deliverable extends with one new key, pref_side_panel_width. |
+
+### chosenApproach
+
+Build entirely inside rectify-kmp, assembling rather than authoring: add a shell slot-contract (RectifyWindowShell, ShellToolbar, ShellStatusBar, StageSurface, SidePanelFrame, PanelResizeHandle, ShellTab, rememberShellState) to presentation-core-ui/source/kit/organism/shell/, composed from already-shipped components (SidebarTabs, SegmentedButtonGroup, DeviceChip, CounterBadge, StatusLine, StatusPill, KeyCap, AppButton, StatusIndicator); extend compose-application's desktopMain window wiring (RectifyWindow) with rememberWindowState(1240x820), window.minimumSize(1024x700), macOS full-size-content client properties for an inset traffic-light region, and onPreviewKeyEvent for Cmd+1/2/3; wire theme through the already-shipped AppTheme/ThemeMode + pref_theme chain (changing only the first-launch default from Light to System); add exactly one new preference (pref_side_panel_width, Int dp, default 320) through the existing PreferenceSource->mapper->repository->use-case chain, written only on drag-end; use plain Compose state hoisting for shell state (no Orbit MVI, no new Gradle module); and establish the repo's first test suite (kotlin.test wired once in the Library/Feature convention plugins) covering pure shell logic plus an automated WCAG AA contrast sweep over both shipped palettes in presentation-core-styling's own commonTest.
+
+### rationale
+
+rectify-kmp is not merely a token file set: presentation-core-styling (AppTheme already resolving Light/Dark/System via isSystemInDarkTheme()) sits beside presentation-core-ui's ~109 components authored from the same Rectify style guide -- SidebarTabs' own KDoc example is literally 'Annotations · Payload · History'. The desktop entry point and the desktop preference backend already run end to end. Building anywhere else (a fresh Documents/rectify project, or a Gradle composite build) either forks ~140 files -- a direct, permanent threat to AC-36's 'adopted unmodified' -- or drags in the same Android/iOS/AGP footprint anyway (presentation-core-styling applies the feature convention plugin) while adding cross-repo version-skew risk, for no benefit over building in-repo. Plain Compose state hoisting is chosen over Orbit MVI because the orbit-mvi rule's frontmatter scopes it to presentation-feature-*/** and the shell (three fields, no async, no navigation, no one-shot effects) does not fit that shape. The existing multiplatform-settings chain is reused over a direct java.util.prefs call because the repo's data->domain->presentation layering should not be punched through in the one file every future developer reads first. Test scope is deliberately limited to kotlin.test (pure-function tests + a contrast sweep) rather than a Compose UI-test harness, because the repo has zero test infrastructure today and most of this shell's real acceptance surface (clamping, shortcut mapping, persistence round-trip, contrast) is pure logic; UI-test tooling would be a Stage-5-consuming yak-shave for marginal coverage. The shipped sentFixed token (hue 150) is kept authoritative over the PRD's hue 152 note because editing the palette to chase an imperceptible 2-degree hue shift would itself violate AC-36.
+
+### architectureOverview
+
+RectifyWindowShell is the slot contract: Column[ShellToolbar | Row[StageSurface(weight 1f) | PanelResizeHandle | SidePanelFrame(panelWidth)] | ShellStatusBar] on Theme.color.bg, with sidePanel as a nullable slot (null expresses the pre-mirror/empty state per AC-31/FR-15, rather than a boolean flag). ShellToolbar exposes six named slots in screenshot order (trafficLightInset, platformSwitch, deviceIndicator, spacer, stagedCounter, clear, primaryAction) so downstream specs cannot reorder the canonical toolbar. ShellStatusBar exposes leading/trailing slots, stub-filled with StatusLine/StatusIndicator content. StageSurface fills the remaining space with the Theme.color.stage ground and a token-driven dotted-grid texture, with a content slot for empty-state/device-mirror content (downstream). SidePanelFrame reuses SidebarTabs (Notes/Payload/History), defaulting to Notes, with per-tab content as a slot. PanelResizeHandle (atom) is a thin draggable hit area emitting dp deltas; clamping lives in the pure function clampPanelWidth(current, delta) = (current+delta).coerceIn(260.dp, 480.dp), independently unit-testable. ShellTab enum plus shortcutToTab(isMeta, key) is a second pure function mapping Cmd+1/2/3 to tabs. rememberShellState holds activeTab and panelWidth as hoisted mutableStateOf fields -- no ViewModel, no Orbit container. RectifyWindow (compose-application/desktopMain) owns rememberWindowState(1240x820), sets window.minimumSize via AWT Dimension(1024,700) inside FrameWindowScope, applies the macOS full-size-content client properties, installs onPreviewKeyEvent, resolves ThemeMode from the existing ObserveThemeUseCase, loads/saves panel width through the new SidePanelWidthPreferenceSource, and renders AppTheme(mode) { RectifyWindowShell(...) } with every slot stub-filled per AC-37. A PaletteContrastTest in presentation-core-styling's own commonTest (required because the palettes are internal) computes WCAG relative-luminance contrast for every surface/ink and signal-on-surface pairing in both palettes, compositing alpha tokens (line/line2/hover/seg/codeBg) over their base surface and pairing pop with on-pop ink, converting AC-36/AC-40/NFR-11 from inspection-only into a runnable check.
+
+### techStack
+
+| area | choice | reason |
+| --- | --- | --- |
+| Language / toolchain | Kotlin 2.4.21, JVM 21 (rectify-kmp's catalog) | Matches the repo the shell is built in; supersedes the poc's 2.4.20 with no behavioural difference. |
+| UI | Compose Multiplatform 1.12.1 desktop (compose.desktop.currentOs) | Operator-dictated and already configured in ApplicationConventionPlugin's desktopMain; macOS-only Skiko renderer satisfies NFR-10 by construction. |
+| Design tokens | presentation-core-styling AppTheme / Theme.* as the single provider | FR-19/AC-36/constraint: tokens read only from @Composable scope, never a literal Color(0x...). |
+| Components | presentation-core-ui atoms/molecules/organisms (SidebarTabs, SegmentedButtonGroup, DeviceChip, CounterBadge, StatusLine, StatusPill, KeyCap, AppButton, StatusIndicator) | Already authored from the same style guide; the shell assembles rather than re-authors. |
+| Shell state | Plain Compose state hoisting (rememberShellState) | Three fields, no async, no side effects; Orbit is scoped to presentation-feature-* modules. |
+| Persistence | multiplatform-settings via the existing PreferenceSource chain; desktop backend PreferencesSettings(Preferences.userRoot().node("dev.rectify.io")) | Already wired; keys pref_theme (existing, unchanged) and pref_side_panel_width (new). |
+| DI | Koin, bootstrapped in :desktop-application's main() (unchanged) | Desktop has no lifecycle callback; the repo's rule already fixes this call site and the data->domain->presentation load order. |
+| Window chrome | Native macOS decorations + JBR client properties apple.awt.fullWindowContent / apple.awt.transparentTitleBar on window.rootPane | Gives the screenshot's traffic-lights-inside-the-toolbar look while the OS still draws and manages the buttons -- no custom hit-testing, drag regions or fullscreen handling to implement or maintain. |
+| Testing | kotlin.test in commonTest, wired once in Library/Feature convention plugins; ./gradlew :<module>:desktopTest | testing.md confirms zero tests exist today -- this deliverable establishes the pattern; per-module wiring is explicitly discouraged. |
+
+### openRisks
+
+| text | likelihood | impact | status | mitigation |
+| --- | --- | --- | --- | --- |
+| The pipeline's working repository (Documents/rectify) was not where the code should live. | med | high | resolved-by-decision | Build-location decision confirmed at the brainstorm gate: build in rectify-kmp and relocate .pipeline/ there. Remaining action item (not a risk): perform the relocation as the first Stage 2/4 step before any code is written. |
+| A ported/copied palette could silently diverge from presentation-core-styling, breaking AC-36's 'unmodified' claim. | high | high | moot-by-decision | Not applicable -- the chosen architecture consumes presentation-core-styling as a plain in-repo project dependency, not a port or copy. |
+| isSystemInDarkTheme() may not react to a live macOS appearance change on JVM/Skiko, breaking FR-18's System mode. | med | med | open | Spike it early in implementation before building the toggle; fall back to a manual-override-only default if it proves static, and downgrade FR-18's System behaviour to launch-time detection with an explicit note. |
+| macOS traffic lights could overlap the toolbar content, or the full-size-content client properties could behave differently under a non-JBR JDK. | med | low | open | Reserve the leading inset unconditionally; if the client properties are unavailable, native decorations degrade to a standard title bar above the toolbar -- ugly but functional and zero extra code. |
+| Writing the panel width on every drag frame would thrash java.util.prefs (which flushes to disk). | med | med | resolved-by-decision | Persist only on onDragStopped, and only when the value actually changed -- already the confirmed design. |
+| Establishing the repo's first test suite could turn into a yak-shave (CI wiring, desktop test runtime, Compose UI test deps) and consume Stage 5. | med | med | open | Scope Stage 5 to pure-function + contrast tests under kotlin.test only (already decided). Do NOT introduce runComposeUiTest/ui-test-junit4 in this deliverable. |
+| Several ACs (AC-12, AC-30, AC-31, AC-34, AC-36, AC-37, AC-40) are verificationMethod=inspection, so Stage 5 cannot fully gate them with automated tests. | high | med | open | Convert what can be converted (AC-36/AC-40 -> contrast test; AC-34 -> assert the WindowState/minimumSize constants; AC-12 -> assert SidePanelFrame renders exactly three ShellTab entries). Capture light+dark screenshots of the running app as inspection evidence for the remainder. |
+| Scope creep: the cached screenshots show device-picker and empty-state CONTENT that is tempting to build. | high | med | open | Every slot in RectifyWindowShell is a lambda parameter; Stage 4's definition of done is 'slots exist and are filled with static stubs'. Anything reading adb is a downstream spec. |
+| rectify-kmp's existing App()/NavigationHost and the new shell could become two competing roots. | med | low | open | On desktop, have runDesktopApp() render RectifyWindow directly instead of App(); leave App()/NavigationHost untouched for Android/iOS until a later cleanup spec. |
+
+### openQuestions
+
+- No dark-theme design reference (comp/screenshot) exists for the shell; the dark palette is adopted and will be validated by the automated contrast test plus token correctness, not against a visual comp -- flag for design review once the shell is running.
+- The three-tab side panel's header height, padding, tab-row placement and divider treatment are being designed from FR-11 + SidebarTabs' existing geometry, not copied from a screenshot (neither cached design shows the panel) -- flag for design review.
+- The bezel-less stage's dotted/grid texture has no specified cell size, dot radius or opacity token; it will be approximated from the screenshot and should become a named token if it survives review.
+- AS-3 (macOS system-appearance detection via isSystemInDarkTheme() on JVM/Skiko) has not been directly observed as a live appearance switch on a shipped desktop build; verify early (see openRisks) -- a fallback would require an AppKit appearance observer.
+- No decision exists on what happens to rectify-kmp's existing template features (onboarding/home/settings/about/splash, Navigation3, Room) once the shell becomes the app's root -- the shell bypasses NavigationHost, leaving dead code paths for a later cleanup spec.
+- No macOS packaging (nativeDistributions/packageDmg) is configured in :desktop-application -- out of scope for this shell deliverable, but a known gap before an actual shippable macOS build exists.
+- Monospace (JetBrains Mono) and SF Pro font availability/resolution in the desktop build is unverified; the typography tokens exist but desktop font rendering has not been confirmed.
+
+### readyForPlan
+
+true
+
+### proposedSurvey
+
+| question | options | recommended | rationale |
+| --- | --- | --- | --- |
+| Is this consolidated Preparation deliverable -- 12 FR, 3 NFR, 12 AC, the six binding brainstorm decisions (build in rectify-kmp with .pipeline/ relocated there, native full-size-content window chrome, plain Compose state hoisting, reuse of the existing multiplatform-settings chain, kotlin.test-only test scope with a WCAG contrast sweep, shipped sentFixed hue-150 as authoritative), and the carried-forward open risks/questions -- complete and correct enough to authorize Stage 2 (Plan)? | ["Yes, approve as-is and proceed to Stage 2 Plan", "No, hold -- specific corrections needed before Stage 2 can start"] | Yes, approve as-is and proceed to Stage 2 Plan | All material decisions were already made and confirmed at the clarify and brainstorm gates; this step is a consolidation, not new reasoning, and introduces no new requirements or contradictions. The remaining open items (dark-theme design review, side-panel geometry, stage-texture token values, AS-3 live-appearance verification, template-feature cleanup, macOS packaging, font resolution) are genuinely unresolved but non-blocking -- they are implementation-time or design-review items that Stage 2 planning is expected to size and sequence, not Stage 1 gate blockers. |
+
+### artifacts
+
+#### input
+
+input.json
+
+#### clarify
+
+clarify.json
+
+#### brainstorm
+
+brainstorm.json
+
+### survey
+
+| question | options | answer | source |
+| --- | --- | --- | --- |
+| Is this consolidated Preparation deliverable -- 12 FR, 3 NFR, 12 AC, the six binding brainstorm decisions (build in rectify-kmp with .pipeline/ relocated there, native full-size-content window chrome, plain Compose state hoisting, reuse of the existing multiplatform-settings chain, kotlin.test-only test scope with a WCAG contrast sweep, shipped sentFixed hue-150 as authoritative), and the carried-forward open risks/questions -- complete and correct enough to authorize Stage 2 (Plan)? | ["Yes, approve as-is and proceed to Stage 2 Plan", "No, hold -- specific corrections needed before Stage 2 can start"] | Yes, approve as-is and proceed to Stage 2 Plan | user-edited |

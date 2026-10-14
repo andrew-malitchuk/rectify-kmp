@@ -1,0 +1,184 @@
+{
+  "spec": "rectify",
+  "stage": "handoff",
+  "step": "error-handling-and-recovery",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "prd.py handoff",
+  "gate": {
+    "type": "auto",
+    "approvedBy": "prd.py",
+    "approved": true,
+    "at": "2026-10-11T16:12:17Z"
+  },
+  "provenance": {
+    "inputs": [
+      {
+        "artifact": "prd.json",
+        "hash": "a7b4b0d1c39a04a00aec0acd67900ad85595779106bea6f82ae1265133169110"
+      }
+    ],
+    "selfHash": "1dec12c70191083c62977c55269548096a4005a3395fc2b7491758ccebc1d56c"
+  },
+  "createdAt": "2026-10-11T16:12:17Z",
+  "updatedAt": "2026-10-11T16:12:17Z",
+  "dryRun": false,
+  "troubleshooting": [],
+  "notifications": [],
+  "data": {
+    "sourcePrd": "rectify",
+    "id": "F-3",
+    "slug": "error-handling-and-recovery",
+    "title": "Error Handling & Stream Recovery",
+    "goalStatement": "The structured error-state system: a reusable error-card component (icon-in-circle, title, body, optional copyable command block, primary + secondary actions, footer diagnostic line) instantiated for adb-not-in-PATH ('Locate adb…' / 'Retry'), no-device-detected (kill-server command, 'Restart adb' / 'Boot emulator instead'), and multiple-devices-connected (inline device list rather than a modal, primary action naming the top device); plus the mid-session stream-drop banner that floats non-blockingly over the stale mirror, keeps staged annotations pinned, offers 'Reconnect', and leaves 'Resolve & Send' usable while disconnected. Why: research flags adb/scrcpy fragility across OS and device versions as the biggest execution risk to the >=95% first-attempt connect target, so recoverable failure is a product feature, not polish.",
+    "rawDescription": "The structured error-state system: a reusable error-card component (icon-in-circle, title, body, optional copyable command block, primary + secondary actions, footer diagnostic line) instantiated for adb-not-in-PATH ('Locate adb…' / 'Retry'), no-device-detected (kill-server command, 'Restart adb' / 'Boot emulator instead'), and multiple-devices-connected (inline device list rather than a modal, primary action naming the top device); plus the mid-session stream-drop banner that floats non-blockingly over the stale mirror, keeps staged annotations pinned, offers 'Reconnect', and leaves 'Resolve & Send' usable while disconnected. Why: research flags adb/scrcpy fragility across OS and device versions as the biggest execution risk to the >=95% first-attempt connect target, so recoverable failure is a product feature, not polish.",
+    "priority": "must",
+    "phase": "PH-1",
+    "estimate": "M",
+    "dependsOn": [
+      "F-1",
+      "F-2"
+    ],
+    "linkedGoals": [
+      "GOAL-1",
+      "GOAL-5"
+    ],
+    "functionalRequirements": [
+      {
+        "id": "FR-23",
+        "text": "Render structured error-card states (icon-in-circle, title, body, optional copyable command block, primary+secondary actions, footer diagnostic line) for: adb not in PATH, no device detected, and multiple devices connected (with an inline device list/picker instead of a modal, defaulting the primary action to the top-listed device).",
+        "priority": "must"
+      },
+      {
+        "id": "FR-24",
+        "text": "On a mid-session stream drop, show a non-blocking floating banner over the stale mirror ('Stream dropped' / 'Your N annotations are kept on the frozen frame' / 'Reconnect'); staged annotations stay pinned and 'Resolve & Send' remains usable while disconnected.",
+        "priority": "must"
+      }
+    ],
+    "nonFunctionalRequirements": [
+      {
+        "id": "NFR-6",
+        "category": "reliability",
+        "text": "Stream-drop handling must preserve all staged annotations without loss across a disconnect/reconnect cycle."
+      },
+      {
+        "id": "NFR-8",
+        "category": "a11y",
+        "text": "Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers)."
+      },
+      {
+        "id": "NFR-9",
+        "category": "ux",
+        "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-26",
+        "text": "Given adb is not found on PATH, then an error card renders with the install command (with Copy), primary 'Locate adb…' and secondary 'Retry' actions.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-27",
+        "text": "Given no Android device is detected after launch, then an error card renders with the kill-server command and primary 'Restart adb' / secondary 'Boot emulator instead' actions.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-28",
+        "text": "Given 3 devices are connected simultaneously, then the error card shows an inline device list (not a modal) and the primary action names the top device (e.g. 'Mirror Pixel 8 Pro').",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-29",
+        "text": "Given the stream drops mid-session with staged annotations present, then a non-blocking banner appears stating the stream dropped and that annotations are kept on the frozen frame, with a 'Reconnect' primary action; 'Resolve & Send' remains clickable and annotations remain pinned throughout.",
+        "priority": "must",
+        "verificationMethod": "test"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-10",
+        "title": "adb not on PATH",
+        "type": "error",
+        "steps": [
+          "Launch with adb missing from PATH",
+          "Error card renders with install command",
+          "User copies command or clicks Locate adb…/Retry"
+        ]
+      },
+      {
+        "id": "SC-11",
+        "title": "No Android device detected",
+        "type": "error",
+        "steps": [
+          "adb present but no device attached",
+          "Error card renders with kill-server command",
+          "User runs suggested command or boots an emulator instead"
+        ]
+      },
+      {
+        "id": "SC-12",
+        "title": "Multiple devices connected",
+        "type": "error",
+        "steps": [
+          "3 devices are connected simultaneously",
+          "Inline device list/picker renders (no modal)",
+          "User accepts the top-named device or picks another"
+        ]
+      },
+      {
+        "id": "SC-13",
+        "title": "Stream dropped mid-annotation",
+        "type": "error",
+        "steps": [
+          "Stream drops while annotations are staged",
+          "Non-blocking banner appears over the stale mirror",
+          "Annotations remain pinned",
+          "User clicks Reconnect or still sends via Resolve & Send"
+        ]
+      }
+    ],
+    "userStories": [
+      {
+        "id": "US-11",
+        "asA": "QA Tester (PER-2)",
+        "iWant": "actionable error cards with copyable commands when adb is missing, no device is found, or several devices are attached",
+        "soThat": "I can fix my own setup rather than filing a tooling ticket",
+        "linkedFR": [
+          "FR-23"
+        ],
+        "acceptanceCriteria": [
+          "AC-26",
+          "AC-27",
+          "AC-28"
+        ],
+        "scenarios": [
+          "SC-10",
+          "SC-11",
+          "SC-12"
+        ],
+        "priority": "must"
+      },
+      {
+        "id": "US-12",
+        "asA": "Mobile Developer (PER-1)",
+        "iWant": "my staged annotations to survive a mid-session stream drop and still be sendable",
+        "soThat": "a flaky USB cable never costs me the bug report I just wrote",
+        "linkedFR": [
+          "FR-24"
+        ],
+        "acceptanceCriteria": [
+          "AC-29"
+        ],
+        "scenarios": [
+          "SC-13"
+        ],
+        "priority": "must"
+      }
+    ],
+    "sddReady": true
+  }
+}

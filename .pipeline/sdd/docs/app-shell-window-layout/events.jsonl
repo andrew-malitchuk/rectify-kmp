@@ -1,0 +1,10 @@
+{"stage": "preparation", "event": "start", "at": "2026-10-14T17:54:36Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "start", "at": "2026-10-14T17:55:16Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "end", "tokens": 42309, "at": "2026-10-14T18:01:22Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "start", "at": "2026-10-14T18:01:22Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "end", "tokens": 99496, "at": "2026-10-14T18:20:16Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "start", "at": "2026-10-14T18:20:16Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "end", "tokens": 122104, "at": "2026-10-14T18:35:45Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-14T18:35:51Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 77760, "at": "2026-10-14T18:41:20Z", "spec": "app-shell-window-layout"}
+{"stage": "preparation", "event": "end", "at": "2026-10-14T18:41:20Z", "spec": "app-shell-window-layout"}

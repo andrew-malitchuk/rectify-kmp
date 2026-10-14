@@ -1,0 +1,112 @@
+{
+  "spec": "rectify",
+  "stage": "handoff",
+  "step": "app-shell-window-layout",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "prd.py handoff",
+  "gate": {
+    "type": "auto",
+    "approvedBy": "prd.py",
+    "approved": true,
+    "at": "2026-10-11T16:12:17Z"
+  },
+  "provenance": {
+    "inputs": [
+      {
+        "artifact": "prd.json",
+        "hash": "a7b4b0d1c39a04a00aec0acd67900ad85595779106bea6f82ae1265133169110"
+      }
+    ],
+    "selfHash": "95e4574e93f01bebe3fee40faeed30c81df6de034be05f040085a4af159d1a3f"
+  },
+  "createdAt": "2026-10-11T16:12:17Z",
+  "updatedAt": "2026-10-11T16:12:17Z",
+  "dryRun": false,
+  "troubleshooting": [],
+  "notifications": [],
+  "data": {
+    "sourcePrd": "rectify",
+    "id": "F-1",
+    "slug": "app-shell-window-layout",
+    "title": "App Shell & Canonical Window Layout",
+    "goalStatement": "The foundational macOS app shell implementing the canonical 'Rectify Window': a bezel-less live-mirror region with a side panel exposing exactly three tabs (Notes, Payload, History), plus the toolbar frame and status-bar chrome that every other feature plugs into. Includes the full light/dark theme system with the signal-color palette (red = bug, green = fixed, orange = warning, blue = measurement) and contrast parity in both themes. Why first: all 16 catalog screens import this layout, and every subsequent feature renders inside it, so the shell and theming must exist before any device, annotation or payload work can land.",
+    "rawDescription": "The foundational macOS app shell implementing the canonical 'Rectify Window': a bezel-less live-mirror region with a side panel exposing exactly three tabs (Notes, Payload, History), plus the toolbar frame and status-bar chrome that every other feature plugs into. Includes the full light/dark theme system with the signal-color palette (red = bug, green = fixed, orange = warning, blue = measurement) and contrast parity in both themes. Why first: all 16 catalog screens import this layout, and every subsequent feature renders inside it, so the shell and theming must exist before any device, annotation or payload work can land.",
+    "priority": "must",
+    "phase": "PH-1",
+    "estimate": "M",
+    "dependsOn": [],
+    "linkedGoals": [
+      "GOAL-5"
+    ],
+    "functionalRequirements": [
+      {
+        "id": "FR-11",
+        "text": "Use the canonical 'Rectify Window' layout: a bezel-less live mirror with a side panel exposing exactly three tabs (Notes, Payload, History).",
+        "priority": "must"
+      }
+    ],
+    "nonFunctionalRequirements": [
+      {
+        "id": "NFR-9",
+        "category": "ux",
+        "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes."
+      },
+      {
+        "id": "NFR-10",
+        "category": "compatibility",
+        "text": "v1 targets macOS only; no Windows/Linux builds."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-12",
+        "text": "Given the canonical window layout is confirmed, then the side panel exposes exactly three tabs: Notes, Payload, History, over a bezel-less mirror.",
+        "priority": "must",
+        "verificationMethod": "inspection"
+      },
+      {
+        "id": "AC-30",
+        "text": "Given the user toggles light/dark theme, then all screens render correctly in both themes with consistent signal colors (red/green/orange/blue) and no unreadable contrast regions.",
+        "priority": "must",
+        "verificationMethod": "inspection"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-1",
+        "title": "First-run setup and tool detection",
+        "type": "happy",
+        "steps": [
+          "Launch app",
+          "Detect adb/idb and show status dots",
+          "Open device picker showing Physical/Emulator sections",
+          "Select a device via keyboard or click",
+          "Click Start mirroring"
+        ]
+      }
+    ],
+    "userStories": [
+      {
+        "id": "US-13",
+        "asA": "Mobile Developer (PER-1)",
+        "iWant": "the canonical 3-tab window with live stream stats, readable in light and dark themes",
+        "soThat": "I can work in my preferred appearance and always see stream health at a glance",
+        "linkedFR": [
+          "FR-11",
+          "FR-22"
+        ],
+        "acceptanceCriteria": [
+          "AC-12",
+          "AC-25",
+          "AC-30"
+        ],
+        "scenarios": [
+          "SC-1"
+        ],
+        "priority": "must"
+      }
+    ],
+    "sddReady": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "spec": "rectify",
+  "currentStage": "done",
+  "stages": {},
+  "steps": {
+    "intake": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "research": {
+      "status": "done"
+    },
+    "draft": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    }
+  },
+  "stageEffort": {
+    "research": "fast",
+    "draft": "fast",
+    "review": "standard"
+  }
+}
