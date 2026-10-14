@@ -68,6 +68,7 @@ play-services-home = { module = "com.google.android.gms:play-services-home", ver
 org-jetbrains-kotlin-multiplatform-gradle-plugin = { module = "org.jetbrains.kotlin.multiplatform:org.jetbrains.kotlin.multiplatform.gradle.plugin", version.ref = "orgJetbrainsKotlinMultiplatformGradlePlugin" }
 gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 compose-gradle-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "composeGradlePlugin" }
 compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
