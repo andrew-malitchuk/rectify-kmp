@@ -25,11 +25,14 @@ import androidx.compose.ui.window.rememberWindowState
 import co.touchlab.kermit.Logger
 import domain.core.source.model.ThemeModel
 import domain.usecase.api.source.usecase.configuration.GetSidePanelWidthUseCase
+import domain.usecase.api.source.usecase.configuration.ObserveApplicationLanguageUseCase
 import domain.usecase.api.source.usecase.configuration.ObserveThemeUseCase
 import domain.usecase.api.source.usecase.configuration.SetSidePanelWidthUseCase
 import domain.usecase.api.source.usecase.configuration.SetThemeUseCase
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 import org.koin.compose.koinInject
+import presentation.core.localisation.source.provider.AppLocaleProvider
 import presentation.core.styling.core.Theme
 import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
@@ -79,6 +82,13 @@ private val PLATFORM_SOURCES = listOf("Android", "iOS")
  */
 @Composable
 public fun ApplicationScope.RectifyWindow() {
+    val observeLanguage = koinInject<ObserveApplicationLanguageUseCase>()
+    val languageCode by observeLanguage()
+        .map { it.getOrNull() ?: "en" }
+        // Mirrors App.kt: "en" is both the initial value and the failed-Result fallback,
+        // because the preference is unset on first launch.
+        .collectAsState(initial = "en")
+
     val observeTheme = koinInject<ObserveThemeUseCase>()
     val setTheme = koinInject<SetThemeUseCase>()
     val getSidePanelWidth = koinInject<GetSidePanelWidthUseCase>()
@@ -119,25 +129,29 @@ public fun ApplicationScope.RectifyWindow() {
     ) {
         ApplyWindowChrome()
 
-        AppTheme(mode = themeModel.toThemeMode()) {
-            RectifyShellContent(
-                state = shellState,
-                sidePanel = sidePanel,
-                onPanelWidthCommit = { width ->
-                    // Fires on drag END only (RectifyWindowShell contract) — one write per
-                    // resize that changed something, never one per frame.
-                    scope.launch {
-                        setSidePanelWidth(width.value.roundToInt())
-                            .onFailure { log.w(it) { "Side panel width not persisted." } }
-                    }
-                },
-                onThemeCycle = {
-                    scope.launch {
-                        setTheme(themeModel.next())
-                            .onFailure { log.w(it) { "Theme override not persisted." } }
-                    }
-                },
-            )
+        // The desktop root no longer goes through App(), so it must provide the locale itself —
+        // without this, pref_language is inert on desktop.
+        AppLocaleProvider(languageCode = languageCode) {
+            AppTheme(mode = themeModel.toThemeMode()) {
+                RectifyShellContent(
+                    state = shellState,
+                    sidePanel = sidePanel,
+                    onPanelWidthCommit = { width ->
+                        // Fires on drag END only (RectifyWindowShell contract) — one write per
+                        // resize that changed something, never one per frame.
+                        scope.launch {
+                            setSidePanelWidth(width.value.roundToInt())
+                                .onFailure { log.w(it) { "Side panel width not persisted." } }
+                        }
+                    },
+                    onThemeCycle = {
+                        scope.launch {
+                            setTheme(themeModel.next())
+                                .onFailure { log.w(it) { "Theme override not persisted." } }
+                        }
+                    },
+                )
+            }
         }
     }
 }

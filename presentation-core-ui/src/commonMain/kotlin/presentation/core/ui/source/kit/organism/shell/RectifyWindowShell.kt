@@ -63,7 +63,10 @@ public fun RectifyWindowShell(
     modifier: Modifier = Modifier,
     state: ShellState = rememberShellState(),
     sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null,
-    onPanelWidthCommit: (Dp) -> Unit = {},
+    // Deliberately NOT defaulted: a `= {}` default silently swallows every committed drag, which
+    // is exactly AC-39's failure mode and is invisible at the call site. A caller that renders a
+    // side panel must say what happens to the width.
+    onPanelWidthCommit: (Dp) -> Unit,
     stage: @Composable BoxScope.() -> Unit,
 ) {
     Column(modifier = modifier.fillMaxSize().background(Theme.color.bg)) {
@@ -144,6 +147,8 @@ private fun RectifyWindowShellNoPanelPreviewContent() {
     RectifyWindowShell(
         toolbar = { ShellPreviewToolbar() },
         statusBar = { ShellPreviewStatusBar() },
+        // No panel in this state, so no width is ever committed.
+        onPanelWidthCommit = {},
         stage = { ShellPreviewStage() },
     )
 }
@@ -159,6 +164,9 @@ private fun RectifyWindowShellWithPanelPreviewContent() {
                 Text(text = tab.label, style = Theme.typography.secondary, color = Theme.color.ink2)
             }
         },
+        // A preview has nowhere to persist to; the real call site writes through
+        // SetSidePanelWidthUseCase.
+        onPanelWidthCommit = {},
         stage = { ShellPreviewStage() },
     )
 }

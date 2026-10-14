@@ -25,7 +25,7 @@ presentation/core/ui/
         chip/             ← Chip
         container/        ← SafeContainer, WindowSize, LocalWindowSize, IconContainer, MaxSideDetector
         divider/          ← HorizontalAnimatedDivider
-        handle/           ← PanelResizeHandle (8 dp grab strip; reports drag deltas, owns no width)
+        handle/           ← PanelResizeHandle (8 dp grab strip; owns the stage/panel seam, reports drag deltas, owns no width)
         icon/             ← 22 SVG ImageVector constants (AlertTriangle … Wizard)
         indicator/        ← StatusIndicator + StatusIndicatorState
         input/            ← Input (animated border), FilledTextField (filled), MultilineInput
@@ -84,7 +84,7 @@ presentation/core/ui/
 | `IconContainer` | Squircle tile: tinted icon on coloured background |
 | `MaxSideDetector` | Portrait vs landscape content slot switch |
 | `HorizontalAnimatedDivider` | Alpha-animated divider driven by `isVisible` |
-| `PanelResizeHandle` | 8 dp horizontal grab strip + hairline; emits drag deltas, no clamping or persistence |
+| `PanelResizeHandle` | 8 dp horizontal grab strip filled with `stage` + the single seam hairline; emits drag deltas, no clamping or persistence |
 | `StatusIndicator` | 6 dp dot + label; `Connected`/`Offline`/`Standby`/`Active` states |
 | `Input` | Single-line with animated border, optional regex, clear button |
 | `FilledTextField` | Single-line with solid fill (no border); compact form variant |
@@ -130,7 +130,7 @@ presentation/core/ui/
 | `ShellToolbar` | Top chrome bar, 52 dp, fixed named slots + traffic-light leading inset |
 | `ShellStatusBar` | Bottom chrome bar, 28 dp, leading / trailing slots |
 | `StageSurface` | Bezel-less mirror region on `Theme.color.stage` + Canvas dot grid |
-| `SidePanelFrame` | Panel chrome: leading hairline, `SidebarTabs` header (Notes · Payload · History), per-tab content slot |
+| `SidePanelFrame` | Panel chrome: `SidebarTabs` header (Notes · Payload · History), per-tab content slot |
 | `ShellState` / `ShellTab` / `ShellWindowDefaults` | Hoisted shell state, the three tabs, window & panel geometry + `clampPanelWidth` / `shortcutToTab` |
 
 ### `source/showcase/`

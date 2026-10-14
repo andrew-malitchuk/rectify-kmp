@@ -3,7 +3,12 @@
 `kotlin.test` is wired **once**, in `LibraryConventionPlugin` and `FeatureConventionPlugin`
 (`build-logic/convention`), via each plugin's existing `configureCommonDependencies()` —
 no dedicated `BaseConventionPlugin` hook. Every KMP library/feature module therefore gets a
-working `commonTest` source set for free. **Never add a test dependency module-by-module.**
+working `commonTest` source set for free. **Never add `kotlin-test` itself module-by-module.**
+
+A module may still declare a test dependency of its own when the need is genuinely local —
+`data-preference-impl` adds `multiplatform-settings-test` and `kotlinx-coroutines-test` because
+only it fakes a settings backend and only it tests suspending sources. The rule is about the
+*shared* harness, not about banning local fixtures.
 
 `:compose-application` applies the *application* plugin and deliberately gets no test wiring —
 that is why anything needing a unit test (e.g. window constants) lives in `presentation-core-ui`

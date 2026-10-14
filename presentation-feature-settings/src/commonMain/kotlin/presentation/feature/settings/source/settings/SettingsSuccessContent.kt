@@ -55,6 +55,8 @@ import rectify_kmp.presentation_core_localisation.generated.resources.settings_u
 import rectify_kmp.presentation_core_localisation.generated.resources.settings_unit_selector
 import rectify_kmp.presentation_core_localisation.generated.resources.settings_system_info
 import rectify_kmp.presentation_core_localisation.generated.resources.settings_theme_selector
+import rectify_kmp.presentation_core_localisation.generated.resources.settings_theme_system
+import rectify_kmp.presentation_core_localisation.generated.resources.settings_theme_system_subtitle
 
 /**
  * Success-state content for the Settings screen.
@@ -156,20 +158,29 @@ internal fun SettingsSuccessContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS),
                 ) {
-                    // Index 0 = Dark (Monolith)
+                    // Indices mirror SettingsViewModel.THEME_MODELS exactly.
+                    // Index 0 = System
                     SelectableCard(
-                        title = stringResource(Res.string.settings_theme_monolith),
-                        subtitle = stringResource(Res.string.settings_theme_monolith_subtitle),
+                        title = stringResource(Res.string.settings_theme_system),
+                        subtitle = stringResource(Res.string.settings_theme_system_subtitle),
                         selected = state.selectedThemeIndex == 0,
                         onClick = { onIntent(SettingsIntent.SelectTheme(0)) },
                         modifier = Modifier.weight(1f),
                     )
-                    // Index 1 = Light (Brutalist)
+                    // Index 1 = Dark (Monolith)
+                    SelectableCard(
+                        title = stringResource(Res.string.settings_theme_monolith),
+                        subtitle = stringResource(Res.string.settings_theme_monolith_subtitle),
+                        selected = state.selectedThemeIndex == 1,
+                        onClick = { onIntent(SettingsIntent.SelectTheme(1)) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Index 2 = Light (Brutalist)
                     SelectableCard(
                         title = stringResource(Res.string.settings_theme_brutalist),
                         subtitle = stringResource(Res.string.settings_theme_brutalist_subtitle),
-                        selected = state.selectedThemeIndex == 1,
-                        onClick = { onIntent(SettingsIntent.SelectTheme(1)) },
+                        selected = state.selectedThemeIndex == 2,
+                        onClick = { onIntent(SettingsIntent.SelectTheme(2)) },
                         modifier = Modifier.weight(1f),
                     )
                 }

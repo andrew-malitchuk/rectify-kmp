@@ -70,6 +70,10 @@ public fun PanelResizeHandle(
         modifier = modifier
             .fillMaxHeight()
             .width(HandleHitWidth)
+            // The hit strip sits between the stage and the panel. Without a fill it exposes the
+            // shell's `bg`, which is neither of its neighbours — the seam then reads as three
+            // different greys. Painting it `stage` makes the gutter continuous with the mirror.
+            .background(Theme.color.stage)
             // commonMain has no E-resize pointer icon (it is an AWT cursor on desktop only);
             // Hand is the closest "this is grabbable" affordance available here.
             .pointerHoverIcon(PointerIcon.Hand)

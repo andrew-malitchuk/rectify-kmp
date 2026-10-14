@@ -59,13 +59,10 @@ public fun SidePanelFrame(
     tabCounts: Map<ShellTab, Int> = emptyMap(),
     content: @Composable ColumnScope.(ShellTab) -> Unit,
 ) {
+    // No leading hairline here: when the panel is shown, PanelResizeHandle already draws the
+    // divider on this exact edge. Painting a second one stacked `line` against `line2` and read
+    // as a doubled rule. The handle owns the seam.
     Row(modifier = modifier.background(Theme.color.surface)) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(Theme.stroke.thin)
-                .background(Theme.color.line),
-        )
         Column(modifier = Modifier.fillMaxHeight()) {
             Box(
                 modifier = Modifier
