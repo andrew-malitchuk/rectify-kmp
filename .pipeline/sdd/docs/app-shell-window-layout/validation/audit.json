@@ -3,7 +3,7 @@
   "stage": "validation",
   "step": "audit",
   "schemaVersion": 1,
-  "status": "awaiting-review",
+  "status": "done",
   "producedBy": "sdd-build-validation-audit",
   "provenance": {
     "selfHash": "1c66ba3114416e40b867bc5797b0933833b4f0f98a65c0186ac4491f0142571a",
@@ -19,7 +19,7 @@
     ]
   },
   "createdAt": "2026-10-14T21:50:44Z",
-  "updatedAt": "2026-10-14T21:50:44Z",
+  "updatedAt": "2026-10-14T22:39:08Z",
   "data": {
     "iteration": 1,
     "auditScope": {
@@ -681,6 +681,8 @@
     }
   },
   "gate": {
-    "type": "human"
+    "type": "human",
+    "approved": true,
+    "approvedBy": "human"
   }
 }

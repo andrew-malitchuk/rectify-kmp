@@ -1,6 +1,6 @@
 {
   "spec": "app-shell-window-layout",
-  "updatedAt": "2026-10-14T21:25:51Z",
+  "updatedAt": "2026-10-14T22:39:08Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -82,11 +82,27 @@
       "durationMs": 0,
       "invocations": 5,
       "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 176582,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-verdict": {
+      "tokens": 58480,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1235937,
+    "tokens": 1470999,
     "durationMs": 0,
-    "invocations": 14
+    "invocations": 16
   }
 }
