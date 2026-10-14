@@ -18,7 +18,7 @@ None. This is a leaf module with no internal project dependencies.
 | `Failure` | Sealed class — root of the error hierarchy |
 | `Failure.Technical` | Unexpected technical errors (wraps `Throwable`) |
 | `Failure.Logic` | Business logic errors |
-| `ThemeModel` | App theme enumeration (Light, Dark, MaterialU) |
+| `ThemeModel` | App theme enumeration (Light, Dark, System) |
 | `OnboardingModel` | Onboarding completion status |
 | `UnitSystemModel` | Measurement unit system (Metric, Imperial) |
 

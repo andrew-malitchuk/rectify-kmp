@@ -88,8 +88,8 @@ class PaletteContrastTest {
 
     @Test
     fun `every pairing in both palettes is measured - none silently skipped`() {
-        assertEquals(54, lightPairings().size)
-        assertEquals(54, darkPairings().size)
+        assertEquals(56, lightPairings().size)
+        assertEquals(56, darkPairings().size)
     }
 
     @Test
@@ -152,6 +152,8 @@ private fun lightPairings(): List<Pairing> = buildList {
     text("ink2 on stage", c.ink2, c.stage, baseline = 5.44)
     text("ink2 on surface", c.ink2, c.surface, baseline = 6.74)
     text("onPrimary on primary", c.onPrimary, c.primary, baseline = 17.38)
+    text("onPrimary on primaryHover", c.onPrimary, c.primaryHover, baseline = 12.03)
+    text("onPrimary on primaryPress", c.onPrimary, c.primaryPress, baseline = 21.0)
     // endregion
 
     // region Tier 1 - hard fail. Focus ring, a non-text UI component at SC 1.4.11 3:1.
@@ -230,6 +232,8 @@ private fun darkPairings(): List<Pairing> = buildList {
     text("ink2 on stage", c.ink2, c.stage, baseline = 7.27)
     text("ink2 on surface", c.ink2, c.surface, baseline = 5.63)
     text("onPrimary on primary", c.onPrimary, c.primary, baseline = 16.16)
+    text("onPrimary on primaryHover", c.onPrimary, c.primaryHover, baseline = 18.24)
+    text("onPrimary on primaryPress", c.onPrimary, c.primaryPress, baseline = 11.74)
     // endregion
 
     // region Tier 1 - hard fail. Focus ring, a non-text UI component at SC 1.4.11 3:1.
