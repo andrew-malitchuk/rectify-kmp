@@ -9,8 +9,10 @@ import domain.core.source.model.ThemeModel
  * Bidirectional mapper between [ThemeModel] and [ThemePreference].
  *
  * Converts the data-layer [ThemePreference] (string-based) to the domain-layer
- * [ThemeModel] enum and vice-versa. Falls back to `null` when the stored string
- * does not match any known [ThemeModel] entry.
+ * [ThemeModel] enum and vice-versa. Falls back to [ThemeModel.System] when the
+ * stored string does not match any known [ThemeModel] entry — this also covers
+ * [data.preference.api.source.model.ThemePreference.DEFAULT_THEME] (`"system"`),
+ * so an unset preference resolves to the system appearance.
  */
 internal object ThemePreferenceMapper : ModelResourceMapper<ThemeModel, ThemePreference> {
 
@@ -18,7 +20,7 @@ internal object ThemePreferenceMapper : ModelResourceMapper<ThemeModel, ThemePre
     override val toModel: Mapper<ThemePreference, ThemeModel> =
         Mapper { preference ->
             ThemeModel.entries.firstOrNull { it.mode == preference.theme }
-                ?: ThemeModel.Light
+                ?: ThemeModel.System
         }
 
     /** @see ModelResourceMapper.toResource */
