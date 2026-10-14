@@ -4,5 +4,11 @@
     "currentStage": "done",
     "verdict": "complete-with-waivers",
     "updatedAt": "2026-10-14T23:08:48Z"
+  },
+  {
+    "spec": "android-device-discovery-mirroring",
+    "currentStage": "preparation",
+    "verdict": "",
+    "updatedAt": "2026-10-14T23:09:12Z"
   }
 ]

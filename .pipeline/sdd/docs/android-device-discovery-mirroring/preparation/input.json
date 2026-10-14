@@ -1,0 +1,239 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "preparation",
+  "step": "input",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-discussion-aggregate",
+  "provenance": {
+    "selfHash": "6fffeb9db47732501f8e0bc72b54f037ac4fa21f16ebf336839ef2e10c44b677",
+    "inputs": [
+      {
+        "artifact": "inputs/raw/prd-handoff.json",
+        "hash": "08e3eca737437b34e1eda970186a13b250f64a540a4fccc201c1fe073e807fd6"
+      }
+    ]
+  },
+  "createdAt": "2026-10-14T23:14:05Z",
+  "updatedAt": "2026-10-14T23:14:05Z",
+  "data": {
+    "title": "Android Device Discovery & Live Mirroring",
+    "goalStatement": "Everything needed to get a live Android screen into the window: launch-time adb/idb tool detection with per-platform toolbar status dots, the Android/iOS platform switch (Android functional in v1), the device picker with Physical and Emulator sections including inline Boot for shut-down emulators and arrow-key/Enter navigation, the primary 'Start mirroring' action over adb + scrcpy, the 2s-polling 'NO SIGNAL' empty state with inline emulator boot, and the status bar reporting tool version, resolution, fps and latency. Why: the live mirror is the annotation surface and the whole product's entry point; low latency here (NFR-1) is what makes drag-and-freeze feel responsive.",
+    "rawDescription": "Spec F-2 delivers the complete device discovery and live mirroring pipeline for Android in v1. Built on top of the merged F-1 shell foundation (RectifyWindowShell, toolbar slots, status bar), this spec makes every toolbar and status-bar stub live. Scope: launch-time adb/idb tool detection with per-platform green/offline status dots in the toolbar; Android/iOS platform switch (Android functional in v1, iOS deferred); device picker as a centered modal panel showing detected Physical devices and Emulators with inline Boot button for shut-down emulators, navigable via arrow keys and Enter; 'Start mirroring' action connecting to the selected device via adb + scrcpy; 2-second polling 'NO SIGNAL' empty state with dashed phone outline, numbered guidance, and inline emulator boot control; status bar reporting tool version, device resolution, fps, and latency. Reference implementation is at /Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt (249 lines, proven discovery and screenshot logic). The defining open question is how the live Android screen reaches StageSurface with <150ms latency (NFR-1): scrcpy as a child process (breaks canonical window), scrcpy server + in-JVM H.264 decode (heaviest, only option plausibly meeting 150ms inside our surface), adb screenrecord + decode, or screenshot polling (proven in POC, will not meet NFR-1). Error cards 04/05 are device-discovery errors but error-handling-and-recovery is F-3 which depends on this spec — the boundary must be decided explicitly, not drifted.",
+    "sources": [
+      {
+        "type": "text",
+        "ref": "inputs/raw/prd-handoff.json",
+        "summary": "Upstream PRD bundle for F-2: 6 functional requirements (tool detection, platform switch, device picker, start mirroring, NO SIGNAL polling, status bar stats), 4 non-functional requirements (latency <150ms, device selection security, keyboard navigation, macOS v1 only), 5 acceptance criteria, 2 scenarios. Scope: FR-1, FR-2, FR-3, FR-4, FR-5, FR-22 and AC-1, AC-2, AC-3, AC-4, AC-25; SC-1, SC-2. Depends on F-1."
+      },
+      {
+        "type": "text",
+        "ref": "inputs/operator-dictation.md",
+        "summary": "Operator handoff (130 lines): F-1 shell foundation and slot contracts (RectifyWindowShell, ShellToolbar, ShellStatusBar, StageSurface); the defining architecture question for live mirroring (scrcpy child process, scrcpy server H.264 decode, adb screenrecord, or polling); reference implementation logic from rectify-poc/Devices.kt (listDevices, captureScreenshot, deviceInfo, dumpHierarchy); all five design comps cached locally; conventions and known traps (design tokens, package layout, testing, error handling, process execution). Kotlin daemon limited to 3GB; building three KMP modules × all targets OOMs on 18GB host."
+      },
+      {
+        "type": "url",
+        "ref": "https://claude.ai/design/p/3f54708e-1e7a-4472-92cb-74e0cca25a8f?file=Rectify+Screens.dc.html",
+        "summary": "Design project (Rectify Screens) containing all comps for this spec — authenticated Figma link, not web-fetchable. Five PNGs cached locally."
+      },
+      {
+        "type": "code",
+        "ref": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/",
+        "summary": "F-1 shell foundation: RectifyWindowShell (slot contract: Column[toolbar, Row[StageSurface, PanelResizeHandle, SidePanelFrame], statusBar]), ShellToolbar (52dp, leading traffic-light inset, fixed named slots: platformSwitch, deviceIndicator, weight-1 spacer, stagedCounter, clearAction, primaryAction), ShellStatusBar (28dp, leading/trailing slots), StageSurface (bezel-less mirror on stage color + dot grid), SidePanelFrame, ShellState, ShellTab, ShellWindowDefaults."
+      },
+      {
+        "type": "code",
+        "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt",
+        "summary": "Desktop root window (312 lines): geometry, macOS full-size-content chrome, Cmd+1/2/3 dispatch, theme + panel-width persistence, AppLocaleProvider. RectifyShellContent is Koin/AWT/coroutine-free so render harness can drive it. Every toolbar and status-bar slot is currently a STATIC STUB — this spec makes them live."
+      }
+    ],
+    "codeReferences": [
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/RectifyWindowShell.kt",
+        "symbol": "RectifyWindowShell",
+        "note": "F-1 delivered; slot contract defines column[toolbar, Row[stage, handle, panel], statusBar] with nullable sidePanel."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellToolbar.kt",
+        "symbol": "ShellToolbar",
+        "note": "F-1 delivered; 52dp toolbar with fixed named slots. This spec fills: platformSwitch (SegmentedButtonGroup Android/iOS), deviceIndicator (DeviceChip with current device or None), stagedCounter (CounterBadge), clearAction, primaryAction."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellStatusBar.kt",
+        "symbol": "ShellStatusBar",
+        "note": "F-1 delivered; 28dp status bar with leading/trailing slots. This spec fills: leading (StatusIndicator + tool detection status), trailing (version label, potentially fps/latency, theme button)."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/StageSurface.kt",
+        "symbol": "StageSurface",
+        "note": "F-1 delivered; bezel-less mirror region on stage color + dot grid. This spec puts the live Android screen inside its content slot — that's the defining latency challenge (NFR-1)."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/button/SegmentedButtonGroup.kt",
+        "symbol": "SegmentedButtonGroup",
+        "note": "F-1 delivered; Material3 single-choice segmented row. Used for Android/iOS platform switch in toolbar."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/chip/DeviceChip.kt",
+        "symbol": "DeviceChip",
+        "note": "F-1 delivered; chip component with states (None, Connected, Offline, etc.). Toolbar deviceIndicator slot shows current device or 'No device' (None state)."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/badge/CounterBadge.kt",
+        "symbol": "CounterBadge",
+        "note": "F-1 delivered; badge with count. Toolbar stagedCounter slot (empty in this spec, becomes live in F-4/annotation)."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/indicator/StatusIndicator.kt",
+        "symbol": "StatusIndicator",
+        "note": "F-1 delivered; dot + label with states (Connected, Offline, Standby, Active). Status bar leading slot: tool detection status or 'Waiting for device'."
+      },
+      {
+        "repo": "rectify-kmp",
+        "path": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt",
+        "symbol": "RectifyShellContent",
+        "note": "F-1 delivered, this spec makes every slot live. Currently all slots filled with stubs. Platform switch selected index 0 (Android), device shows 'No device', status bar shows 'Waiting for device…'."
+      },
+      {
+        "repo": "rectify-poc",
+        "path": "app/src/main/kotlin/rectify/Devices.kt",
+        "symbol": "AndroidBridge.listDevices",
+        "note": "Reference implementation: parses adb devices -l output → Physical/Emulator groups for FR-3 device picker. Proven logic, use as model."
+      },
+      {
+        "repo": "rectify-poc",
+        "path": "app/src/main/kotlin/rectify/Devices.kt",
+        "symbol": "AndroidBridge.captureScreenshot",
+        "note": "Reference implementation: adb exec-out screencap -p with real-world foldable workaround (trim to PNG signature). Handles discovered device IDs."
+      },
+      {
+        "repo": "rectify-poc",
+        "path": "app/src/main/kotlin/rectify/Devices.kt",
+        "symbol": "AndroidBridge.deviceInfo",
+        "note": "Reference implementation: reads wm size / wm density / getprop → FR-22 status bar resolution field. Also model, apiLevel, densityDpi."
+      },
+      {
+        "repo": "rectify-poc",
+        "path": "app/src/main/kotlin/rectify/Devices.kt",
+        "symbol": "DeviceBridge",
+        "note": "Reference implementation interface: abstract bridge for Android and iOS. This repo will need Failure-typed error handling and resultLauncher wrappers."
+      }
+    ],
+    "designReferences": [
+      {
+        "screen": "First run — platform & source",
+        "nodeId": "01-first-run-platform-source",
+        "cached": "raw/design/01-first-run-platform-source.png",
+        "description": "Full-screen device picker: centered 'Choose what to mirror' panel on bg (#F6F5F6). PLATFORM section with Android and iOS selectable cards showing tool versions (adb 35.0.1, idb 1.1.8 with paths/Xcode version). SOURCE section headed '3 found · adb devices -l' with Physical device and Emulator subsections. Each row shows device id (monospace), trailing context (Android 15 · USB, Running dot, Boot button), keyboard hint '↑↓ select · ↵ start', primary 'Start mirroring' CTA. Status bar: green 'adb 35.0.1 · idb 1.1.8 · ready'."
+      },
+      {
+        "screen": "Empty — no device yet",
+        "nodeId": "02-empty-no-device",
+        "cached": "raw/design/02-empty-no-device.png",
+        "description": "NO SIGNAL state (FR-5/AC-4): centered on stage. Dashed phone outline (deliberately left to F-2 by F-1), heading 'Waiting for an Android device', two numbered steps (Plug in phone with USB debug, Or boot an emulator), inline emulator dropdown + Boot button. Footer note 'adb devices · polling every 2s'. Status bar: 'Waiting for device…'."
+      },
+      {
+        "screen": "Device picker (full view)",
+        "nodeId": "03-device-picker-first-run",
+        "cached": "raw/design/03-device-picker-first-run.png",
+        "description": "Same as comp 01, alternate angle: shows full-screen state after platform and device have been selected. Physical device Pixel 8 Pro selected (filled radio), unselected emulators below with Boot button on shut-down variant."
+      },
+      {
+        "screen": "Error — adb not on PATH",
+        "nodeId": "04-error-adb-not-on-path",
+        "cached": "raw/design/04-error-adb-not-on-path.png",
+        "description": "Error card (FR-1 tool detection failure): heading 'adb isn't on your PATH', instruction text, brew install command with Copy button, 'Locate adb…' and 'Retry' actions, footer 'which adb → not found · $ANDROID_HOME unset'. Status bar: 'adb not found in PATH'. Spec boundary: this is a device-discovery error; error-handling-and-recovery (F-3) depends on F-2, so split must be decided."
+      },
+      {
+        "screen": "Error — no device detected",
+        "nodeId": "05-error-no-device-detected",
+        "cached": "raw/design/05-error-no-device-detected.png",
+        "description": "Error card (FR-3/FR-5 edge case): heading 'No Android device detected', instruction 'adb is running but sees nothing. On the phone, turn on USB debugging and tap Allow on the prompt.', command 'adb kill-server && adb devices' with Copy, 'Restart adb' and 'Boot emulator instead' actions, footer 'adb 35.0.1 · last poll 0.8 s ago · 0 attached'. Spec boundary: device-discovery error; split to F-3 TBD."
+      }
+    ],
+    "ticketRefs": [],
+    "existingSolutions": [
+      {
+        "where": "this-project",
+        "summary": "F-1 (app-shell-window-layout) delivered the shell foundation: RectifyWindowShell, ShellToolbar, ShellStatusBar, StageSurface, all slot contracts and toolbar/status-bar geometry. This spec fills the slots and makes them reactive.",
+        "link": ".pipeline/sdd/docs/app-shell-window-layout (merged to development)"
+      },
+      {
+        "where": "external",
+        "summary": "rectify-poc/app/src/main/kotlin/rectify/Devices.kt (249 lines): proven discovery and screenshot logic. AndroidBridge.listDevices (parses adb devices -l), captureScreenshot (adb exec-out screencap -p with foldable workaround), deviceInfo (wm size/density/getprop), dumpHierarchy (uiautomator XML). Does NOT live-stream — captures single frames. Logic is reusable; structure is a spike (flat, no error typing, no coroutines).",
+        "link": "/Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt"
+      }
+    ],
+    "glossary": [
+      {
+        "term": "adb",
+        "definition": "Android Debug Bridge. Command-line tool for communicating with Android devices and emulators. Installed at /opt/homebrew/bin/adb on this machine."
+      },
+      {
+        "term": "idb",
+        "definition": "iOS Debug Bridge. Facebook's equivalent for iOS. Installed at version 1.1.8 with Xcode 16.0 integration. iOS support deferred to v1.1+."
+      },
+      {
+        "term": "scrcpy",
+        "definition": "Open-source tool for mirroring and controlling Android devices. Version 3.3.1 installed at /opt/homebrew/bin/scrcpy. The defining latency question: how to integrate it (child process, server + in-JVM decode, etc.)."
+      },
+      {
+        "term": "Device picker",
+        "definition": "Centered modal panel showing available Physical devices and Emulators, filterable by platform (Android/iOS), navigable via arrow keys and Enter. Primary UX for FR-3."
+      },
+      {
+        "term": "NO SIGNAL state",
+        "definition": "Empty state shown when no device is connected or discovered. Polls adb every 2 seconds per FR-5. Displays dashed phone outline, numbered guidance, inline emulator boot control."
+      },
+      {
+        "term": "Platform switch",
+        "definition": "Toolbar SegmentedButtonGroup allowing user to switch between Android and iOS sources. Android functional in v1; iOS deferred to v1.1+."
+      },
+      {
+        "term": "Tool detection",
+        "definition": "Launch-time detection of installed adb and idb versions, displayed as per-platform status dots in toolbar. Green if installed, offline/warning if not found or outdated."
+      },
+      {
+        "term": "Glass-to-glass latency",
+        "definition": "Latency from touch/input on the desktop to visible response in the mirror. NFR-1 targets <150ms to maintain responsive feel during drag-to-freeze annotation."
+      },
+      {
+        "term": "StageSurface",
+        "definition": "F-1 organism: bezel-less mirror region rendered on stage background color with decorative dot grid. This spec puts the live Android screen in its content slot."
+      },
+      {
+        "term": "Physical device",
+        "definition": "Actual Android hardware connected via USB with USB debugging enabled."
+      },
+      {
+        "term": "Emulator",
+        "definition": "Android Virtual Device (AVD) or similar software simulation. Can be Running or shut-down (requires Boot action to start)."
+      },
+      {
+        "term": "uiautomator",
+        "definition": "Android accessibility dumping tool. Used by POC to dump UI hierarchy via 'adb shell uiautomator dump /sdcard/rectify_dump.xml'."
+      }
+    ],
+    "attachments": [],
+    "ambiguities": [
+      "How the live stream actually reaches StageSurface: scrcpy as a child process in its own OS window (trivial to launch but breaks canonical window, likely disqualifying per FR-11/AC-12); scrcpy server + in-JVM H.264 decode (heaviest, only option plausibly meeting NFR-1 <150ms inside our surface, but what JVM H.264 decoder would even be used — there is none on the classpath today); adb exec-out screenrecord + decode (no scrcpy dependency, higher latency); screenshot polling at 10-15fps per POC (simplest, proven, will NOT meet NFR-1 and will feel like a slideshow under drag). Measured or cited latency needed before plan can decide.",
+      "Where the F-3 boundary sits: comps 04 and 05 are error cards, but they are device-discovery errors and error-handling-and-recovery (F-3) depends on THIS spec. The split must be decided explicitly in the plan, not drifted into two specs building both error paths.",
+      "What a JVM H.264 decoder would be on Compose Desktop: there is no bundled codec. Check what is actually on the classpath before proposing one. Treat 'add a new dependency' as a real cost that needs justifying against .claude/rules/version-catalog-hygiene.md."
+    ],
+    "dictation": "# Operator dictation — android-device-discovery-mirroring (F-2)\n\nAutonomous run. The operator granted full autonomy for the whole chain; gates are closed by the orchestrator taking the recommended option, with the rationale recorded in `survey[]`.\n\n## 1. F-1 is DONE and merged — build on it, do not rebuild it\n\n`app-shell-window-layout` shipped and merged to `development` (merge commit `62808cc`), verdict `complete-with-waivers`, tech review `approve-with-nits`. **Everything below already exists and is your foundation.** Read it before designing anything.\n\n`presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/`\n- `RectifyWindowShell` — THE slot contract: `Column[toolbar, Row[StageSurface, PanelResizeHandle, SidePanelFrame], statusBar]`. `sidePanel` is a nullable slot: pass `null` and neither the panel nor the handle is composed. `onPanelWidthCommit` is deliberately NOT defaulted.\n- `ShellToolbar` — six fixed named slots in canonical order: a leading `ShellWindowDefaults.TrafficLightInset` (99dp) spacer, `platformSwitch`, `deviceIndicator`, a weight-1 spacer, `stagedCounter`, `clearAction`, `primaryAction`.\n- `ShellStatusBar` — 28dp, `leading` / `trailing` slots.\n- `StageSurface` — the bezel-less mirror region, `Theme.color.stage` + a Canvas dot grid, with a required `content` slot. **This is where the live mirror goes.**\n- `SidePanelFrame`, `ShellState`, `ShellTab`, `ShellWindowDefaults`, `clampPanelWidth`, `shortcutToTab`.\n\n`compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt`\n- The desktop root. Window geometry, macOS full-size-content chrome behind an `os.name` guard, Cmd+1/2/3 via `shortcutToTab`, theme + panel-width persistence, `AppLocaleProvider`.\n- `RectifyShellContent` is Koin/AWT/coroutine-free on purpose so a render harness can drive it.\n- **Every toolbar and status-bar slot is currently a STATIC STUB.** Making them live is exactly this spec's job: `SegmentedButtonGroup(Android|iOS)`, `DeviceChip(None)`, `StatusIndicator(Offline, \"Waiting for device…\")`.\n\n## 2. THE defining architecture question — live mirroring\n\nFR-4 says \"connects to the selected device and begins the live mirror stream\" and the PRD names \"adb + scrcpy\". NFR-1 targets **glass-to-glass latency under ~150ms**. That number is what makes drag-to-freeze feel responsive, and it is the hardest constraint in this spec.\n\nVerified facts on this machine:\n- **`scrcpy 3.3.1` IS installed** at `/opt/homebrew/bin/scrcpy`. `adb` is at `/opt/homebrew/bin/adb`.\n- **The poc does NOT do live mirroring.** `/Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt` (249 lines) captures single frames with `adb exec-out screencap -p`, dumps the hierarchy with `uiautomator`, and reads `getprop`/`wm size`/`wm density`. Useful and directly reusable for discovery and for the still-frame paths — but it is NOT a stream.\n\nSo the plan must choose how a live Android screen actually reaches `StageSurface`'s content slot. Give each of these real analysis, with measured or cited latency, and say plainly what you cannot know without a spike:\n- **scrcpy as a child process in its own OS window** — trivial to launch, but it is a separate window, so it does not composite into the Rectify stage at all and breaks the canonical window (FR-11/AC-12). Probably disqualifying; say so if you agree.\n- **scrcpy's server component** (`scrcpy-server.jar` pushed to the device) + consume its H.264 socket and decode in-JVM. This is how third-party clients do it. Heaviest to build; the only option that plausibly meets 150ms inside our own surface.\n- **`adb exec-out screenrecord --output-format=h264`** + decode. No scrcpy dependency; higher latency, device-side encoder quirks.\n- **Screenshot polling** (`screencap` at 10-15fps, the poc's path). Simplest and already proven in the poc, but will NOT meet NFR-1 and will feel like a slideshow under drag.\n- Anything better you find.\n\nAlso decide what a JVM H.264 decoder would even be on Compose Desktop — there is no bundled decoder. Check what is actually on the classpath before proposing one, and treat \"add a new dependency\" as a real cost that needs justifying against `.claude/rules/version-catalog-hygiene.md`.\n\nIf the honest answer is that NFR-1 cannot be met in v1 without a disproportionate build, SAY SO and propose a staged path (e.g. ship screenshot polling behind the same interface, with the decoder as a follow-up) rather than quietly promising 150ms.\n\n## 3. Reference implementation — reuse, do not re-derive\n\n`/Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt`\n- `listDevices()` parses `adb devices -l` → this is FR-3's Physical/Emulator sections.\n- `captureScreenshot()` handles a real-world quirk worth keeping: some foldables prepend a warning line to `screencap` stdout, so it trims to the PNG signature.\n- `deviceInfo()` reads `wm size` / `wm density` / `getprop` → FR-22's resolution field.\n- There is an `idb` path too, for the iOS side that v1 defers.\n\nTreat its *logic* as proven and its *structure* as a spike: it is a flat 249-line file with a `runCommand(vararg String)` helper, no error typing, and no coroutines. This repo requires the `Failure` hierarchy, `resultLauncher`, and the data→domain→presentation layering (`.claude/rules/domain-layer.md`, `error-handling.md`).\n\n## 4. Design comps — all five are cached at `raw/design/`\n\n- `01-first-run-platform-source.png` and `03-device-picker-first-run.png` — **the device picker**, this spec's main new screen: a centred \"Choose what to mirror\" panel on `bg` (#F6F6F5, NOT the dotted `stage`), a `PLATFORM` section with two selectable cards showing detected tool versions (`adb 35.0.1 · /opt/homebrew/bin`, `idb 1.1.8 · Xcode 16.0`), a `SOURCE` section headed `3 found · adb devices -l` with grouped `Physical device` / `Emulator` rows carrying radio controls, monospace ids, and a trailing slot (`Android 15 · USB`, a green `Running` dot, or an outlined `Boot` button), keyboard hints `↑↓ select · ↵ start`, and a primary `Start mirroring`. Note the status bar in these comps reads the GREEN `adb 35.0.1 · idb 1.1.8 · ready` — that is FR-1 tool detection, which this spec delivers.\n- `02-empty-no-device.png` — the NO SIGNAL state (FR-5/AC-4): dotted `stage`, a dashed phone outline, \"Waiting for an Android device\", two numbered steps, an inline emulator dropdown + `Boot`, and `adb devices · polling every 2 s`. **F-1 deliberately left the dashed outline and the guidance copy to THIS spec** — F-1 ships only a private preview-only placeholder.\n- `04-error-adb-not-on-path.png` and `05-error-no-device-detected.png` — error cards. These look like `error-handling-and-recovery` (F-3) territory, but they are *device-discovery* errors and F-3 depends on this spec. Decide the boundary explicitly in the plan and state it; do not build both specs at once.\n\nMeasure against the comps rather than eyeballing. F-1's proven method: normalise the comp to the shell's logical space and compare container landmarks — that found two real pixel defects.\n\n## 5. Conventions and known traps\n\n`CLAUDE.md` plus all 19 `.claude/rules/`. Specifically relevant here:\n- `design-tokens.md` — no literal `Color(0x…)`, no raw `.dp` at a call site, strict atom → molecule → organism direction. `presentation-core-ui` has ~109 existing components; **browse the whole `kit/` tree before authoring anything new.** `SourceListRow` already exists and looks built for FR-3's picker rows.\n- `package-layout.md` — `core/` internal-only, `source/` public, `explicitApi()` repo-wide.\n- `testing.md` — now accurate after F-1. `kotlin.test` is wired via the Library/Feature convention plugins; the Stage 5 command is the four `desktopTest` tasks. **A `commonTest` backtick name containing a comma or apostrophe compiles on the JVM and fails `compileTestKotlinIosArm64`** — F-1 shipped that bug and it broke the repo-wide build. Do not repeat it.\n- `error-handling.md`, `domain-layer.md`, `koin-di.md` (initKoin order is load-order significant).\n- Process execution from `desktopMain` is new territory for this repo: nothing currently shells out. NFR-5 requires commands only ever target the user's explicitly selected device — design that constraint into the API, do not leave it to call-site discipline.\n\nKnown environment limit: the Kotlin daemon is capped at 3GB in `gradle.properties`; building three KMP modules × all targets at once OOMs on this 18GB host. Build per module.\n\n## 6. Scope\n\nFR-1, FR-2, FR-3, FR-4, FR-5, FR-22 and AC-1, AC-2, AC-3, AC-4, AC-25, scenarios SC-1 and SC-2. iOS is explicitly deferred to v1.1+ by FR-2 — the switch exists and shows detected `idb`, but only Android is functional. Annotation, measurement, payload, history and MCP are later specs."
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-auto",
+    "approved": true,
+    "at": "2026-10-14T23:14:05Z"
+  }
+}
