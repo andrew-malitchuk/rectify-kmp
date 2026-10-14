@@ -90,7 +90,7 @@ class LibraryConventionPlugin : BaseConventionPlugin() {
     }
 
     /**
-     * Adds coroutines and lifecycle libraries to `commonMain`.
+     * Adds coroutines and lifecycle libraries to `commonMain`, and `kotlin-test` to `commonTest`.
      *
      * Enforces explicit API mode for all declarations in this module.
      *
@@ -104,6 +104,9 @@ class LibraryConventionPlugin : BaseConventionPlugin() {
                     implementation(libs.findLibrary("kotlinx-coroutines-core").get())
                     implementation(libs.findLibrary("androidx-lifecycle-viewmodel").get())
                     implementation(libs.findLibrary("androidx-lifecycle-runtimeCompose").get())
+                }
+                commonTest.dependencies {
+                    implementation(libs.findLibrary("kotlin-test").get())
                 }
             }
         }
