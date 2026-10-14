@@ -1,8 +1,11 @@
 {
   "spec": "app-shell-window-layout",
-  "currentStage": "preparation",
+  "currentStage": "plan",
   "stages": {
     "preparation": {
+      "status": "done"
+    },
+    "plan": {
       "status": "done"
     }
   },
@@ -17,6 +20,9 @@
       "status": "done"
     },
     "preparation": {
+      "status": "done"
+    },
+    "plan": {
       "status": "done"
     }
   },

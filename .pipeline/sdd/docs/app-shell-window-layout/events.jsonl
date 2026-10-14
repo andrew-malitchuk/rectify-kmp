@@ -8,3 +8,9 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-14T18:35:51Z", "spec": "app-shell-window-layout"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 77760, "at": "2026-10-14T18:41:20Z", "spec": "app-shell-window-layout"}
 {"stage": "preparation", "event": "end", "at": "2026-10-14T18:41:20Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "event": "start", "at": "2026-10-14T18:42:32Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "at": "2026-10-14T18:43:22Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 240622, "at": "2026-10-14T18:59:47Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-14T18:59:47Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 219157, "at": "2026-10-14T19:32:19Z", "spec": "app-shell-window-layout"}
+{"stage": "plan", "event": "end", "at": "2026-10-14T19:32:19Z", "spec": "app-shell-window-layout"}
