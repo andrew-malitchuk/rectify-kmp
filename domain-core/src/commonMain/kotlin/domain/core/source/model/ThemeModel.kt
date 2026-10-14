@@ -14,6 +14,11 @@ public enum class ThemeModel(public val mode: String) : Model {
     /** Classic dark mode. */
     Dark("dark"),
 
-    /** Dynamic theme based on Android's Material You colors. */
-    MaterialU("materialu"),
+    /**
+     * Follow the platform's system appearance (light or dark).
+     *
+     * The stored value stays `"materialu"` for backwards compatibility with
+     * installs that persisted it under the previous name — never rename it.
+     */
+    System("materialu"),
 }

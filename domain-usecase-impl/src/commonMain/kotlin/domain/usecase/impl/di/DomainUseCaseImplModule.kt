@@ -2,6 +2,7 @@ package domain.usecase.impl.di
 
 import domain.usecase.api.source.usecase.configuration.GetApplicationLanguageUseCase
 import domain.usecase.api.source.usecase.configuration.GetOnboardingStatusUseCase
+import domain.usecase.api.source.usecase.configuration.GetSidePanelWidthUseCase
 import domain.usecase.api.source.usecase.configuration.GetThemeUseCase
 import domain.usecase.api.source.usecase.configuration.GetUnitSystemUseCase
 import domain.usecase.api.source.usecase.configuration.ObserveApplicationLanguageUseCase
@@ -9,10 +10,12 @@ import domain.usecase.api.source.usecase.configuration.ObserveThemeUseCase
 import domain.usecase.api.source.usecase.configuration.ObserveUnitSystemUseCase
 import domain.usecase.api.source.usecase.configuration.SetApplicationLanguageUseCase
 import domain.usecase.api.source.usecase.configuration.SetOnboardingStatusUseCase
+import domain.usecase.api.source.usecase.configuration.SetSidePanelWidthUseCase
 import domain.usecase.api.source.usecase.configuration.SetThemeUseCase
 import domain.usecase.api.source.usecase.configuration.SetUnitSystemUseCase
 import domain.usecase.impl.source.usecase.configuration.GetApplicationLanguageUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.GetOnboardingStatusUseCaseImpl
+import domain.usecase.impl.source.usecase.configuration.GetSidePanelWidthUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.GetThemeUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.GetUnitSystemUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.ObserveApplicationLanguageUseCaseImpl
@@ -20,6 +23,7 @@ import domain.usecase.impl.source.usecase.configuration.ObserveThemeUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.ObserveUnitSystemUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.SetApplicationLanguageUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.SetOnboardingStatusUseCaseImpl
+import domain.usecase.impl.source.usecase.configuration.SetSidePanelWidthUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.SetThemeUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.SetUnitSystemUseCaseImpl
 import org.koin.core.module.Module
@@ -40,4 +44,6 @@ public val domainUseCaseImplModule: Module = module {
     singleOf(::GetUnitSystemUseCaseImpl) bind GetUnitSystemUseCase::class
     singleOf(::SetUnitSystemUseCaseImpl) bind SetUnitSystemUseCase::class
     singleOf(::ObserveUnitSystemUseCaseImpl) bind ObserveUnitSystemUseCase::class
+    singleOf(::GetSidePanelWidthUseCaseImpl) bind GetSidePanelWidthUseCase::class
+    singleOf(::SetSidePanelWidthUseCaseImpl) bind SetSidePanelWidthUseCase::class
 }

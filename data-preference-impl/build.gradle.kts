@@ -11,6 +11,10 @@ kotlin {
             implementation(libs.multiplatform.settings.coroutines)
             implementation(libs.koin.core)
         }
+        commonTest.dependencies {
+            implementation(libs.multiplatform.settings.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
         androidMain.dependencies {
             implementation(libs.koin.android)
             implementation(libs.datastore.preferences)

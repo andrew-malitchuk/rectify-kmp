@@ -45,13 +45,14 @@ public fun App() {
             when (result.getOrNull()) {
                 ThemeModel.Light -> ThemeMode.Light
                 ThemeModel.Dark -> ThemeMode.Dark
-                ThemeModel.MaterialU -> ThemeMode.System
+                ThemeModel.System -> ThemeMode.System
                 // NOTE: null means the preference has not been written yet (first launch).
-                // Light is the safe default — avoid a flash of the wrong theme on startup.
-                null -> ThemeMode.Light
+                // System is the safe default — follow the platform appearance instead of
+                // flashing a hard-coded light theme on startup.
+                null -> ThemeMode.System
             }
         }
-        .collectAsState(initial = ThemeMode.Light)
+        .collectAsState(initial = ThemeMode.System)
 
     AppLocaleProvider(languageCode = languageCode) {
         AppTheme(mode = themeMode) {

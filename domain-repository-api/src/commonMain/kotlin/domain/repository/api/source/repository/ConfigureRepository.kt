@@ -44,4 +44,10 @@ public interface ConfigureRepository {
 
     /** Observes changes to the measurement unit system. */
     public fun observeUnitSystem(): Flow<UnitSystemModel?>
+
+    /** Retrieves the persisted shell side panel width, in dp. */
+    public suspend fun getSidePanelWidth(): Int
+
+    /** Updates the persisted shell side panel width to [widthDp], in dp. */
+    public suspend fun setSidePanelWidth(widthDp: Int)
 }
