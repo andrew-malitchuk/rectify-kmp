@@ -10,6 +10,9 @@
     },
     "backlog": {
       "status": "done"
+    },
+    "execution": {
+      "status": "done"
     }
   },
   "steps": {
@@ -81,6 +84,27 @@
       "status": "done",
       "worktreeBranch": "task/wave-3",
       "wave": 3
+    },
+    "T-10": {
+      "status": "done",
+      "worktreeBranch": "task/wave-4",
+      "wave": 4
+    },
+    "T-11": {
+      "status": "done",
+      "worktreeBranch": "task/wave-4",
+      "wave": 4
+    },
+    "T-12": {
+      "status": "done",
+      "worktreeBranch": "task/wave-4",
+      "wave": 4,
+      "needsHumanReview": true,
+      "outcome": "partial"
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 5
     }
   },
   "effort": "fast",

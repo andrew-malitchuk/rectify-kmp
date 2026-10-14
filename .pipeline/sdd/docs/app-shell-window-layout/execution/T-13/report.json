@@ -1,0 +1,72 @@
+{
+  "spec": "app-shell-window-layout",
+  "stage": "execution",
+  "step": "T-13/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-run-pipeline",
+  "provenance": {
+    "selfHash": "60a1cf1d4e3cc72a89f47199f18c941f0d0518032d7339f3d05a1405353e753b",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "0626dbba1debc8671ab3d626c7c2308eb38fe0d5ee43282ab82f0fbd86331a0e"
+      }
+    ]
+  },
+  "createdAt": "2026-10-14T21:25:51Z",
+  "updatedAt": "2026-10-14T21:25:51Z",
+  "data": {
+    "taskId": "T-13",
+    "type": "docs",
+    "outcome": "success",
+    "touchedPaths": [
+      "CLAUDE.md",
+      ".claude/rules/mappers.md"
+    ],
+    "testRun": {
+      "command": "grep -rc 152 .pipeline/prd/docs/rectify/ ; grep -c 152 inputs/raw/prd-handoff.json ; grep -c 'oklch(0.66 0.15 150)' Light/DarkColor.kt",
+      "passed": true,
+      "output": "VERIFIED NO-OP for the original target. '152' appears 0 times in the tracked PRD (.pipeline/prd/docs/rectify/) and 0 times in the upstream handoff bundle (inputs/raw/prd-handoff.json). The authoritative hue-150 value is confirmed still present in BOTH palettes as a trailing OKLCH comment (LightColor.kt 1 match, DarkColor.kt 1 match)."
+    },
+    "implementation": {
+      "filesChanged": [
+        "CLAUDE.md",
+        ".claude/rules/mappers.md"
+      ],
+      "summary": "Two parts. (1) ORIGINAL TARGET - verified no-op, as decided at the Stage 3 human gate. T-13 was scoped to amend the PRD's green-signal note from oklch hue 152 to the shipped 150; that passage does not exist. The string occurs only inside this spec's own sealed, provenance-hashed Stage 1/2 artifacts, which must not be rewritten to match a later decision. The hue-150 decision remains durably recorded in plan.json survey[] and in both palettes' trailing OKLCH comments, so nothing is lost. No sealed artifact edited, no new CHANGELOG/README created - both options were explicitly rejected at the gate. (2) STALE DOCS THIS SPEC ACTUALLY INTRODUCED - fixed, because leaving docs we ourselves invalidated would ship a known defect. CLAUDE.md line 56 described the desktop entry as 'runDesktopApp() -> application { Window { App() } }', which T-10 replaced with RectifyWindow(); updated to name the canonical window, its geometry and its macOS chrome. .claude/rules/mappers.md line 18 documented ThemePreferenceMapper.toModel as defaulting to ThemeModel.Light, which T-9 flipped to ThemeModel.System; corrected.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [
+      {
+        "at": ".pipeline/prd/docs/rectify/",
+        "issue": "The hue-152 passage T-13 was written to amend does not exist in the tracked PRD or the upstream handoff bundle - only in this spec's own sealed artifacts.",
+        "resolution": "Closed as a verified no-op per the Stage 3 gate decision; grep evidence recorded above.",
+        "severity": "info"
+      },
+      {
+        "at": "CLAUDE.md:56",
+        "issue": "Stale after T-10 replaced the desktop entry composition.",
+        "resolution": "Updated to describe RectifyWindow() with its geometry and macOS full-size-content chrome.",
+        "severity": "warn"
+      },
+      {
+        "at": ".claude/rules/mappers.md:18",
+        "issue": "Stale after T-9 flipped the ThemePreferenceMapper fallback.",
+        "resolution": "ThemeModel.Light -> ThemeModel.System.",
+        "severity": "warn"
+      }
+    ],
+    "needsHumanReview": {
+      "required": false,
+      "reason": ""
+    },
+    "linkedAC": []
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-run-pipeline",
+    "approved": true,
+    "at": "2026-10-14T21:25:51Z"
+  }
+}

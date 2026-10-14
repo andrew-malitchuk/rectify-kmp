@@ -53,7 +53,7 @@ All plugins extend `BaseConventionPlugin` which provides hooks for plugin, platf
 
 - **Android:** `MainActivity` → `setContent { App() }`
 - **iOS:** `MainViewController()` → `ComposeUIViewController { App() }`, wrapped in SwiftUI via `ComposeView` (UIViewControllerRepresentable)
-- **Desktop:** `:desktop-application`'s `main()` → `initKoin()` then `runDesktopApp()` → `application { Window { App() } }`
+- **Desktop:** `:desktop-application`'s `main()` → `initKoin()` then `runDesktopApp()` → `application { RectifyWindow() }` — the canonical Rectify window (1240×820, min 1024×700, macOS full-size-content chrome) hosting `RectifyWindowShell`
 - **Common:** `App()` composable with Material3 theming
 
 ### Key Dependencies
