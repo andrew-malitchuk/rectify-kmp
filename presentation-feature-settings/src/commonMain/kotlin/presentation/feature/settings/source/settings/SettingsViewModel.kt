@@ -118,7 +118,9 @@ public class SettingsViewModel(
     }
 
     private companion object {
-        val THEME_MODELS = listOf(ThemeModel.Dark, ThemeModel.Light)
+        // System first: it is the effective first-run default, and indexOf() returning -1 for it
+        // made the selector show Dark while the app rendered system appearance.
+        val THEME_MODELS = listOf(ThemeModel.System, ThemeModel.Dark, ThemeModel.Light)
         val UNIT_SYSTEM_MODELS = listOf(UnitSystemModel.Metric, UnitSystemModel.Imperial)
     }
 }

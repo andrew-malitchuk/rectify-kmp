@@ -6,6 +6,9 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
+            implementation(compose.material3)
+            implementation(libs.kermit)
+
             implementation(projects.domainCore)
             implementation(projects.dataPreferenceImpl)
             implementation(projects.dataDatabaseImpl)

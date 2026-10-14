@@ -1,0 +1,15 @@
+{"stage": "intake", "event": "start", "at": "2026-10-11T11:37:38Z", "spec": "rectify"}
+{"stage": "intake", "step": "intake", "agent": "sdd-prd-intake-aggregate", "event": "start", "at": "2026-10-11T11:39:02Z", "spec": "rectify"}
+{"stage": "intake", "step": "intake", "agent": "sdd-prd-intake-aggregate", "event": "end", "at": "2026-10-11T11:51:01Z", "spec": "rectify"}
+{"stage": "clarify", "step": "clarify", "agent": "sdd-prd-requirements-clarify", "event": "start", "at": "2026-10-11T11:51:20Z", "spec": "rectify"}
+{"stage": "clarify", "step": "clarify", "agent": "sdd-prd-requirements-clarify", "event": "end", "at": "2026-10-11T12:06:34Z", "spec": "rectify"}
+{"stage": "research", "step": "research", "agent": "sdd-prd-research-competitor", "event": "start", "at": "2026-10-11T12:14:13Z", "spec": "rectify"}
+{"stage": "research", "step": "research", "agent": "sdd-prd-research-competitor", "event": "end", "at": "2026-10-11T12:24:19Z", "spec": "rectify"}
+{"stage": "draft", "step": "candidates", "agent": "sdd-prd-draft-compose", "event": "start", "at": "2026-10-11T12:25:40Z", "spec": "rectify"}
+{"stage": "draft", "step": "candidates", "agent": "sdd-prd-draft-compose", "event": "end", "at": "2026-10-11T12:34:51Z", "spec": "rectify"}
+{"stage": "draft", "step": "prd", "agent": "sdd-prd-draft-refine", "event": "start", "at": "2026-10-11T12:35:13Z", "spec": "rectify"}
+{"stage": "draft", "step": "prd", "agent": "sdd-prd-draft-refine", "event": "end", "at": "2026-10-11T15:39:56Z", "spec": "rectify"}
+{"stage": "review", "step": "findings", "agent": "sdd-prd-completeness-review+sdd-prd-feasibility-review", "event": "start", "at": "2026-10-11T15:41:25Z", "spec": "rectify"}
+{"stage": "review", "step": "review", "agent": "sdd-prd-review-consolidate", "event": "start", "at": "2026-10-11T15:46:26Z", "spec": "rectify"}
+{"stage": "review", "step": "review", "agent": "sdd-prd-review-consolidate", "event": "end", "at": "2026-10-11T16:11:56Z", "spec": "rectify"}
+{"stage": "review", "step": "finalize", "agent": "sdd-prd-review-document", "event": "end", "at": "2026-10-11T16:12:36Z", "spec": "rectify"}

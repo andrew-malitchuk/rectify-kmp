@@ -1,0 +1,129 @@
+# rectify — ios-platform-support
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | handoff |
+| step | ios-platform-support |
+| status | done |
+| producedBy | prd.py handoff |
+| schemaVersion | 1 |
+| createdAt | 2026-10-11T16:12:17Z |
+| updatedAt | 2026-10-11T16:12:17Z |
+| dryRun | false |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+prd.py
+
+### approved
+
+true
+
+### at
+
+2026-10-11T16:12:17Z
+
+## Provenance
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| prd.json | a7b4b0d1c39a04a00aec0acd67900ad85595779106bea6f82ae1265133169110 |
+
+### selfHash
+
+9f4b49638938b46105d8fa3138e5db4088d622c7717c9c19ce1afcbfa370661a
+
+## Data
+
+### sourcePrd
+
+rectify
+
+### id
+
+F-10
+
+### slug
+
+ios-platform-support
+
+### title
+
+iOS Platform Support (v1.1+)
+
+### goalStatement
+
+Extends the proven Android flow to iOS by implementing the platform switch's iOS branch over idb + simctl: simulator and physical-device discovery, live mirroring, screenshot and view-hierarchy capture, and the two iOS-specific error cards — simulator-not-booted ('Boot simulator' / 'Choose another') and device-not-trusted ("I've tapped Trust — retry" / 'Use simulator'). Reuses F-1's shell, F-4/F-5's annotation and measure surfaces, F-7's MCP handoff and F-9's Verify engine behind a platform abstraction, so only the device-adapter layer and the iOS error states are new. Why: deliberately deferred out of v1 (AS-5) so the complete Android loop ships first; it is the obvious parity follow-up once that loop is validated.
+
+### rawDescription
+
+Extends the proven Android flow to iOS by implementing the platform switch's iOS branch over idb + simctl: simulator and physical-device discovery, live mirroring, screenshot and view-hierarchy capture, and the two iOS-specific error cards — simulator-not-booted ('Boot simulator' / 'Choose another') and device-not-trusted ("I've tapped Trust — retry" / 'Use simulator'). Reuses F-1's shell, F-4/F-5's annotation and measure surfaces, F-7's MCP handoff and F-9's Verify engine behind a platform abstraction, so only the device-adapter layer and the iOS error states are new. Why: deliberately deferred out of v1 (AS-5) so the complete Android loop ships first; it is the obvious parity follow-up once that loop is validated.
+
+### priority
+
+could
+
+### phase
+
+PH-2
+
+### estimate
+
+L
+
+### dependsOn
+
+- F-2
+- F-3
+- F-9
+
+### linkedGoals
+
+- GOAL-5
+
+### functionalRequirements
+
+| id | text | priority |
+| --- | --- | --- |
+| FR-25 | (v1.1+) Support iOS simulator/device mirroring via idb+simctl, including simulator-not-booted and device-not-trusted error-card states. | could |
+
+### nonFunctionalRequirements
+
+| id | category | text |
+| --- | --- | --- |
+| NFR-5 | security | adb/idb commands are only ever invoked against the user's explicitly selected, connected device — never an arbitrary or remote target. |
+| NFR-8 | a11y | Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers). |
+| NFR-9 | ux | All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes. |
+| NFR-10 | compatibility | v1 targets macOS only; no Windows/Linux builds. |
+
+### acceptanceCriteria
+
+| id | text | priority | verificationMethod |
+| --- | --- | --- | --- |
+| AC-31 | (v1.1+) Given iOS is selected as platform, when the simulator isn't booted, then an error card with 'Boot simulator' primary / 'Choose another' secondary renders; when the device isn't trusted, an error card with "I've tapped Trust — retry" primary / 'Use simulator' secondary renders. | could | test |
+
+### scenarios
+
+| id | title | type | steps |
+| --- | --- | --- | --- |
+| SC-14 | (v1.1+) iOS simulator not booted / device not trusted | error | ["Select iOS platform", "Simulator not booted -> error card offers Boot simulator", "Or device not trusted -> error card offers Trust-and-retry / Use simulator"] |
+
+### userStories
+
+| id | asA | iWant | soThat | linkedFR | acceptanceCriteria | scenarios | priority |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| US-14 | Mobile Developer (PER-1) | (v1.1+) the same mirror/annotate/send flow against an iOS simulator or device | I can use one tool across both platforms my app ships on | ["FR-25"] | ["AC-31"] | ["SC-14"] | could |
+
+### sddReady
+
+true

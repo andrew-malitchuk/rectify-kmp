@@ -288,8 +288,11 @@ public fun AppButton(
 private fun AppButtonVariant.containerColor(interactive: Boolean, pressed: Boolean, hovered: Boolean): Color {
     if (!interactive) {
         return when (this) {
-            // A solid muted surface, not a translucent overlay: disabled must read as filled.
-            AppButtonVariant.Primary, AppButtonVariant.Secondary -> Theme.color.chrome
+            // Disabled must read as filled, but `chrome` is itself the toolbar/header fill —
+            // a disabled button sitting on chrome rendered invisible. `seg` composites over
+            // whatever is behind it, so the pill stays visible on every surface: over chrome
+            // it lands on the style guide's #DFDFDD, and over bg/surface it reads one step down.
+            AppButtonVariant.Primary, AppButtonVariant.Secondary -> Theme.color.seg
             AppButtonVariant.Ghost -> Color.Transparent
         }
     }

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "rectify-design-project",
+    "ref": "https://claude.ai/design/p/3f54708e-1e7a-4472-92cb-74e0cca25a8f?file=Rectify+Screens.dc.html",
+    "type": "design",
+    "cached": true,
+    "fetchedAt": "2026-10-11T00:00:00Z",
+    "fetchedVia": "DesignSync (claude.ai design-system project API), projectId 3f54708e-1e7a-4472-92cb-74e0cca25a8f",
+    "files": [
+      "Rectify Screens.dc.html",
+      "Rectify Window.dc.html",
+      "Rectify Window v1.dc.html",
+      "Mock Cart.dc.html"
+    ],
+    "summary": "16-screen design catalog (light+dark) for Rectify: Bug annotation tool, plus two window-layout iterations and a Mock Cart demo fixture."
+  }
+]

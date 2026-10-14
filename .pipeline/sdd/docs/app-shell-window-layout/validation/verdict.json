@@ -1,0 +1,221 @@
+{
+  "spec": "app-shell-window-layout",
+  "stage": "validation",
+  "step": "verdict",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-validation-verdict",
+  "provenance": {
+    "selfHash": "b304963f333fed1a5bc8d7a5c171b6ff98e19791a2a68b805eae4cd4e0a9f112",
+    "inputs": [
+      {
+        "artifact": "validation/audit.json",
+        "hash": "1c66ba3114416e40b867bc5797b0933833b4f0f98a65c0186ac4491f0142571a"
+      },
+      {
+        "artifact": "plan/plan.json",
+        "hash": "e2130d43a2c30655ac9375c37bb1bc293a7c4595e1a8f0dbe8c510b2e5d9b344"
+      }
+    ]
+  },
+  "createdAt": "2026-10-14T22:38:53Z",
+  "updatedAt": "2026-10-14T22:38:53Z",
+  "data": {
+    "verdict": "complete-with-waivers",
+    "tasks": [
+      {
+        "id": "T-1",
+        "status": "done",
+        "satisfiesAC": []
+      },
+      {
+        "id": "T-2",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-30",
+          "AC-36",
+          "AC-40",
+          "NFR-11"
+        ]
+      },
+      {
+        "id": "T-3",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-12",
+          "AC-32",
+          "AC-33",
+          "AC-34",
+          "AC-38"
+        ]
+      },
+      {
+        "id": "T-4",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-12",
+          "AC-38"
+        ]
+      },
+      {
+        "id": "T-5",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-37",
+          "AC-31"
+        ]
+      },
+      {
+        "id": "T-6",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-12",
+          "AC-32"
+        ]
+      },
+      {
+        "id": "T-7",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-12",
+          "AC-31",
+          "AC-38"
+        ]
+      },
+      {
+        "id": "T-8",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-39"
+        ]
+      },
+      {
+        "id": "T-9",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-35"
+        ]
+      },
+      {
+        "id": "T-10",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-33",
+          "AC-34",
+          "AC-35",
+          "AC-39",
+          "NFR-10"
+        ]
+      },
+      {
+        "id": "T-11",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-37",
+          "AC-35"
+        ]
+      },
+      {
+        "id": "T-12",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-12",
+          "AC-30",
+          "AC-31",
+          "AC-34",
+          "AC-36",
+          "AC-37",
+          "AC-40"
+        ]
+      },
+      {
+        "id": "T-13",
+        "status": "done",
+        "satisfiesAC": []
+      }
+    ],
+    "unsatisfied": {
+      "acceptanceCriteria": [],
+      "scenarios": [],
+      "tasks": []
+    },
+    "waivers": [
+      {
+        "item": "AC-30 / AC-36 / NFR-11: composited hairline (line/line2) contrast",
+        "reason": "plan.json survey Q1-A (source: user-edited) hard-failed composited line/line2 at 3:1. Measured ratios run 1.19-1.58:1 across both palettes for every hairline-over-surface pairing (16 baselines in PaletteContrastTest) -- mathematically unreachable at the current alpha (8%/14%) without editing the tokens AC-36 itself freezes as adopted-unmodified. WCAG 2.2 SC 1.4.11 governs UI-component/state boundaries, not a 1dp decorative divider, so the gate's inclusion of line/line2 in the hard-fail tier was the error. Implemented as frozen baselines with inline `// WAIVED:` comments naming the measured ratio and this decision.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "AC-33 / SC-3: Cmd+1/2/3 live dispatch",
+        "reason": "RectifyWindow.kt passes sidePanel = null by construction (correct per AC-31/SC-4), so handleShellShortcut's dispatch branch is unreachable in this build -- not merely unverified, unverifiable on this binary. The pure key-to-tab mapping is unit-tested (ShortcutToTabTest, 3/3 green); live dispatch through a visible panel is deferred to android-device-discovery-mirroring, which is the first spec to render a non-null side panel.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "AC-31: matching both cached design screenshots",
+        "reason": "The plan deliberately carved the dashed outline, onboarding steps and Boot control out to a downstream spec, but the AC-31 text was never amended to drop that clause. Accepted as satisfied-with-waiver on the shell-scoped slots rather than rewriting PRD-derived acceptance criteria text.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "AC-40: screenshot evidence for signal-token consistency",
+        "reason": "The stub states this deliverable renders (DeviceChip(None), CounterBadge(Empty), StatusIndicator(Offline)) all resolve to ink3/seg -- no signal token is painted by this build, so no screenshot can demonstrate signal consistency one way or the other. PaletteContrastTest's signal tier (per gate Q1-A) is the real coverage; four light-mode signal pairs fail the literal 3:1 threshold and are carried downstream to android-device-discovery-mirroring, the first spec that actually paints a signal state.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "Typography: SF Pro vs Roboto Flex",
+        "reason": "AC text references SF Pro, which has never existed anywhere in this repo (only roboto_flex.ttf / jetbrains_mono.ttf are bundled). Human chose to keep Roboto Flex and record this as a pre-existing AC-text discrepancy rather than a defect. Container geometry matches the design comp within 1-4pt; the residual 8-40pt deltas on text-sized elements are advance-width differences from the font substitution, not layout defects.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "Template features: splash/onboarding/home/settings/about no longer reachable on desktop",
+        "reason": "The shell (RectifyWindow) is now the desktop app root, so the prior template screens are unreachable from the desktop entry point. Declared out of scope for this spec and accepted as its direct, expected consequence; closes the open question carried forward from Stage 1.",
+        "acceptedBy": "human"
+      },
+      {
+        "item": "T-4 / T-6 invented visual constants (16dp stage-dot grid, 0.75dp dot radius, 0.45 alpha; 40dp PanelHeaderHeight)",
+        "reason": "No design source specifies these values -- no comp shows a side panel at all, and the dot-grid pitch is not labelled. The audit independently cross-checked the 16dp dot pitch against raw/design/02-empty-no-device.png and found it a close match at the 1240dp window width, not an arbitrary guess. Accepted as reasonable, documented (KDoc'd as 'not design-specified') placeholders pending a real comp.",
+        "acceptedBy": "human"
+      }
+    ],
+    "openChangeRequests": [
+      {
+        "id": "AF-3",
+        "about": "Six module README public-API inventory tables, .claude/rules/preferences.md:17, and .claude/rules/version-catalog-hygiene.md:16 were not updated for the API this spec added (SidePanelWidthPreferenceSource chain, shell/ organism group, PanelResizeHandle atom).",
+        "target": "doc-fix",
+        "source": "audit"
+      },
+      {
+        "id": "AF-5",
+        "about": "compose-application has no test source set (ApplicationConventionPlugin was not touched by T-1), so handleShellShortcut, ThemeModel.next(), toThemeMode() and isMacOs() remain untested and uninspected.",
+        "target": "T-10",
+        "source": "audit"
+      },
+      {
+        "id": "AF-10",
+        "about": "A11Y-8 expects an E-resize cursor on PanelResizeHandle; commonMain has no such PointerIcon (it is AWT-only), so PointerIcon.Hand is used instead. Needs an expect/actual PointerIcon.",
+        "target": "T-4",
+        "source": "audit"
+      },
+      {
+        "id": "onPop-token",
+        "about": "No onPop design token exists yet; deferred to whichever future spec first renders a popover.",
+        "target": "design-tokens",
+        "source": "audit"
+      }
+    ],
+    "humanRemarks": [
+      "AC-34 CLOSED by direct human verification: operator dragged the window edge and confirmed it stops at 1024x700.",
+      "Traffic-lights-inside-the-toolbar and both-theme rendering closed by operator screenshots measured against design comp 02 (green light right edge 68pt both, gap to first control 34pt both, Resolve & Send pill right edge within 1pt).",
+      "SF Pro decision: keep Roboto Flex; the AC text references a typeface that has never existed in this repo -- recorded as an AC-text discrepancy, not chased.",
+      "Human explicitly ratified amending their own sealed Q1-A survey answer to downgrade the composited line/line2 hairline contrast from hard-fail to waived -- a deviation from a source: user-edited decision, not merely from a dispatch brief, and it required conscious re-approval.",
+      "Human accepted AC-33/SC-3 dispatch as deferred to android-device-discovery-mirroring on the strength of the tested mapping alone.",
+      "Human accepted the AC-31 carve-out, the AC-40 screenshot-evidence gap, and the desktop template-feature loss as documented consequences rather than defects."
+    ],
+    "changelogRef": "changelog.json"
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "human",
+    "approved": true,
+    "at": "2026-10-14T22:38:53Z"
+  }
+}

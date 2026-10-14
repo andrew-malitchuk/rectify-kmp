@@ -44,3 +44,7 @@ DerivedData/
 *.tmp
 configure.zip
 configure/
+
+# SDD pipeline
+.pipeline/**/raw/
+.pipeline/sdd/worktrees/

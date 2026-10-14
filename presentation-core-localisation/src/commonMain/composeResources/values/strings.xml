@@ -22,6 +22,8 @@
     <string name="settings_appearance">APPEARANCE</string>
     <string name="settings_language_selector">LANGUAGE SELECTOR</string>
     <string name="settings_theme_selector">THEME SELECTOR</string>
+    <string name="settings_theme_system">SYSTEM</string>
+    <string name="settings_theme_system_subtitle">FOLLOW APPEARANCE</string>
     <string name="settings_theme_monolith">DARK</string>
     <string name="settings_theme_monolith_subtitle">DARK THEME</string>
     <string name="settings_theme_brutalist">LIGHT</string>

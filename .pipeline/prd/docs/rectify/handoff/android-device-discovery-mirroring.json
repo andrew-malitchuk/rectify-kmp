@@ -1,0 +1,216 @@
+{
+  "spec": "rectify",
+  "stage": "handoff",
+  "step": "android-device-discovery-mirroring",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "prd.py handoff",
+  "gate": {
+    "type": "auto",
+    "approvedBy": "prd.py",
+    "approved": true,
+    "at": "2026-10-11T16:12:17Z"
+  },
+  "provenance": {
+    "inputs": [
+      {
+        "artifact": "prd.json",
+        "hash": "a7b4b0d1c39a04a00aec0acd67900ad85595779106bea6f82ae1265133169110"
+      }
+    ],
+    "selfHash": "08e3eca737437b34e1eda970186a13b250f64a540a4fccc201c1fe073e807fd6"
+  },
+  "createdAt": "2026-10-11T16:12:17Z",
+  "updatedAt": "2026-10-11T16:12:17Z",
+  "dryRun": false,
+  "troubleshooting": [],
+  "notifications": [],
+  "data": {
+    "sourcePrd": "rectify",
+    "id": "F-2",
+    "slug": "android-device-discovery-mirroring",
+    "title": "Android Device Discovery & Live Mirroring",
+    "goalStatement": "Everything needed to get a live Android screen into the window: launch-time adb/idb tool detection with per-platform toolbar status dots, the Android/iOS platform switch (Android functional in v1), the device picker with Physical and Emulator sections including inline Boot for shut-down emulators and arrow-key/Enter navigation, the primary 'Start mirroring' action over adb + scrcpy, the 2s-polling 'NO SIGNAL' empty state with inline emulator boot, and the status bar reporting tool version, resolution, fps and latency. Why: the live mirror is the annotation surface and the whole product's entry point; low latency here (NFR-1) is what makes drag-and-freeze feel responsive.",
+    "rawDescription": "Everything needed to get a live Android screen into the window: launch-time adb/idb tool detection with per-platform toolbar status dots, the Android/iOS platform switch (Android functional in v1), the device picker with Physical and Emulator sections including inline Boot for shut-down emulators and arrow-key/Enter navigation, the primary 'Start mirroring' action over adb + scrcpy, the 2s-polling 'NO SIGNAL' empty state with inline emulator boot, and the status bar reporting tool version, resolution, fps and latency. Why: the live mirror is the annotation surface and the whole product's entry point; low latency here (NFR-1) is what makes drag-and-freeze feel responsive.",
+    "priority": "must",
+    "phase": "PH-1",
+    "estimate": "L",
+    "dependsOn": [
+      "F-1"
+    ],
+    "linkedGoals": [
+      "GOAL-1",
+      "GOAL-5"
+    ],
+    "functionalRequirements": [
+      {
+        "id": "FR-1",
+        "text": "On launch, detect installed adb and idb tool versions and show a status dot per platform in the toolbar.",
+        "priority": "must"
+      },
+      {
+        "id": "FR-2",
+        "text": "Show a platform switch (Android/iOS) in the toolbar on every screen; Android is functional in v1, iOS is deferred to v1.1+.",
+        "priority": "must"
+      },
+      {
+        "id": "FR-3",
+        "text": "Provide a device picker dropdown with Physical-device and Emulator sections (running, or shut-down with an inline Boot button), navigable via arrow keys and Enter.",
+        "priority": "must"
+      },
+      {
+        "id": "FR-4",
+        "text": "Provide a primary 'Start mirroring' action that connects to the selected device and begins the live mirror stream.",
+        "priority": "must"
+      },
+      {
+        "id": "FR-5",
+        "text": "When no device is connected, poll adb every 2s and show a 'NO SIGNAL' empty state with guidance to plug in a USB-debug device or boot an emulator inline.",
+        "priority": "must"
+      },
+      {
+        "id": "FR-22",
+        "text": "Show a status bar with live stream stats: tool version, resolution, fps, and latency.",
+        "priority": "should"
+      }
+    ],
+    "nonFunctionalRequirements": [
+      {
+        "id": "NFR-1",
+        "category": "performance",
+        "text": "Live mirror glass-to-glass latency should stay low enough (target under ~150ms) that drag-to-select and freeze feel responsive."
+      },
+      {
+        "id": "NFR-5",
+        "category": "security",
+        "text": "adb/idb commands are only ever invoked against the user's explicitly selected, connected device — never an arbitrary or remote target."
+      },
+      {
+        "id": "NFR-8",
+        "category": "a11y",
+        "text": "Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers)."
+      },
+      {
+        "id": "NFR-10",
+        "category": "compatibility",
+        "text": "v1 targets macOS only; no Windows/Linux builds."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-1",
+        "text": "Given adb and idb are installed, when the app launches, then the toolbar shows a status dot reflecting detected tool versions for both platforms.",
+        "priority": "must",
+        "verificationMethod": "demo"
+      },
+      {
+        "id": "AC-2",
+        "text": "Given a physical device is connected and an emulator is running, when the device picker is opened, then both appear in distinct Physical/Emulator sections and arrow keys plus Enter select an entry.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-3",
+        "text": "Given a device is selected in the picker, when the user clicks 'Start mirroring', then the live mirror begins streaming.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-4",
+        "text": "Given no device is connected, when adb polling runs, then the 'NO SIGNAL' state shows with guidance text and an inline emulator picker plus Boot button.",
+        "priority": "must",
+        "verificationMethod": "demo"
+      },
+      {
+        "id": "AC-25",
+        "text": "Given live mirror is active, then the status bar displays current tool version, resolution, fps, and latency, updating at least once per second.",
+        "priority": "should",
+        "verificationMethod": "demo"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-1",
+        "title": "First-run setup and tool detection",
+        "type": "happy",
+        "steps": [
+          "Launch app",
+          "Detect adb/idb and show status dots",
+          "Open device picker showing Physical/Emulator sections",
+          "Select a device via keyboard or click",
+          "Click Start mirroring"
+        ]
+      },
+      {
+        "id": "SC-2",
+        "title": "No device connected (empty state)",
+        "type": "edge",
+        "steps": [
+          "No device is connected",
+          "App polls adb every 2s",
+          "Show NO SIGNAL placeholder with guidance",
+          "Offer inline emulator picker + Boot button"
+        ]
+      }
+    ],
+    "userStories": [
+      {
+        "id": "US-1",
+        "asA": "Mobile Developer (PER-1)",
+        "iWant": "Rectify to detect my adb/idb install and list my connected devices and emulators on launch",
+        "soThat": "I can start mirroring the device under test without touching a terminal",
+        "linkedFR": [
+          "FR-1",
+          "FR-2",
+          "FR-3",
+          "FR-4"
+        ],
+        "acceptanceCriteria": [
+          "AC-1",
+          "AC-2",
+          "AC-3"
+        ],
+        "scenarios": [
+          "SC-1"
+        ],
+        "priority": "must"
+      },
+      {
+        "id": "US-2",
+        "asA": "QA Tester (PER-2)",
+        "iWant": "a clear NO SIGNAL state with inline guidance and an emulator Boot button when nothing is attached",
+        "soThat": "I can get to a working mirror myself without asking a developer for help",
+        "linkedFR": [
+          "FR-5"
+        ],
+        "acceptanceCriteria": [
+          "AC-4"
+        ],
+        "scenarios": [
+          "SC-2"
+        ],
+        "priority": "must"
+      },
+      {
+        "id": "US-13",
+        "asA": "Mobile Developer (PER-1)",
+        "iWant": "the canonical 3-tab window with live stream stats, readable in light and dark themes",
+        "soThat": "I can work in my preferred appearance and always see stream health at a glance",
+        "linkedFR": [
+          "FR-11",
+          "FR-22"
+        ],
+        "acceptanceCriteria": [
+          "AC-12",
+          "AC-25",
+          "AC-30"
+        ],
+        "scenarios": [
+          "SC-1"
+        ],
+        "priority": "must"
+      }
+    ],
+    "sddReady": true
+  }
+}

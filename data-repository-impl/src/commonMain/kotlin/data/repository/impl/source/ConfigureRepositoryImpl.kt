@@ -2,6 +2,7 @@ package data.repository.impl.source
 
 import data.preference.api.source.datasource.LanguagePreferenceSource
 import data.preference.api.source.datasource.OnboardingPreferenceSource
+import data.preference.api.source.datasource.SidePanelWidthPreferenceSource
 import data.preference.api.source.datasource.ThemePreferenceSource
 import data.preference.api.source.datasource.UnitSystemPreferenceSource
 import data.preference.api.source.model.OnboardingPreference
@@ -9,6 +10,7 @@ import data.preference.api.source.model.ThemePreference
 import data.preference.api.source.model.UnitSystemPreference
 import data.repository.impl.core.mapper.LanguagePreferenceMapper
 import data.repository.impl.core.mapper.OnboardingPreferenceMapper
+import data.repository.impl.core.mapper.SidePanelWidthPreferenceMapper
 import data.repository.impl.core.mapper.ThemePreferenceMapper
 import data.repository.impl.core.mapper.UnitSystemPreferenceMapper
 import domain.core.source.model.OnboardingModel
@@ -27,12 +29,15 @@ import kotlinx.coroutines.flow.map
  * @property themePreferenceSource Data source for theme preferences.
  * @property onboardingPreferenceSource Data source for onboarding preferences.
  * @property languagePreferenceSource Data source for language preferences.
+ * @property unitSystemPreferenceSource Data source for the measurement unit system.
+ * @property sidePanelWidthPreferenceSource Data source for the shell side panel width.
  */
 internal class ConfigureRepositoryImpl(
     private val themePreferenceSource: ThemePreferenceSource,
     private val onboardingPreferenceSource: OnboardingPreferenceSource,
     private val languagePreferenceSource: LanguagePreferenceSource,
     private val unitSystemPreferenceSource: UnitSystemPreferenceSource,
+    private val sidePanelWidthPreferenceSource: SidePanelWidthPreferenceSource,
 ) : ConfigureRepository {
 
     /** @see ConfigureRepository.getTheme */
@@ -89,4 +94,13 @@ internal class ConfigureRepositoryImpl(
     /** @see ConfigureRepository.observeUnitSystem */
     override fun observeUnitSystem(): Flow<UnitSystemModel?> =
         unitSystemPreferenceSource.observeData().map { UnitSystemPreferenceMapper.toModel.map(it) }
+
+    /** @see ConfigureRepository.getSidePanelWidth */
+    override suspend fun getSidePanelWidth(): Int =
+        SidePanelWidthPreferenceMapper.toModel.map(sidePanelWidthPreferenceSource.getData())
+
+    /** @see ConfigureRepository.setSidePanelWidth */
+    override suspend fun setSidePanelWidth(widthDp: Int) {
+        sidePanelWidthPreferenceSource.setData(SidePanelWidthPreferenceMapper.toResource.map(widthDp))
+    }
 }
