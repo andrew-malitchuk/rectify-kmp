@@ -1,6 +1,7 @@
 package presentation.feature.mirror.source.mirror
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import domain.core.source.model.device.PlatformModel
@@ -82,6 +83,18 @@ public class MirrorViewModel(
     /** The latest decoded frame. Deliberately not part of [MirrorUiState]. */
     public val frame: StateFlow<ImageBitmap?> = currentFrame.asStateFlow()
 
+    private val currentFrozenFrame = MutableStateFlow<ImageBitmap?>(null)
+
+    /**
+     * The pinned frame, or `null` while the stage is live.
+     *
+     * A second `StateFlow` beside [frame] rather than a field of [MirrorUiState], for the same
+     * reason [frame] is one: an `ImageBitmap` compares by identity, so a state copy carrying it
+     * could never deduplicate. The reducer keeps only its [IntSize], in
+     * [MirrorUiState.frozen]. The annotation list is the opposite case and does live in state.
+     */
+    public val frozenFrame: StateFlow<ImageBitmap?> = currentFrozenFrame.asStateFlow()
+
     override val container: Container<MirrorUiState, MirrorSideEffect> =
         container(MirrorUiState()) {
             detectInstalledTools()
@@ -103,6 +116,12 @@ public class MirrorViewModel(
             is MirrorIntent.SelectAvd -> selectAvd(intent.avdName)
             MirrorIntent.BootSelectedAvd -> bootSelectedAvd()
             MirrorIntent.StopMirroring -> stopSession()
+            is MirrorIntent.StageAnnotation -> stageAnnotation(intent.rect)
+            is MirrorIntent.SelectAnnotation -> selectAnnotation(intent.index)
+            is MirrorIntent.CommentAnnotation -> commentAnnotation(intent.index, intent.comment)
+            is MirrorIntent.DeleteAnnotation -> deleteAnnotation(intent.index)
+            MirrorIntent.ClearStaged -> clearStaged()
+            MirrorIntent.ResumeLive -> resumeLive()
         }
     }
 
@@ -169,7 +188,8 @@ public class MirrorViewModel(
         // iOS is detected but not mirrorable this release, so switching platform must stop the
         // running session rather than leave a frozen frame on the stage.
         sessionDeviceId.value = null
-        reduce { state.copy(platform = platform, session = MirrorSession.Idle) }
+        currentFrozenFrame.value = null
+        reduce { state.copy(platform = platform, session = MirrorSession.Idle, frozen = null) }
     }
 
     private fun setPickerOpen(open: Boolean) = intent {
@@ -225,7 +245,86 @@ public class MirrorViewModel(
 
     private fun stopSession() = intent {
         sessionDeviceId.value = null
-        reduce { state.copy(session = MirrorSession.Idle) }
+        currentFrozenFrame.value = null
+        reduce { state.copy(session = MirrorSession.Idle, frozen = null) }
+    }
+
+    /**
+     * Commits a finished drag, freezing the frame on the first one (AC-6).
+     *
+     * `currentFrame.value` is read **exactly once, here, at release** — that single read IS
+     * AC-47: nothing is buffered at drag start, so a frame that lands mid-drag is the one that
+     * gets pinned. The freeze is guarded on the bitmap being absent, which is what makes a
+     * second drag add an annotation against the SAME pinned frame instead of re-freezing
+     * (FR-31 / AC-52).
+     *
+     * Nothing here touches [sessionDeviceId]: freezing is a render decision, the capture loop
+     * keeps running (FR-30), and that is why Resume Live costs no reconnection.
+     */
+    private fun stageAnnotation(rect: DeviceRect) = intent {
+        val held = currentFrame.value ?: return@intent
+        if (currentFrozenFrame.value == null) currentFrozenFrame.value = held
+        val frozen = state.frozen
+            ?: FrozenFrame(deviceSize = IntSize(width = held.width, height = held.height))
+        val staged = frozen.annotations +
+            StagedAnnotation(index = frozen.annotations.size + 1, rect = rect)
+        reduce {
+            state.copy(frozen = frozen.copy(annotations = staged, selectedIndex = staged.size))
+        }
+    }
+
+    private fun selectAnnotation(index: Int?) = intent {
+        val frozen = state.frozen ?: return@intent
+        reduce { state.copy(frozen = frozen.copy(selectedIndex = index)) }
+    }
+
+    private fun commentAnnotation(index: Int, comment: String) = intent {
+        val frozen = state.frozen ?: return@intent
+        val staged = frozen.annotations.map { annotation ->
+            if (annotation.index == index) annotation.copy(comment = comment) else annotation
+        }
+        reduce { state.copy(frozen = frozen.copy(annotations = staged)) }
+    }
+
+    /**
+     * Drops one annotation and renumbers the survivors so the badges stay contiguous (AC-8).
+     *
+     * The selection is resolved by following the selected annotation itself through the
+     * renumbering rather than by arithmetic on the index: deleting the selected one clears the
+     * popover, deleting anything else leaves it open on the same annotation under its new
+     * number.
+     */
+    private fun deleteAnnotation(index: Int) = intent {
+        val frozen = state.frozen ?: return@intent
+        val kept = frozen.annotations.filterNot { it.index == index }
+        val renumbered = kept.mapIndexed { position, annotation ->
+            annotation.copy(index = position + 1)
+        }
+        val selected = frozen.selected
+            ?.takeIf { it.index != index }
+            ?.let { annotation -> kept.indexOf(annotation).takeIf { it >= 0 }?.plus(1) }
+        reduce {
+            state.copy(frozen = frozen.copy(annotations = renumbered, selectedIndex = selected))
+        }
+    }
+
+    /** Empties the staged list. The frame stays pinned — only Resume Live unpins it (AC-48). */
+    private fun clearStaged() = intent {
+        val frozen = state.frozen ?: return@intent
+        reduce {
+            state.copy(frozen = frozen.copy(annotations = emptyList(), selectedIndex = null))
+        }
+    }
+
+    /**
+     * Back to the live mirror (AC-51).
+     *
+     * Releases the pinned bitmap and the staged list and nothing else: the session was never
+     * stopped, so the next frame from the still-running capture loop simply shows up.
+     */
+    private fun resumeLive() = intent {
+        currentFrozenFrame.value = null
+        reduce { state.copy(frozen = null) }
     }
 
     /**
