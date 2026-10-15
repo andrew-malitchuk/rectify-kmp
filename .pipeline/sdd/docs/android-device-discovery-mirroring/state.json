@@ -1,11 +1,14 @@
 {
   "spec": "android-device-discovery-mirroring",
-  "currentStage": "backlog",
+  "currentStage": "execution",
   "stages": {
     "preparation": {
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },
@@ -23,6 +26,9 @@
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },
