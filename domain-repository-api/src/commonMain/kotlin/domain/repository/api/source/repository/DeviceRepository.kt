@@ -47,4 +47,19 @@ public interface DeviceRepository {
 
     /** Live statistics of the active mirroring session. */
     public fun observeMirrorStats(): Flow<MirrorStatsModel>
+
+    /**
+     * Records the path to the `adb` binary the user pointed Rectify at, or clears it when
+     * [path] is empty.
+     *
+     * The path is deliberately NOT validated here. It arrives from a file dialog, so it is
+     * outside the program's control, and the only honest place to check it is against the
+     * filesystem at probe time — by the same `isExecutable` predicate every other candidate
+     * goes through. Validating it twice, in two places, is how the two checks drift apart.
+     *
+     * A stored path that stops working is therefore not an error state: the resolver simply
+     * falls through to the ordered candidate list, which is what it would have done had the
+     * user never chosen anything.
+     */
+    public suspend fun setAdbPath(path: String)
 }

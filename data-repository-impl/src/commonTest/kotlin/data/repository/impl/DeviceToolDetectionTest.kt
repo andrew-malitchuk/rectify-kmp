@@ -74,6 +74,7 @@ class DeviceToolDetectionTest {
         emulatorSource = StubEmulatorSource,
         deviceCommandExecutor = StubDeviceCommandExecutor,
         mirrorTransport = transport,
+        adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
     )
 }
 
@@ -82,6 +83,10 @@ private object StubAdbHostSource : AdbHostSource {
         ToolProbe(kind = ToolKind.Adb, found = true, path = "/opt/homebrew/bin/adb", version = "35.0.1")
 
     override suspend fun listDevices(): List<DeviceResource> = emptyList()
+
+    override suspend fun startServer() = Unit
+
+    override suspend fun killServer() = Unit
 }
 
 private object StubEmulatorSource : EmulatorSource {

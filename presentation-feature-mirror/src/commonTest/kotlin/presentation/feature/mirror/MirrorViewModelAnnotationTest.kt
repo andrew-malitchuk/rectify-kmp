@@ -298,6 +298,58 @@ class MirrorViewModelAnnotationTest {
         assertEquals(MirrorStage.Frozen, viewModel.currentState.stage)
     }
 
+    /**
+     * T2 (AC-54 / NFR-6) — the action offered after a drop keeps the user's work.
+     *
+     * The drop is produced with `failStream`, which breaks an **already running** collection;
+     * `failure` could not, so this is the only shape that reaches the session-lost path at all.
+     * Asserting [MirrorSession.Lost] before dispatching is what keeps the rest honest — without
+     * it the claims below would hold with the whole drop path deleted.
+     *
+     * MUTATION (verbatim, from T-11 TAC-1): route `MirrorIntent.Reconnect` at `resumeLive()` in
+     * `MirrorViewModel.handleIntent` — both assertions must fail. This recreates the original
+     * bug shape exactly. The frame and annotation clauses are classified into ONE
+     * [assertEquals] rather than chained, because a chain short-circuits and a mutation that
+     * kills only the first clause would look as if it had killed both.
+     */
+    @Test
+    fun reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val viewModel = frozenWithTwoAnnotations(mirroring)
+        viewModel.handleIntent(MirrorIntent.CommentAnnotation(index = 2, comment = "clipped"))
+        advanceUntilIdle()
+        val pinned = viewModel.frozenFrame.value
+        val staged = viewModel.currentState.frozen?.annotations
+
+        mirroring.failStream(IllegalStateException("device unplugged"), frameOf(9))
+        advanceUntilIdle()
+        assertEquals(MirrorSession.Lost(PHONE), viewModel.currentState.session)
+
+        viewModel.handleIntent(MirrorIntent.Reconnect)
+        advanceUntilIdle()
+
+        assertEquals(
+            expected = listOf(
+                "frame=pinned",
+                "annotations=$staged",
+                "session=${MirrorSession.Streaming(PHONE)}",
+                "stage=${MirrorStage.Frozen}",
+            ),
+            actual = listOf(
+                // Identity, not equality: FakeFrameBitmap is a value-less interface impl, so
+                // only `===` proves it is the same pinned bitmap and not a re-decoded one.
+                "frame=" + if (viewModel.frozenFrame.value === pinned) "pinned" else "${viewModel.frozenFrame.value}",
+                "annotations=${viewModel.currentState.frozen?.annotations}",
+                "session=${viewModel.currentState.session}",
+                "stage=${viewModel.currentState.stage}",
+            ),
+        )
+        assertSame(pinned, viewModel.frozenFrame.value)
+        // The transport really restarted on the lost device — the id came from MirrorSession.Lost.
+        assertEquals(listOf(PHONE, PHONE), mirroring.startedDevices)
+        assertEquals(1, mirroring.activeCollectors)
+    }
+
     /** A streaming session whose first decoded frame has already landed. */
     private suspend fun TestScope.streamingWithFrame(
         frame: MirrorFrameModel,

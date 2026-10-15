@@ -22,11 +22,17 @@ import java.io.File
  *   why the SDK locations are tried first and why this is a parameter.
  * @param homeDir User home directory, for the default macOS SDK location.
  * @param isExecutable Predicate deciding whether a candidate path is a runnable file.
+ * @param userPath Path the user explicitly pointed at `adb` with the file dialog, or `null` /
+ *   blank when they have not. Tried FIRST, and validated by [isExecutable] like every other
+ *   candidate: it comes from outside the program, so a path that does not exist, is a
+ *   directory, or is not executable falls through to the ordered list instead of being
+ *   trusted. One predicate, one place - two would drift apart.
  */
 internal class ToolResolver(
     private val env: Map<String, String> = System.getenv(),
     private val homeDir: String = System.getProperty("user.home").orEmpty(),
-    private val isExecutable: (String) -> Boolean = { path -> File(path).let { it.isFile && it.canExecute() } },
+    private val isExecutable: (String) -> Boolean = ::isExecutableFile,
+    private val userPath: suspend () -> String? = { null },
 ) {
 
     private val mutex = Mutex()
@@ -36,7 +42,8 @@ internal class ToolResolver(
      *
      * A found tool cannot move while the app runs, so re-spawning `adb --version` on every
      * 2s poll buys nothing; a MISSING tool is re-probed every time, so installing `adb` with
-     * the app open is picked up on the next poll.
+     * the app open is picked up on the next poll. A user-chosen path is the one thing that
+     * CAN move, so [resolve] does not read or write this map while one is set.
      */
     private val resolved = mutableMapOf<ToolKind, ToolProbe>()
 
@@ -47,9 +54,20 @@ internal class ToolResolver(
      *   `found = false` with every candidate path that was tried.
      */
     suspend fun resolve(kind: ToolKind): ToolProbe {
-        mutex.withLock { resolved[kind] }?.let { return it }
+        // Only `adb` is user-overridable; nothing is persisted for the other two tools.
+        val overrides = if (kind == ToolKind.Adb) {
+            listOfNotNull(userPath()?.takeIf(String::isNotBlank))
+        } else {
+            emptyList()
+        }
 
-        val candidates = probeCandidates(kind, env, homeDir)
+        // The cache is bypassed entirely while an override is set. Unlike an SDK location, the
+        // override can change while the app runs - the user can pick a different file, or
+        // delete the one they picked - so neither a stale "good" nor a stale fallback may
+        // survive. ponytail: costs one extra probe per poll, paid only by the user who opted in.
+        if (overrides.isEmpty()) mutex.withLock { resolved[kind] }?.let { return it }
+
+        val candidates = (overrides + probeCandidates(kind, env, homeDir)).distinct()
         val path = candidates.firstOrNull(isExecutable)
             ?: return ToolProbe(
                 kind = kind,
@@ -67,7 +85,7 @@ internal class ToolResolver(
             installCommand = kind.installCommand(),
             envHint = kind.envHint(),
         )
-        mutex.withLock { resolved[kind] = probe }
+        if (overrides.isEmpty()) mutex.withLock { resolved[kind] = probe }
         return probe
     }
 
@@ -102,6 +120,14 @@ internal class ToolResolver(
         }
     }
 }
+
+/**
+ * THE executable predicate: a path is usable only when it is a file that can be executed.
+ *
+ * Top-level and named so the user-path trust boundary and the ordered candidates share one
+ * implementation, and so a test can sandbox the real check instead of restating it.
+ */
+internal fun isExecutableFile(path: String): Boolean = File(path).let { it.isFile && it.canExecute() }
 
 /** Exact shell line that installs the tool, rendered verbatim by the UI. */
 private fun ToolKind.installCommand(): String = when (this) {

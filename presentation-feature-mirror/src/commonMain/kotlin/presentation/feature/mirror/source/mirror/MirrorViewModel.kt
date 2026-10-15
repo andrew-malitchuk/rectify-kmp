@@ -122,9 +122,9 @@ public class MirrorViewModel(
             is MirrorIntent.DeleteAnnotation -> deleteAnnotation(intent.index)
             MirrorIntent.ClearStaged -> clearStaged()
             MirrorIntent.ResumeLive -> resumeLive()
+            MirrorIntent.Reconnect -> reconnect()
             // Listed, not `else`-swallowed: the handlers land with the surfaces that dispatch
             // them, and an `else` here would silently absorb the next intent added too.
-            MirrorIntent.Reconnect -> Unit
             MirrorIntent.RetryDiscovery -> Unit
             MirrorIntent.RestartAdb -> Unit
             MirrorIntent.LocateAdb -> Unit
@@ -344,6 +344,26 @@ public class MirrorViewModel(
     private fun resumeLive() = intent {
         currentFrozenFrame.value = null
         reduce { state.copy(frozen = null) }
+    }
+
+    /**
+     * Re-opens the capture session on the device that dropped (FR-35 / AC-54).
+     *
+     * The sibling of [resumeLive], not a variant of it: this one touches neither
+     * [currentFrozenFrame] nor `state.frozen`, so the pinned pixels and every staged
+     * annotation survive the reconnect. That is the whole of NFR-6 — the drop itself already
+     * preserved them ([onSessionLost] only moves the session to [MirrorSession.Lost]), and
+     * before this handler existed the only action on screen was the one that destroys them.
+     *
+     * Writing [sessionDeviceId] is what actually restarts the transport: `observeFrames`'
+     * `flatMapLatest` gate re-subscribes `startMirroring`, and `observeDiscoveryWhileIdle`
+     * stops polling again. The id comes from [MirrorSession.Lost] rather than from a new
+     * state field, which is why nothing had to be remembered for this.
+     */
+    private fun reconnect() = intent {
+        val lost = state.session as? MirrorSession.Lost ?: return@intent
+        reduce { state.copy(session = MirrorSession.Streaming(lost.deviceId)) }
+        sessionDeviceId.value = lost.deviceId
     }
 
     /**

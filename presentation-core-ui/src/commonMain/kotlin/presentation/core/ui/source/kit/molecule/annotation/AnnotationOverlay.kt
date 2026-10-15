@@ -77,6 +77,13 @@ public data class AnnotationOverlayMark(
  * true: that state paints an opaque plate over the mark, which would hide the exact pixels the
  * annotation points at. The dim lives out here, outside the marks, where it belongs.
  *
+ * The scrim's colour is `Theme.color.overlayScrim` — the same fixed near-black `rgb(12,12,14)` in
+ * both themes, for the same reason
+ * [CommentPopover][presentation.core.ui.source.kit.organism.annotation.CommentPopover] is always
+ * dark: it is painted over mirrored device UI whose brightness is unknown, so a theme-following
+ * surface washes out against a light screenshot. A theme-following token would also be weaker in
+ * dark than the design asks for, since dark surfaces sit lighter than `rgb(12,12,14)`.
+ *
  * @param marks Marks to paint, in overlay-local dp.
  * @param modifier Modifier applied to the root composable.
  * @param dimmed Whether to dim everything outside the marks — true while the frame is frozen.
@@ -87,7 +94,7 @@ public fun AnnotationOverlay(
     modifier: Modifier = Modifier,
     dimmed: Boolean = false,
 ) {
-    val scrim = Theme.color.pop.copy(alpha = SCRIM_ALPHA)
+    val scrim = Theme.color.overlayScrim.copy(alpha = SCRIM_ALPHA)
     val density = LocalDensity.current
     // Square corners rather than the mark's 3 dp radius: the sliver of scrim that would show in
     // a corner is under a pixel, and copying the atom's private radius here is the kind of

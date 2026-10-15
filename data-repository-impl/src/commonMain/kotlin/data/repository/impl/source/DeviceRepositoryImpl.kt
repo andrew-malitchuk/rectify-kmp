@@ -14,6 +14,8 @@ import data.device.api.source.model.DeviceResource
 import data.device.api.source.model.DeviceStateResource
 import data.device.api.source.model.ToolKind
 import data.device.api.source.tuning.MirrorTuning
+import data.preference.api.source.datasource.AdbPathPreferenceSource
+import data.preference.api.source.model.AdbPathPreference
 import data.repository.impl.core.mapper.DeviceResourceMapper
 import data.repository.impl.core.mapper.EmulatorResourceMapper
 import data.repository.impl.core.mapper.MirrorFrameMapper
@@ -42,6 +44,8 @@ import kotlin.time.Clock
  * @property deviceCommandExecutor The device-scoped command path, used to ask a running
  *   emulator for its AVD name.
  * @property mirrorTransport Frame source for an active session.
+ * @property adbPathPreferenceSource Where a user-chosen `adb` path is persisted. Written here,
+ *   read by `ToolResolver` at probe time — the resolver validates it, this does not.
  * @property nowMs Wall-clock reader. A parameter so the poll metadata is assertable under
  *   virtual time instead of needing a real two-second wait.
  */
@@ -51,6 +55,7 @@ internal class DeviceRepositoryImpl(
     private val emulatorSource: EmulatorSource,
     private val deviceCommandExecutor: DeviceCommandExecutor,
     private val mirrorTransport: MirrorTransport,
+    private val adbPathPreferenceSource: AdbPathPreferenceSource,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : DeviceRepository {
 
@@ -228,5 +233,17 @@ internal class DeviceRepositoryImpl(
             ?: return null
         avdNames[device.value] = name
         return name
+    }
+
+    /**
+     * @see DeviceRepository.setAdbPath
+     *
+     * No validation and no probe here on purpose. The path is checked against the filesystem
+     * by `ToolResolver`'s existing `isExecutable` predicate, the same one every other candidate
+     * passes through, so a bad path falls through to the ordered candidate list rather than
+     * becoming an error the user has to clear.
+     */
+    override suspend fun setAdbPath(path: String) {
+        adbPathPreferenceSource.setData(AdbPathPreference(path))
     }
 }

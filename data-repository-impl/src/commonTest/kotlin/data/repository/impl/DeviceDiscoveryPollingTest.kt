@@ -239,6 +239,7 @@ class DeviceDiscoveryPollingTest {
             emulatorSource = emulators,
             deviceCommandExecutor = executor,
             mirrorTransport = FakeMirrorTransport,
+            adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
             nowMs = { testScheduler.currentTime },
         )
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
@@ -287,6 +288,12 @@ private class FakeAdbHostSource(
         }
         return devices
     }
+
+    // Link-only stubs: the escalation ladder that drives these is T-5, which owns the
+    // recording versions. Nothing in this file calls them yet.
+    override suspend fun startServer() = Unit
+
+    override suspend fun killServer() = Unit
 }
 
 /** An `idb` probe that answers without touching a process. */
