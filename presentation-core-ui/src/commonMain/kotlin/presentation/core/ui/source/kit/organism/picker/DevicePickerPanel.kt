@@ -116,6 +116,36 @@ public data class PickerDevice(
 )
 
 /**
+ * What a key press means to the picker's root, or `null` when the event is none of its
+ * business and must bubble.
+ *
+ * A value rather than a `when` inside the modifier so the mapping is assertable without a
+ * window — the same reason `shortcutToTab` exists for the shell's Cmd+1/2/3.
+ */
+internal enum class PickerKeyAction {
+    /** `↑` — move the cursor one row towards the top. */
+    MoveUp,
+
+    /** `↓` — move the cursor one row towards the bottom. */
+    MoveDown,
+
+    /** `↵` — commit the highlighted row. */
+    Start,
+
+    /** `esc` — dismiss the panel (A11Y-4). */
+    Close,
+}
+
+/** @return What [key] means here, or `null` for every key the picker does not own. */
+internal fun pickerKeyAction(key: Key): PickerKeyAction? = when (key) {
+    Key.DirectionUp -> PickerKeyAction.MoveUp
+    Key.DirectionDown -> PickerKeyAction.MoveDown
+    Key.Enter, Key.NumPadEnter -> PickerKeyAction.Start
+    Key.Escape -> PickerKeyAction.Close
+    else -> null
+}
+
+/**
  * The first-run device picker (comps 01 / 03) — "choose what to mirror".
  *
  * **Opaque on purpose.** It fills `StageSurface`'s content slot with [Theme.color.bg], so the
@@ -154,6 +184,11 @@ public data class PickerDevice(
  * @param emulatorGroupLabel Heading above the emulators.
  * @param keyHint Mono keyboard hint, e.g. `↑↓ select · ↵ start`.
  * @param startLabel CTA label.
+ * @param closeLabel Label of the dismiss affordance.
+ * @param onClose Dismisses the panel — `esc` or the close button. `null` means the picker
+ *   CANNOT be dismissed, which is the honest state before the first device is chosen: there
+ *   is nothing behind the panel to go back to, so no affordance is drawn and `esc` is left to
+ *   bubble rather than silently swallowed (A11Y-4).
  */
 @Composable
 @Suppress("LongParameterList")
@@ -177,6 +212,8 @@ public fun DevicePickerPanel(
     emulatorGroupLabel: String = "Emulator",
     keyHint: String = "↑↓ select · ↵ start",
     startLabel: String = "Start mirroring",
+    closeLabel: String = "Close",
+    onClose: (() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -190,11 +227,12 @@ public fun DevicePickerPanel(
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (event.key) {
-                    Key.DirectionUp -> { onMoveSelection(-1); true }
-                    Key.DirectionDown -> { onMoveSelection(1); true }
-                    Key.Enter, Key.NumPadEnter -> { onStart(); true }
-                    else -> false
+                when (pickerKeyAction(event.key)) {
+                    PickerKeyAction.MoveUp -> { onMoveSelection(-1); true }
+                    PickerKeyAction.MoveDown -> { onMoveSelection(1); true }
+                    PickerKeyAction.Start -> { onStart(); true }
+                    PickerKeyAction.Close -> onClose?.let { close -> close(); true } ?: false
+                    null -> false
                 }
             },
         contentAlignment = Alignment.TopCenter,
@@ -205,9 +243,24 @@ public fun DevicePickerPanel(
                 .padding(horizontal = Theme.spacing.spacingXL, vertical = Theme.spacing.spacing4XL),
             verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingXL),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS)) {
-                Text(text = title, style = Theme.typography.titleL, color = Theme.color.ink)
-                Text(text = subtitle, style = Theme.typography.body, color = Theme.color.ink2)
+            Row(verticalAlignment = Alignment.Top) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS),
+                ) {
+                    Text(text = title, style = Theme.typography.titleL, color = Theme.color.ink)
+                    Text(text = subtitle, style = Theme.typography.body, color = Theme.color.ink2)
+                }
+                // Drawn only when there is something to go back to — a dismiss button that
+                // dismisses nothing is worse than no button (A11Y-4).
+                if (onClose != null) {
+                    AppButton(
+                        text = closeLabel,
+                        onClick = onClose,
+                        variant = AppButtonVariant.Secondary,
+                        size = AppButtonSize.ListAction,
+                    )
+                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS)) {

@@ -131,6 +131,16 @@ public data class MirrorUiState(
     public val highlightedRow: MirrorRow? get() = rows.getOrNull(highlightedIndex)
 
     /**
+     * Whether the picker may be dismissed (A11Y-4).
+     *
+     * `false` until a device has been chosen once: before that the picker IS the stage, so
+     * `esc` and the close button would both strand the user on an empty surface. The same
+     * rule guards [MirrorIntent.ClosePicker] in the reducer — this property is what lets the
+     * UI stop OFFERING the affordance instead of offering a no-op.
+     */
+    public val isPickerDismissable: Boolean get() = selectedDeviceId != null
+
+    /**
      * What the stage shows.
      *
      * The picker wins while it is open — it is a decision the user has to make. Escalated

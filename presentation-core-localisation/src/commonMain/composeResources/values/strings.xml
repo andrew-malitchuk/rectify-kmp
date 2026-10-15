@@ -72,6 +72,9 @@
     <string name="mirror_row_shut_down">shut down</string>
     <string name="mirror_hint_keys">↑↓ select · ↵ start</string>
     <string name="mirror_action_start">Start mirroring</string>
+    <!-- Dismisses the picker. Shown only once a device has been chosen, which is also the
+         only time esc closes the panel (A11Y-4). -->
+    <string name="mirror_action_close">Close</string>
 
     <!-- Mirror - No signal / waiting (comp 02) -->
     <string name="mirror_no_signal_label">NO SIGNAL</string>

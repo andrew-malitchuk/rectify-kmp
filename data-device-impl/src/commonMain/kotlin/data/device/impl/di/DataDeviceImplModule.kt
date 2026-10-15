@@ -10,6 +10,7 @@ import org.koin.dsl.module
  * Registers, per platform, singletons for
  * [data.device.api.source.datasource.AdbHostSource],
  * [data.device.api.source.datasource.EmulatorSource],
+ * [data.device.api.source.datasource.IdbHostSource],
  * [data.device.api.source.datasource.DeviceCommandExecutor] and
  * [data.device.api.source.datasource.MirrorTransport].
  */

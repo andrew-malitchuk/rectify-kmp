@@ -90,9 +90,12 @@ internal class ScreencapMirrorTransport(
             }
             transportStats.value = TransportStats(
                 fps = achievedFps,
-                // A measured round-trip, not a modelled one: this is how long the host waited
-                // for the pixels it is about to show.
-                latencyMs = captureMs,
+                // latencyMs stays null ON PURPOSE (AC-45): a polling transport cannot see
+                // the device-side compositing or the host-side decode and paint, so it has
+                // no glass-to-glass number to report and the status bar renders a
+                // placeholder. What IS measured is the host-side capture round-trip, and it
+                // is reported under that name rather than dressed up as latency.
+                captureRoundTripMs = captureMs,
                 droppedFrames = dropped,
                 widthPx = size?.first ?: transportStats.value.widthPx,
                 heightPx = size?.second ?: transportStats.value.heightPx,

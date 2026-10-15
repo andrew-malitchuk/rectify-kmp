@@ -3,10 +3,12 @@ package data.device.impl.source
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
+import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.impl.core.unsupported.UnsupportedAdbHostSource
 import data.device.impl.core.unsupported.UnsupportedDeviceCommandExecutor
 import data.device.impl.core.unsupported.UnsupportedEmulatorSource
+import data.device.impl.core.unsupported.UnsupportedIdbHostSource
 import data.device.impl.core.unsupported.UnsupportedMirrorTransport
 import org.koin.core.module.Module
 
@@ -20,6 +22,7 @@ import org.koin.core.module.Module
 internal actual fun Module.provideDeviceSources() {
     single<AdbHostSource> { UnsupportedAdbHostSource }
     single<EmulatorSource> { UnsupportedEmulatorSource }
+    single<IdbHostSource> { UnsupportedIdbHostSource }
     single<DeviceCommandExecutor> { UnsupportedDeviceCommandExecutor }
     single<MirrorTransport> { UnsupportedMirrorTransport }
 }
