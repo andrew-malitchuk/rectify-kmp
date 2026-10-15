@@ -3,6 +3,7 @@ package data.repository.impl.source
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
+import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -21,7 +22,6 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.EmulatorModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
-import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
 import kotlinx.coroutines.delay
@@ -36,6 +36,8 @@ import kotlin.time.Clock
  * Discovery and mirroring on top of the device datasources.
  *
  * @property adbHostSource Deviceless `adb` calls.
+ * @property idbHostSource Deviceless `idb` calls — a probe and nothing else, which is the
+ *   whole of iOS this release.
  * @property emulatorSource Deviceless `emulator` calls.
  * @property deviceCommandExecutor The device-scoped command path, used to ask a running
  *   emulator for its AVD name.
@@ -45,6 +47,7 @@ import kotlin.time.Clock
  */
 internal class DeviceRepositoryImpl(
     private val adbHostSource: AdbHostSource,
+    private val idbHostSource: IdbHostSource,
     private val emulatorSource: EmulatorSource,
     private val deviceCommandExecutor: DeviceCommandExecutor,
     private val mirrorTransport: MirrorTransport,
@@ -54,10 +57,16 @@ internal class DeviceRepositoryImpl(
     /** Last version `adb` reported, for the status bar of an active session. */
     private val adbVersion = MutableStateFlow("")
 
+    /**
+     * Probes both platforms (AC-1).
+     *
+     * iOS is PROBED, not assumed: FR-2 defers iOS mirroring, but the toolbar dot reports a
+     * real answer about the `idb` binary rather than a hardcoded "not installed".
+     */
     override suspend fun detectTools(): List<ToolModel> {
         val adb = adbHostSource.probe()
         adbVersion.value = adb.version.orEmpty()
-        return listOf(ToolProbeMapper.toModel.map(adb), iosNotProbed)
+        return listOf(adb, idbHostSource.probe()).map(ToolProbeMapper.toModel::map)
     }
 
     override fun observeDiscovery(): Flow<DiscoveryModel> = flow {
@@ -189,19 +198,5 @@ internal class DeviceRepositoryImpl(
             ?: return null
         avdNames[device.value] = name
         return name
-    }
-
-    private companion object {
-        /**
-         * iOS tool entry.
-         *
-         * There is no idb datasource in this slice (FR-2 defers iOS), so the card reports
-         * "not installed" with the install line rather than claiming a probe that never ran.
-         */
-        val iosNotProbed = ToolModel(
-            platform = PlatformModel.Ios,
-            isInstalled = false,
-            installCommand = "brew tap facebook/fb && brew install idb-companion",
-        )
     }
 }

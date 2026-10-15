@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private val DEVICE: DeviceId = requireNotNull(DeviceId.of("37281FDH2000AB"))
@@ -128,7 +129,24 @@ class ScreencapMirrorTransportTest {
         transport.frames(DEVICE).take(2).toList()
 
         assertEquals(2, transport.stats.value.droppedFrames)
-        assertEquals(overrunMs, transport.stats.value.latencyMs)
+        assertEquals(overrunMs, transport.stats.value.captureRoundTripMs)
+    }
+
+    @Test
+    fun theCaptureRoundTripIsNeverReportedAsLatency() = runTest {
+        // AC-45: this transport cannot measure glass-to-glass, so latencyMs stays null for
+        // the whole session and the status bar renders its placeholder. If a future change
+        // assigns the capture round-trip to latencyMs again, this fails.
+        val clock = FakeClock()
+        val transport = ScreencapMirrorTransport(
+            executor = FakeExecutor(listOf(pngOf(1080, 2400)), clock, captureMs = 42L),
+            nowMs = clock::read,
+        )
+
+        transport.frames(DEVICE).take(3).toList()
+
+        assertNull(transport.stats.value.latencyMs)
+        assertEquals(42L, transport.stats.value.captureRoundTripMs)
     }
 
     @Test

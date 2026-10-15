@@ -3,6 +3,7 @@ package data.repository.impl
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
+import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.model.AvdName
 import data.device.api.source.model.AvdResource
@@ -186,6 +187,7 @@ class DeviceDiscoveryPollingTest {
     ): List<Pair<Long, DiscoveryModel>> {
         val repository = DeviceRepositoryImpl(
             adbHostSource = adb,
+            idbHostSource = FakeIdbHostSource(),
             emulatorSource = emulators,
             deviceCommandExecutor = executor,
             mirrorTransport = FakeMirrorTransport,
@@ -228,6 +230,20 @@ private class FakeAdbHostSource(
     )
 
     override suspend fun listDevices(): List<DeviceResource> = devices
+}
+
+/** An `idb` probe that answers without touching a process. */
+internal class FakeIdbHostSource(
+    private val found: Boolean = false,
+) : IdbHostSource {
+
+    override suspend fun probe(): ToolProbe = ToolProbe(
+        kind = ToolKind.Idb,
+        found = found,
+        path = "/opt/homebrew/bin/idb".takeIf { found },
+        probedPaths = listOf("/opt/homebrew/bin/idb"),
+        installCommand = "brew tap facebook/fb && brew install idb-companion",
+    )
 }
 
 private class FakeEmulatorSource(avds: List<String>) : EmulatorSource {

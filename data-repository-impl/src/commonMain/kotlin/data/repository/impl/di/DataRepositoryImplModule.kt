@@ -13,5 +13,5 @@ public val dataRepositoryImplModule: Module = module {
     singleOf(::ConfigureRepositoryImpl) bind ConfigureRepository::class
     // Built by hand, not with singleOf: the last constructor parameter is a clock with a
     // default, which Koin would otherwise try to resolve as a dependency.
-    single<DeviceRepository> { DeviceRepositoryImpl(get(), get(), get(), get()) }
+    single<DeviceRepository> { DeviceRepositoryImpl(get(), get(), get(), get(), get()) }
 }

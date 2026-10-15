@@ -35,6 +35,7 @@ import presentation.core.ui.source.kit.organism.picker.PickerPlatform
 import presentation.core.ui.source.kit.organism.stage.NoSignalStage
 import presentation.feature.mirror.core.stats.formatStatusLine
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_close
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_start
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_emulator
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_physical
@@ -189,6 +190,10 @@ private fun MirrorPicker(state: MirrorUiState, onIntent: (MirrorIntent) -> Unit)
         emulatorGroupLabel = stringResource(Res.string.mirror_group_emulator),
         keyHint = stringResource(Res.string.mirror_hint_keys),
         startLabel = stringResource(Res.string.mirror_action_start),
+        closeLabel = stringResource(Res.string.mirror_action_close),
+        // Dismissable only once a session exists behind the panel; the reducer enforces the
+        // same rule, so a stray esc cannot strand the user on an empty stage (A11Y-4).
+        onClose = { onIntent(MirrorIntent.ClosePicker) }.takeIf { state.isPickerDismissable },
     )
 }
 

@@ -3,6 +3,7 @@ package data.device.impl.core.unsupported
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
+import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -32,6 +33,12 @@ internal object UnsupportedAdbHostSource : AdbHostSource {
     override suspend fun probe(): ToolProbe = absent(ToolKind.Adb)
 
     override suspend fun listDevices(): List<DeviceResource> = emptyList()
+}
+
+/** No-op [IdbHostSource] for targets that cannot spawn a process. */
+internal object UnsupportedIdbHostSource : IdbHostSource {
+
+    override suspend fun probe(): ToolProbe = absent(ToolKind.Idb)
 }
 
 /** No-op [EmulatorSource] for targets that cannot spawn a process. */

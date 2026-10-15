@@ -5,8 +5,11 @@ import presentation.feature.mirror.core.picker.nextSelectableIndex
 import presentation.feature.mirror.source.mirror.MirrorRow
 import presentation.feature.mirror.source.mirror.MirrorRowGroup
 import presentation.feature.mirror.source.mirror.MirrorRowKind
+import presentation.feature.mirror.source.mirror.MirrorUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 private fun row(id: String, selectable: Boolean): MirrorRow = MirrorRow(
     id = id,
@@ -68,5 +71,20 @@ class PickerNavigationTest {
     fun theFirstSelectableRowFallsBackToTheTopWhenNothingIsUsable() {
         assertEquals(0, firstSelectableIndex(listOf(row("a", selectable = false))))
         assertEquals(0, firstSelectableIndex(emptyList()))
+    }
+}
+
+/** A11Y-4: whether the panel offers a way out at all. */
+class PickerDismissabilityTest {
+
+    @Test
+    fun theFirstRunPickerOffersNoWayOut() {
+        // Nothing behind it yet, so neither esc nor a close button may be wired up.
+        assertFalse(MirrorUiState().isPickerDismissable)
+    }
+
+    @Test
+    fun aPickerReopenedOverASessionCanBeDismissed() {
+        assertTrue(MirrorUiState(selectedDeviceId = "37281FDH2000AB").isPickerDismissable)
     }
 }
