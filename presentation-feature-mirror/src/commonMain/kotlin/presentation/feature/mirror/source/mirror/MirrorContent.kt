@@ -52,6 +52,7 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_sec
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_source_summary
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_detecting
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_latency_placeholder
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_poll_failed
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_polling_hint
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_tool_missing
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_waiting
@@ -162,6 +163,8 @@ private fun MirrorUiState.indicatorState(): StatusIndicatorState = when {
 private fun MirrorUiState.indicatorLabel(): String = when {
     session is MirrorSession.Streaming -> StatusIndicatorState.Live.name.uppercase()
     discovery is DiscoveryModel.ToolMissing -> stringResource(Res.string.mirror_status_tool_missing)
+    // A failed poll is its own label: "waiting for device" would claim adb answered.
+    discovery is DiscoveryModel.PollFailed -> stringResource(Res.string.mirror_status_poll_failed)
     discovery is DiscoveryModel.Detecting -> stringResource(Res.string.mirror_status_detecting)
     else -> stringResource(Res.string.mirror_status_waiting)
 }

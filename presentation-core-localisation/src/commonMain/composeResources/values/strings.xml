@@ -91,6 +91,7 @@
     <string name="mirror_status_waiting">Waiting for device…</string>
     <string name="mirror_status_ready">ready</string>
     <string name="mirror_status_tool_missing">adb not found</string>
+    <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
     <string name="mirror_tool_not_found">not found</string>

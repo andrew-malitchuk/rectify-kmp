@@ -160,4 +160,27 @@ class MirrorViewModelDiscoveryTest {
         assertEquals(MirrorRowKind.Boot, state.rows.single().kind)
         assertEquals("Pixel_7_API_34", state.rows.single().id)
     }
+
+    @Test
+    fun aFailedPollKeepsTheRowsItCouldNotRefresh() = runTest(mainDispatcher) {
+        val discovery = FakeObserveDiscovery(
+            listOf(
+                DiscoveryModel.Found(
+                    physical = listOf(device("serial-1", DeviceStateModel.Device)),
+                    emulators = emptyList(),
+                ),
+                DiscoveryModel.PollFailed(tool = "adb", reason = "timed out after 3000ms"),
+            ),
+        )
+        val viewModel = mirrorViewModel(discovery = discovery)
+        subscribe(viewModel)
+        advanceUntilIdle()
+
+        val state = viewModel.currentState
+        assertIs<DiscoveryModel.PollFailed>(state.discovery)
+        // A poll that never answered learned nothing, so clearing the list would claim the
+        // phone had been unplugged. ToolMissing clears, this does not.
+        assertEquals(listOf("serial-1"), state.rows.map { it.id })
+        assertEquals(MirrorStage.Picker, state.stage)
+    }
 }
