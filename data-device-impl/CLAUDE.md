@@ -1,0 +1,88 @@
+# data-device-impl — Claude Instructions
+
+## Module Purpose
+
+The implementation behind `data-device-api`'s four datasource interfaces. **This module contains
+the only `ProcessBuilder` in the repository.** Nothing else in Rectify spawns an external process.
+
+## The One Rule
+
+`ProcessBuilder` lives in exactly one file:
+
+```
+desktopMain/kotlin/data/device/impl/core/process/ProcessRunner.kt
+```
+
+It is `internal`, and it is `desktopMain` only. `commonMain` imports no `java.*` or `javax.*`.
+If you need to run something, route it through `ProcessRunner` — do not add a second spawn site.
+A quick audit:
+
+```shell
+grep -rln "ProcessBuilder" --include="*.kt" . | grep -v /build/   # must print exactly one path
+```
+
+## Package Layout
+
+```
+data.device.impl/
+├── core/                              — internal only
+│   ├── process/ProcessRunner.kt       — THE ProcessBuilder site
+│   ├── tool/ToolResolver.kt           — probes the candidate list, caches successes only
+│   └── unsupported/UnsupportedDeviceSources.kt  — commonMain; the Android/iOS answer
+├── di/DataDeviceImplModule.kt
+└── source/
+    ├── DeviceSourcesProvider.kt       — internal expect fun Module.provideDeviceSources()
+    ├── datasource/{AdbHostSource,EmulatorSource,DeviceCommandExecutor}Impl.kt
+    └── transport/ScreencapMirrorTransport.kt
+```
+
+Platform actuals: `desktopMain` wires the real sources; `androidMain` and `iosMain` both register
+`UnsupportedDeviceSources`, which report `found = false` and throw `DeviceCommandException` on any
+attempt to run something. That is how NFR-10 (macOS-only v1) holds while every target still links.
+The `expect`/`actual` Koin provider mirrors `data-preference-impl`'s `provideSettings()` exactly.
+
+## ProcessRunner — the non-obvious parts
+
+Each of these is load-bearing; none is decoration:
+
+- **Two concurrent drains.** stdout and stderr are read on separate coroutines. Reading them
+  sequentially deadlocks the moment a large `screencap` payload meets a long stderr.
+- **`withTimeoutOrNull`, never `withTimeout`.** `resultLauncher` catches `Throwable`, which
+  includes `CancellationException` — a `withTimeout` here would be swallowed and re-reported as a
+  `Failure`, hiding real cancellation. This is a repo-wide hazard, not a local one.
+- **`destroyForcibly` in `finally`** plus a `ConcurrentHashMap` live-child registry and one
+  shutdown hook, so closing the window leaves no orphans.
+- **`spawnDetached` is deliberately NOT registered** with that hook. Booting an emulator is the
+  user's process, not ours; closing Rectify must not kill their emulator.
+
+## ScreencapMirrorTransport
+
+The v1 transport: an adaptive single-flight loop. It awaits each capture before issuing the next
+(so adb processes cannot stack up), trims to the PNG signature, reads width/height from the IHDR
+**per frame** so device rotation is followed, counts overdue slots as dropped frames, then delays
+only the remainder of `MirrorTuning.CaptureFloorMs`.
+
+**This is a staged implementation.** It knowingly does not meet NFR-1's ~150 ms glass-to-glass
+target; `MirrorTransport` exists so the real transport (scrcpy-server + in-JVM H.264 decode) can
+drop in without touching the UI. The waiver is recorded and flagged for re-review before ship.
+
+`nowMs: () -> Long` is injected (defaulting to `System::currentTimeMillis`) purely so the
+dropped-frame arithmetic and the fps window are testable — wall clock cannot be moved by virtual
+time. For the same reason its Koin binding is `single<MirrorTransport> { … }` and **not**
+`singleOf`, which would try to resolve the clock from the graph instead of honouring the default.
+
+## Testing
+
+10 `desktopTest` tests drive the transport through a fake `DeviceCommandExecutor` — IHDR size
+read, warning-line trim, non-PNG and truncated stdout costing one frame rather than the session,
+the overdue-slot arithmetic, the fps window, per-session stat reset, and a vanished device ending
+the loop. All hardware-free.
+
+**Still unverified without a device:** `ProcessRunner`'s real timeout/orphan/drain behaviour, and
+any capture-rate or latency number. Those are code-review-only until someone attaches an
+authorised handset.
+
+```shell
+./gradlew :data-device-impl:desktopTest
+./gradlew :data-device-impl:build
+```

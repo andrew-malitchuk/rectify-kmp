@@ -1,0 +1,110 @@
+# android-device-discovery-mirroring — T-10/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-10/report |
+| status | done |
+| producedBy | sdd-build-frontend-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T02:13:15Z |
+| updatedAt | 2026-10-15T02:13:15Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-frontend-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-15T02:13:15Z
+
+## Provenance
+
+### selfHash
+
+736ede9b6a54a522abb7663bdb5e96dab1e3c32be55e03b0f3d26daf872fadef
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056 |
+
+## Data
+
+### taskId
+
+T-10
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-core-localisation/src/commonMain/composeResources/values/strings.xml
+
+### testRun
+
+#### command
+
+./gradlew :presentation-core-localisation:compileKotlinDesktop
+
+#### passed
+
+true
+
+#### output
+
+BUILD SUCCESSFUL. 27 Res.string.mirror_* accessors generated and verified against the plan's i18n list.
+
+### implementation
+
+#### filesChanged
+
+- strings.xml
+
+#### summary
+
+27 mirror_* keys under three comment groups following the existing <feature>_<element> idiom. Glyphs byte-verified: the arrows are U+2191/U+2193, the separator is a true U+00B7, and the latency placeholder is a real em dash. Machine output carries no key by design - tool versions, serials, resolutions, fps and transport are not translatable, and mirror_source_summary deliberately embeds the literal adb devices -l for the same reason.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| mirror_waiting_subtitle | comp 02's auto-start sentence is deliberately not shipped. | Carries an inline XML comment stating why, so a future editor cannot 'fix' it back without seeing the plan-gate decision behind it. | info |
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+
+
+### linkedAC
+
+- AC-4
+- FR-3
+- FR-5

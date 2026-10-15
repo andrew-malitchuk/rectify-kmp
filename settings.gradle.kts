@@ -38,6 +38,8 @@ include(":common-core")
 
 // data
 include(":data-core")
+include(":data-device-api")
+include(":data-device-impl")
 include(":data-preference-api")
 include(":data-preference-impl")
 include(":data-database-api")
@@ -60,6 +62,7 @@ include(":presentation-core-ui")
 // presentation-feature
 include(":presentation-feature-about")
 include(":presentation-feature-home")
+include(":presentation-feature-mirror")
 include(":presentation-feature-onboarding")
 include(":presentation-feature-settings")
 include(":presentation-feature-splash")

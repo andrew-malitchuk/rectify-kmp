@@ -1,0 +1,750 @@
+# android-device-discovery-mirroring — candidates/candidate-1
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | plan |
+| step | candidates/candidate-1 |
+| status | done |
+| producedBy | sdd-build-plan-draft |
+| schemaVersion | 1 |
+| createdAt | 2026-10-14T23:49:31Z |
+| updatedAt | 2026-10-14T23:49:31Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-plan-draft
+
+### approved
+
+true
+
+### at
+
+2026-10-14T23:49:31Z
+
+## Provenance
+
+### selfHash
+
+b1c05af93595003f78151e0bbfebbc2ade87f9c1f3c42540fa000ca617d7f464
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| preparation/preparation.json | da20ef73c135a07e33a076102fbfc1f6146e4118888446d817a29f03e77f9879 |
+
+## Data
+
+### meta
+
+#### title
+
+Android Device Discovery & Live Mirroring (F-2) — Implementation Plan
+
+#### version
+
+1
+
+#### status
+
+draft
+
+### goal
+
+Make every static stub in the merged F-1 shell live for Android: detect adb/idb at launch and show per-platform status, offer a full-stage device picker over Physical + Emulator sources with inline Boot and arrow/Enter navigation, start a live mirror on the selected device through a swappable MirrorTransport, show the passive NO SIGNAL state while adb reports nothing, and report honest tool/resolution/fps/latency stats in the status bar — with zero new dependencies, all adb/idb execution confined to one internal desktopMain file behind a device-scoped API, and v1's NFR-1 latency shortfall carried as an explicit, measured waiver rather than a silent miss.
+
+### problemStatement
+
+Rectify's canonical window exists (F-1) but shows nothing real: the platform switch, device indicator, and status bar are static previews, and StageSurface has no content source. Until a real Android device can be discovered and mirrored inside the single canonical window, there is no product to annotate — every downstream spec (annotation, measurement, payload, error recovery) depends on this one being live.
+
+### highLevelDescription
+
+One vertical slice through the existing data → domain → presentation layering, with process execution quarantined in a single desktop-only module. Three new Gradle modules (data-device-api, data-device-impl, presentation-feature-mirror) join the existing 24, and five existing modules are amended (domain-core, domain-repository-api, domain-usecase-api, domain-usecase-impl, data-repository-impl, presentation-core-ui, presentation-core-localisation, compose-application). Every pure parser — adb devices -l, wm size, wm density, emulator -list-avds, the foldable PNG-signature trim, the adb argv builder and the tool-probe candidate order — lives in data-device-api's commonMain, which is the single decision that makes AC-2/AC-3/AC-41/AC-42/AC-44 verifiable with plain kotlin.test and no phone attached (AS-7). java.lang.ProcessBuilder appears in exactly one internal file in data-device-impl/desktopMain. The mirror is a MirrorTransport interface whose v1 implementation is an adaptive single-flight adb exec-out screencap -p loop; the picker, the NO SIGNAL stage and the stats line are Orbit MVI state in presentation-feature-mirror, injected by RectifyWindow and passed as plain data into RectifyShellContent, which stays Koin/AWT/coroutine-free.
+
+### background
+
+F-1 (app-shell-window-layout) shipped and merged to development (merge commit 62808cc, verdict complete-with-waivers). It delivered RectifyWindowShell, ShellToolbar (six fixed named slots), ShellStatusBar (leading/trailing), StageSurface (bezel-less stage + dot grid, required content slot), SidePanelFrame, ShellState/ShellTab/ShellWindowDefaults, and RectifyShellContent with every slot filled by a static stub. It also shipped ~109 kit components, among them SourceListRow/SourceListHeader, SegmentedButtonGroup, DeviceChip, StatusIndicator, AppButton, KeyCap, SectionHeader, StatusPill, CommandBlock and ErrorCard — the chrome F-3 will need. rectify-poc's Devices.kt (249 lines) is a reference implementation only: its logic (adb devices -l parsing, screencap with the foldable trim, wm size/density/getprop) is proven and portable; its flat structure, untyped error() calls and blocking threads are not. Stage 1 closed with readyForPlan: true and twelve binding decisions, including a recorded NFR-1 waiver approved under survey option B — flagged for re-review before ship.
+
+### sources
+
+| type | ref | cached |
+| --- | --- | --- |
+| code | preparation/preparation.json (8 FR, 4 NFR, 10 AC, 4 SC, 12 binding decisions, 11 risks, 11 open questions) | .pipeline/sdd/docs/android-device-discovery-mirroring/preparation/preparation.json |
+| code | preparation/brainstorm.json (19 components, 18 edge cases, 11 implementation steps, 15 ready-made reuses) | .pipeline/sdd/docs/android-device-discovery-mirroring/preparation/brainstorm.json |
+| code | preparation/clarify.json (AC/FR/NFR/SC ids, 5 clarify decisions, AS-6..AS-9) | .pipeline/sdd/docs/android-device-discovery-mirroring/preparation/clarify.json |
+| figma | 01-first-run-platform-source — device picker: centred 'Choose what to mirror' panel on bg, PLATFORM cards with tool versions, SOURCE list headed '3 found · adb devices -l', keyboard hint, Start mirroring CTA, green status bar 'adb 35.0.1 · idb 1.1.8 · ready' | raw/design/01-first-run-platform-source.png |
+| figma | 02-empty-no-device — NO SIGNAL: dashed phone outline on the dotted stage, 'Waiting for an Android device', two numbered steps, inline AVD select + Boot, footer 'adb devices · polling every 2 s', status bar 'Waiting for device…' | raw/design/02-empty-no-device.png |
+| figma | 03-device-picker-first-run — same picker with Pixel 8 Pro selected (filled radio), Running dot on the warm emulator, Boot button on the cold one | raw/design/03-device-picker-first-run.png |
+| figma | 04-error-adb-not-on-path — F-3 renders this from F-2's ToolMissing state (out of scope here) | raw/design/04-error-adb-not-on-path.png |
+| figma | 05-error-no-device-detected — F-3 renders this from F-2's NoDeviceFound state (out of scope here) | raw/design/05-error-no-device-detected.png |
+| code | F-1 plan (shell contract, Stage 5 four-desktopTest command, pixel-landmark comparison method) | .pipeline/sdd/docs/app-shell-window-layout/plan/plan.json |
+| code | rectify-poc AndroidBridge — listDevices / captureScreenshot (PNG-signature trim) / deviceInfo; logic reused, structure discarded | /Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt |
+
+### scope
+
+#### in
+
+- FR-1 launch-time adb/idb tool detection with ordered-candidate probing and per-platform status (AC-1, AC-41, SC-6).
+- FR-2 Android/iOS platform switch wired to real state; Android functional, iOS shows the detected idb probe only and renders a deferred-platform stage.
+- FR-3 device picker: full-stage takeover panel with Physical/Emulator sections, inline Boot, arrow/Enter/Escape navigation (AC-2, AC-43, NFR-8).
+- FR-4 'Start mirroring' connecting to the selected device through the v1 screenshot-polling transport (AC-3, SC-1).
+- FR-5 2s-polling passive NO SIGNAL empty state with guidance and inline emulator Boot (AC-4, SC-2, SC-7, AC-42).
+- FR-22/FR-24/FR-25 status-bar live stats behind a swappable MirrorTransport interface (AC-25, AC-45).
+- NFR-5 device-scoped command executor enforcing selected-device-only execution by API shape (AC-44).
+- Typed DiscoveryModel contract (Detecting | ToolMissing | NoDeviceFound | Found) published for F-3 to render comps 04/05.
+- Three new Gradle modules, one new Failure subtype, mirror_* localisation keys, and CLAUDE.md docs for each new module.
+- A measured v1 capture-rate/latency number recorded in the delivery notes (decision 9 — measured, never estimated).
+
+#### out
+
+- Functional iOS mirroring — the switch exists and shows detected idb only (FR-2 defers to v1.1+).
+- The rich error-card UI and recovery actions for comps 04/05 (Locate adb, Copy, Retry, Restart adb, Boot emulator instead) — F-3 owns both, composing shipped ErrorCard/CommandBlock against F-2's typed states.
+- Mid-session reconnect/recovery UX after FR-4 has already started streaming — F-3 territory; F-2 ends the session cleanly and returns to discovery.
+- A production H.264-decode transport meeting NFR-1's <150ms target — staged out per FR-24, tracked as a v1.1+ follow-up behind the same interface.
+- A clipboard abstraction for F-3's Copy action — F-2 only carries the exact command string in ToolProbe.
+- Annotation, measurement, payload, history and MCP specs.
+- Windows/Linux builds (NFR-10); a headless CI harness for the desktop app (none exists, so demo ACs stay human-observed).
+- Any new runtime or test dependency — including orbit-test and turbine (both absent from the catalog).
+
+### assumptions
+
+- AS-6: scrcpy 3.3.1 and adb remain available via PATH/Homebrew-standard locations during implementation and demo; detection reads the environment dynamically rather than hardcoding this machine's verified paths.
+- AS-7: no physical device or running emulator is guaranteed in the build/test environment; AC-2/AC-3/AC-41/AC-42/AC-44 'test' verification is achieved by exercising pure parsers and fake sources, never real hardware.
+- AS-8: shipping screenshot polling as the v1 transport (not meeting NFR-1) is an accepted, explicitly-flagged trade-off, approved at the Stage 1 gate under option B — carried forward here, not resolved.
+- AS-9: SourceListRow is the picker's row component; the only change it needs is one additive optional parameter — confirmed by reading the file (it already has radio + mono serial + trailing slot and a preview showing all three comp states).
+- VERIFIED (not assumed): decodeToImageBitmap is reachable from a feature module's commonMain — FeatureConventionPlugin line 115 wires composeDependencies.components.resources into commonMain, which is where org.jetbrains.compose.resources.decodeToImageBitmap lives. No new dependency; the skiko desktopMain fallback is not needed.
+- VERIFIED (not assumed): kotlinx-coroutines-test is genuinely wired, not merely cataloged — data-preference-impl/build.gradle.kts declares it in its commonTest block today, so virtual-time testing of the 2s poller needs only the same one line in the new modules.
+- VERIFIED (not assumed): kotlin.test is supplied to commonTest by both LibraryConventionPlugin and FeatureConventionPlugin, so no new module needs to declare it.
+- Koin single definitions resolve lazily at injection time, so data-group ordering inside initKoin is defensive rather than load-bearing — but the repo rule treats order as significant, so dataDeviceImplModule is placed before its consumer dataRepositoryImplModule anyway.
+- A frame's ByteArray is wrapped, never copied, when crossing the resource→model boundary — the per-frame allocation is one small object, not a pixel buffer.
+
+### constraints
+
+| type | text |
+| --- | --- |
+| tech | Zero new runtime or test dependencies. Everything used is JDK, kotlinx-coroutines, Compose Multiplatform, Koin or kotlin.test — all already wired. The only dependency this spec would otherwise need (a JVM H.264 decoder) is precisely what FR-24 defers. |
+| tech | All adb/idb process execution routes through one device-scoped command executor whose API requires a resolved DeviceId; no repository, use case or composable may shell out directly (NFR-5, AC-44). |
+| tech | Kotlin daemon is capped at 3GB in gradle.properties; building three new KMP modules across all targets at once OOMs the 18GB host. Build one module per implementation step; never ./gradlew build at the root. |
+| tech | explicitApi() is enforced repo-wide — every public declaration needs an explicit visibility modifier AND an explicit return type. core/ is internal-only, source/ is public; a module with no internal declarations gets no core/ directory. |
+| tech | Design tokens only: no literal Color(0x…), no raw .dp at a call site, no hardcoded TextStyle. Strict atom → molecule → organism direction in presentation-core-ui. |
+| tech | A commonTest backtick function name containing a comma or an apostrophe compiles on the JVM and fails compileTestKotlinIosArm64 — F-1 shipped that bug repo-wide. Plain-word backtick names only, no punctuation at all, and one iOS test-compile before the slice is declared done. |
+| tech | DeviceCommand is a closed sealed set, not a vararg string runner — argument injection and remote targets are unrepresentable rather than merely discouraged. |
+| tech | RectifyShellContent must gain zero Koin, AWT and coroutine imports; every new parameter is plain data with a default so the F-1 render harness keeps compiling and driving it from literals. |
+| business | PRD estimates this spec as 'L'; the staged transport (FR-24) keeps it inside that envelope by deferring the highest-cost item rather than absorbing it. |
+| time | The measurement step (step 12) is a gate, not a nicety: the v1 capture rate and per-frame latency must be real numbers written into the delivery notes before the slice is called done. |
+
+### dependencies
+
+| on | note |
+| --- | --- |
+| F-1 (app-shell-window-layout) | Merged to development. Provides RectifyWindowShell / ShellToolbar / ShellStatusBar / StageSurface slot contracts and the kit components this spec fills and reuses. |
+| error-handling-and-recovery (F-3) | Downstream dependent. Inherits the DiscoveryModel.ToolMissing / NoDeviceFound contract (AC-41, AC-42) including ToolProbe.probedPaths and ToolProbe.installCommand, to render comps 04/05. F-2 builds none of that UI. |
+| rectify-poc Devices.kt | Reference implementation only, not a build dependency. Source of the adb devices -l parse, the screencap PNG-signature trim, and the wm size/density/getprop reads. |
+| Local toolchain for the demo and the measurement step | adb (Homebrew or Android SDK), the emulator binary, and either a USB-debug phone or one installed AVD. Automated tests must stay green without any of them. |
+
+### risks
+
+| text | likelihood | impact | mitigation |
+| --- | --- | --- | --- |
+| Screenshot polling delivers roughly 3–7 fps and ~250–500 ms per frame, so the mirror feels like a slideshow under drag and NFR-1 is visibly unmet in the demo. | high | med | An accepted, recorded waiver (FR-24/AS-8), re-flagged at the Stage 1 gate under option B. Keep fps honest, keep latency an explicit placeholder (AC-45), add the one-word 'polling' hint next to fps, and keep MirrorTransport to two members so the decoder transport is a new class plus one DI line. |
+| PATH in a packaged macOS .app omits /opt/homebrew/bin, so adb detection works all through development and fails the first time anyone double-clicks the app. | high | high | probeCandidates() is a PURE function in data-device-api/commonMain returning the ordered candidate list from an injected env map and home dir; ToolResolver only applies an executable predicate to it. Unit-tested with a fake env (empty PATH, ANDROID_HOME set, Homebrew-only) and every path tried is recorded in ToolProbe.probedPaths for F-3's comp-04 footer. |
+| Orphaned adb children after an abrupt window close hold the USB connection and make the next launch see no device. | med | med | Live-child registry (Collections.newSetFromMap(ConcurrentHashMap())) + one Runtime shutdown hook registered once + destroyForcibly() in finally + a per-call withTimeoutOrNull budget. The adb server daemon itself is never killed. |
+| Three new modules plus edits to eight existing ones blow the 3GB Kotlin daemon when built together. | med | med | The implementation sequence is bottom-up and per-module; each step names its own single :module:build or :module:desktopTest command. No root build at any point. |
+| A commonTest backtick name containing a comma or apostrophe compiles on JVM and breaks compileTestKotlinIosArm64 — this spec adds more test files than any before it. | med | high | Plain-word backtick names, no punctuation. Step 13 runs ./gradlew :data-device-api:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64 before the slice is declared done. |
+| Frames pushed through the Orbit reducer at up to 10/s cause allocation churn and sluggish UI that gets misdiagnosed as transport latency. | med | med | Pixels live in a dedicated StateFlow<ImageBitmap?> outside Orbit state; only semantic state goes through the reducer, and stats update on a separate 1s ticker rather than per frame. |
+| The live mirror repaints over StageSurface's dot grid, whose Canvas draws every dot across the full stage on each pass (F-1 review finding PRF-1, unverified) — at 10fps that cost is paid 10x/second behind an opaque image. | med | med | MirrorFrameView is aspect-fit and opaque where it covers; measure frame time in step 12 alongside the capture rate and, if the grid shows up, raise it as a scoped PRF-1 follow-up in presentation-core-ui rather than fixing it inline here. |
+| Adding Failure.Technical.Process to a sealed hierarchy in the zero-dependency core breaks exhaustive when expressions elsewhere. | low | low | Grep `is Failure.Technical` and `when (failure)` before the change; nothing branches exhaustively today. Build :domain-core then :domain-usecase-impl first (step 1). |
+| Orbit's internal intent dispatching makes plain runTest assertions over container.stateFlow flaky, tempting an orbit-test dependency that is not in the catalog. | med | med | Dispatchers.setMain(StandardTestDispatcher) + advanceUntilIdle() before each assertion; if that proves unreliable, fall back to covering the extracted pure helpers (nextSelectableIndex, discovery→state derivation, stats formatting) and keep VM coverage at smoke level. Adding orbit-test is an open question for a gate, never a quiet fix. |
+| Unauthorized/offline devices are filtered out (the poc's behaviour), so a user with a plugged-in phone sees NO SIGNAL and follows guidance that cannot help them. | med | med | parseAdbDevices returns a typed DeviceStateResource for every entry; non-`device` states survive into DeviceModel and render as non-selectable rows with their state as the trailing label (SourceListRow gains `enabled`). Arrow keys skip them. |
+| scrcpy 3.3.1 is installed on the dev machine and will tempt a 'just shell out to scrcpy' shortcut, opening a second OS window and breaking F-1's canonical-window contract. | low | high | The closed DeviceCommand set contains no scrcpy command and the host sources enumerate only adb/emulator subcommands; adding one is a visible, reviewable API change in data-device-api, not a one-line call site. |
+| Pre-existing repo hazard made live by this spec: resultLauncher catches Throwable, which includes CancellationException, so a withTimeout inside any use case would swallow genuine parent-scope cancellation. | med | high | This spec uses withTimeoutOrNull everywhere and never lets a TimeoutCancellationException reach resultLauncher. Fixing the helper itself (adding `catch (c: CancellationException) { throw c }`) touches every existing use case and is explicitly flagged as a separate follow-up, not done here. |
+| Picker key handling and the window-level Cmd+1/2/3 handler fight over focus once the side panel exists in a later spec. | low | med | Ownership splits by modifier: unmodified keys belong to the focused panel, meta-modified keys to the window. handleShellShortcut is untouched, and a VM test asserts arrow/Enter intents carry no meta semantics. |
+
+### requirements
+
+#### functional
+
+| id | text |
+| --- | --- |
+| FR-1 | On launch, detect installed adb and idb tool versions and show a status dot per platform in the toolbar. |
+| FR-2 | Show a platform switch (Android/iOS) in the toolbar on every screen; Android is functional in v1, iOS is deferred to v1.1+. |
+| FR-3 | Provide a device picker dropdown with Physical-device and Emulator sections (running, or shut-down with an inline Boot button), navigable via arrow keys and Enter. |
+| FR-4 | Provide a primary 'Start mirroring' action that connects to the selected device and begins the live mirror stream. |
+| FR-5 | When no device is connected, poll adb every 2s and show a 'NO SIGNAL' empty state with guidance to plug in a USB-debug device or boot an emulator inline. |
+| FR-22 | Show a status bar with live stream stats: tool version, resolution, fps, and latency. |
+| FR-24 | v1 ships a screenshot-polling mirror transport (adb exec-out screencap, reusing rectify-poc's proven capture/foldable-trim logic) as the FR-4 stream source; it is explicitly documented as not meeting NFR-1's <150ms target. An H.264-decode transport (scrcpy-server socket consumed in-JVM) is a deliberate v1.1+ follow-up, gated on choosing and justifying a new JVM decoder dependency per version-catalog-hygiene.md. |
+| FR-25 | The live mirror transport is abstracted behind a single interface consumed by StageSurface's content slot and by FR-22's stats contract, so swapping the v1 polling transport for a future decoder-based transport (FR-24) requires no change to the shell integration or the stats shape. |
+
+#### nonFunctional
+
+| id | category | text |
+| --- | --- | --- |
+| NFR-1 | performance | Live mirror glass-to-glass latency should stay low enough (target under ~150ms) that drag-to-select and freeze feel responsive. WAIVED FOR v1 — screenshot polling knowingly misses this; the real achieved number must be measured (step 12) and recorded, and the waiver is flagged for re-review before ship. |
+| NFR-5 | security | adb/idb commands are only ever invoked against the user's explicitly selected, connected device — never an arbitrary or remote target. Enforced by API shape (see security section), not by call-site discipline. |
+| NFR-8 | a11y | Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers). In F-2's scope: the picker and the NO SIGNAL emulator control. |
+| NFR-10 | compatibility | v1 targets macOS only; no Windows/Linux builds. The desktop actual is the only functional one; android/iOS actuals register unsupported sources so common code still compiles on all four targets. |
+
+### acceptanceCriteria
+
+| id | text | priority | verificationMethod |
+| --- | --- | --- | --- |
+| AC-1 | Given adb and idb are installed, when the app launches, then the toolbar shows a status dot reflecting detected tool versions for both platforms. | must | demo |
+| AC-2 | Given a physical device is connected and an emulator is running, when the device picker is opened, then both appear in distinct Physical/Emulator sections and arrow keys plus Enter select an entry. | must | test |
+| AC-3 | Given a device is selected in the picker, when the user clicks 'Start mirroring', then the live mirror begins streaming. | must | test |
+| AC-4 | Given no device is connected, when adb polling runs, then the 'NO SIGNAL' state shows with guidance text and an inline emulator picker plus Boot button. | must | demo |
+| AC-25 | Given live mirror is active, then the status bar displays current tool version, resolution, fps, and latency, updating at least once per second. | should | demo |
+| AC-41 | Given adb is not found on PATH at launch, when tool detection runs, then F-2 exposes a typed ToolMissing discovery state (and reflects it as an offline/warning toolbar status dot) for error-handling-and-recovery (F-3) to render as the actionable error card (comp 04) — F-2 itself does not build the Locate-adb/Retry/Copy UI. | must | test |
+| AC-42 | Given adb is installed but reports zero attached devices across repeated polls, when polling runs, then F-2 exposes a typed NoDeviceFound discovery state carrying poll metadata (last-poll time, attempt count) for F-3 to render the escalated error card (comp 05, Restart adb / Boot emulator instead) — F-2's own stage still shows only the passive NO SIGNAL state from AC-4. | must | test |
+| AC-43 | Given no device has ever been selected, when the app has focus, then the device picker renders as a centered panel filling the stage's content slot on Theme.color.bg (not the dotted stage background), matching comps 01/03; given a device is already selected, clicking the toolbar DeviceChip reopens the same panel. There is no separate small anchored dropdown menu implementation. | must | demo |
+| AC-44 | Given any adb/idb command needs to run, then it is issued only through the single device-scoped command executor, whose API requires an already-resolved device id as a non-optional parameter — no code path in the codebase can construct or issue a device command without one (NFR-5 enforced by API shape). | must | test |
+| AC-45 | Given live mirror is active, then the status bar shows tool version and resolution unconditionally, fps reflecting the active transport's real achieved rate, and latency either as a real measurement or an explicit placeholder (never a fabricated number) when the active transport cannot measure it end-to-end — all updating at least once per second. | should | demo |
+
+### scenarios
+
+| id | title | type | steps |
+| --- | --- | --- | --- |
+| SC-1 | First-run setup and tool detection | happy | ["Launch app", "Detect adb/idb and show status dots", "Open device picker showing Physical/Emulator sections", "Select a device via keyboard or click", "Click Start mirroring"] |
+| SC-2 | No device connected (empty state) | edge | ["No device is connected", "App polls adb every 2s", "Show NO SIGNAL placeholder with guidance", "Offer inline emulator picker + Boot button"] |
+| SC-6 | adb not on PATH at launch | error | ["Launch app with adb not on PATH", "Tool detection fails for Android", "Toolbar status dot shows offline/warning", "F-2 emits ToolMissing discovery state", "F-3 renders the actionable error card (comp 04) from that state"] |
+| SC-7 | adb present, zero devices sustained across polls | error | ["adb is installed and running", "Repeated 2s polls each report zero attached devices", "F-2's stage continues showing the passive NO SIGNAL state (AC-4)", "F-2 emits NoDeviceFound with poll metadata", "F-3 renders the escalated error card (comp 05) from that state"] |
+
+### definitionOfReady
+
+- Preparation is gate-approved with readyForPlan: true (done — approved under survey option B, NFR-1 waiver flagged for pre-ship re-review).
+- Branch sdd/android-device-discovery-mirroring is cut from development, which contains the merged F-1 shell.
+- All five comps are cached under raw/design/ and have been read; 01/03 are the picker, 02 is NO SIGNAL, 04/05 belong to F-3.
+- The classpath verifications are done, not assumed: decodeToImageBitmap via components.resources in FeatureConventionPlugin, kotlinx-coroutines-test wired in data-preference-impl's commonTest, kotlin.test supplied by both convention plugins.
+- A local adb and either a USB-debug device or one installed AVD are available for the demo and measurement steps (not for automated tests).
+- The twelve binding decisions are treated as settled; reopening any of them requires a new gate.
+
+### definitionOfDone
+
+- All 10 AC are met: the seven 'test' / 'inspection' ones by green automated checks, the five demo-only ones (AC-1, AC-4, AC-25, AC-43, AC-45) by a recorded manual walkthrough of ./gradlew :desktop-application:run.
+- ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest is green (F-1's four tasks plus this spec's three).
+- ./gradlew :data-device-api:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64 :data-device-impl:compileTestKotlinIosArm64 is green — the F-1 backtick-name trap does not recur.
+- grep confirms java.lang.ProcessBuilder appears in exactly one file in the repository, and that file is internal and under data-device-impl/src/desktopMain.
+- grep confirms RectifyShellContent still has zero Koin, AWT and coroutine imports, and that it compiles with every new parameter defaulted.
+- git diff on gradle/libs.versions.toml is empty — zero new dependencies.
+- The v1 capture rate (fps) and per-frame latency are MEASURED on a real device and written into the spec's delivery notes with the device model, resolution and link type; the chosen MirrorTuning floor is justified against that number.
+- The picker and NO SIGNAL stage are compared against comps 01/02/03 with F-1's normalise-and-compare-landmarks method, and any deviation is recorded rather than eyeballed away.
+- New CLAUDE.md files exist for data-device-api, data-device-impl and presentation-feature-mirror; presentation-core-ui/CLAUDE.md component tables are updated with the F-1 additions it still misses plus this spec's six.
+- The NFR-1 waiver, with its measured number, is restated in the delivery notes as flagged-for-re-review-before-ship.
+
+### successMetrics
+
+- A human can launch the desktop app, see real tool versions, pick a real device with the keyboard alone, and watch their own phone screen inside the Rectify window — the first end-to-end demo of the product.
+- Zero new entries in gradle/libs.versions.toml.
+- Exactly one file in the repository names ProcessBuilder.
+- Every parser and argv builder this spec adds is covered by a test that runs with no phone attached.
+- The reported fps equals the achieved fps (no invented constant), and latency reads as an explicit placeholder rather than a number nobody measured.
+- F-3 can be started against F-2's typed DiscoveryModel without F-2 changing shape.
+
+### architecture
+
+#### approach
+
+One vertical slice through the existing data → domain → presentation layering, with process execution quarantined in one desktop-only module and every pure function hoisted into commonMain so it is testable without hardware. Three new modules: data-device-api (contracts + ALL parsers, library+di), data-device-impl (the only ProcessBuilder in the repo, desktopMain-only and internal, behind an internal expect fun Module.provideDeviceSources() copying data-preference-impl's provideSettings() pattern exactly), and presentation-feature-mirror (Orbit MVI, entry point MirrorHost rather than *Screen because this surface is a shell slot set, not a navigation destination). data-repository-impl gains DeviceRepositoryImpl with the 2s polling flow and the empty-poll escalation; domain-core gains the device model vocabulary and Failure.Technical.Process; five use cases follow the existing one-interface-one-invoke shape. The mirror itself is a two-member MirrorTransport interface, so the v1.1+ decoder transport is a new class plus one DI line.
+
+#### rationale
+
+Every decision was taken against two filters: does it make a claim true by construction (type system, module boundary, API shape) rather than by convention, and does it stay proportional to a PRD 'L' estimate for discovery plus first connection. Putting the parsers in data-device-api/commonMain is what converts AS-7 ('no phone in CI') from an aspiration into a structural fact. Putting ProcessBuilder behind internal + a module boundary + explicitApi() is what makes NFR-5 unbreakable rather than merely documented. Hoisting probeCandidates() out of ToolResolver into a pure commonMain function is what makes the highest-likelihood, highest-impact risk in the spec (the packaged-.app PATH failure) unit-testable with a fake env map. Keeping pixels in a StateFlow outside Orbit state is what stops every future annotation feature inheriting a reducer pass per frame. Reuse was preferred everywhere the kit allowed: eight shipped components are used as-is, one gains a single additive parameter, and only six new UI pieces are authored — each justified below.
+
+#### alternativesConsidered
+
+| title | whyRejected |
+| --- | --- |
+| One combined data-device module holding both interfaces and implementation | data-repository-impl would have to depend on an impl module (no other slice in the repo does), tests would pull the desktop process code onto the classpath, and the api/impl symmetry that preferences and database already establish would break. Saves one build file, costs the structural guarantee that is the entire point of NFR-5. |
+| Put the mirror ViewModel in compose-application/desktopMain next to its only consumer | compose-application/CLAUDE.md explicitly forbids feature logic and ViewModels there, Orbit and koin-viewmodel are not wired into that module, and desktopMain placement would make the state machine untestable from commonTest. Violating a written module rule to save one build.gradle.kts is not a trade. |
+| Reuse Failure.Technical.Platform for process failures | Platform is documented as Android/iOS OS-level errors — the mobile runtime, not a host CLI. F-3 must distinguish 'adb missing' from 'adb failed' to choose comp 04 vs comp 05, and would be reduced to string-matching messages. Cheaper today, ambiguous forever. |
+| Fixed-interval capture timer (fire every 100ms regardless of completion) | Stacks overlapping adb processes the moment a capture exceeds the interval — the exact failure that hangs USB and spawns orphans — and would make the status bar report the requested rate rather than the achieved one, violating AC-45. |
+| Launch scrcpy as a child process | It opens its own OS window and therefore cannot composite into StageSurface at all, breaking F-1's canonical-window contract. Structurally prevented here: the closed DeviceCommand set contains no scrcpy command. |
+| Route picker keys through RectifyWindow's existing onPreviewKeyEvent | The window would have to know whether the picker is open and which row is highlighted, pushing feature state into the shell; and preview dispatch runs root-first, so the window would start intercepting arrow keys from every future focused control. |
+| Push decoded frames through the Orbit reducer as part of MirrorUiState | Up to 10 reducer passes and 10 full state copies per second, inherited by every downstream annotation feature. Pixels are a stream; UI semantics are a state machine. |
+| Add orbit-test and/or turbine to make ViewModel tests ergonomic | Two new dependencies for test ergonomics against a hard zero-new-dependency constraint. runTest + Dispatchers.setMain + advanceUntilIdle covers it; if it proves flaky the fallback is extracting more pure helpers, and adding the dependency would be a gated decision with a version-catalog-hygiene justification. |
+| A separate small anchored dropdown for the toolbar DeviceChip, in addition to the full-stage panel | AC-43 settles it: one panel, reopened from the chip. Two picker implementations would be two things to keep in sync for one user intention. |
+
+#### components
+
+| name | kind | status | registryRef | responsibility |
+| --- | --- | --- | --- | --- |
+| DeviceId | data | new |  | data-device-api/src/commonMain/kotlin/data/device/api/source/model/DeviceId.kt — @JvmInline value class with a PRIVATE constructor and a `public fun of(raw: String): DeviceId?` factory rejecting blank, whitespace-bearing, leading-dash and non-[A-Za-z0-9._:-] input. The only other mint point is parseAdbDevices, which routes through of(). This is the first half of NFR-5-by-construction. |
+| DeviceCommand | data | new |  | data-device-api/.../source/model/DeviceCommand.kt — closed sealed interface: Screencap, WmSize, WmDensity, GetProp(name), EmuAvdName. No vararg runner, no free-text command, no scrcpy, no connect/-H/-P. Adding a capability is a visible API change. |
+| DeviceCommandExecutor | data | new |  | data-device-api/.../source/datasource/DeviceCommandExecutor.kt — `public suspend fun run(device: DeviceId, command: DeviceCommand): ByteArray`. One method, one overload, device non-optional (AC-44). |
+| AdbHostSource / EmulatorSource | data | new |  | data-device-api/.../source/datasource/ — the deviceless half, enumerated explicitly: AdbHostSource.probe()/listDevices(); EmulatorSource.probe()/listAvds()/boot(AvdName). Separate interfaces so 'deviceless' is an auditable exception, not an optional parameter on the device executor. |
+| MirrorTransport | data | new |  | data-device-api/.../source/datasource/MirrorTransport.kt — exactly two members: `fun frames(device: DeviceId): Flow<MirrorFrame>` and `val stats: StateFlow<TransportStats>`. FR-25's swap seam; the v1.1+ decoder transport implements the same two members. |
+| Pure parsers (parseAdbDevices / parseWmSize / parseWmDensity / parseAvdList / trimToPngSignature) | logic | new |  | data-device-api/.../source/parse/ — side-effect-free commonMain functions ported from rectify-poc. parseAdbDevices types the state column (Device/Unauthorized/Offline/NoPermissions/Recovery/Sideload/Unknown) and keeps non-`device` entries. parseWmSize deliberately prefers Override size over Physical size. trimToPngSignature drops the foldable warning prefix. These are what AC-2's and AC-44's 'test' verification actually tests. |
+| buildDeviceArgv / buildHostArgv | logic | new |  | data-device-api/.../source/parse/DeviceArgv.kt — the single argv construction point, pure and in commonMain. buildDeviceArgv always emits [adbPath, "-s", device.value, …]; the AC-44 test asserts this for every DeviceCommand variant. |
+| probeCandidates | logic | new |  | data-device-api/.../source/tool/ToolProbeCandidates.kt — pure `fun probeCandidates(tool: ToolKind, env: Map<String, String>, homeDir: String): List<String>` returning $ANDROID_HOME/platform-tools/x, $ANDROID_SDK_ROOT/platform-tools/x, ~/Library/Android/sdk/platform-tools/x, /opt/homebrew/bin/x, /usr/local/bin/x, then the PATH entries. Hoisted out of ToolResolver precisely so the packaged-.app PATH risk is testable with a fake env. |
+| MirrorTuning | logic | new |  | data-device-api/.../source/tuning/MirrorTuning.kt — the one calibration knob object: CaptureFloorMs=100, CaptureTimeoutMs=5000, HostCommandTimeoutMs=3000, DiscoveryPollMs=2000, StatsTickMs=1000, StderrTailBytes=2048. The right floor differs per device; it must be a named constant, not a literal inside the loop. |
+| ProcessRunner | data | new |  | data-device-impl/src/desktopMain/kotlin/data/device/impl/core/process/ProcessRunner.kt — internal, the ONLY file in the repository naming ProcessBuilder. runInterruptible(Dispatchers.IO), two concurrent async drains for stdout and stderr (the poc's deadlock note preserved), withTimeoutOrNull (never withTimeout), destroyForcibly() in finally, a live-child registry plus one shutdown hook. stderr tail capped at MirrorTuning.StderrTailBytes. |
+| ToolResolver | data | new |  | data-device-impl/src/desktopMain/.../core/tool/ToolResolver.kt — internal. Applies an executable-file predicate to probeCandidates()'s ordered list, runs `adb --version` / `emulator -version` / `idb --version` through ProcessRunner, and returns ToolProbe(found, path, version, probedPaths, installCommand). Contains no ordering logic of its own. |
+| ScreencapMirrorTransport | data | new |  | data-device-impl/src/desktopMain/.../source/transport/ScreencapMirrorTransport.kt — internal. Adaptive single-flight loop: issue `adb -s <id> exec-out screencap -p`, trim to the PNG signature, emit MirrorFrame, then delay only the remainder of the 100ms floor before re-issuing. One capture in flight; a capture still running when the next tick is due counts a dropped frame in TransportStats rather than queueing. Width/height read from the PNG IHDR so rotation is followed, not cached. |
+| UnsupportedDeviceSources | data | new |  | data-device-impl/src/commonMain/.../core/unsupported/UnsupportedDeviceSources.kt — internal no-op implementations registered by the android and iOS actuals of provideDeviceSources(), so common code compiles and the Koin graph resolves on all four targets (NFR-10). Every call returns an empty result or a Failure.Technical.Process. |
+| provideDeviceSources | data | new |  | data-device-impl/src/commonMain/.../source/DeviceSourcesProvider.kt declares `internal expect fun Module.provideDeviceSources()`; actuals in DeviceSourcesProvider.desktop.kt, .android.kt and .ios.kt. Byte-for-byte the provideSettings() pattern from data-preference-impl — same file naming, same internal expect on Module, same call from the module's single public Koin module. |
+| DeviceRepositoryImpl + device mappers | data | new |  | data-repository-impl/src/commonMain/.../source/DeviceRepositoryImpl.kt plus core/mapper/DeviceResourceMapper.kt, EmulatorResourceMapper.kt, ToolProbeMapper.kt, MirrorFrameMapper.kt — all internal objects in the existing ModelResourceMapper shape. Owns the 2s polling flow (flow { while (true) { emit(poll()); delay(DiscoveryPollMs) } }), the de-duplication of an AVD that is both listed and running, and the empty-poll counter that escalates an empty Found into NoDeviceFound with lastPollEpochMs and attempts (AC-42). |
+| DiscoveryModel | logic | new |  | domain-core/src/commonMain/.../source/model/device/DiscoveryModel.kt — sealed: Detecting \| ToolMissing(tool, probedPaths, installCommand, envHint) \| NoDeviceFound(toolVersion, lastPollEpochMs, attempts, attachedCount) \| Found(physical, emulators). THE F-2→F-3 contract. A missing binary at detection time is a SUCCESS value here, never an error. |
+| Failure.Technical.Process | logic | new |  | domain-core/src/commonMain/.../source/monad/Failure.kt — one new data class with the identical shape to its four siblings: `public data class Process(override val cause: Throwable) : Technical()`. The cause is DeviceCommandException(argv, exitCode, stderrTail). |
+| Device use cases (DetectTools / ObserveDeviceDiscovery / BootEmulator / StartMirroring / ObserveMirrorStats) | logic | new |  | domain-usecase-api + domain-usecase-impl, source/usecase/device/. Suspend one-shots (DetectTools, BootEmulator) return Result<T> through resultLauncher(errorMapper = Failure.Technical::Process); reactive ones (ObserveDeviceDiscovery, StartMirroring, ObserveMirrorStats) return a bare Flow<T>, per domain-layer.md. |
+| RadioMark | ui | new |  | presentation-core-ui/.../kit/atom/indicator/RadioMark.kt — SourceListRow's existing private Canvas radio, promoted to a public atom with no visual change, so PlatformToolCard reuses it instead of a second copy. Pure extraction; SourceListRow switches to the atom in the same commit. |
+| SourceListRow (amended) | ui | reuse | presentation-core-ui/.../kit/molecule/row/SourceListRow.kt | Reused as the picker's device row exactly as shipped — it already has the radio, the bold name, the mono serial and a trailing RowScope slot, and its own preview already renders the three comp states (USB label / Running dot / Boot button). ONE additive change: `enabled: Boolean = true`, which dims the row and drops the clickable for unauthorized/offline devices. Default preserves every existing call site. |
+| PlatformToolCard | ui | new |  | presentation-core-ui/.../kit/molecule/card/PlatformToolCard.kt — comp 01's PLATFORM cards: title, trailing RadioMark, and a status-dot + mono line ('adb 35.0.1 · /opt/homebrew/bin'). Justification for authoring rather than reusing SelectableCard: SelectableCard has no radio, renders its subtitle as a plain String in Theme.typography.comment, and has no status dot; bending it would change three live call sites in Settings and Onboarding. |
+| EmulatorSelect | ui | new |  | presentation-core-ui/.../kit/molecule/select/EmulatorSelect.kt — comp 02's inline AVD dropdown. Justification: the kit has no select/dropdown control at all (verified across all 110 kit files). Material3 DropdownMenu styled entirely with Theme tokens; disables with an explanatory label when zero AVDs exist rather than opening an empty menu. Reused unchanged by F-3's 'Boot emulator instead'. |
+| MirrorFrameView | ui | new |  | presentation-core-ui/.../kit/molecule/mirror/MirrorFrameView.kt — dumb and stateless: draws an ImageBitmap aspect-fit with FilterQuality.Medium (downscaled screenshots). Justification: nothing in the kit draws a bitmap. The transport swap never touches it. |
+| DevicePickerPanel | ui | new |  | presentation-core-ui/.../kit/organism/picker/DevicePickerPanel.kt — comps 01/03. An opaque Theme.color.bg surface filling StageSurface's content slot (resolving the dot-grid question: comps show no dots behind the panel), composing SectionHeader, PlatformToolCard, SourceListHeader, SourceListRow, KeyCap and AppButton. Owns the FocusRequester + Modifier.onPreviewKeyEvent on its root and translates key events into callbacks; it holds no selection state of its own. |
+| NoSignalStage | ui | new |  | presentation-core-ui/.../kit/organism/stage/NoSignalStage.kt — comp 02 / AC-4: the dashed phone outline (F-1 shipped only a private preview copy of this in StageSurface — port it, do not re-derive the geometry), 'Waiting for an Android device', two numbered steps, EmulatorSelect + Boot, and the 'adb devices · polling every 2 s' footer. Renders on the dotted stage, unlike the picker. |
+| MirrorViewModel | logic | new |  | presentation-feature-mirror/src/commonMain/.../source/mirror/MirrorViewModel.kt — all semantic state: platform selection, discovery, picker open/highlight index, session, stats. Owns the polling gate (discovery pauses while a session streams), the 1s stats ticker, flatMapLatest session switching, PNG decode on Dispatchers.Default, and a `public val frame: StateFlow<ImageBitmap?>` held OUTSIDE the Orbit state. |
+| MirrorHost | ui | new |  | presentation-feature-mirror/.../source/mirror/MirrorHost.kt — the entry point, deliberately named Host rather than Screen and documented as such: there is no Destination for this surface, it is a set of shell slots. Resolves the ViewModel via koinViewModel(), collects state, frame and side effects, and exposes them to the window. |
+| PickerNavigation / StatsFormatter | logic | new |  | presentation-feature-mirror/src/commonMain/.../core/picker/PickerNavigation.kt and core/stats/StatsFormatter.kt — internal pure helpers: nextSelectableIndex(rows, from, direction) skipping non-selectable rows and clamping at the ends, and formatStatusLine(tool, resolution, fps, latencyMs) producing 'adb 35.0.1 · 1080×2400 · 4.2 fps · polling · latency —'. Pure so they are the cheapest, most durable tests in the slice. |
+| RectifyShellContent (amended) | ui | reuse | compose-application/src/desktopMain/.../window/RectifyWindow.kt | Gains exactly three parameters — `state: MirrorUiState = MirrorUiState()`, `frame: ImageBitmap? = null`, `onIntent: (MirrorIntent) -> Unit = {}` — and maps them onto the existing slots: platformSwitch → SegmentedButtonGroup with the real index, deviceIndicator → DeviceChip with real name/state, statusBar leading → StatusIndicator + an inline mono stat Row, stage → DevicePickerPanel \| NoSignalStage \| MirrorFrameView \| iOS-deferred notice. Zero new Koin, AWT or coroutine imports; defaults keep the render harness working. |
+| SegmentedButtonGroup | ui | reuse | presentation-core-ui/.../kit/molecule/button/SegmentedButtonGroup.kt | FR-2 platform switch — already stubbed in RectifyShellContent with the right items; only selectedIndex and onSelect become real. |
+| DeviceChip + DeviceChipState | ui | reuse | presentation-core-ui/.../kit/molecule/chip/DeviceChip.kt | Toolbar deviceIndicator. States map 1:1: Ready = connected and streaming, Warn = selected but degraded/unauthorized, Lost = device vanished mid-session, None = nothing selected. onClick reopens the picker (AC-43). |
+| StatusIndicator + StatusIndicatorState | ui | reuse | presentation-core-ui/.../kit/atom/indicator/StatusIndicator.kt | Status-bar leading slot: Offline while detecting or tool-missing, Standby while polling with no device, Active while streaming, Connected when tools are ready and a device is selected but not yet streaming. |
+| AppButton (Secondary / ListAction / primary) | ui | reuse | presentation-core-ui/.../kit/atom/button/ | 'Start mirroring' CTA and the inline Boot buttons — AppButtonSize.ListAction exists specifically for a button inside a row. |
+| KeyCap | ui | reuse | presentation-core-ui/.../kit/atom/keycap/KeyCap.kt | Comp 01's '↑↓ select · ↵ start' hint line. |
+| SectionHeader / SourceListHeader | ui | reuse | presentation-core-ui/.../kit/atom/text/SectionHeader.kt, .../kit/molecule/row/SourceListRow.kt | The uppercase PLATFORM / SOURCE labels and the 'Physical device' / 'Emulator' group headers in comps 01/03 — both already exist and need no change. |
+| StageSurface / ShellToolbar / ShellStatusBar / RectifyWindowShell | ui | reuse | presentation-core-ui/.../kit/organism/shell/ | Every surface this spec fills. No shell component changes; only their slots get real content. |
+| ErrorCard / CommandBlock / ErrorGlyph / GlyphBadge | ui | reuse | presentation-core-ui/.../kit/organism/error/ErrorCard.kt, .../kit/molecule/command/CommandBlock.kt | NOT used by F-2 — listed to make the boundary explicit: comps 04/05's chrome already exists, so F-3 composes shipped components against F-2's typed states and authors almost no new UI. F-2 must therefore keep ToolProbe.installCommand and DiscoveryModel's poll metadata in a shape those components can consume directly. |
+| resultLauncher + Failure hierarchy | logic | reuse | domain-usecase-impl/core/ResultLauncher.kt, domain-core/source/monad/Failure.kt | The mandatory error path for every use case body. One new Technical subtype, no structural change to the helper (its CancellationException hazard is flagged as a separate follow-up, not fixed here). |
+| ModelResourceMapper | logic | reuse | data-repository-impl/core/mapper/base/ModelResourceMapper.kt | The mapping shape for all four device mappers, with SidePanelWidthPreferenceMapperTest and ThemePreferenceMapperTest as the live commonTest precedent to copy. |
+| provideSettings() expect/actual DI pattern | data | reuse | data-preference-impl/src/commonMain/.../source/SettingsProvider.kt + 3 actuals | The exact mechanism being copied for provideDeviceSources(): internal expect fun Module.x() in commonMain/source/, one actual per platform in <platform>Main/source/ named X.<platform>.kt, called from the module's single public Koin module. |
+
+#### dataModel
+
+| entity | fields |
+| --- | --- |
+| DeviceId (data-device-api, value class, private constructor) | ["value: String"] |
+| DeviceCommand (data-device-api, closed sealed interface) | ["Screencap", "WmSize", "WmDensity", "GetProp(name: String)", "EmuAvdName"] |
+| DeviceResource (data-device-api) | ["id: DeviceId", "state: DeviceStateResource", "model: String?", "product: String?", "transport: String?", "isEmulator: Boolean"] |
+| DeviceStateResource (data-device-api, enum) | ["Device", "Unauthorized", "Offline", "NoPermissions", "Recovery", "Sideload", "Unknown"] |
+| AvdResource (data-device-api) | ["name: AvdName", "runningAs: DeviceId?"] |
+| ToolProbe (data-device-api) | ["kind: ToolKind", "found: Boolean", "path: String?", "version: String?", "probedPaths: List<String>", "installCommand: String", "envHint: String"] |
+| DeviceInfoResource (data-device-api) | ["widthPx: Int", "heightPx: Int", "densityDpi: Int", "model: String", "apiLevel: Int"] |
+| MirrorFrame (data-device-api) | ["bytes: ByteArray", "widthPx: Int", "heightPx: Int", "capturedAtMs: Long"] |
+| TransportStats (data-device-api) | ["fps: Float", "latencyMs: Long?", "droppedFrames: Int", "widthPx: Int", "heightPx: Int"] |
+| DeviceCommandException (data-device-api, public — the cause carried in Failure.Technical.Process) | ["argv: List<String>", "exitCode: Int?", "stderrTail: String"] |
+| DeviceModel (domain-core) | ["id: String", "displayName: String", "serial: String", "state: DeviceStateModel", "isEmulator: Boolean", "androidVersion: String?", "transportLabel: String?", "isSelectable: Boolean"] |
+| EmulatorModel (domain-core) | ["avdName: String", "isRunning: Boolean", "runningDeviceId: String?"] |
+| ToolModel (domain-core) | ["platform: PlatformModel", "isInstalled: Boolean", "version: String?", "path: String?", "probedPaths: List<String>", "installCommand: String"] |
+| DiscoveryModel (domain-core, sealed) | ["Detecting", "ToolMissing(tool, probedPaths, installCommand, envHint)", "NoDeviceFound(toolVersion, lastPollEpochMs, attempts, attachedCount)", "Found(physical: List<DeviceModel>, emulators: List<EmulatorModel>)"] |
+| MirrorFrameModel (domain-core) | ["bytes: ByteArray", "widthPx: Int", "heightPx: Int", "capturedAtMs: Long"] |
+| MirrorStatsModel (domain-core) | ["toolVersion: String", "widthPx: Int", "heightPx: Int", "fps: Float", "latencyMs: Long?", "droppedFrames: Int"] |
+| PlatformModel (domain-core, enum) | ["Android", "Ios"] |
+| MirrorUiState (presentation-feature-mirror) | ["platform: PlatformModel = Android", "tools: List<ToolModel> = emptyList()", "discovery: DiscoveryModel = Detecting", "isPickerOpen: Boolean = true", "highlightedIndex: Int = 0", "selectedDeviceId: String? = null", "session: SessionUiState = Idle", "stats: MirrorStatsModel? = null", "avds: List<EmulatorModel> = emptyList()", "selectedAvd: String? = null"] |
+
+#### interfaces
+
+| name | contract |
+| --- | --- |
+| DeviceCommandExecutor | public suspend fun run(device: DeviceId, command: DeviceCommand): ByteArray — the sole device-scoped execution path; throws DeviceCommandException on non-zero exit, timeout or missing binary. |
+| AdbHostSource | public suspend fun probe(): ToolProbe; public suspend fun listDevices(): List<DeviceResource> — deviceless adb calls only; a missing binary yields ToolProbe(found = false, …), never an exception. |
+| EmulatorSource | public suspend fun probe(): ToolProbe; public suspend fun listAvds(): List<AvdResource>; public suspend fun boot(avd: AvdName) — boot spawns detached and untimed; a lock-file non-zero exit for an already-running AVD is a no-op success. |
+| MirrorTransport | public fun frames(device: DeviceId): Flow<MirrorFrame>; public val stats: StateFlow<TransportStats> — FR-25's swap seam. Cancelling the collector stops the loop and destroys any in-flight child. |
+| DeviceRepository (domain-repository-api) | public suspend fun detectTools(): List<ToolModel>; public fun observeDiscovery(): Flow<DiscoveryModel>; public suspend fun bootEmulator(avdName: String); public fun mirror(deviceId: String): Flow<MirrorFrameModel>; public fun observeMirrorStats(): Flow<MirrorStatsModel> — domain models only, never data-layer resource types. |
+| DetectToolsUseCase | public suspend operator fun invoke(): Result<List<ToolModel>> |
+| ObserveDeviceDiscoveryUseCase | public operator fun invoke(): Flow<DiscoveryModel> — bare Flow, never Flow<Result<T>> (domain-layer.md). |
+| BootEmulatorUseCase | public suspend operator fun invoke(avdName: String): Optional |
+| StartMirroringUseCase | public operator fun invoke(deviceId: String): Flow<MirrorFrameModel> |
+| ObserveMirrorStatsUseCase | public operator fun invoke(): Flow<MirrorStatsModel> |
+| internal expect fun Module.provideDeviceSources() | Registers AdbHostSource, EmulatorSource, DeviceCommandExecutor and MirrorTransport singletons per platform; desktop registers the real implementations, android and iOS register UnsupportedDeviceSources. |
+| MirrorHost | @Composable public fun MirrorHost(viewModel: MirrorViewModel = koinViewModel(), content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit) — a host, not a screen: it owns no layout, it hands state down to whatever fills the shell slots. |
+
+#### stateManagement
+
+Orbit MVI in presentation-feature-mirror for UI semantics (MirrorContract/MirrorViewModel/MirrorContent + MirrorHost in place of the usual *Screen — a documented deviation, since this surface is a slot set rather than a navigation destination). Pixels deliberately bypass Orbit: MirrorViewModel decodes each PNG on Dispatchers.Default via decodeToImageBitmap() and publishes to a `public val frame: StateFlow<ImageBitmap?>` outside the reduced state, so up to 10 frames/second never become 10 reducer passes and 10 state copies. Stats are reduced on a separate 1s ticker, not per frame. The 2s discovery cadence lives in DeviceRepositoryImpl's flow, not in a ViewModel timer; session switching is flatMapLatest over the selected device, so rapid Start/Stop can never leave two capture loops alive. Lifetime is structural: window close → ViewModel cleared → viewModelScope cancelled → delay cancels → finally destroys children. Shell state (active tab, panel width) stays in F-1's ShellState, untouched.
+
+#### navigation
+
+- No Destination is added and NavigationHost is not touched — the desktop root is RectifyWindow, not the navigation graph, and this surface is a set of shell slots (the documented reason the entry point is MirrorHost, not MirrorScreen).
+- Stage content is a state branch, not a route: DevicePickerPanel when isPickerOpen, NoSignalStage when discovery is ToolMissing/NoDeviceFound/empty Found, MirrorFrameView while a session streams, and a deferred-platform notice when the switch is on iOS.
+- The toolbar DeviceChip reopens the same picker panel (AC-43); Escape closes it only when a device is already selected.
+- F-1's window-level Cmd+1/2/3 handler (handleShellShortcut) is unmodified; the picker owns unmodified keys only.
+
+#### affectedModules
+
+- NEW :data-device-api — library + di convention plugins; contracts, resource types and every pure parser.
+- NEW :data-device-impl — library + di; desktopMain process execution, tool resolution, transport; android/iOS unsupported actuals.
+- NEW :presentation-feature-mirror — feature + di; Orbit MVI, MirrorHost, pure picker/stats helpers.
+- :domain-core — device model package + Failure.Technical.Process.
+- :domain-repository-api — DeviceRepository.
+- :domain-usecase-api — five use case interfaces under source/usecase/device/.
+- :domain-usecase-impl — five impls + DomainUseCaseImplModule registration.
+- :data-repository-impl — DeviceRepositoryImpl, four mappers, DI registration, +implementation(projects.dataDeviceApi).
+- :presentation-core-ui — RadioMark extraction, SourceListRow `enabled` parameter, PlatformToolCard, EmulatorSelect, MirrorFrameView, DevicePickerPanel, NoSignalStage, CLAUDE.md tables.
+- :presentation-core-localisation — mirror_* keys in composeResources/values/strings.xml.
+- :compose-application — RectifyShellContent parameters and live slots, RectifyWindow injection, initKoin registration.
+- settings.gradle.kts — three includes, 24 → 27 modules.
+
+### projectContext
+
+#### reuseComponents
+
+| id | name | registryRef | note |
+| --- | --- | --- | --- |
+| SourceListRow | SourceListRow + SourceListHeader | presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/SourceListRow.kt | Picker rows and group headers. One additive parameter (`enabled: Boolean = true`); everything else reused as shipped. |
+| SegmentedButtonGroup | SegmentedButtonGroup | presentation-core-ui/.../kit/molecule/button/SegmentedButtonGroup.kt | FR-2 platform switch; already in the toolbar slot with the right items. |
+| DeviceChip | DeviceChip + DeviceChipState | presentation-core-ui/.../kit/molecule/chip/DeviceChip.kt | Toolbar deviceIndicator; Ready/Warn/Lost/None already match the four device situations. |
+| StatusIndicator | StatusIndicator + StatusIndicatorState | presentation-core-ui/.../kit/atom/indicator/StatusIndicator.kt | Status-bar leading slot; Connected/Offline/Standby/Active cover every F-2 state. |
+| AppButton | AppButton + AppButtonVariant + AppButtonSize | presentation-core-ui/.../kit/atom/button/ | Start mirroring CTA and inline Boot buttons; ListAction exists for in-row buttons. |
+| KeyCap | KeyCap | presentation-core-ui/.../kit/atom/keycap/KeyCap.kt | The '↑↓ select · ↵ start' hint. |
+| SectionHeader | SectionHeader | presentation-core-ui/.../kit/atom/text/SectionHeader.kt | Uppercase PLATFORM / SOURCE labels. |
+| ShellKit | RectifyWindowShell / ShellToolbar / ShellStatusBar / StageSurface / ShellState | presentation-core-ui/.../kit/organism/shell/ | Every surface filled; no shell component changes. |
+| ErrorCard | ErrorCard + CommandBlock + ErrorGlyph + GlyphBadge | presentation-core-ui/.../kit/organism/error/ErrorCard.kt, .../kit/molecule/command/CommandBlock.kt | Not used by F-2 — recorded because their existence is why comps 04/05 belong to F-3 and why F-2 must shape ToolProbe/DiscoveryModel to feed them. |
+| CounterBadge | CounterBadge | presentation-core-ui/.../kit/atom/badge/CounterBadge.kt | Toolbar stagedCounter stays at the F-1 stub (0 / Empty) — annotation owns it. |
+
+#### reuseAssets
+
+| id | name | registryRef | note |
+| --- | --- | --- | --- |
+| design-comps | Five cached comps | raw/design/01…05*.png | 01/03 picker, 02 NO SIGNAL are F-2's; 04/05 are F-3's and are read only to fix the data contract. |
+| poc-logic | rectify-poc Devices.kt | /Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Devices.kt | Parsing, capture and foldable-trim logic ported as pure functions; its flat structure and untyped errors discarded. |
+| phone-outline | Dashed phone outline geometry | presentation-core-ui/.../kit/organism/shell/StageSurface.kt (private StageSurfaceEmptyPreviewContent) | F-1 shipped it preview-only and left the real one to F-2 — port the geometry rather than re-deriving it. |
+
+#### reuseStyles
+
+| id | name | registryRef | note |
+| --- | --- | --- | --- |
+| Theme | Theme.color / spacing / typography / stroke / cornerToken / motion | presentation-core-styling (presentation.core.styling.core.Theme) | Every colour, dimension and text style in this spec comes from a token. Theme.color.bg for the picker panel (AC-43), Theme.color.stage for NO SIGNAL, Theme.typography.monoMeta for serials and the stat line. |
+| AppTheme | AppTheme(mode, reducedMotion) | presentation-core-styling/source/theme/AppTheme.kt | The single provider; every new @Preview wraps in it. |
+
+#### existingFeatures
+
+| id | name | registryRef | note |
+| --- | --- | --- | --- |
+| F-1 | app-shell-window-layout | .pipeline/sdd/docs/app-shell-window-layout/plan/plan.json | Merged to development; this spec fills its slots and must not alter its contracts. |
+| preferences | data-preference-api/impl + ConfigureRepository | data-preference-impl/ | The module shape, the expect/actual DI provider pattern, and the commonTest precedent being copied. |
+| orbit-features | presentation-feature-{about,home,onboarding,settings,splash} | presentation-feature-settings/ | The four-file Orbit shape and the exact build.gradle.kts dependency block being mirrored (minus navigation-api, which MirrorHost does not need). |
+
+#### newToBuild
+
+| id | name | note |
+| --- | --- | --- |
+| M-1 | :data-device-api | New Gradle module — contracts, resources, all pure parsers, probeCandidates, MirrorTuning, DeviceCommandException. |
+| M-2 | :data-device-impl | New Gradle module — the repository's only ProcessBuilder, ToolResolver, four source impls, expect/actual DI. |
+| M-3 | :presentation-feature-mirror | New Gradle module — Orbit MVI, MirrorHost, pure picker/stats helpers. |
+| U-1 | RadioMark (atom) | Extracted from SourceListRow's private copy; no visual change. |
+| U-2 | PlatformToolCard (molecule) | SelectableCard lacks a radio and a status-dot mono line, and has three live call sites. |
+| U-3 | EmulatorSelect (molecule) | The kit has no select/dropdown control at all. |
+| U-4 | MirrorFrameView (molecule) | Nothing in the kit draws a bitmap. |
+| U-5 | DevicePickerPanel (organism) | Comps 01/03's full-stage takeover; composes six existing components. |
+| U-6 | NoSignalStage (organism) | Comp 02; F-1 deliberately left it to F-2. |
+| D-1 | Failure.Technical.Process + device model package | domain-core additions. |
+| L-1 | mirror_* localisation keys | presentation-core-localisation/src/commonMain/composeResources/values/strings.xml. |
+
+### resources
+
+#### rules
+
+| ref | why |
+| --- | --- |
+| CLAUDE.md#build-commands | Per-module build commands; the Kotlin daemon is capped at 3GB so each implementation step names one module. |
+| .claude/rules/package-layout.md | core/ internal-only, source/ public, no empty core/ directory; explicitApi() polices the boundary at compile time. |
+| .claude/rules/domain-layer.md | Suspend one-shots return Result<T>, reactive use cases return a bare Flow<T>; repositories return domain models only. |
+| .claude/rules/error-handling.md | Every use case body goes through resultLauncher(errorMapper = Failure.Technical::Process); the three-layer error path must not be short-circuited. |
+| .claude/rules/koin-di.md | One public Koin module per Gradle module in di/<Name>Module.kt; initKoin order is data → domain → presentation and new entries append to their layer group. |
+| .claude/rules/orbit-mvi.md | The four-file feature shape (Contract/ViewModel/Screen/Content); MirrorHost replacing *Screen is a deviation that must be documented in the module's CLAUDE.md. |
+| .claude/rules/design-tokens.md | No literal Color(0x…), no raw .dp at a call site, no hardcoded TextStyle; strict atom → molecule → organism direction for the six new components. |
+| .claude/rules/compose-preview-convention.md | Every new content composable ends with a private @Preview wrapped in AppTheme and fed default state plus no-op callbacks. |
+| .claude/rules/testing.md | kotlin.test is wired by the convention plugins; parsers and pure helpers are the highest-value targets; don't write a test per thin use case wrapper. |
+| .claude/rules/convention-plugins.md | library+di for the two data modules, feature+di for the presentation module; SDK versions never hardcoded in a module build file. |
+| .claude/rules/platform-coverage.md | Every commonMain expect needs a desktopMain, androidMain and iosMain actual; desktop-only dependencies belong on desktopMain (F-1 shipped CON-1 by ignoring this). |
+| .claude/rules/version-catalog-hygiene.md | Zero new catalog entries; a cataloged dependency is not a wired one — which is why coroutines-test was verified in data-preference-impl's commonTest rather than assumed. |
+| .claude/rules/mappers.md | ModelResourceMapper pairs in data-repository-impl/core/mapper/, one internal object per resource type, and a mapper never throws. |
+| .claude/rules/preferences.md | Read for the api/impl module shape and the expect/actual provider pattern being copied, not for preferences themselves. |
+| .claude/rules/localisation.md | mirror_* keys go in presentation-core-localisation/composeResources/values/strings.xml; key convention is <feature>_<element>. |
+| .claude/rules/compose-resources-namespace.md | Generated accessors are rectify_kmp.<module>.generated.resources.* and appear on the next build — never hand-edited. |
+| .claude/rules/navigation.md | Read to confirm the opposite: no Destination is added, so none of its five-step checklist applies — recorded so a reviewer doesn't flag the omission. |
+| .claude/rules/database.md | Scanned for the api/impl + KSP-per-target precedent; no database work in this spec. |
+| .claude/rules/network.md | Scanned; confirms Failure.Technical.Network belongs to a future HTTP layer and is the wrong subtype for a host CLI failure. |
+| .claude/rules/icon-branding-placeholder.md | Scanned; no new icon assets are introduced by this spec. |
+| compose-application/CLAUDE.md | No feature logic or ViewModels in that module; DEMO_MODE stays false; initKoin order is load-order significant. |
+| presentation-core-ui/CLAUDE.md | The kit inventory to browse before authoring; its component tables must be updated with this spec's six additions (and the F-1 additions it still misses). |
+| data-preference-impl/CLAUDE.md | The reference module layout for an impl module with an expect/actual platform provider. |
+
+#### skills
+
+
+#### agents
+
+
+#### docs
+
+| ref | why |
+| --- | --- |
+| build-logic/convention/src/main/kotlin/.../FeatureConventionPlugin.kt:115 | Proves composeDependencies.components.resources is on every feature module's commonMain — the decodeToImageBitmap classpath answer, verified rather than assumed. |
+| data-preference-impl/build.gradle.kts:14-17 | Proves kotlinx-coroutines-test is genuinely wired in a commonTest block today; the new modules copy those two lines. |
+| .pipeline/sdd/docs/app-shell-window-layout/review/findings.json | F-1's shipped defects, two of which this spec must actively avoid repeating (CON-1 desktop-only deps in commonMain, PRF-1 the full-area dot-grid Canvas under a 10fps repaint). |
+| .pipeline/sdd/docs/app-shell-window-layout/plan/plan.json | The Stage 5 four-desktopTest command this spec extends, and the normalise-and-compare-landmarks method for measuring against comps. |
+
+### errorStates
+
+| state | behavior |
+| --- | --- |
+| loading | DiscoveryModel.Detecting on launch: StatusIndicator(Offline, 'Detecting tools…'), DeviceChip(None), stage shows the picker panel with the PLATFORM cards in a probing state and an empty SOURCE list. No spinner over the stage — detection is sub-second and a flash of chrome is worse than nothing. |
+| empty | DiscoveryModel.NoDeviceFound or Found with no selectable device: NoSignalStage on the dotted stage (dashed outline, 'Waiting for an Android device', the two numbered steps, EmulatorSelect + Boot, 'adb devices · polling every 2 s'), StatusIndicator(Standby, 'Waiting for device…'), DeviceChip(None). Polling continues every 2s; a device appearing switches the stage without user action (AC-4, SC-2). |
+| empty | Zero AVDs installed: EmulatorSelect renders disabled with an explanatory label rather than opening an empty menu, and the Boot button is disabled alongside it. |
+| error | DiscoveryModel.ToolMissing: StatusIndicator(Offline, 'adb not found'), the Android PlatformToolCard shows an offline dot and 'not found', and the typed state (with probedPaths and installCommand) is published for F-3. F-2 renders no Locate/Retry/Copy UI (AC-41, SC-6). |
+| error | Sustained empty polls: the stage keeps the passive NO SIGNAL state while NoDeviceFound(toolVersion, lastPollEpochMs, attempts, attachedCount) is published for F-3's escalated card. F-2 never escalates its own stage (AC-42, SC-7). |
+| error | Unauthorized or offline device attached: the row appears in the picker as non-selectable (SourceListRow enabled = false) with its state as the trailing label, arrow keys skip it, and the user is not told 'no device' while holding one. |
+| error | Failure.Technical.Process during a session (device vanished, non-zero exit, timeout, hung child): the session ends cleanly, DeviceChip flips to Lost, the stage returns to NO SIGNAL, and 2s discovery resumes. Reconnect UX is F-3's. |
+| error | Failure.Technical.Process during a one-shot (boot, detect, device info): a MirrorSideEffect.ShowError is posted and the previous state is kept; detection re-derives on the next poll. An already-running AVD's lock-file exit is treated as a no-op success, not an error. |
+| error | Platform switch moved to iOS: any Android session stops immediately, the stage shows a deferred-platform notice built from existing kit text styles, and the iOS PlatformToolCard still shows the detected idb probe (FR-2). |
+
+### observability
+
+#### logs
+
+- Kermit Logger.withTag("ToolResolver") at info once per launch: which tool resolved, at which path, after how many candidates — the single most useful line when a packaged .app misbehaves.
+- Logger.withTag("DeviceDiscovery") at debug on state TRANSITION only (Detecting→Found, Found→NoDeviceFound, attach/detach), never once per 2s poll — a poll that changes nothing logs nothing.
+- Logger.withTag("MirrorSession") at info on session start and stop with the device id and frame dimensions; at warn on Failure.Technical.Process with argv, exit code and the capped stderr tail.
+- Logger.withTag("ScreencapTransport") at debug once per 1s stats tick with achieved fps and cumulative dropped frames — never per frame.
+- No log line ever contains frame bytes, and the stderr tail is capped at MirrorTuning.StderrTailBytes (2KB) so a chatty tool cannot balloon a log.
+
+#### metrics
+
+- TransportStats.fps — achieved frames per second over the trailing 1s window (the number AC-45 requires to be real).
+- TransportStats.droppedFrames — cumulative captures skipped by the single-flight guard; the honest signal that the device is slower than the floor.
+- TransportStats.latencyMs — null for the polling transport; rendered as an explicit placeholder, never a fabricated number.
+- DiscoveryModel.NoDeviceFound.attempts and lastPollEpochMs — poll metadata, also F-3's comp-05 footer data.
+- ToolProbe.probedPaths.size — how many candidates were tried before resolution; feeds F-3's comp-04 footer.
+- Measured once in step 12 and recorded in the delivery notes, not emitted at runtime: per-frame capture round-trip (ms), decode time (ms), and end-to-end observed latency.
+
+#### analyticsEvents
+
+
+### accessibility
+
+| id | requirement |
+| --- | --- |
+| A11Y-1 | NFR-8 / AC-2: the device picker is fully operable from the keyboard — ↑/↓ move the highlight, Enter activates it, and nothing in the picker requires a pointer. |
+| A11Y-2 | Arrow keys skip non-selectable rows (unauthorized, offline, no-permissions) rather than landing on a row Enter cannot act on; the highlight clamps at the first and last selectable rows rather than wrapping silently. |
+| A11Y-3 | Enter on a shut-down emulator row Boots it rather than starting a mirror — there is nothing to mirror yet — and the keyboard hint reflects the highlighted row's actual action. |
+| A11Y-4 | Escape closes the picker only when a device is already selected; on first run there is nothing behind the panel, so Escape is an explicit no-op rather than an empty stage. |
+| A11Y-5 | The panel requests focus when it appears (FocusRequester in a LaunchedEffect) and returns focus to the stage when it closes, so keyboard control is never stranded. |
+| A11Y-6 | Device rows carry Role.RadioButton semantics (already true of SourceListRow) and a non-selectable row is announced as disabled, not merely dimmed. |
+| A11Y-7 | Status is never conveyed by colour alone: every status dot is paired with its text (adb 35.0.1, not found, Running, Waiting for device…), as the comps already show. |
+| A11Y-8 | MirrorFrameView carries a contentDescription naming the mirrored device, so the stage is not an unlabelled image. |
+
+### performanceBudget
+
+| metric | target |
+| --- | --- |
+| Discovery poll interval (FR-5) | 2000 ms exactly, from MirrorTuning.DiscoveryPollMs; the interval is between poll completions, so a slow adb cannot stack polls. |
+| Host command timeout (adb version, adb devices -l, device info) | 3000 ms via withTimeoutOrNull; a timeout yields Failure.Technical.Process, never a swallowed cancellation. Covers adb's 1–3s cold-start daemon case, which must not read as a failure. |
+| Capture floor (fps ceiling) | 100 ms minimum between capture issues (MirrorTuning.CaptureFloorMs) — a 10 fps ceiling. The loop is adaptive: it re-issues as soon as the previous frame is decoded, so the floor only bites on a fast device. |
+| Per-capture timeout | 5000 ms (MirrorTuning.CaptureTimeoutMs); the child is destroyForcibly()'d in finally and the frame is counted as dropped. |
+| Captures in flight | Exactly 1. A capture still running when the next issue is due increments TransportStats.droppedFrames instead of spawning a second adb child. |
+| Expected achieved capture rate (v1 polling transport) | 3–7 fps and ~250–500 ms per frame on a 1080p device over USB — AN ESTIMATE CARRIED FROM BRAINSTORM. Step 12 replaces it with a measured number plus the device model, resolution and link type; the MirrorTuning floor is then justified against that measurement. |
+| PNG decode | < 40 ms per 1080p frame on Dispatchers.Default; measured in step 12 alongside the capture rate. Decode never runs on the Compose/AWT thread, so a slow decode drops the frame rate but never freezes the window. |
+| Glass-to-glass latency (NFR-1) | <150 ms is the requirement and v1 KNOWINGLY DOES NOT MEET IT. The polling transport cannot even measure it end-to-end, so TransportStats.latencyMs is null and the status bar shows an explicit placeholder (AC-45). The waiver is recorded and flagged for re-review before ship. |
+| Status-bar update cadence (AC-25, AC-45) | Exactly 1000 ms (MirrorTuning.StatsTickMs) — 'at least once per second' satisfied by a dedicated ticker, decoupled from the frame rate so a 3 fps stream still updates its stats 1/s. |
+| Status-bar content | Tool version and resolution unconditionally; resolution read from the CURRENT frame so rotation is followed rather than cached at connect time; fps = achieved rate; a one-word 'polling' hint next to fps; latency as '—'. Dropped frames are carried in the model but not shown in v1's status bar. |
+| Orbit reducer passes per second while streaming | ≤ 1 for stats plus whatever semantic events occur — never one per frame. Frames reach the UI through a StateFlow<ImageBitmap?> outside the reduced state. |
+| Process hygiene | Zero orphaned adb children after an abrupt window close (live-child registry + one shutdown hook + destroyForcibly in finally). The adb server daemon is never killed. |
+| Test suite runtime | The seven :desktopTest tasks complete in well under a minute on a warm daemon — all pure JVM, no Compose UI harness, no device, no real process spawned. |
+
+### i18n
+
+#### locales
+
+- en
+
+#### strings
+
+- mirror_picker_title — Choose what to mirror
+- mirror_picker_subtitle — Switch platform or device any time from the toolbar.
+- mirror_section_platform — PLATFORM
+- mirror_section_source — SOURCE
+- mirror_source_summary — %1$d found · adb devices -l
+- mirror_group_physical — Physical device
+- mirror_group_emulator — Emulator
+- mirror_row_boot — Boot
+- mirror_row_running — Running
+- mirror_row_shut_down — shut down
+- mirror_hint_keys — ↑↓ select · ↵ start
+- mirror_action_start — Start mirroring
+- mirror_no_signal_label — NO SIGNAL
+- mirror_waiting_title — Waiting for an Android device
+- mirror_waiting_subtitle — Mirroring starts on its own as soon as adb sees one.
+- mirror_waiting_step_usb — Plug in a phone with USB debugging on and accept the prompt.
+- mirror_waiting_step_emulator — Or boot an emulator
+- mirror_waiting_footer — adb devices · polling every 2 s
+- mirror_status_detecting — Detecting tools…
+- mirror_status_waiting — Waiting for device…
+- mirror_status_ready — ready
+- mirror_status_tool_missing — adb not found
+- mirror_status_latency_placeholder — latency —
+- mirror_status_polling_hint — polling
+- mirror_tool_not_found — not found
+- mirror_ios_deferred — iOS mirroring arrives in a later release. idb is detected so you can see it is installed.
+- mirror_emulator_none — No AVDs installed
+
+#### notes
+
+All keys go in presentation-core-localisation/src/commonMain/composeResources/values/strings.xml with the mirror_ prefix, per localisation.md's <feature>_<element> convention; accessors appear as Res.string.mirror_* on the next build with no registration step. Only values/ (English) exists today and this spec does not add a second locale. The comps give English only. Mono technical fragments that are literally command output or tool names (adb devices -l, the resolution, the fps number, a serial) are NOT localised — they are machine output, and the mono type style marks them as such.
+
+### security
+
+#### dataHandling
+
+- NFR-5 is enforced by API shape at five independent points, any one of which would have to be deliberately dismantled to break it: (1) DeviceId is a value class with a PRIVATE constructor whose only factory, DeviceId.of(raw), rejects blank, whitespace-bearing, leading-dash and out-of-charset input — an arbitrary string cannot become a device id; (2) DeviceCommand is a CLOSED sealed set of five cases with no vararg, no free-text and no scrcpy member, so there is no 'run this string' API anywhere in the dependency graph and argument injection is not a category that exists; (3) DeviceCommandExecutor has exactly one method and one overload, run(device: DeviceId, command: DeviceCommand) — the device parameter is non-optional and cannot be defaulted; (4) buildDeviceArgv is the single argv construction point in the repository and always emits [adbPath, "-s", device.value, …], asserted by a test over every DeviceCommand variant (AC-44); (5) ProcessRunner is internal, lives in data-device-impl/src/desktopMain, and is unreachable from any other module by the combination of module boundary, internal, and explicitApi().
+- Remote targets are unrepresentable rather than merely forbidden: adb connect, -H and -P have no DeviceCommand case and no AdbHostSource method, so no code path can address a device over the network. Adding one would be a visible, reviewable change to a public sealed hierarchy in data-device-api.
+- The deviceless surface (adb --version, adb devices -l, emulator -list-avds, emulator -avd) is enumerated on two separate interfaces precisely so that 'this command has no device' is an auditable exception with five named members, rather than a nullable parameter on the device executor that every future call site could pass null to.
+- Frame bytes live only in memory, are never written to disk or a temp file in v1, and are released as soon as the next frame replaces them. Nothing in this spec persists a screenshot.
+- Process stderr is captured for diagnostics but capped at 2KB (MirrorTuning.StderrTailBytes) before it enters DeviceCommandException, so a chatty or hostile tool cannot flood a log or a Failure message.
+- Stage 5 inspection, not just a test: grep the repository for ProcessBuilder and for `-s` argv construction, and assert exactly one file matches each.
+
+#### permissions
+
+- No new OS permissions. The app reads environment variables (ANDROID_HOME, ANDROID_SDK_ROOT, HOME, PATH), checks file executability on the probed candidate paths, and spawns the user's own adb/emulator binaries — all ordinary user-level operations on macOS.
+- USB debugging authorisation stays entirely with the device and adb; Rectify never bypasses or suppresses the on-device prompt, and an unauthorized device is surfaced as a non-selectable row with its real state.
+
+#### privacy
+
+- A mirrored screen can contain anything the user has on their phone. v1 keeps frames in memory only, ships no telemetry, and emits no analytics event (there is no analytics layer in this repo at all).
+- Log lines never contain frame data, and device serials appear only in local debug logs — never transmitted anywhere, because nothing in this spec transmits.
+- ToolProbe.probedPaths contains local filesystem paths and is exposed to F-3 for the comp-04 diagnostics footer; that is on-screen local diagnostics for the user's own machine, not data leaving it.
+
+### rollout
+
+#### featureFlags
+
+
+#### migrations
+
+
+#### backwardCompatibility
+
+No persisted data changes: no new preference key, no database change, no stored format. RectifyShellContent's three new parameters are all defaulted (MirrorUiState(), null, {}), so the F-1 render harness and every existing call site keep compiling unchanged. Adding Failure.Technical.Process to a sealed hierarchy is source-compatible for every current consumer because nothing in the repo branches exhaustively on Failure.Technical today (verify by grep before the change, per step 1). RadioMark's extraction from SourceListRow is a pure refactor with no visual or API change to SourceListRow's existing parameters, and SourceListRow's new `enabled` parameter is defaulted true. The android and iOS actuals of provideDeviceSources() register unsupported no-op sources so the Koin graph still resolves and the iOS framework still links (NFR-10). No feature flag is introduced because the repo has no flag mechanism and one surface cannot be half-shipped: the shell either has a live stage or it has F-1's stub.
+
+### knownRisksFromQA
+
+| bugRef | description | watchFor | mitigation |
+| --- | --- | --- | --- |
+| .pipeline/sdd/docs/app-shell-window-layout/review/findings.json#CON-1 | F-1 added compose.material3 and kermit to compose-application's commonMain although only desktopMain consumes them, pulling them into the Android and iOS compile/link graphs for nothing. | The identical mistake in the three new modules: anything the desktop actual alone needs (java.util.prefs-style JVM APIs, ProcessBuilder, skiko) must be declared on desktopMain, never commonMain. data-device-impl is the highest-risk module here. | Each new build.gradle.kts mirrors data-preference-impl's shape: commonMain holds only the shared contracts and Koin; platform-only dependencies go in the matching source-set block. Step 13 greps each new module's commonMain for JVM-only imports. |
+| .pipeline/sdd/docs/app-shell-window-layout/review/findings.json#PRF-1 | StageSurface's dot-grid Canvas draws the full stage area on every pass (flagged minor, unverified in F-1). | At up to 10 fps the grid is now repainted ten times a second behind an opaque image. If frame time in step 12 looks worse than decode plus capture explains, the grid is the suspect — and it will be misdiagnosed as transport latency. | Measure frame time in step 12 explicitly. MirrorFrameView draws opaque over the area it covers. If the grid is material, raise a scoped follow-up against presentation-core-ui rather than editing StageSurface inside this slice. |
+| .pipeline/sdd/docs/app-shell-window-layout/validation/verdict.json#commonTest-backtick-names | F-1 shipped commonTest function names containing commas/apostrophes in backticks; they compile on the JVM and fail compileTestKotlinIosArm64, breaking the repo-wide build. | This spec adds more test files than any before it (roughly a dozen), and descriptive names are exactly where punctuation creeps in. | Plain-word backtick names with no punctuation at all, stated in each new module's CLAUDE.md, and an explicit iOS test-compile step (step 13) before the slice is declared done. |
+| .pipeline/sdd/docs/app-shell-window-layout/review/findings.json#COR-3 | F-1 shipped a ViewModel whose state did not match a mapper's documented fallback (ThemePreferenceMapper Light→System), i.e. a contract drift between layers that no test caught. | The same class of drift between DiscoveryModel's documented semantics and DeviceRepositoryImpl's escalation logic — especially 'empty Found escalates to NoDeviceFound after N polls' and 'ToolMissing is a success value, not an error'. | DeviceDiscoveryPollingTest asserts the escalation boundary directly with virtual time, and ToolMissing is asserted to arrive as a success value through the use case rather than as a Result.failure. |
+| preparation/preparation.json#openRisks[10] | Pre-existing repo hazard, QA-visible but unfixed: resultLauncher catches Throwable, which includes CancellationException, so any withTimeout inside a use case would convert genuine parent-scope cancellation into a Failure. | Any withTimeout (not withTimeoutOrNull) introduced in this spec's use cases or repository, and any new catch (Throwable) around cancellable I/O. This is the first spec in the repo with long-running cancellable work, so it is the first one where the latent bug can actually fire. | withTimeoutOrNull everywhere, with the reason stated in a comment at each site so nobody 'simplifies' it back. Fixing resultLauncher itself touches every existing use case and is raised as an explicit follow-up, not folded into this slice. |
+
+### implementationPlan
+
+| step | title | dependsOn | linkedAC | estimate | changes | verification |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | domain-core: device model vocabulary + Failure.Technical.Process | [] | ["AC-41", "AC-42", "AC-45"] | S | Add source/model/device/{DeviceModel,EmulatorModel,ToolModel,DiscoveryModel,MirrorFrameModel,MirrorStatsModel,DeviceStateModel,PlatformModel}.kt and one data class to source/monad/Failure.kt. Grep `is Failure.Technical` and `when (failure)` first to confirm nothing branches exhaustively today. | ./gradlew :domain-core:build then ./gradlew :domain-usecase-impl:build — both compile, no exhaustiveness break. |
+| 2 | data-device-api module: contracts, resources, and EVERY pure parser | [1] | ["AC-2", "AC-41", "AC-44"] | L | New module (library + di plugins, commonMain: implementation(projects.dataCore); commonTest: libs.kotlinx.coroutines.test). Add `include(":data-device-api")` to settings.gradle.kts under the data group. Files: source/model/{DeviceId,DeviceCommand,DeviceResource,DeviceStateResource,AvdResource,AvdName,ToolProbe,ToolKind,DeviceInfoResource,MirrorFrame,TransportStats}.kt, source/datasource/{DeviceCommandExecutor,AdbHostSource,EmulatorSource,MirrorTransport}.kt, source/parse/{AdbDevicesParser,WmOutputParser,AvdListParser,PngTrim,DeviceArgv}.kt, source/tool/ToolProbeCandidates.kt, source/tuning/MirrorTuning.kt, source/error/DeviceCommandException.kt. No core/ directory — nothing here is internal. | ./gradlew :data-device-api:build; the module has zero platform-specific source sets. |
+| 3 | data-device-api commonTest: the no-phone test suite | [2] | ["AC-2", "AC-41", "AC-44"] | M | AdbDevicesParserTest (physical + emulator + unauthorized + offline + no-permissions fixtures, header line, blank trailing lines), WmOutputParserTest (physical only vs physical+override — assert override wins, with a comment so nobody 'fixes' it), AvdListParserTest, PngTrimTest (clean PNG, foldable warning prefix, garbage with no signature), DeviceArgvTest (every DeviceCommand variant yields argv[1]=="-s" && argv[2]==id — this IS AC-44), DeviceIdTest (of() rejects blank, whitespace, leading dash, out-of-charset; accepts real serials and emulator-5554), ToolProbeCandidatesTest (empty env, ANDROID_HOME set, Homebrew-only, PATH-only — asserts exact order). | ./gradlew :data-device-api:desktopTest green; ./gradlew :data-device-api:compileTestKotlinIosArm64 green (backtick-name trap). |
+| 4 | data-device-impl module: the repository's only ProcessBuilder | [2] | ["AC-1", "AC-3", "AC-44"] | L | New module (library + di; `include(":data-device-impl")`). commonMain: source/DeviceSourcesProvider.kt (internal expect fun Module.provideDeviceSources()), di/DataDeviceImplModule.kt (public val dataDeviceImplModule), core/unsupported/UnsupportedDeviceSources.kt. desktopMain: core/process/ProcessRunner.kt (internal — runInterruptible(Dispatchers.IO), two concurrent drains, withTimeoutOrNull, destroyForcibly in finally, live-child registry + one shutdown hook), core/tool/ToolResolver.kt (internal — applies an executable predicate to probeCandidates()), source/datasource/{AdbHostSourceImpl,EmulatorSourceImpl,DeviceCommandExecutorImpl}.kt, source/transport/ScreencapMirrorTransport.kt, source/DeviceSourcesProvider.desktop.kt. androidMain + iosMain: DeviceSourcesProvider.{android,ios}.kt registering UnsupportedDeviceSources. Nothing JVM-only in commonMain (F-1's CON-1). | ./gradlew :data-device-impl:build; grep confirms ProcessBuilder appears in exactly one file repo-wide and that it is internal and under desktopMain. |
+| 5 | data-repository-impl: DeviceRepositoryImpl, mappers, and the 2s polling flow | [1, 2] | ["AC-2", "AC-4", "AC-41", "AC-42"] | M | Add implementation(projects.dataDeviceApi) to build.gradle.kts. core/mapper/{DeviceResourceMapper,EmulatorResourceMapper,ToolProbeMapper,MirrorFrameMapper}.kt as internal ModelResourceMapper objects. source/DeviceRepositoryImpl.kt: the flow{ emit(poll()); delay(DiscoveryPollMs) } discovery loop, AVD de-duplication (an AVD both listed and running appears once, as Running), the empty-poll counter escalating into NoDeviceFound with lastPollEpochMs/attempts/attachedCount, and ToolMissing produced as a SUCCESS value. Register in DataRepositoryImplModule. | ./gradlew :data-repository-impl:build. |
+| 6 | data-repository-impl commonTest: mappers + virtual-time polling | [5] | ["AC-41", "AC-42"] | M | DeviceResourceMapperTest and EmulatorResourceMapperTest next to the existing preference mapper tests (same shape). DeviceDiscoveryPollingTest with runTest virtual time over a fake AdbHostSource: emits at 2s intervals; N empty polls escalate to NoDeviceFound with the right attempts; an attach between polls produces Found without resetting anything; a missing adb produces ToolMissing as a success value, not a failure. | ./gradlew :data-repository-impl:desktopTest green. |
+| 7 | domain layer: DeviceRepository + five use cases | [1, 5] | ["AC-1", "AC-3", "AC-4", "AC-25"] | M | domain-repository-api/source/repository/DeviceRepository.kt. domain-usecase-api/source/usecase/device/{DetectToolsUseCase,ObserveDeviceDiscoveryUseCase,BootEmulatorUseCase,StartMirroringUseCase,ObserveMirrorStatsUseCase}.kt — one operator invoke each, Result<T> for suspend, bare Flow<T> for reactive. domain-usecase-impl: five impls, every suspend body through resultLauncher(errorMapper = Failure.Technical::Process), withTimeoutOrNull only (with the reason in a comment). Register all five in DomainUseCaseImplModule. | ./gradlew :domain-repository-api:build :domain-usecase-api:build then ./gradlew :domain-usecase-impl:build. |
+| 8 | Koin wiring: register the device data module in the correct position | [4, 5, 7] | ["AC-1"] | S | compose-application/commonMain/.../di/InitKoin.kt: add dataDeviceImplModule to the data group, placed AFTER dataDatabaseImplModule and BEFORE dataRepositoryImplModule — a deliberate refinement of brainstorm step 6, since dataRepositoryImplModule consumes the device sources and koin-di.md treats intra-group order as significant (Koin's own resolution is lazy, so this is defensive, and the comment says so). | ./gradlew :desktop-application:run launches and the Koin graph resolves with no 'No definition found'. |
+| 9 | presentation-core-ui: one extraction, one amendment, five new components | [] | ["AC-2", "AC-4", "AC-43"] | L | Extract RadioMark to kit/atom/indicator/RadioMark.kt and point SourceListRow at it (no visual change). Add `enabled: Boolean = true` to SourceListRow (dims and drops the clickable). New: kit/molecule/card/PlatformToolCard.kt, kit/molecule/select/EmulatorSelect.kt, kit/molecule/mirror/MirrorFrameView.kt, kit/organism/picker/DevicePickerPanel.kt (opaque Theme.color.bg fill, FocusRequester + onPreviewKeyEvent on the root, stateless — it reports key intents and holds no selection), kit/organism/stage/NoSignalStage.kt (port the dashed-outline geometry from StageSurface's private preview). Every file ends with a private @Preview in AppTheme. Tokens only — no Color(0x…), no raw .dp, no inline TextStyle. Update presentation-core-ui/CLAUDE.md tables (including the F-1 additions they still miss). | ./gradlew :presentation-core-ui:build; then compare the picker and NO SIGNAL previews against comps 01/02/03 with F-1's normalise-and-compare-landmarks method and record deviations. |
+| 10 | presentation-core-localisation: mirror_* keys | [] | ["AC-4", "AC-43"] | S | Add the 27 mirror_* keys from the i18n section to src/commonMain/composeResources/values/strings.xml. Machine output (commands, serials, resolutions, fps) stays unlocalised by design. | ./gradlew :presentation-core-localisation:build; Res.string.mirror_* accessors generate. |
+| 11 | presentation-feature-mirror: the Orbit state machine | [7, 9, 10] | ["AC-2", "AC-3", "AC-4", "AC-41", "AC-42", "AC-45"] | L | New module (feature + di; `include(":presentation-feature-mirror")`; deps mirror presentation-feature-settings minus navigation-api; commonTest adds libs.kotlinx.coroutines.test). source/mirror/{MirrorContract,MirrorViewModel,MirrorHost,MirrorContent}.kt — MirrorHost replaces the usual *Screen because no Destination exists (documented in the module CLAUDE.md). core/picker/PickerNavigation.kt and core/stats/StatsFormatter.kt as internal pure helpers. di/PresentationFeatureMirrorModule.kt. The ViewModel owns: the polling gate (discovery PAUSES while a session streams — resolving open question 6), flatMapLatest session switching, decode on Dispatchers.Default via decodeToImageBitmap(), the public StateFlow<ImageBitmap?> outside Orbit state, and the 1s stats ticker. | ./gradlew :presentation-feature-mirror:build. |
+| 12 | MEASURE the real capture rate and latency — the gate decision 9 demands | [4, 11] | ["AC-25", "AC-45"] | S | With a real device attached, run the desktop app and record over a 60-second session: achieved fps (from TransportStats, not a stopwatch), mean and p95 per-frame capture round-trip, mean decode time, dropped-frame count, and observed end-to-end latency by the wave test (move a hand in front of the camera / watch a running stopwatch on the device against the mirror). Record the device model, screen resolution and link type (USB 2/3, wifi). Then set MirrorTuning.CaptureFloorMs from the measurement rather than keeping 100 ms by default, and write the numbers plus the NFR-1 waiver into the spec's delivery notes. Also time one frame end-to-end with the dot grid visible vs covered, to settle the PRF-1 suspicion. | The delivery notes contain real numbers with their conditions. An estimate in this slot fails the step — decision 9 is explicit that the number must be measured. |
+| 13 | presentation-feature-mirror commonTest: state machine + pure helpers | [11] | ["AC-2", "AC-3", "AC-41", "AC-42"] | M | PickerNavigationTest (skips non-selectable rows, clamps at both ends, empty list is a no-op), StatsFormatterTest (latency placeholder when null, real value when present, resolution follows the frame), MirrorViewModelDiscoveryTest (ToolMissing → tool-missing state + offline indicator; sustained empty polls → NoDeviceFound with metadata; devices found → picker populated and the first selectable row highlighted), MirrorViewModelSessionTest (arrow+Enter selects and starts; Enter on a cold emulator Boots instead; device lost → session ends, chip Lost, polling resumes; platform switch to iOS stops the session; arrow/Enter intents carry no meta semantics). Dispatchers.setMain(StandardTestDispatcher) + advanceUntilIdle; NO orbit-test, NO turbine. Plain-word backtick names only. | ./gradlew :presentation-feature-mirror:desktopTest and :presentation-feature-mirror:compileTestKotlinIosArm64 both green. |
+| 14 | compose-application: make every shell slot live | [8, 9, 11] | ["AC-1", "AC-3", "AC-4", "AC-25", "AC-43", "AC-45"] | M | RectifyWindow.kt: resolve MirrorViewModel through MirrorHost, collect state and frame, pass them plus onIntent into RectifyShellContent. RectifyShellContent gains exactly three DEFAULTED parameters and fills: platformSwitch (real index + callback), deviceIndicator (real name/state, onClick reopens the picker — AC-43), statusBar leading (StatusIndicator + the inline mono stat Row, formatted by StatsFormatter — resolving open question 5: inline Row for v1, no new molecule), stage (DevicePickerPanel \| NoSignalStage \| MirrorFrameView \| iOS notice). Append presentationFeatureMirrorModule to the END of the presentation group in initKoin. | grep RectifyWindow.kt for koin/awt/kotlinx.coroutines imports inside RectifyShellContent's reachable set — zero; ./gradlew :compose-application:build; ./gradlew :desktop-application:run. |
+| 15 | Full verification sweep and docs | [3, 6, 13, 14] | ["AC-1", "AC-2", "AC-3", "AC-4", "AC-25", "AC-41", "AC-42", "AC-43", "AC-44", "AC-45"] | M | Run the seven desktopTest tasks and the three iOS test-compiles. Walk the demo path manually (launch → tool dots → picker → keyboard select → Start mirroring → live stage → stats ticking ≥1/s → unplug → NO SIGNAL → Boot an emulator). Confirm zero diff in gradle/libs.versions.toml. Add CLAUDE.md for the three new modules (each stating the plain-backtick-names rule and, for presentation-feature-mirror, the MirrorHost-not-MirrorScreen deviation). Record the measured numbers and the re-flagged NFR-1 waiver in the delivery notes. | ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest — all green, run module-group by module-group if the 3GB daemon complains. |
+
+### testStrategy
+
+#### unit
+
+- data-device-api/src/commonTest/kotlin/data/device/api/AdbDevicesParserTest.kt — physical + emulator + unauthorized + offline + no-permissions fixtures captured from real `adb devices -l` output; asserts the typed state column survives and that non-`device` entries are kept, not dropped (the poc's bug). Covers AC-2.
+- data-device-api/src/commonTest/kotlin/data/device/api/WmOutputParserTest.kt — `Physical size:` alone, and `Physical size:` + `Override size:` together; asserts the override wins, with the reason in the test name so nobody 'fixes' it. Also wm density. Feeds AC-25/AC-45's resolution field.
+- data-device-api/src/commonTest/kotlin/data/device/api/AvdListParserTest.kt — names with underscores and digits, a blank list, and the stray INFO lines the emulator binary sometimes prints.
+- data-device-api/src/commonTest/kotlin/data/device/api/PngTrimTest.kt — a clean PNG, a PNG behind a foldable warning line, and a buffer with no signature at all (must not throw).
+- data-device-api/src/commonTest/kotlin/data/device/api/DeviceArgvTest.kt — THE AC-44 test: for every DeviceCommand variant, buildDeviceArgv yields argv[1] == "-s" and argv[2] == the supplied DeviceId, and buildHostArgv never contains "-s".
+- data-device-api/src/commonTest/kotlin/data/device/api/DeviceIdTest.kt — of() rejects blank, whitespace-bearing, leading-dash and out-of-charset input and accepts a real serial and emulator-5554; the private constructor means these are the only entry points. Supports AC-44.
+- data-device-api/src/commonTest/kotlin/data/device/api/ToolProbeCandidatesTest.kt — exact ordering for an empty env, ANDROID_HOME set, ANDROID_SDK_ROOT set, Homebrew-only, and PATH-only; this is the unit test that covers the packaged-.app PATH risk without a filesystem.
+- data-repository-impl/src/commonTest/kotlin/data/repository/impl/DeviceResourceMapperTest.kt and EmulatorResourceMapperTest.kt — resource→model in the shape of the existing SidePanelWidthPreferenceMapperTest, including the AVD-listed-and-running de-duplication.
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PickerNavigationTest.kt — nextSelectableIndex skips non-selectable rows, clamps at both ends, and no-ops on an empty list. Supports AC-2 and A11Y-2.
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/StatsFormatterTest.kt — latency renders as the placeholder when null and as a number when present, the polling hint appears for the v1 transport, and resolution comes from the current frame. Supports AC-45.
+
+#### integration
+
+- data-repository-impl/src/commonTest/kotlin/data/repository/impl/DeviceDiscoveryPollingTest.kt — runTest virtual time over a fake AdbHostSource: emissions land at 2s intervals (FR-5); N consecutive empty polls escalate into NoDeviceFound carrying attempts and lastPollEpochMs (AC-42); a device attaching between polls yields Found on the next tick; a missing adb yields ToolMissing as a SUCCESS value (AC-41), not a Result.failure.
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelDiscoveryTest.kt — against fake use cases: ToolMissing → tool-missing state and an offline indicator (AC-41); sustained empty polls → NoDeviceFound surfaced with metadata while the stage stays on NO SIGNAL (AC-42, SC-7); Found → picker populated with Physical and Emulator groups and the first selectable row highlighted (AC-2).
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelSessionTest.kt — arrow keys then Enter select a device and start a session with frames flowing (AC-3, SC-1); Enter on a shut-down emulator Boots instead of starting; a transport failure ends the session, flips the chip to Lost and resumes polling; switching to iOS stops the session; rapid start/stop leaves exactly one collector (flatMapLatest); arrow/Enter intents never carry meta semantics.
+- No test spawns a real process, touches a real filesystem path, or requires a device — AS-7 is structural, achieved by the api/impl split rather than by mocking frameworks (there are none in this repo).
+
+#### ui
+
+- No automated Compose UI tests: the repo has no UI test harness and adding one is out of scope and out of the zero-new-dependency budget. Visual verification is (a) a private @Preview per new component in AppTheme, and (b) F-1's normalise-and-compare-landmarks method against comps 01/02/03, which found two real pixel defects in F-1 and is the recorded method here too.
+- Demo-only by honest necessity (no headless CI harness exists for the desktop app): AC-1 (tool dots at launch), AC-4 (NO SIGNAL with inline Boot), AC-25 and AC-45 (status bar updating ≥1/s with real fps and placeholder latency), AC-43 (picker on Theme.color.bg filling the stage, reopened from the DeviceChip). Each is walked manually in step 15 against ./gradlew :desktop-application:run and recorded.
+- Test-verifiable despite their UI surface, because the logic was deliberately put where tests can reach it: AC-2 (sections + keyboard selection — parser plus PickerNavigation plus VM state), AC-3 (start mirroring — VM session test), AC-41/AC-42 (typed states — repository and VM tests), AC-44 (argv shape — pure parser test plus a grep inspection).
+- Inspection-verified (grep, not a test): exactly one ProcessBuilder in the repository; RectifyShellContent free of Koin/AWT/coroutine imports; zero diff in gradle/libs.versions.toml; no JVM-only import in any new commonMain.
+
+#### linkedScenarios
+
+- SC-1
+- SC-2
+- SC-6
+- SC-7
+
+#### coverageGoal
+
+Every pure function this spec adds (7 parser/argv/probe functions, 2 presentation helpers) has a direct test; every typed state transition in DiscoveryModel has a test; every AC marked 'test' in the PRD is covered by a named test file. No coverage percentage target — the repo has no coverage tooling and adding one is a new dependency. The honest ceiling is stated rather than hidden: the ProcessRunner itself, ToolResolver's filesystem predicate, the real screencap loop and all five demo ACs are NOT automated, because they need a process, a filesystem or a human eye; they are covered by step 12's measurement and step 15's recorded manual walkthrough. Stage 5 command (F-1's four tasks plus this spec's three): ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest — plus ./gradlew :data-device-api:compileTestKotlinIosArm64 :data-device-impl:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64 for the backtick-name trap. Run in two halves if the 3GB daemon complains.
+
+### traceabilityMatrix
+
+| ac | functional | components | tests | steps |
+| --- | --- | --- | --- | --- |
+| AC-1 | ["FR-1", "FR-2"] | ["ToolResolver", "probeCandidates", "AdbHostSource", "EmulatorSource", "ToolModel", "DetectToolsUseCase", "PlatformToolCard", "StatusIndicator", "RectifyShellContent (amended)"] | ["ToolProbeCandidatesTest", "step 15 manual demo walkthrough (demo-only: no headless harness)"] | [4, 7, 9, 14, 15] |
+| AC-2 | ["FR-3"] | ["parseAdbDevices", "DeviceResourceMapper", "DiscoveryModel.Found", "DevicePickerPanel", "SourceListRow (amended)", "SourceListHeader", "PickerNavigation", "MirrorViewModel"] | ["AdbDevicesParserTest", "DeviceResourceMapperTest", "PickerNavigationTest", "MirrorViewModelDiscoveryTest", "MirrorViewModelSessionTest", "SC-1"] | [3, 5, 9, 11, 13] |
+| AC-3 | ["FR-4", "FR-24", "FR-25"] | ["MirrorTransport", "ScreencapMirrorTransport", "StartMirroringUseCase", "MirrorViewModel", "MirrorFrameView"] | ["MirrorViewModelSessionTest", "SC-1", "step 12 measured session"] | [4, 7, 11, 12, 13, 14] |
+| AC-4 | ["FR-5"] | ["DeviceRepositoryImpl polling flow", "ObserveDeviceDiscoveryUseCase", "NoSignalStage", "EmulatorSelect", "BootEmulatorUseCase"] | ["DeviceDiscoveryPollingTest", "SC-2", "step 15 manual demo walkthrough (demo-only)"] | [5, 6, 7, 9, 14, 15] |
+| AC-25 | ["FR-22"] | ["TransportStats", "MirrorStatsModel", "ObserveMirrorStatsUseCase", "StatsFormatter", "RectifyShellContent status bar Row", "MirrorTuning.StatsTickMs"] | ["StatsFormatterTest", "step 12 measurement", "step 15 manual demo walkthrough (demo-only)"] | [7, 11, 12, 14, 15] |
+| AC-41 | ["FR-1"] | ["ToolProbe", "DiscoveryModel.ToolMissing", "DeviceRepositoryImpl", "DetectToolsUseCase", "MirrorViewModel", "StatusIndicator"] | ["ToolProbeCandidatesTest", "DeviceDiscoveryPollingTest (ToolMissing arrives as a success value)", "MirrorViewModelDiscoveryTest", "SC-6"] | [1, 4, 5, 6, 11, 13] |
+| AC-42 | ["FR-5"] | ["DiscoveryModel.NoDeviceFound", "DeviceRepositoryImpl empty-poll counter", "MirrorViewModel"] | ["DeviceDiscoveryPollingTest (escalation boundary, attempts, lastPollEpochMs)", "MirrorViewModelDiscoveryTest", "SC-7"] | [1, 5, 6, 11, 13] |
+| AC-43 | ["FR-3"] | ["DevicePickerPanel (opaque Theme.color.bg fill of the stage content slot)", "DeviceChip onClick", "MirrorViewModel isPickerOpen"] | ["MirrorViewModelSessionTest (chip reopens the panel; Escape no-ops before first selection)", "comp 01/03 landmark comparison in step 9", "step 15 manual demo walkthrough (demo-only)"] | [9, 11, 14, 15] |
+| AC-44 | ["FR-4", "FR-25"] | ["DeviceId (private constructor)", "DeviceCommand (closed sealed set)", "DeviceCommandExecutor", "buildDeviceArgv", "ProcessRunner (internal, desktopMain)"] | ["DeviceArgvTest", "DeviceIdTest", "step 15 grep inspection: exactly one ProcessBuilder in the repository, internal, under data-device-impl/desktopMain"] | [2, 3, 4, 15] |
+| AC-45 | ["FR-22", "FR-24", "FR-25"] | ["TransportStats.latencyMs (nullable by design)", "StatsFormatter", "ScreencapMirrorTransport achieved-rate counter", "MirrorTuning"] | ["StatsFormatterTest (placeholder when null, never fabricated)", "step 12 measured fps vs reported fps", "step 15 manual demo walkthrough (demo-only)"] | [4, 11, 12, 14, 15] |
+| FR-1 | ["FR-1"] | ["ToolResolver", "probeCandidates", "ToolProbe", "PlatformToolCard"] | ["ToolProbeCandidatesTest", "AC-1 demo", "SC-6"] | [4, 9, 14] |
+| FR-2 | ["FR-2"] | ["SegmentedButtonGroup (reuse)", "MirrorUiState.platform", "iOS deferred-platform stage notice", "EmulatorSource/idb probe"] | ["MirrorViewModelSessionTest (switching to iOS stops the session)", "inspection: the iOS card shows the detected idb probe and nothing streams"] | [11, 14] |
+| FR-3 | ["FR-3"] | ["DevicePickerPanel", "SourceListRow", "PickerNavigation", "EmulatorSelect"] | ["AdbDevicesParserTest", "PickerNavigationTest", "MirrorViewModelDiscoveryTest", "AC-2", "AC-43"] | [3, 9, 11, 13] |
+| FR-4 | ["FR-4"] | ["StartMirroringUseCase", "ScreencapMirrorTransport", "MirrorFrameView"] | ["MirrorViewModelSessionTest", "AC-3", "SC-1"] | [4, 7, 11, 14] |
+| FR-5 | ["FR-5"] | ["DeviceRepositoryImpl polling flow", "NoSignalStage", "MirrorTuning.DiscoveryPollMs"] | ["DeviceDiscoveryPollingTest", "AC-4", "SC-2", "SC-7"] | [5, 6, 9] |
+| FR-22 | ["FR-22"] | ["MirrorStatsModel", "StatsFormatter", "status bar Row"] | ["StatsFormatterTest", "AC-25", "AC-45"] | [7, 11, 14] |
+| FR-24 | ["FR-24"] | ["ScreencapMirrorTransport", "trimToPngSignature", "MirrorTuning"] | ["PngTrimTest", "step 12 measurement (the waiver's evidence)", "inspection: the delivery notes record the measured shortfall"] | [4, 12, 15] |
+| FR-25 | ["FR-25"] | ["MirrorTransport (two members only)", "TransportStats"] | ["inspection: MirrorTransport has exactly two members, lives in data-device-api, and no presentation or domain file imports ScreencapMirrorTransport; swapping the implementation touches one DI line"] | [2, 4, 8] |
+| NFR-1 | ["FR-24", "FR-25"] | ["ScreencapMirrorTransport", "MirrorTuning", "TransportStats.latencyMs"] | ["step 12 measurement — WAIVED FOR v1: the measured number is recorded, the shortfall is explicit, and the waiver is re-flagged for pre-ship review (AC-45 keeps the UI honest about it)"] | [12, 15] |
+| NFR-5 | ["FR-4"] | ["DeviceId", "DeviceCommand", "DeviceCommandExecutor", "buildDeviceArgv", "ProcessRunner"] | ["DeviceArgvTest", "DeviceIdTest", "AC-44", "grep inspection (one ProcessBuilder; no connect/-H/-P anywhere)"] | [2, 3, 4, 15] |
+| NFR-8 | ["FR-3"] | ["DevicePickerPanel key handling", "PickerNavigation", "FocusRequester"] | ["PickerNavigationTest", "MirrorViewModelSessionTest", "A11Y-1..A11Y-5", "AC-2"] | [9, 11, 13] |
+| NFR-10 | ["FR-1", "FR-4"] | ["provideDeviceSources expect/actual", "UnsupportedDeviceSources"] | ["inspection: :data-device-impl:build succeeds for android/iOS targets and :compose-application:linkDebugFrameworkIosArm64 still links; no macOS/Linux native target is added"] | [4, 15] |
+| SC-1 | ["FR-1", "FR-2", "FR-3", "FR-4"] | ["ToolResolver", "DevicePickerPanel", "MirrorViewModel", "ScreencapMirrorTransport"] | ["MirrorViewModelDiscoveryTest + MirrorViewModelSessionTest cover the state path; step 15 walks the full path manually"] | [4, 9, 11, 13, 15] |
+| SC-2 | ["FR-5"] | ["DeviceRepositoryImpl polling", "NoSignalStage", "EmulatorSelect", "BootEmulatorUseCase"] | ["DeviceDiscoveryPollingTest", "step 15 manual walkthrough (unplug → NO SIGNAL → Boot)"] | [5, 6, 9, 15] |
+| SC-6 | ["FR-1"] | ["ToolResolver", "DiscoveryModel.ToolMissing", "StatusIndicator"] | ["ToolProbeCandidatesTest", "DeviceDiscoveryPollingTest", "MirrorViewModelDiscoveryTest"] | [4, 6, 13] |
+| SC-7 | ["FR-5"] | ["DeviceRepositoryImpl empty-poll counter", "DiscoveryModel.NoDeviceFound", "NoSignalStage"] | ["DeviceDiscoveryPollingTest", "MirrorViewModelDiscoveryTest"] | [5, 6, 13] |
+
+### openQuestions
+
+- CARRIED (OQ-1, unresolved): measured or cited glass-to-glass latency for scrcpy-server + in-JVM H.264 decode is still unknown. A spike must produce a real number before that transport is committed as the v1.1+ follow-up. The v1 polling number is NOT left open — step 12 makes measuring it a gate.
+- CARRIED (OQ-2, resolved with a recommendation — flag for UX override): v1 shows a one-word mono 'polling' hint next to the fps stat, so the user is told the stream is poll-based rather than left to infer it from sluggishness. Cost is one localised word; reverse it with a single string change if UX writing disagrees.
+- CARRIED (OQ-3, resolved by reading the file): SourceListRow needs exactly one additive change, `enabled: Boolean = true`, for unauthorized/offline rows. Its radio, mono serial and trailing RowScope slot already cover the Running-dot / Boot-button / Android-version variants — its own preview renders all three today. No new row molecule.
+- CARRIED (OQ-4, resolved): the picker fills StageSurface's content slot with an OPAQUE Theme.color.bg surface, so the dot grid is hidden rather than skipped — comps 01/03 show no dots behind the panel, and this keeps the shell-level composition untouched. Branching at shell level was rejected as it would push picker state into RectifyWindowShell.
+- CARRIED (OQ-5, resolved): the status-bar stat line stays an inline Row in RectifyShellContent for v1, formatted by the pure StatsFormatter so the logic is tested even though the layout is not. Promote to a molecule only when a second surface needs it.
+- CARRIED (OQ-6, resolved): discovery polling PAUSES while a mirror session is active and resumes when it ends — the capture loop's own failure is the disconnect signal, and a 2s adb poll competing with a capture loop over the same USB link is the fastest way to make both worse.
+- CARRIED (OQ-7, partially resolved — needs F-3 agreement): ToolProbe carries `installCommand: String` (the exact brew/sdkmanager line comp 04 shows) plus `probedPaths: List<String>` and `envHint: String` for the footer. F-3 owns the clipboard abstraction; F-2 only guarantees the string is present and exact. OPEN: whether F-3 wants the whole footer pre-rendered as one string or the three fields separately.
+- CARRIED (OQ-8, resolved): 27 mirror_* keys are specified in the i18n section and land in presentation-core-localisation/values/strings.xml in step 10. Machine output (commands, serials, resolutions, fps) stays unlocalised by design.
+- CARRIED (OQ-9, RESOLVED BY VERIFICATION): decodeToImageBitmap is reachable from presentation-feature-mirror's commonMain — FeatureConventionPlugin line 115 wires composeDependencies.components.resources into commonMain, and that artifact is where org.jetbrains.compose.resources.decodeToImageBitmap lives under CMP 1.12.1. No new dependency; the skiko desktopMain fallback is dropped. Residual: if the function still carries @ExperimentalResourceApi at 1.12.1, add the opt-in at the call site — an annotation, not a dependency.
+- CARRIED (OQ-10, RESOLVED BY VERIFICATION): kotlinx-coroutines-test is genuinely wired, not merely cataloged — data-preference-impl/build.gradle.kts declares it in commonTest today. The new modules copy that one line; no catalog change.
+- CARRIED (OQ-11, unresolved and accepted): no CI harness exists to run the desktop app headlessly, so AC-1, AC-4, AC-25, AC-43 and AC-45 stay manual, human-observed demo steps. Building one is out of scope and out of the dependency budget; step 15 records the walkthrough instead.
+- NEW: Orbit ViewModel tests without orbit-test or turbine (neither is in the catalog) rely on Dispatchers.setMain + advanceUntilIdle against container.stateFlow. If that proves flaky, the fallback is extracting more pure helpers rather than adding a dependency — but whether the project would rather spend one test-only dependency for reliable MVI tests is a gate decision, not an implementer's call.
+- NEW: DeviceCommandException is public in data-device-api so the diagnostics ride in Failure.Technical.Process's cause, but presentation must NOT import a data module to read it. F-2's position: F-3 branches on the Failure TYPE and reads typed diagnostics from DiscoveryModel, never by casting the cause. If F-3 needs per-command diagnostics in the UI, a domain-level error model is required — a contract change to agree before F-3 starts.
+- NEW: what exactly should the stage show when the platform switch is on iOS? This plan renders a deferred-platform notice built from existing text styles; the comps do not cover that state at all, so the copy (mirror_ios_deferred) is invented here and needs a UX glance.
+- NEW: should the first discovered device be auto-selected and auto-started? Comp 02's subtitle says 'Mirroring starts on its own as soon as adb sees one', which implies yes; AC-3 and comp 01's explicit 'Start mirroring' CTA imply no. This plan implements the CTA path (explicit start, no auto-start) and treats the comp-02 subtitle as aspirational copy — flagged because it is a user-visible behavioural contradiction between two comps, not an implementation detail.
+- NEW: MirrorTuning.CaptureFloorMs ships at 100 ms but step 12 may show the device cannot approach 10 fps anyway, making the floor inert. Whether to keep an inert floor (cheap insurance against a future fast transport) or tune it to the measured rate is a decision for whoever runs the measurement, recorded with the number.
+
+### readyForBacklog
+
+false

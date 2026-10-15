@@ -58,4 +58,43 @@
     <string name="about_version_label">VERSION</string>
     <string name="about_build_label">BUILD</string>
     <string name="about_back">BACK</string>
+
+    <!-- Mirror - Device picker (comps 01/03) -->
+    <string name="mirror_picker_title">Choose what to mirror</string>
+    <string name="mirror_picker_subtitle">Switch platform or device any time from the toolbar.</string>
+    <string name="mirror_section_platform">PLATFORM</string>
+    <string name="mirror_section_source">SOURCE</string>
+    <string name="mirror_source_summary">%1$d found · adb devices -l</string>
+    <string name="mirror_group_physical">Physical device</string>
+    <string name="mirror_group_emulator">Emulator</string>
+    <string name="mirror_row_boot">Boot</string>
+    <string name="mirror_row_running">Running</string>
+    <string name="mirror_row_shut_down">shut down</string>
+    <string name="mirror_hint_keys">↑↓ select · ↵ start</string>
+    <string name="mirror_action_start">Start mirroring</string>
+    <!-- Dismisses the picker. Shown only once a device has been chosen, which is also the
+         only time esc closes the panel (A11Y-4). -->
+    <string name="mirror_action_close">Close</string>
+
+    <!-- Mirror - No signal / waiting (comp 02) -->
+    <string name="mirror_no_signal_label">NO SIGNAL</string>
+    <string name="mirror_waiting_title">Waiting for an Android device</string>
+    <!-- Explicit-CTA wording (survey Q1 option A). Never the comp-02 auto-start sentence:
+         the picker ships a Start mirroring button, so nothing starts on its own. -->
+    <string name="mirror_waiting_subtitle">Plug one in or boot an emulator, then press Start mirroring.</string>
+    <string name="mirror_waiting_step_usb">Plug in a phone with USB debugging on and accept the prompt.</string>
+    <string name="mirror_waiting_step_emulator">Or boot an emulator</string>
+    <string name="mirror_waiting_footer">adb devices · polling every 2 s</string>
+
+    <!-- Mirror - Status line and tool detection -->
+    <string name="mirror_status_detecting">Detecting tools…</string>
+    <string name="mirror_status_waiting">Waiting for device…</string>
+    <string name="mirror_status_ready">ready</string>
+    <string name="mirror_status_tool_missing">adb not found</string>
+    <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
+    <string name="mirror_status_latency_placeholder">latency —</string>
+    <string name="mirror_status_polling_hint">polling</string>
+    <string name="mirror_tool_not_found">not found</string>
+    <string name="mirror_ios_deferred">iOS mirroring arrives in a later release. idb is detected so you can see it is installed.</string>
+    <string name="mirror_emulator_none">No AVDs installed</string>
 </resources>

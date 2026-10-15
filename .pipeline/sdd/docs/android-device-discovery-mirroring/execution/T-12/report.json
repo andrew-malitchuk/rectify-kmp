@@ -1,0 +1,62 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "execution",
+  "step": "T-12/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "49ccba08c3f1a30e7f901f1ab79e9bd7cbe09f1febc5526ae0de36aa36fef7b5",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T01:57:45Z",
+  "updatedAt": "2026-10-15T01:57:45Z",
+  "data": {
+    "taskId": "T-12",
+    "type": "business-logic",
+    "outcome": "partial",
+    "touchedPaths": [
+      "data-device-api/src/commonMain/kotlin/data/device/api/source/tuning/MirrorTuning.kt"
+    ],
+    "testRun": {
+      "command": "adb devices -l ; adb exec-out screencap -p ; emulator -avd Television_720p -no-window",
+      "passed": false,
+      "output": "NO MEASUREMENT TAKEN. The one attached handset (38031FDJH00JVF) reports unauthorized and screencap returns exit 255 with 0 bytes. The only installed AVD (Television_720p, arm64 android-tv) sat at offline for ~12 minutes and never reached sys.boot_completed; killed."
+    },
+    "implementation": {
+      "filesChanged": [
+        "data-device-api/src/commonMain/kotlin/data/device/api/source/tuning/MirrorTuning.kt"
+      ],
+      "summary": "CaptureFloorMs left at 100ms with the reason written into its KDoc, plus the exact 5-step harness a human must run: device/resolution/link, a 60s session reading achieved fps and round-trip off TransportStats, a stopwatch wave test for end-to-end latency, a repeat with the dot grid covered vs visible to settle PRF-1, then set the floor just above the measured mean. NO FIGURE WAS INVENTED.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [
+      {
+        "at": "T12-TAC1 / T12-TAC3",
+        "issue": "Cannot be satisfied without hardware.",
+        "resolution": "Reported as not measurable with the exact procedure recorded, per the brief's instruction to prefer an honest 'not measurable here' over a fabricated number.",
+        "severity": "warn"
+      }
+    ],
+    "needsHumanReview": {
+      "required": true,
+      "reason": "HARDWARE GATE. AC-25 and AC-45 rest on an unmeasured capture rate. A human with an authorised Android device must run the 5-step harness in MirrorTuning's KDoc and either justify 100ms or change it. The NFR-1 waiver is re-flagged: F-2 otherwise ships with its performance budget unverified."
+    },
+    "linkedAC": [
+      "AC-25",
+      "AC-45",
+      "NFR-1"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T01:57:45Z"
+  }
+}

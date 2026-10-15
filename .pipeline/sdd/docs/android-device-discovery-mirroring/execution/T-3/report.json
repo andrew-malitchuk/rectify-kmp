@@ -1,0 +1,55 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "execution",
+  "step": "T-3/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "af5f61d07c6843a7298a25fdd657394bfd3aaa1bd26671899295bf5e874a3aad",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T01:57:45Z",
+  "updatedAt": "2026-10-15T01:57:45Z",
+  "data": {
+    "taskId": "T-3",
+    "type": "test",
+    "outcome": "success",
+    "touchedPaths": [
+      "data-device-api/src/commonTest/kotlin/data/device/api/*.kt (7)"
+    ],
+    "testRun": {
+      "command": "./gradlew :data-device-api:desktopTest ; :compileTestKotlinIosArm64 --rerun-tasks",
+      "passed": true,
+      "output": "39 tests, 0 failures/errors across 7 suites. iOS test-compile executed and emitted a klib - verified a real compile, not NO-SOURCE. Same 39 green on iosSimulatorArm64Test."
+    },
+    "implementation": {
+      "filesChanged": [
+        "data-device-api/src/commonTest/kotlin/data/device/api/*.kt (7)"
+      ],
+      "summary": "AC-44 pinned by DeviceArgvTest (argv[1]==-s and argv[2]==id for all 5 DeviceCommand variants; no -s for any HostCommand) and DeviceIdTest (blank, whitespace, leading dash, out-of-charset all rejected). ToolProbeCandidatesTest pins exact probe order for empty env, ANDROID_HOME, ANDROID_SDK_ROOT, Homebrew-only and PATH-only. All backtick names verified free of comma, apostrophe and colon.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [],
+    "needsHumanReview": {
+      "required": false,
+      "reason": ""
+    },
+    "linkedAC": [
+      "AC-2",
+      "AC-41",
+      "AC-44"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T01:57:45Z"
+  }
+}

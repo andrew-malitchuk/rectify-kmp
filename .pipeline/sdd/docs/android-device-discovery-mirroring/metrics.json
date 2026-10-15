@@ -1,0 +1,100 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "updatedAt": "2026-10-15T02:49:07Z",
+  "sealed": false,
+  "agents": {
+    "sdd-build-discussion-aggregate": {
+      "tokens": 63368,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-requirements-clarify": {
+      "tokens": 90944,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-architecture-brainstorm": {
+      "tokens": 165393,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-preparation-compile": {
+      "tokens": 95711,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-draft": {
+      "tokens": 212783,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-refine": {
+      "tokens": 261307,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 157238,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 0,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 0,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 173883,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 199571,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 173348,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    }
+  },
+  "totals": {
+    "tokens": 1593546,
+    "durationMs": 0,
+    "invocations": 10
+  }
+}
