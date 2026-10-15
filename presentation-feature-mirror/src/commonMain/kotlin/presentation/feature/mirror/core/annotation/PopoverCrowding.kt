@@ -1,6 +1,9 @@
 package presentation.feature.mirror.core.annotation
 
 import androidx.compose.ui.geometry.Rect
+import presentation.feature.mirror.core.geometry.FrameGeometry
+import presentation.feature.mirror.source.mirror.FrozenFrame
+import presentation.feature.mirror.source.mirror.StagedAnnotation
 
 /**
  * Nominal popover width in dp — `AnnotationPopover`'s own `PopoverMaxWidth`.
@@ -38,3 +41,66 @@ internal fun anyOverlap(rects: List<Rect>): Boolean =
     rects.indices.any { i ->
         (i + 1..rects.lastIndex).any { j -> rects[i].overlaps(rects[j]) }
     }
+
+/**
+ * Gap in dp between a mark's bottom edge and the popover's tail.
+ *
+ * Shared with `MirrorAnnotationStage`'s `PopoverTailGap` so the rectangles the crowding test
+ * reasons about are the rectangles that actually get placed.
+ */
+internal const val POPOVER_TAIL_GAP_DP: Float = 6f
+
+/**
+ * Where every comment popover *would* sit if it stayed on its mark — the input to the crowding
+ * test (FR-9 / AC-9).
+ *
+ * Plain dp floats in the overlay's own coordinate space, matching what the stage does with the
+ * popovers it actually places. Nominal sizes, never measured: see [NOMINAL_POPOVER_WIDTH_DP].
+ */
+internal fun nominalPopoverRects(geometry: FrameGeometry, frozen: FrozenFrame): List<Rect> =
+    frozen.annotations.map { annotation ->
+        val mark = geometry.toDp(geometry.toFrame(annotation.rect))
+        val top = mark.bottom.value + POPOVER_TAIL_GAP_DP
+        Rect(
+            left = mark.left.value,
+            top = top,
+            right = mark.left.value + NOMINAL_POPOVER_WIDTH_DP,
+            bottom = top + NOMINAL_POPOVER_HEIGHT_DP,
+        )
+    }
+
+/**
+ * Which non-selected annotations show their read-only popover on their mark and which are
+ * relocated into the right-edge gutter.
+ *
+ * Crowding chooses the **layout**, never whether a comment is shown at all: FR-8 asks for a
+ * per-annotation popover unconditionally, and an earlier reading that composed the gutter only
+ * when crowded made an uncrowded annotation's committed comment vanish from the stage the
+ * moment another one was selected — crowding made *more* content appear.
+ *
+ * The selected annotation is in neither list: it keeps its editable `CommentPopover` on the
+ * mark in both layouts, and a read-only copy would be the same text twice.
+ *
+ * @param geometry The one coordinate converter for this stage.
+ * @param frozen Annotations and selection for the pinned frame.
+ * @return Exactly one of [PopoverLayout.anchored] / [PopoverLayout.gutter] populated.
+ */
+internal fun popoverLayout(geometry: FrameGeometry, frozen: FrozenFrame): PopoverLayout {
+    val unselected = frozen.annotations.filter { it.index != frozen.selectedIndex }
+    return if (anyOverlap(nominalPopoverRects(geometry = geometry, frozen = frozen))) {
+        PopoverLayout(anchored = emptyList(), gutter = unselected)
+    } else {
+        PopoverLayout(anchored = unselected, gutter = emptyList())
+    }
+}
+
+/**
+ * The read-only popovers of a frozen frame, split by where they are placed.
+ *
+ * @property anchored Shown on their own mark — the uncrowded case.
+ * @property gutter Relocated to the right-edge gutter on leader lines — the crowded case.
+ */
+internal data class PopoverLayout(
+    val anchored: List<StagedAnnotation>,
+    val gutter: List<StagedAnnotation>,
+)

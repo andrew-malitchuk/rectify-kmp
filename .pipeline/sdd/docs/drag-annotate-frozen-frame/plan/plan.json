@@ -427,8 +427,10 @@
         "type": "edge",
         "steps": [
           "Draw three annotation boxes close together",
-          "Popovers would overlap",
-          "Popovers relocate to the stage's right-edge gutter with straight leader lines"
+          "Popovers would overlap, so they relocate to the stage's right-edge gutter with straight leader lines",
+          "The third box is still selected, so its editable comment popover stays on its mark and two rows sit in the gutter",
+          "Press Escape to deselect",
+          "All three popovers now sit in the gutter, each on its own leader line"
         ]
       },
       {
