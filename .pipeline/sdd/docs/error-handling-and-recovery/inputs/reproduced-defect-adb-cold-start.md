@@ -67,3 +67,31 @@ vacuous test that passed against deleted code. The regression test here must
 drive a fake `DeviceCommandExecutor` whose first N `ListDevices` calls time out,
 and assert the source **recovers** rather than polling forever. Demonstrate it
 red against current `main` before trusting it green.
+
+## Follow-up measurement: `adb start-server` in isolation
+
+Run three times, each preceded by `adb kill-server`:
+
+| run | wall time |
+|---|---|
+| 1 | 3.03 s |
+| 2 | 3.03 s |
+| 3 | 3.03 s |
+
+Identical to the hundredth of a second across runs. That is not variable work
+being measured — it is a fixed internal delay inside adb's fork-server path.
+
+Two consequences for the chosen fix:
+
+1. **The 15 s `DaemonStartTimeoutMs` watchdog has ~5x headroom.** It is
+   comfortably clear of the real cost without becoming a per-machine guess,
+   which is exactly the property the decision was chosen for.
+2. **The old budget missed by ~30 ms, deterministically.** `HostCommandTimeoutMs`
+   is 3000 ms and the daemon start is 3030 ms, every single time. This was never
+   a flaky timing race that some machines would survive — on any machine with a
+   cold daemon it fails on every attempt, forever. That is why the symptom is a
+   livelock rather than intermittent slowness.
+
+A useful property for the regression test: because the cost is fixed rather than
+distributed, the cold-start path is reproducible on demand with
+`adb kill-server` and does not need a timing tolerance.

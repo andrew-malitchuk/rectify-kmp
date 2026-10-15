@@ -1,9 +1,22 @@
 {
   "spec": "error-handling-and-recovery",
-  "currentStage": "preparation",
-  "stages": {},
+  "currentStage": "plan",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    }
+  },
   "steps": {
     "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
       "status": "done"
     }
   },
@@ -17,5 +30,12 @@
     "validation": "fast",
     "review": "fast",
     "reflection": "fast"
+  },
+  "gates": {
+    "preparation": {
+      "status": "closed",
+      "source": "ai-proposed",
+      "note": "Operator delegated all gate decisions for this run and asked not to be involved. Six questions closed on the agents recommended options. No human chose these; source is ai-proposed deliberately."
+    }
   }
 }
