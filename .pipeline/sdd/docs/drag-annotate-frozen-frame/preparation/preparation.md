@@ -1,0 +1,269 @@
+# drag-annotate-frozen-frame — preparation
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | preparation |
+| step | preparation |
+| status | done |
+| producedBy | sdd-build-preparation-compile |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T03:15:09Z |
+| updatedAt | 2026-10-15T03:15:09Z |
+
+## Gate
+
+### type
+
+human
+
+### approvedBy
+
+orchestrator-auto
+
+### approved
+
+true
+
+### at
+
+2026-10-15T03:15:09Z
+
+## Provenance
+
+### selfHash
+
+2e847f2a4b2049c279333c6ef0c618bd8f2329c2beb0adbed90b9bdb30bcdd36
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| preparation/input.json | f83b181d145a7e671e057d359355542bb30abad99893618af14f1c410b3d6664 |
+| preparation/clarify.json | 9b80e7729f71d00e6828cc36697731dec7a42603c8e2879901bf6511ee1cbe3b |
+| preparation/brainstorm.json | 7ce589dad3e5889bbfa13916ae3e2d16c2a52040c85db267735e165b995dce9a |
+
+## Data
+
+### summary
+
+Drag-to-Annotate & Frozen Frame (F-4) consolidates Stage 1 input/clarify/brainstorm into one sign-off-ready deliverable. The feature lets a user drag on the live mirror (F-2) to draw a dashed-red selection box with a live device-pixel size label and ruler guides, release to freeze the exact frame and stage a numbered annotation, edit it via an autofocused comment popover on the frozen stage (dim-outside-boxes treatment, delete, Enter-to-save), and have crowded popovers relocate to an in-stage gutter with leader lines. Almost the entire visual surface reuses shipped kit components (AnnotationMark, Ruler, CommentPopover, AnnotationPopover, AnnotationRow, CounterBadge, StatusIndicator.Frozen); the only new code is one kit molecule (AnnotationOverlay) and one defaulted parameter on MirrorFrameView. The headline engineering risk — a POC-documented density conversion bug — is closed by a single pure, unit-tested FrameGeometry function with device screenshot pixels as the canonical storage space. 10 FR, 3 NFR, 12 AC, 6 scenarios, 4 assumptions, 9 binding decisions, 8 gaps, 8 risks and 3 open questions are carried forward unmodified. readyForPlan is set true per autonomous-run instruction; the orchestrator still owns the human sign-off gate via the attached one-question survey.
+
+### problemStatement
+
+F-1/F-2 deliver a live mirror with no way to mark anything on it — a tester can only describe a bug in prose or attach a raw screenshot, which is exactly what this product exists to replace. rectify-poc proved the drag-box interaction is feasible but also documented a silent density-conversion bug (a rectangle landing `density`x from the cursor — 2x on this host's Retina display) that corrupts every annotation's position unless the conversion is made explicit and tested. No cached design comp illustrates any part of this interaction (all five are device-discovery screens), so every visual detail must be derived from existing shipped components or invented and named as a constant.
+
+### confirmedRequirements
+
+#### functional
+
+| id | text |
+| --- | --- |
+| FR-6 | Support click-and-drag on the live mirror to draw a selection box, rendering a dashed red outline, a live device-pixel size label, and ruler/tick coordinate guides during the drag. |
+| FR-7 | On drag release, freeze the exact current frame and create a new staged annotation anchored to the drawn box. |
+| FR-8 | On a frozen frame, dim everything outside annotation boxes and show a per-annotation popover with a numbered badge, an autofocused free-text comment field (placeholder 'What's wrong here?'), a delete control, and a size/position meta line; Enter saves, clicking the delete control removes the annotation. |
+| FR-9 | When annotation popovers would crowd/overlap, relocate them to a gutter/sidebar panel connected to their boxes via leader lines. |
+| FR-26 | Establish device screenshot pixels as the single canonical storage space for annotation geometry. Implement the pointer-px -> density -> composable-dp -> frame-display-scale -> device-px conversion as one pure, platform-agnostic function (no Composable, no ViewModel side effects) rather than inline per call site, so every caller (the live drag box, the size label, the ruler extent) shares one code path and one set of tests. |
+| FR-27 | Wire the toolbar's stagedCounter slot to the live staged-annotation count (CounterBadgeState.Empty at 0, Staged otherwise) and the clearAction slot to removing every staged annotation while leaving the stage frozen (not ending the session). |
+| FR-28 | Fill the side panel's Notes tab with one AnnotationRow per staged annotation (index, comment or the empty-state copy, position meta line), kept in sync with the same staged-annotation list FR-27 wires to the toolbar; selecting a row selects the corresponding mark on the frame. |
+| FR-29 | Scope annotation keyboard handling to the focused popover: Enter commits the comment text and keeps the annotation pinned; Escape collapses the popover back to a pinned, unselected mark without deleting it; the delete control (CommentPopover's existing close affordance, repurposed to mean delete per FR-8) removes the annotation and decrements the staged count. None of these three consume or bubble into the window-level Cmd+1/2/3 tab shortcut or the device picker's own Escape handler — both already key off disjoint event shapes (meta-modified keys vs. a focus subtree that cannot coexist with the frozen-frame stage). |
+| FR-30 | On freeze, replace the live MirrorFrameView with a static render of the captured bitmap plus a dim/scrim treatment outside every annotation box, retain the device name in the existing toolbar/status chrome, and expose a 'Resume Live' control that discards the frozen frame and its staged annotations and returns the stage to live streaming. Freezing is a display-level snapshot only: the underlying sessionDeviceId-gated capture/transport loop is never paused or restarted, so resuming needs no new adb session. |
+| FR-31 | While a frame is frozen, further drag-and-release gestures on the stage add additional staged annotations against the same frozen frame rather than re-triggering the freeze transition or replacing the captured bitmap. |
+
+#### nonFunctional
+
+| id | category | text |
+| --- | --- | --- |
+| NFR-1 | performance | Live mirror glass-to-glass latency should stay low enough (target under ~150ms) that drag-to-select and freeze feel responsive. |
+| NFR-8 | a11y | Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers). |
+| NFR-9 | ux | All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes. |
+
+### acceptanceCriteria
+
+| id | text | priority | verificationMethod | verificationNote |
+| --- | --- | --- | --- | --- |
+| AC-5 | Given live mirror is streaming, when the user drags on the mirror, then a dashed red outline, live pixel-size label, and ruler guides render in real time. | must | test | PRD-inherited mismatch: no Compose UI-test harness exists in this repo (zero UI tests among 160 green). Satisfied by pure FrameGeometry/reducer tests plus a light/dark @Preview and manual demo, not a rendering assertion. 'Adopt compose-ui-test' is raised as its own follow-up ticket, not silently substituted. |
+| AC-6 | When the user releases the drag, then the exact frame is frozen and a new staged annotation is created anchored to the drawn box. | must | test |  |
+| AC-7 | Given a frozen frame with one annotation, then everything outside the box dims and a popover with numbered badge, autofocused comment field, delete control, and meta line appears. | must | test | Same PRD-inherited test/no-harness mismatch as AC-5 — see note there. |
+| AC-8 | Given an annotation popover is focused, when the user presses Enter, then the comment saves; when the user clicks the delete control, then the annotation is removed and the staged count decrements. | must | test |  |
+| AC-9 | Given three annotations are drawn close together, when their popovers would overlap, then they relocate to a sidebar/gutter panel connected via leader lines. | should | demo |  |
+| AC-46 | Given a host density of 2.0 and a known frame display scale, when a drag's raw pointer start/end offsets are converted through the canonical coordinate function, then the resulting device-pixel rect matches the hand-computed expected value (density-trap regression test — the POC's documented 2x offset must not reproduce). | must | test |  |
+| AC-47 | Given the mirror is streaming and MirrorViewModel.frame publishes a new bitmap mid-drag, when the user releases, then the frozen bitmap is the one frame held at release time, not the one held at drag start. | must | test |  |
+| AC-48 | Given N staged annotations, then the toolbar's stagedCounter slot renders CounterBadge(count=N, state=Staged) (or Empty at N=0); clicking the clearAction slot empties the staged list and the badge returns to Empty/0 while the stage remains frozen. | must | test |  |
+| AC-49 | Given staged annotations exist, then the side panel's Notes tab renders one AnnotationRow per annotation in index order; clicking a row selects its corresponding mark on the frame (AnnotationState.Selected). | must | test |  |
+| AC-50 | Given an annotation popover has focus, pressing Escape collapses only that popover (keeping the annotation pinned, count unchanged) without affecting the device picker or the active side-panel tab; Cmd+1/2/3 still switches side-panel tabs while a popover is focused. | must | test |  |
+| AC-51 | Given a frame is frozen with staged annotations, when the user activates the Resume Live control, then the stage returns to the live mirror and the staged annotation list is cleared; a subsequent drag freezes a new frame. | must | demo |  |
+| AC-52 | Given a frame is already frozen with one staged annotation, when the user drags and releases again on the stage, then a second staged annotation is added against the same frozen frame without re-triggering the freeze transition. | must | test |  |
+
+### scope
+
+#### in
+
+- Drag-to-draw dashed outline + live device-pixel size label + ruler/tick guides on the live mirror (FR-6)
+- Freeze-on-release of the exact release-time frame, creating a staged annotation anchored to the box (FR-7)
+- Frozen-frame dim-outside-boxes treatment + per-annotation comment popover (badge, autofocus, delete, meta line) (FR-8)
+- Crowded-popover relocation to an in-stage right-edge gutter with leader lines, at demo fidelity (FR-9)
+- Canonical device-screenshot-pixel coordinate conversion as one pure, unit-tested function (FR-26)
+- Wiring ShellToolbar's stagedCounter and clearAction stubs (FR-27)
+- Filling the side panel's Notes tab with staged-annotation rows (FR-28)
+- Keyboard scoping for popover Enter/Escape without a new dispatch layer (FR-29)
+- Resume Live control, render-only freeze (capture loop untouched) (FR-30)
+- Repeated annotation on an already-frozen frame without re-freezing (FR-31)
+
+#### out
+
+- Measurement / measure-mode (F-5) — MeasureCard/MeasureMark exist in the kit but are not wired here
+- Payload preview (F-6) and MCP send (F-7) — the Payload tab and any network/export behaviour
+- Capture/annotation history (F-8) — multi-frame sessions; this spec holds exactly one frozen frame in memory at a time
+- Error cards (F-3)
+- Device rotation / resolution change mid-annotation-session
+- The gutter/leader-line 8px elbow-stagger visual polish named in AnnotationPopover's KDoc (deferred)
+- Pausing the capture/transport loop while frozen for power/perf (FR-30 keeps it running; a later optimization pass may revisit)
+- Introducing a Compose UI-test harness/dependency (raised as a separate follow-up ticket, not done here)
+
+### constraints
+
+| type | text |
+| --- | --- |
+| tech | No literal Color(0x...), raw .dp, or hardcoded TextStyle at any new call site; every invented value (dim-scrim alpha, resume-control geometry) is a named private constant or a new Theme token, per design-tokens.md. |
+| tech | A commonTest backtick test name containing a comma, apostrophe, or colon compiles on the JVM but fails compileTestKotlinIosArm64 — plain camelCase test names only (already bit F-1). |
+| tech | presentation-core-ui takes no dependency on presentation-core-localisation; every new kit-level component takes copy as a parameter with an English default, the feature module supplies stringResource(). |
+| tech | Orbit MVI four-file convention for any new presentation-feature-* contract; MirrorUiState's existing rule (no frame bytes in reduced state) extends to any frozen-frame bitmap reference this feature adds. |
+| business | AC-9/FR-9 ship at minimum-demo fidelity only — full elbow-stagger leader-line polish is explicitly deferred, not silently dropped. |
+| tech | FrameGeometry kept internal, pure, no @Composable and no ViewModel side effects — the single code path for every pointer-px to device-px conversion; no other module may grow its own variant. |
+| tech | Do NOT use AnnotationState.Frozen for frozen-frame marks — it paints an opaque Theme.color.surface fill that would cover the exact pixels the annotation points at, contradicting its own KDoc. Use Pinned/Selected plus the new scrim; AnnotationState.Frozen remains shipped but has no caller in this spec. |
+
+### assumptions
+
+| id | text |
+| --- | --- |
+| AS-10 | Manual/dev verification happens at host density 2.0 (Retina, per F-1's T-12 probe), but the coordinate-conversion function itself takes density as a parameter rather than hardcoding 2.0. |
+| AS-11 | Exactly one frozen frame and its staged-annotation set exist in memory at a time within this spec's scope; multi-frame capture history is F-8's. |
+| AS-12 | The mirrored device's screen does not rotate or change resolution mid-annotation-session; handling that is out of scope. |
+| AS-13 | Clicking the toolbar's clearAction empties the staged list without a confirmation dialog — treated as a direct, reversible-by-redrawing action, not a destructive-confirm flow, consistent with the toolbar's existing design. |
+
+### dependencies
+
+| on | note |
+| --- | --- |
+| F-1 (app-shell-window-layout) | Reuses ShellToolbar's stagedCounter/clearAction slots, SidePanelFrame's Notes tab, StageSurface's content slot, and ShellTab/shortcutToTab's Cmd+1/2/3 handling — all shipped as stubs or neighbouring features this spec fills in. |
+| F-2 (android-device-discovery-mirroring) | Reuses MirrorViewModel.frame (StateFlow<ImageBitmap?>), MirrorUiState/MirrorStage, and the sessionDeviceId-gated capture loop that must keep running, unpaused, while frozen. |
+| rectify-poc Main.kt | Reference only (not imported code): proves the drag-gesture shape and documents the density trap this spec's coordinate function must solve and test. |
+
+### chosenApproach
+
+Four layers, no new Gradle module. (1) GEOMETRY: a new internal pure FrameGeometry value class in presentation-feature-mirror/core/geometry/ with toDevice/toFrame/toDpRect members — pointer offsets and onSizeChanged share the same pixel space, so density cancels in the storage conversion and applies in exactly one place on the render leg. (2) STATE: MirrorUiState (Orbit, four-file convention, unchanged module) gains a frozen: FrozenFrame? with a StagedAnnotation list in the reduced state (small, value-equal, user-paced, three consumers); the frozen bitmap itself is published on a second StateFlow<ImageBitmap?> beside frame, exactly mirroring F-2's treatment of the live bitmap, with the reducer storing only the frozen frame's IntSize. (3) FREEZE: a render-path switch only — sessionDeviceId and the flatMapLatest capture gate are never touched, so Resume Live needs no new adb session; drag-in-progress state lives in composable remember, never in Orbit. (4) UI: assemble from shipped kit components (AnnotationMark, Ruler, CommentPopover, AnnotationPopover, AnnotationRow, CounterBadge, StatusIndicator.Frozen, AppButton); author exactly one new kit molecule (AnnotationOverlay = scrim via clipPath(ClipOp.Difference) + marks) and one new optional overlay slot on MirrorFrameView so the annotation layer is guaranteed coincident with the aspect-fit image. FR-9's gutter is an in-stage right-edge column (not the Notes tab — see revision below), using AnnotationPopover plus straight Canvas leader lines.
+
+### rationale
+
+Every visual element the input artifact called unillustrated already exists as a shipped, previewed kit component (AnnotationMark, Ruler, CommentPopover, AnnotationPopover, AnnotationRow, CounterBadge, StatusIndicator.Frozen) except the dim-outside-boxes scrim, which is small enough to spec as one new constant/molecule now — this matches the 'assemble, don't author' norm F-1 and F-2 both independently reached. The coordinate conversion is isolated into one pure, internal, unit-tested function because an off-by-density bug here silently corrupts every annotation's anchor and no other test would catch it; device screenshot pixels is the canonical storage space because it is resolution- and window-stable and is what FR-6's label, Ruler's extentPx, and F-7's eventual payload all need. Freeze-at-release (not drag-start) because FR-6 frames the drag as happening live, so 'the exact current frame' reads as current-at-release, and reading MirrorViewModel.frame's latest value once at dragEnd needs no buffering. Annotations go into the Orbit reduced state (opposite of frames) because they are small, value-equal, mutated only a handful of times per session and read by three simultaneous consumers (toolbar, Notes tab, stage) — exactly the shape reduced state exists for, whereas frames are identity-compared blobs arriving 10x/second.
+
+### architectureOverview
+
+presentation-feature-mirror gains: MirrorContract additions (DeviceRect, StagedAnnotation, FrozenFrame, MirrorStage.Frozen, six new intents: StageAnnotation, SelectAnnotation, CommentAnnotation, DeleteAnnotation, ClearStaged, ResumeLive), MirrorViewModel additions (frozenFrame: StateFlow<ImageBitmap?> + six handlers, sessionDeviceId untouched), and a new internal core/geometry/FrameGeometry.kt (pure: toDevice(start,end): IntRect, toFrame(IntRect): Rect, Rect.toDpRect()). presentation-core-ui gains one new kit molecule, AnnotationOverlay (scrim + marks, clipPath(ClipOp.Difference) + drawRect, imports atoms only), and one new +1 optional parameter on MirrorFrameView (overlay: @Composable BoxScope.() -> Unit = {}). MirrorStageContent gains the Frozen branch and the pointerInput drag layer (transient offsets in remember). A new feature-local MirrorNotesTab composable fills SidePanelFrame's Notes slot with AnnotationRow per staged annotation. A new internal pure popoverCrowding.anyOverlap(rects) drives FR-9's relocation. RectifyWindow.kt wires stagedCounter -> CounterBadge, clearAction -> AppButton -> ClearStaged, and a non-null sidePanel Notes tab (which also activates Cmd+1/2/3 for the first time). No new Gradle module, no persistence, no serialization — in-memory only (AS-11); StagedAnnotation stays in the presentation contract until F-7 needs it serialized, at which point it lifts to domain-core.
+
+### techStack
+
+| area | choice | reason |
+| --- | --- | --- |
+| Gesture | Modifier.pointerInput + detectDragGestures (foundation), drag offsets held in remember | Same API the POC proved. Transient 60 Hz state stays out of Orbit for the same reason frames do. |
+| Coordinate storage | Device screenshot pixels as an IntRect-shaped value in the Orbit state | Resolution- and window-stable; what FR-6's label, Ruler's extentPx and F-7's payload all need. |
+| State | Existing Orbit container in presentation-feature-mirror; frozen bitmap on a parallel StateFlow | Annotations are value-equal and user-paced; bitmaps are identity-compared and frame-paced. F-2's invariant preserved. |
+| Scrim compositing | Canvas + clipPath(ClipOp.Difference) + drawRect | One path fill, no saveLayer, no offscreen layer, the ImageBitmap untouched; unions overlapping holes correctly. |
+| Keyboard | onPreviewKeyEvent on the popover's focus subtree | handleShellShortcut only matches isMetaPressed and the picker stage is mutually exclusive with the frozen stage — the conflict does not exist (confirmed by reading both). |
+| Persistence | None — in-memory only | AS-11 holds exactly one frozen frame; export is F-7's and history is F-8's. No file I/O, no serialization, no new data module. |
+| Testing | kotlin.test in commonTest; pure-geometry tests + Orbit ViewModel tests, camelCase names | No Compose UI-test harness exists in the repo; backticked names with punctuation break the iOS test compile. |
+| Copy | New keys in presentation-core-localisation; kit components keep English-default parameters | presentation-core-ui must not depend on the localisation module. |
+
+### openRisks
+
+| text | likelihood | impact | mitigation |
+| --- | --- | --- | --- |
+| Density trap regression: a future call site converts px to dp by hand instead of through FrameGeometry and every annotation anchor silently shifts by 2x on Retina. | med | high | One pure conversion path (FR-26), AC-46's fixture reproducing the POC's exact trap, and FrameGeometry kept internal so no other module can grow its own variant. |
+| The annotation overlay is drawn in a box that is not pixel-identical to the aspect-fit image, producing a constant small offset that no unit test can see. | med | high | Compose the overlay INSIDE MirrorFrameView's own aspect-fit box via the new slot, so the overlay literally cannot be a different rectangle. Verify once visually at two window sizes. |
+| FocusRequester attached to CommentPopover's root Column may not forward focus to the inner BasicTextField, breaking the autofocus AC-7 requires. | med | med | If parent-delegated focus does not land, add a focusRequester: FocusRequester? = null parameter to CommentPopover and pass it to the BasicTextField — a 3-line kit change with a defaulted parameter, source-compatible. |
+| Making sidePanel non-null activates Cmd+1/2/3 for the first time (handleShellShortcut returns false while the panel is absent), so F-1 shortcut behaviour becomes live in this spec and could surprise the existing desktop test suite. | med | low | Expected and desirable; call it out in the PR. Run the full desktop test suite after the Notes-tab wiring step specifically. |
+| A commonTest backtick name containing a comma, apostrophe or colon compiles on JVM and breaks compileTestKotlinIosArm64 — this already broke the repo once in F-1. | med | high | Plain camelCase test names only, no backticks at all in new tests; run :presentation-feature-mirror:compileTestKotlinIosArm64 once before the PR. |
+| Keeping the capture loop running while frozen means continuous screencap on the device during what may be minutes of typing. | high | low | Accepted by FR-30; already a logged open question. If it bites, the fix is an isFrozen flag folded into the transport's adaptive interval, not a session teardown. |
+| Scrim colour is a deliberate literal (always dark in both themes) rather than a Theme token, which design-tokens.md generally forbids. | low | low | Follows the documented exception pattern already in CommentPopover/CounterBadge (fixed values with an explicit KDoc rationale because they sit over unknown-brightness device content). One named constant in one file; promote to a ThemeColor token if a second call site ever appears. |
+| FR-9's relocation threshold uses nominal popover bounds constants rather than measured sizes, so a long comment could crowd without triggering relocation. | low | low | AC-9 is demo-verified, not test-verified. Measuring to decide whether to compose would require SubcomposeLayout — explicitly not worth it at this fidelity. Named constant, one-line tune. |
+
+### openQuestions
+
+- Whether to pause the capture/transport loop while frozen (power/perf optimization) is left for later — AS-13/FR-30 assume it keeps running.
+- The gutter/leader-line 8px elbow-stagger visual polish named in AnnotationPopover's KDoc is not implemented in v1 — a follow-up design/visual-QA pass should revisit it.
+- Whether a frozen frame should ever be allowed to persist annotations across a Resume-Live -> freeze-again cycle (i.e., multi-frame annotation sets) is explicitly deferred to F-8 (history).
+- Vertical ruler for FR-6's 'ruler/tick guides': recommend horizontal + vertical via a rotated Ruler in a fixed-size Box (component's own KDoc anticipates this) rather than authoring a second VerticalRuler component — not yet implemented, flagged for the plan.
+- Where the Resume Live control sits: recommend a stage top-right overlay AppButton (Small) rather than the status bar or the toolbar's primaryAction (reserved for F-7) — geometry constant to flag for design review.
+- Minimum drag size before an annotation is created: recommend a named MIN_DRAG_DEVICE_PX constant (suggest 8 device px in both axes) so a stray click cannot freeze the mirror.
+- Does the Notes tab auto-activate on first freeze: recommend auto-selecting Notes on the first annotation of a frozen frame only, not on every subsequent annotation.
+- No design comp exists for ANY part of this feature — scrim alpha, Resume Live placement/geometry, ruler placement, gutter width, and leader-line routing are all invented and shipped as named private constants for a later one-line design pass (precedent: F-1's stage dot grid).
+- CommentPopover's X affordance means DELETE here (FR-8) while Escape means COLLAPSE (FR-29) — two visually similar dismissals with different destructiveness and no confirm; no design input exists on how to visually differentiate them.
+- CommentPopover's tail has a fixed 18 dp inset and no placement logic; a popover clamped away from its mark's edge will point at the wrong place. Accepted at demo fidelity — a tailOffset parameter is the eventual fix.
+- StagedAnnotation lives in the presentation contract for now (one consumer, no serialization need); lift to domain-core only when F-7 needs it in an MCP payload.
+
+### readyForPlan
+
+true
+
+### proposedSurvey
+
+| question | options | recommended | rationale |
+| --- | --- | --- | --- |
+| Sign off Stage 1 Preparation for drag-annotate-frozen-frame (F-4): the consolidated deliverable carries 10 FR (FR-6..9, FR-26..31), 3 NFR, 12 AC (AC-5..9, AC-46..52), 6 scenarios (SC-3/4/8/9/10/11), 4 assumptions (AS-10..13), the 9 binding decisions from the clarify and brainstorm gates (reuse-first visuals, canonical coordinate conversion, freeze-at-release, Notes tab filled + toolbar stubs wired, FR-9/AC-9 at demo fidelity, no new keyboard dispatch layer, AnnotationState.Frozen avoided, FR-9's gutter moved to the stage's right edge instead of the Notes tab, and the AC-5/AC-7 test/no-UI-harness mismatch stated plainly), and every open risk/gap/question carried forward unresolved but visible. Is this ready to gate Stage 2 (Plan)? | ["A) Approve as-is — proceed to Plan with readyForPlan=true.", "B) Approve with the open questions tracked as plan-stage decisions (same content, explicit follow-up list).", "C) Hold — return to Clarify or Brainstorm for rework before Plan."] | A) Approve as-is — proceed to Plan with readyForPlan=true. | All three Stage 1 artifacts are independently approved, every trace id is carried forward intact with no renumbering, the one real cross-artifact conflict (FR-9's gutter location vs. FR-28's Notes tab) was caught and explicitly revised with rationale rather than silently left inconsistent, and the one verification-method mismatch (AC-5/AC-7 marked test with no Compose UI-test harness in the repo) is stated plainly with a concrete test-split plan rather than papered over. Nothing here blocks Plan: the open risks and questions are the normal shape of carried-forward engineering judgment calls (ruler orientation, Resume Live placement, minimum drag size) that Plan is expected to resolve into concrete tasks, not blockers to starting it. |
+
+### artifacts
+
+#### input
+
+input.json
+
+#### clarify
+
+clarify.json
+
+#### brainstorm
+
+brainstorm.json
+
+### idCollisionNote
+
+F-1 already bound SC-3 and SC-4 to different content in the shell spec (unrelated shell/navigation scenarios). This spec (F-4) uses the PRD's canonical SC-3 ('Draw and freeze a single annotation') and SC-4 ('Multiple crowded annotations relocate to gutter') for the annotation scenarios documented here. SC-3/SC-4 are spec-scoped, not globally unique IDs. Stage 5 (validation/traceability) must not conflate F-1's SC-3/SC-4 with F-4's SC-3/SC-4.
+
+### scenarios
+
+| id | title | type | steps |
+| --- | --- | --- | --- |
+| SC-3 | Draw and freeze a single annotation | happy | ["Drag on the live mirror to draw a box", "Release to freeze the exact frame", "Popover appears autofocused", "Type a comment and press Enter to save"] |
+| SC-4 | Multiple crowded annotations relocate to gutter | edge | ["Draw three annotation boxes close together", "Popovers would overlap", "Popovers relocate to sidebar gutter with leader lines"] |
+| SC-8 | Density-trap regression on a Retina host | edge | ["Drag from a known pointer offset on a density=2.0 host", "Convert through the canonical coordinate function", "Assert the resulting device-pixel rect lands at the cursor, not density-x offset from it"] |
+| SC-9 | Multiple annotations against one frozen frame | edge | ["Drag once to freeze the frame and create annotation #1", "Drag a second time on the still-frozen stage", "Assert annotation #2 is added against the same frozen bitmap, with no second freeze transition"] |
+| SC-10 | Escape dismisses, delete removes | edge | ["Open an annotation's popover", "Press Escape — annotation remains pinned, staged count unchanged", "Reselect the annotation's row and click the delete control", "Annotation is removed and the staged count decrements"] |
+| SC-11 | Resume live after annotating | happy | ["Freeze a frame and add one annotation", "Click Resume Live", "Stage returns to the live streaming mirror and the staged list is empty", "Drag again to freeze a new frame"] |
+
+### bindingDecisions
+
+- 1. Visual choices derive from existing components; every invented value stays a named constant.
+- 2. A defined coordinate-conversion architecture with a canonical storage space (device screenshot pixels) and unit tests (FrameGeometry).
+- 3. Freeze at RELEASE, not at drag start.
+- 4. The Notes tab is filled by this spec; the toolbar's stagedCounter and clearAction stubs get wired.
+- 5. FR-9 / AC-9 ships at demo fidelity in v1.
+- 6. No new keyboard dispatch layer — handleShellShortcut and pickerKeyAction were traced and the Escape/Enter/Cmd+1-2-3 conflict does not exist: disjoint event shapes, mutually exclusive stages.
+- 7. Do NOT use AnnotationState.Frozen — it paints an opaque Theme.color.surface fill that would cover the exact pixels the annotation points at, contradicting its own KDoc. Use Pinned/Selected plus the new scrim; no kit change needed.
+- 8. FR-9's gutter is an in-stage right-edge gutter, NOT the Notes tab. This REVISES clarify's answer: FR-28 already fills the Notes tab with AnnotationRows, so every annotation would render twice and leader lines would cross composables. Clarify's survey[] still holds the superseded answer; this artifact records the revision explicitly so the two do not silently disagree.
+- 9. AC-5 and AC-7 carry verificationMethod: test from the PRD, but this repo has ZERO Compose UI tests among its 160 green. They will be satisfied by pure + reducer tests plus a preview, and 'adopt compose-ui-test' is raised as its own ticket — a verification-method mismatch inherited from upstream, not a shortcut taken here.
+
+### reuseNote
+
+Headline: all 116 kit files were browsed. AnnotationMark (dash 6/4, GlyphBadge corner, MeasureTag size label), Ruler (already takes totalPx/extentPx in DEVICE pixels), CommentPopover (already defaults to the exact 'What's wrong here?' placeholder, with meta line, saveHint and onClose), AnnotationPopover, AnnotationRow, CounterBadge, StatusIndicatorState.Frozen (shipped but unused) and SidePanelFrame.tabCounts all exist. New code is one kit molecule (AnnotationOverlay = scrim + marks) and one defaulted parameter (MirrorFrameView(overlay = {})).
+
+### securityNote
+
+SEC-1 stays closed: this spec reads frame dimensions from the decoded ImageBitmap, never from GetProp. F-2 left GetProp with zero production callers and NFR-5 holds there only by that absence; no new caller is created here.
+
+### survey
+
+| question | options | answer | source | rationale |
+| --- | --- | --- | --- | --- |
+| Sign off Stage 1 Preparation for drag-annotate-frozen-frame (F-4): the consolidated deliverable carries 10 FR (FR-6..9, FR-26..31), 3 NFR, 12 AC (AC-5..9, AC-46..52), 6 scenarios (SC-3/4/8/9/10/11), 4 assumptions (AS-10..13), the 9 binding decisions from the clarify and brainstorm gates (reuse-first visuals, canonical coordinate conversion, freeze-at-release, Notes tab filled + toolbar stubs wired, FR-9/AC-9 at demo fidelity, no new keyboard dispatch layer, AnnotationState.Frozen avoided, FR-9's gutter moved to the stage's right edge instead of the Notes tab, and the AC-5/AC-7 test/no-UI-harness mismatch stated plainly), and every open risk/gap/question carried forward unresolved but visible. Is this ready to gate Stage 2 (Plan)? | ["A) Approve as-is — proceed to Plan with readyForPlan=true.", "B) Approve with the open questions tracked as plan-stage decisions (same content, explicit follow-up list).", "C) Hold — return to Clarify or Brainstorm for rework before Plan."] | A - Approve as-is, proceed to Plan with readyForPlan=true. | ai-proposed | Autonomous run; recommended taken. Option B (track open questions as explicit plan-stage decisions) was considered and rejected as process for its own sake: the plan stage carries openQuestions forward by construction, and all 11 are already recorded unresolved rather than tidied away. The two items that genuinely needed to be visible - the FR-9 gutter revision and the AC-5/AC-7 verification-method mismatch - are stated in the deliverable itself, not deferred to a tracking mechanism. |
