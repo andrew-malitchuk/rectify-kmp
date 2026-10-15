@@ -1,0 +1,76 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "review",
+  "step": "review",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-review-consolidate",
+  "provenance": {
+    "selfHash": "f5ea1300d44057aa0c55d8df0d9b30d512a45ca78971553c0626a9096a8591de",
+    "inputs": [
+      {
+        "artifact": "review/findings.json",
+        "hash": "10743f1720d6125f07d32a92800617f433a46a5107ec8675e8e49d94942c4c6a"
+      },
+      {
+        "artifact": "validation/verdict.json",
+        "hash": "6f2f0e1caf29e1d1f5e3b0c8c611807f08a754bda8eccaf2fd35c12a139bbacb"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T02:49:07Z",
+  "updatedAt": "2026-10-15T02:49:07Z",
+  "data": {
+    "verdict": "approve-with-nits",
+    "summary": "Single merged reviewer over 111 files / +7025-76 at fast tier. Returned request-changes on two findings; both are now fixed and re-verified on the merged tree, so the verdict closes at approve-with-nits. The reviewer called the craft genuinely high and said so specifically: the closed DeviceCommand/HostCommand set, the single buildDeviceArgv, the internal runner, the injected clocks and the tests are real rather than ceremonial; ScreencapMirrorTransport's dropped-frame and fps arithmetic traces correctly under its fake clock; and AF-1's retargeted assertions still pin something, since latencyMs is provably never written anywhere.",
+    "blocking": [],
+    "major": [],
+    "minor": [
+      "COR-1 [MirrorViewModel.kt:120] BLOCKING as found: the discovery collector had no guard, so a DeviceCommandException from listDevices() - a 3s timeout on a cold adb-server start, or any non-zero exit - killed the 2s poll permanently, with no error state and no recovery short of restarting. observeFrames already guarded its flow, so the omission was asymmetric. FIXED in cr2, and fixed better than briefed: the agent rejected Flow.catch because it is terminal (a collector guard would render one error and discovery would still be over) and put the guard in DeviceRepositoryImpl's poll loop, the only layer that can report AND keep polling. New DiscoveryModel.PollFailed, deliberately NOT folded into NoDeviceFound - a failed poll asserts nothing, an empty poll asserts the bench is empty - so emptyPolls is neither advanced nor reset and one adb hiccup cannot fast-forward the escalation. Four tests pin it.",
+      "COR-2 [ProcessRunner.kt:72] MAJOR as found: withTimeoutOrNull wrapped only waitFor() with both drains awaited outside it, so the KDoc's whole-invocation budget was false and the finally that destroys the child and clears liveChildren was skipped on a held-open pipe - a zombie process plus a registry leak. FIXED in cr2: all three awaits now sit inside the one timeout. Proven empirically rather than asserted - the new test runs a shell that exits immediately while a grandchild holds the pipe, with a 500ms budget, and was run against the reverted file to confirm red: unfixed 10.025s FAILED, fixed 0.515s passed. Waiver W-6 is now partly retired.",
+      "COR-3 [DeviceRepositoryImpl.kt:143] captureRoundTripMs is write-only after AF-1's fix.",
+      "COR-4 [MirrorViewModel.kt:142] the status bar shows a zero-fps stats line before any session exists.",
+      "COR-5 [MirrorViewModel.kt:118] a picker reopened mid-session never refreshes its list (AC-43).",
+      "COR-6 [DeviceRepositoryImpl.kt:198] an unnamed emulator re-spawns the avd-name command every poll.",
+      "COR-7 [ProcessRunner.kt:50] fork/exec and the executable scan run on the caller's dispatcher, not Dispatchers.IO.",
+      "SEC-1 [DeviceArgv.kt:64, DeviceCommand.kt:15] GetProp takes unvalidated free text into adb shell, and WmSize/WmDensity/GetProp/WmOutputParser have ZERO production callers - so NFR-5 holds there only by the absence of a caller, not by construction. Worth closing before something calls them."
+    ],
+    "nits": [
+      "Dead StopMirroring intent.",
+      "One tautological test.",
+      "One hardcoded accessibility string."
+    ],
+    "changeRequests": [],
+    "techDebt": [
+      "COR-3: render captureRoundTripMs in a diagnostic surface or drop the field.",
+      "COR-4: suppress the stats line until a session exists.",
+      "COR-5: refresh the device list when the picker reopens mid-session.",
+      "COR-6: cache the negative avd-name result per serial.",
+      "COR-7: move fork/exec to Dispatchers.IO - the agent flagged this shifts where liveChildren registration sits relative to the coroutineScope, so it is a real review rather than a one-liner.",
+      "SEC-1: constrain GetProp to a closed key set, or delete the four unused members until something needs them."
+    ],
+    "followUps": [
+      "12 warn/info audit findings AF-4..AF-15 remain open, including two unused localisation keys and root CLAUDE.md omitting the three new modules.",
+      "Inherited from F-1 and still open: resultLauncher catches CancellationException repo-wide, six module README tables, the E-resize cursor needing expect/actual, the missing onPop token."
+    ],
+    "survey": [
+      {
+        "question": "Approve this PR for merge into development?",
+        "options": [
+          "approve-with-nits",
+          "request-changes",
+          "approve"
+        ],
+        "answer": "approve-with-nits - the two findings that justified request-changes are fixed and re-verified on the merged tree (160 desktop tests green, iOS test-compile and framework link green). The remaining 8 minor and 3 nits are recorded as tech debt, with SEC-1 called out as the one worth closing first.",
+        "source": "ai-proposed",
+        "rationale": "Autonomous run. Both request-changes findings were real production defects - a permanently dead discovery poll and a leaked child process - and neither was waived or deferred."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-auto",
+    "approved": true,
+    "at": "2026-10-15T02:49:07Z"
+  }
+}

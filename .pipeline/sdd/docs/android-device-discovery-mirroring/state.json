@@ -1,6 +1,6 @@
 {
   "spec": "android-device-discovery-mirroring",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -19,6 +19,9 @@
     },
     "reflection": {
       "status": "skipped"
+    },
+    "review": {
+      "status": "done"
     }
   },
   "steps": {
