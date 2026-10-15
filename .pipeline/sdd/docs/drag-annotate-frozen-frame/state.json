@@ -1,11 +1,17 @@
 {
   "spec": "drag-annotate-frozen-frame",
-  "currentStage": "backlog",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -23,6 +29,9 @@
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },

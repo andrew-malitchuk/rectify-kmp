@@ -1,0 +1,111 @@
+# drag-annotate-frozen-frame — T-3/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-3/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T05:15:01Z |
+| updatedAt | 2026-10-15T05:15:01Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-15T05:15:01Z
+
+## Provenance
+
+### selfHash
+
+9ee6ffddc6060f495f0f5ada9b9934958aad809412ac529e0c95f37fdc2638bb
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | ad34003d23112d2823248241d2b777a5132e8b7f4e93f70c07ddb7d25a6422f1 |
+
+## Data
+
+### taskId
+
+T-3
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/.../MirrorContract.kt
+- MirrorContent.kt
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:compileKotlinDesktop
+
+#### passed
+
+true
+
+#### output
+
+BUILD SUCCESSFUL.
+
+### implementation
+
+#### filesChanged
+
+- presentation-feature-mirror/.../MirrorContract.kt
+- MirrorContent.kt
+
+#### summary
+
+StagedAnnotation, FrozenFrame, MirrorStage.Frozen and six MirrorIntent cases. selectedIndex is the 1-based StagedAnnotation.index so all three index-bearing intents speak one unit. Annotations go INTO Orbit state (small, value-equal, user-paced); the bitmap does not.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| MirrorContract.kt | T-3 TAC-4 asked that all six intents compile with NO handler wired - not achievable: handleIntent's when(intent) is also exhaustive with no else, so it fails with 'when expression must be exhaustive'. | T-4 was in the same batch so handlers landed immediately; a lone T-3 would have needed six placeholder branches. Reported rather than quietly satisfied. | warn |
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+
+
+### linkedAC
+
+- AC-6
+- FR-7

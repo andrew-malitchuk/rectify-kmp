@@ -1,0 +1,112 @@
+# drag-annotate-frozen-frame — T-11/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-11/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T05:15:01Z |
+| updatedAt | 2026-10-15T05:15:01Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-15T05:15:01Z
+
+## Provenance
+
+### selfHash
+
+ed1bcc4b87baadb9c19d7a2bd7bae0d2e64146ad5f046e018dd1ccf525436ca5
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | ad34003d23112d2823248241d2b777a5132e8b7f4e93f70c07ddb7d25a6422f1 |
+
+## Data
+
+### taskId
+
+T-11
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/.../MirrorAnnotationStage.kt
+- core/annotation/PopoverCrowding.kt
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest --rerun-tasks
+
+#### passed
+
+true
+
+#### output
+
+62 tests, 0 failures.
+
+### implementation
+
+#### filesChanged
+
+- presentation-feature-mirror/.../MirrorAnnotationStage.kt
+- core/annotation/PopoverCrowding.kt
+
+#### summary
+
+In-frame right-edge gutter with straight Canvas leader lines. The SELECTED annotation keeps its editable popover on the mark - it is being typed into, and a read-only duplicate in the gutter would be the same text twice. Marks, column and Canvas are all children of one box the size of the painted frame, so there is no cross-composable translation and no onGloballyPositioned anywhere. CONFIRMED NOMINAL_POPOVER_HEIGHT_DP=36 by derivation from the component's own parts, and recorded that the gutter pitches rows at a separate 54dp because the popover allows two lines.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| MirrorAnnotationStage.kt | The gutter sits at the right edge of the FRAME, not the stage. | The letterbox is outside the overlay's coordinate space, and reaching it is exactly the cross-composable translation this design avoids. | info |
+
+### needsHumanReview
+
+#### required
+
+true
+
+#### reason
+
+SC-4 screenshot still owed. Note for whoever shoots it: a freshly staged annotation is auto-selected by the reducer, so press Escape before capturing if all three are meant to be in the gutter at once.
+
+### linkedAC
+
+- AC-9
+- FR-9
+- SC-4
