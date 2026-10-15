@@ -1,14 +1,14 @@
 [
   {
+    "spec": "android-device-discovery-mirroring",
+    "currentStage": "backlog",
+    "verdict": "",
+    "updatedAt": "2026-10-15T00:19:33Z"
+  },
+  {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-14T23:08:48Z"
-  },
-  {
-    "spec": "android-device-discovery-mirroring",
-    "currentStage": "preparation",
-    "verdict": "",
-    "updatedAt": "2026-10-14T23:09:12Z"
+    "updatedAt": "2026-10-15T00:19:33Z"
   }
 ]

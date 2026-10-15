@@ -1,0 +1,64 @@
+# android-device-discovery-mirroring — evaluation
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | plan |
+| step | evaluation |
+| status | done |
+| producedBy | sdd-build-run-pipeline |
+| schemaVersion | 1 |
+| createdAt | 2026-10-14T23:49:31Z |
+| updatedAt | 2026-10-14T23:49:31Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-run-pipeline
+
+### approved
+
+true
+
+### at
+
+2026-10-14T23:49:31Z
+
+## Provenance
+
+### selfHash
+
+5c5527873f606cf8f40a499938d6e7d20962e8dd5a13729f9d197b3beac3224d
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| plan/candidates/candidate-1.json | b1c05af93595003f78151e0bbfebbc2ade87f9c1f3c42540fa000ca617d7f464 |
+
+## Data
+
+### candidates
+
+| id | score | rationale |
+| --- | --- | --- |
+| candidate-1 | 0 | Sole candidate: fast tier sets planDrafts=1, so the competitive judge step is skipped per the Stage 2 contract. |
+
+### selected
+
+candidate-1
+
+### rationale
+
+fast effort tier => planDrafts=1 => no sdd-build-plan-evaluate spawn. Synthesized by the orchestrator so the resume/schema contract holds; records no comparative judgement because there was nothing to compare.
+
+### corrections
+
+
+### deletedCandidates
