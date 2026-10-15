@@ -20,6 +20,9 @@ public sealed class Failure : Throwable() {
 
         /** Failure during preference storage operations. */
         public data class Preference(override val cause: Throwable) : Technical()
+
+        /** Failure running an external platform tool process. */
+        public data class Process(override val cause: Throwable) : Technical()
     }
 
     /**
