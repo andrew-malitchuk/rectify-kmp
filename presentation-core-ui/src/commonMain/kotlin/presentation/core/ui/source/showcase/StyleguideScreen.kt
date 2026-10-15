@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import presentation.core.styling.core.Theme
 import presentation.core.ui.source.kit.atom.button.AppButton
@@ -65,6 +66,8 @@ import presentation.core.ui.source.kit.atom.glyph.ErrorGlyph
 import presentation.core.ui.source.kit.atom.glyph.ErrorKind
 import presentation.core.ui.source.kit.atom.tag.MeasureTag
 import presentation.core.ui.source.kit.organism.error.ErrorCard
+import presentation.core.ui.source.kit.molecule.annotation.AnnotationOverlay
+import presentation.core.ui.source.kit.molecule.annotation.AnnotationOverlayMark
 import presentation.core.ui.source.kit.molecule.annotation.AnnotationPopover
 import presentation.core.ui.source.kit.molecule.annotation.Ruler
 import presentation.core.ui.source.kit.organism.annotation.CommentPopover
@@ -432,6 +435,19 @@ public fun StyleguideScreen(onBack: () -> Unit) {
                     )
                 }
                 TechnicalLabel(text = "verified · still off")
+                ShowDivider()
+                ShowDivider()
+                TechnicalLabel(text = "OVERLAY · SCRIM PUNCHED OUT AROUND THE MARKS")
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(OverlayFrameHeight)
+                        .clip(Theme.cornerToken.card)
+                        .background(Theme.color.surface),
+                ) {
+                    AnnotationOverlay(marks = StyleguideOverlayMarks, dimmed = true)
+                }
+                TechnicalLabel(text = "frozen · the marks stay readable, everything else dims 42%")
                 ShowDivider()
                 TechnicalLabel(text = "GUTTER POPOVER")
                 AnnotationPopover(text = "Price sits 6px below the title", index = 1)
@@ -1045,6 +1061,24 @@ private fun ToggleRow(
         TechnicalLabel(text = label)
     }
 }
+
+/** Showcase-only overlay geometry. */
+private val OverlayFrameHeight: Dp = 150.dp
+
+/** Showcase-only marks: a labelled pinned mark and a selected one with handles. */
+private val StyleguideOverlayMarks = listOf(
+    AnnotationOverlayMark(
+        bounds = DpRect(left = 32.dp, top = 24.dp, right = 190.dp, bottom = 74.dp),
+        badge = "1",
+        sizeLabel = "545 × 254",
+    ),
+    AnnotationOverlayMark(
+        bounds = DpRect(left = 150.dp, top = 88.dp, right = 300.dp, bottom = 132.dp),
+        state = AnnotationState.Selected,
+        badge = "2",
+        showHandles = true,
+    ),
+)
 
 /**
  * Stands in for the mirrored device frame an annotation mark normally sits on, so the marks in

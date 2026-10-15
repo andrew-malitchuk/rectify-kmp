@@ -53,6 +53,10 @@ import presentation.core.ui.source.kit.molecule.chip.DeviceChipState
  * @param modifier Modifier applied to the root composable.
  * @param state Hoisted shell state; defaults to a freshly remembered one.
  * @param sidePanel Side-panel content for the active tab, or `null` while no session is live.
+ * @param tabCounts Per-tab item counts shown beside the tab labels, forwarded verbatim to
+ *   `SidePanelFrame`. `SidePanelFrame` has accepted these since the shell shipped, but nothing
+ *   could reach the parameter from out here — this is that gap closed, defaulted so no existing
+ *   call site changes.
  * @param onPanelWidthCommit Called once per resize drag that actually changed the width.
  * @param stage Mirror-region content, composed on the bezel-less stage.
  */
@@ -63,6 +67,7 @@ public fun RectifyWindowShell(
     modifier: Modifier = Modifier,
     state: ShellState = rememberShellState(),
     sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null,
+    tabCounts: Map<ShellTab, Int> = emptyMap(),
     // Deliberately NOT defaulted: a `= {}` default silently swallows every committed drag, which
     // is exactly AC-39's failure mode and is invisible at the call site. A caller that renders a
     // side panel must say what happens to the width.
@@ -88,6 +93,7 @@ public fun RectifyWindowShell(
                     activeTab = state.activeTab,
                     onTabSelect = state::selectTab,
                     modifier = Modifier.fillMaxHeight().width(state.panelWidth),
+                    tabCounts = tabCounts,
                     content = sidePanel,
                 )
             }

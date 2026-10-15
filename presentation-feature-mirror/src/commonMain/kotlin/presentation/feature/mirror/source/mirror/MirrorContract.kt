@@ -229,3 +229,32 @@ public sealed interface MirrorSideEffect {
      */
     public data class BootFailed(val avdName: String) : MirrorSideEffect
 }
+
+/**
+ * An annotation rectangle in **device screenshot pixels** — never host pixels, never dp.
+ *
+ * Device pixels are the only coordinate space that survives the trip to a bug report: the host
+ * window can be resized and the display can be Retina or not, but `1035,862` on a 1080×2400
+ * screenshot means the same place on every machine that opens it (FR-6). Converting in and out
+ * of this space is `FrameGeometry`'s job and nothing else's.
+ *
+ * Always normalised — [right] >= [left] and [bottom] >= [top] — because `FrameGeometry.toDevice`
+ * normalises a reversed drag before it ever gets here.
+ *
+ * @property left Left edge, in device pixels.
+ * @property top Top edge, in device pixels.
+ * @property right Right edge, in device pixels, exclusive.
+ * @property bottom Bottom edge, in device pixels, exclusive.
+ */
+public data class DeviceRect(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+) {
+    /** Width in device pixels. */
+    public val width: Int get() = right - left
+
+    /** Height in device pixels. */
+    public val height: Int get() = bottom - top
+}
