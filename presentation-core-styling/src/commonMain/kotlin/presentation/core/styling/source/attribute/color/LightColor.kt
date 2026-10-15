@@ -20,6 +20,7 @@ internal val attributeLightColorPalette: ThemeColor =
         bg = Color(0xFFF6F6F5),
         chrome = Color(0xFFEDEDEB),
         stage = Color(0xFFE7E7E4),
+        stageDot = Color(0x12000000), // rgba(0,0,0,.07)
         surface = Color(0xFFFFFFFF),
         pop = Color(0xFF18191C),
         // endregion

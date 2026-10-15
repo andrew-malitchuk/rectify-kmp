@@ -43,18 +43,26 @@ import presentation.core.styling.core.Theme
 import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.icon.X
 
-/** Popover geometry. */
-private val PopoverRadius: Dp = 12.dp
-private val PopoverMinWidth: Dp = 300.dp
-private val PopoverMaxWidth: Dp = 380.dp
-private val IndexBadgeSize: Dp = 22.dp
-private val IndexBadgeRadius: Dp = 5.dp
-private val FieldRadius: Dp = 7.dp
-private val FieldHeight: Dp = 30.dp
+/**
+ * Popover geometry, measured off the design's popover: `width:248px`, `padding:6px`,
+ * `border-radius:10px`, an 18x18/r4 index badge, a 26px/r6 comment field, and a 10x10 square
+ * rotated 45 degrees at `left:16px` for the tail (a 14x7 triangle once rotated).
+ *
+ * The design pins the width rather than ranging it, so [PopoverMinWidth] and [PopoverMaxWidth]
+ * are equal — the `widthIn` call site is kept so a future variable-width variant has somewhere
+ * to land.
+ */
+private val PopoverRadius: Dp = 10.dp
+private val PopoverMinWidth: Dp = 248.dp
+private val PopoverMaxWidth: Dp = 248.dp
+private val IndexBadgeSize: Dp = 18.dp
+private val IndexBadgeRadius: Dp = 4.dp
+private val FieldRadius: Dp = 6.dp
+private val FieldHeight: Dp = 26.dp
 private val TailWidth: Dp = 14.dp
 private val TailHeight: Dp = 7.dp
-private val TailInset: Dp = 18.dp
-private val CloseSize: Dp = 22.dp
+private val TailInset: Dp = 16.dp
+private val CloseSize: Dp = 18.dp
 
 /**
  * Copy on the always-dark popover. These are deliberate literals rather than ink tokens: the
@@ -62,12 +70,12 @@ private val CloseSize: Dp = 22.dp
  * vanish against it.
  *
  * Values come straight from the style guide's note on the dark popover — body `#f4f4f5`, meta
- * white at 42%, and the measure note lifted to `oklch(0.74 0.2 255)` so the blue still carries
+ * white at 42%, and the measure note lifted to `oklch(0.74 0.13 255)` so the blue still carries
  * enough contrast once it is sitting on near-black.
  */
 private val PopoverInk = Color(0xFFF4F4F5)
 private val PopoverMetaInk = Color(0xFFFFFFFF).copy(alpha = 0.42f)
-private val PopoverMeasureInk = Color(0xFF6DADFF)
+private val PopoverMeasureInk = Color(0xFF74A6E4) // oklch(0.74 0.13 255)
 
 /** Fill of the comment field, a step up from the popover plate so the input reads as inset. */
 private val FieldFill = Color(0xFFFFFFFF).copy(alpha = 0.07f)

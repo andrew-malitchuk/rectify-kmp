@@ -21,9 +21,9 @@ class ShellWindowDefaultsTest {
     }
 
     @Test
-    fun `panel widths are 260 default 320 max 480`() {
+    fun `panel widths are 260 default 300 max 480`() {
         assertEquals(260.dp, ShellWindowDefaults.PanelMinWidth)
-        assertEquals(320.dp, ShellWindowDefaults.PanelDefaultWidth)
+        assertEquals(300.dp, ShellWindowDefaults.PanelDefaultWidth)
         assertEquals(480.dp, ShellWindowDefaults.PanelMaxWidth)
     }
 

@@ -23,16 +23,11 @@ import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.molecule.bar.tab.SidebarTabItem
 import presentation.core.ui.source.kit.molecule.bar.tab.SidebarTabs
 
-/**
- * Panel header geometry.
- *
- * **Open question — no comp exists for this panel.** The header height is derived from
- * `SidebarTabs`' own 26 dp tab plus breathing room; flagged for design review.
- */
-private val PanelHeaderHeight: Dp = 40.dp
+/** Panel header geometry — measured from the design's panel header (`height:44px`). */
+private val PanelHeaderHeight: Dp = 44.dp
 
 /** Preview-only panel width. */
-private val PreviewPanelWidth: Dp = 320.dp
+private val PreviewPanelWidth: Dp = 300.dp
 private val PreviewPanelHeight: Dp = 240.dp
 
 /**
@@ -62,7 +57,7 @@ public fun SidePanelFrame(
     // No leading hairline here: when the panel is shown, PanelResizeHandle already draws the
     // divider on this exact edge. Painting a second one stacked `line` against `line2` and read
     // as a doubled rule. The handle owns the seam.
-    Row(modifier = modifier.background(Theme.color.surface)) {
+    Row(modifier = modifier.background(Theme.color.bg)) {
         Column(modifier = Modifier.fillMaxHeight()) {
             Box(
                 modifier = Modifier

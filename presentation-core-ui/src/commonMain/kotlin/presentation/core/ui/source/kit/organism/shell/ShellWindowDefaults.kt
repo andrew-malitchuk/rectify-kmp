@@ -26,7 +26,7 @@ public object ShellWindowDefaults {
     public val PanelMaxWidth: Dp = 480.dp
 
     /** Side-panel width before the user has ever dragged the handle. */
-    public val PanelDefaultWidth: Dp = 320.dp
+    public val PanelDefaultWidth: Dp = 300.dp
 
     /**
      * Leading toolbar padding that keeps content clear of the macOS traffic lights.

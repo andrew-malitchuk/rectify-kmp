@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.Color
  * @param bg Root app background.
  * @param chrome Toolbar / header / nav chrome background — one step up from [bg].
  * @param stage Raised secondary surface — modals, sheets, elevated panels.
+ * @param stageDot Dot-grid texture on [stage]. Its own token because the two themes need
+ *   different alphas to land on the same perceived weight — see the design's `--stageDot`.
  * @param surface Card / tile content surface.
  * @param pop Highest-contrast surface — popovers, code chips, tooltips. Deliberately dark-ish
  *   in both themes.
@@ -40,6 +42,7 @@ public data class ThemeColor(
     val bg: Color,
     val chrome: Color,
     val stage: Color,
+    val stageDot: Color,
     val surface: Color,
     val pop: Color,
     // endregion
