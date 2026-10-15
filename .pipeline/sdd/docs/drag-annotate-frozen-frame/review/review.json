@@ -1,0 +1,76 @@
+{
+  "spec": "drag-annotate-frozen-frame",
+  "stage": "review",
+  "step": "review",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-review-consolidate",
+  "provenance": {
+    "selfHash": "a4e7eb998944c2cc2ce4ba3687fe1fd8e718ca3d50eff43cb395875422589af9",
+    "inputs": [
+      {
+        "artifact": "review/findings.json",
+        "hash": "e6856a0ac075d49b4a3b2451029542103ec2b6df7d5df8f1838a0570806794da"
+      },
+      {
+        "artifact": "validation/verdict.json",
+        "hash": "b67aa2a7aa05de36010a41336c3343234dfeb0d5306f9d7cda26a585049e900e"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T06:01:56Z",
+  "updatedAt": "2026-10-15T06:01:56Z",
+  "data": {
+    "verdict": "approve-with-nits",
+    "summary": "Single merged reviewer at fast tier. 10 findings, none blocking. It called the hard parts of this spec done properly: FrameGeometry's density lives in exactly one member and its round-trip test genuinely reproduces the POC trap, deleteAnnotation's follow-the-object renumbering is correct on every branch traced, and no ImageBitmap can reach Orbit state. Zero build.gradle.kts and zero libs.versions.toml edits held across all five batches, confirmed by an empty git diff over those paths. The one real defect was a test that could not fail, and it was fixed before close.",
+    "blocking": [],
+    "major": [],
+    "minor": [
+      "COR-1 [MirrorViewModelAnnotationTest.kt:279] MAJOR as found, now FIXED. sessionLostWhileFrozenKeepsTheAnnotations was vacuous: FakeStartMirroring threw from .onStart, which had already run when the session opened, so setting the failure afterwards threw nothing, .catch never ran, and both assertions held with the ENTIRE session-loss path deleted. Two batches had claimed mutation-verification; this test would have survived any mutation because it never reached the code it named. Fixed by giving the fake a mid-stream failure that throws from .onEach, and proven red-then-green: with onSessionLost neutered the test fails with 'expected:<Lost(...)> but was:<Streaming(...)>', restored it passes. The agent then ran 11 further mutations across the whole file and showed every one was killed, so the other 12 tests are measurably not vacuous.",
+      "COR-5 [MirrorViewModel.kt:298] FIXED. All five annotation handlers read state.frozen OUTSIDE reduce and wrote the stale copy inside it; since Orbit runs intents in separate coroutines, a per-keystroke CommentAnnotation racing a DeleteAnnotation could resurrect a deleted annotation. All five now read inside reduce, which works because Orbit 12's reduce is internalStateFlow.update - a CAS loop that re-runs the lambda against the winning value. stageAnnotation keeps its single currentFrame.value read outside reduce, because that read IS AC-47.",
+      "COR-2 [PopoverCrowding.kt:60] Crowding is computed on unclamped rects while placement clamps, so two marks stacked low both clamp to the same maxY and draw on top of each other while anyOverlap reports not-crowded.",
+      "COR-3 [PopoverCrowding.kt:27] The 36dp one-line nominal is applied to the selected annotation too, whose real plate is the taller CommentPopover - under-detects crowding around the open popover.",
+      "COR-4 [MirrorAnnotationStage.kt:412] Gutter rows past roughly nine all coerce onto the same offset: stacked rows, converging leader lines, no scroll or cap.",
+      "COR-6 [MirrorAnnotationStage.kt:202] One-frame geometry reset on the live-to-frozen remount.",
+      "COR-7 [FrameGeometry.kt:105] toDp is the only member without a degenerate guard.",
+      "COR-8 [MirrorAnnotationStage.kt:362] Dp.Hairline used as a positional zero."
+    ],
+    "nits": [
+      "CNV-1: GutterRowHeight, POPOVER_TAIL_GAP_DP and SCRIM_ALPHA are named file-level constants rather than tokens - no existing token fits, and all three are documented.",
+      "ARC-1: MirrorFrameView's new overlay KDoc understates what goes through the slot."
+    ],
+    "changeRequests": [],
+    "techDebt": [
+      "COR-2: compute crowding on the same clamped rects that placement uses.",
+      "COR-3: use the selected annotation's real plate height rather than the one-line nominal.",
+      "COR-4: cap or scroll the gutter past nine rows.",
+      "COR-6: carry geometry across the live-to-frozen remount.",
+      "COR-7: guard toDp against a zero density.",
+      "COR-8: replace Dp.Hairline-as-zero with an explicit 0.dp.",
+      "CNV-1 / ARC-1: tokenise the three constants if a suitable token is ever added; expand the overlay KDoc."
+    ],
+    "followUps": [
+      "COR-5's race has NO test. The agent built one, found it stayed green against the pre-fix code, and deleted it rather than ship a test that proves nothing - the same disease as COR-1, caught on itself. Reproducing it needs a real thread pool and a latch, which would be flaky under runTest.",
+      "AF-5..AF-15 from Stage 5 remain open, and the inherited chain items: resultLauncher catches CancellationException repo-wide, F-2's SEC-1 GetProp, the E-resize cursor, the missing onPop token."
+    ],
+    "survey": [
+      {
+        "question": "Approve this PR for merge into development?",
+        "options": [
+          "approve-with-nits",
+          "request-changes",
+          "approve"
+        ],
+        "answer": "approve-with-nits - the one finding that mattered (a test that could not fail) is fixed with red-then-green evidence, and the reviewer measured the rest of that file for the same defect rather than assuming. 196 desktop tests green, iOS test-compile and desktop app green.",
+        "source": "ai-proposed",
+        "rationale": "Autonomous run. COR-1 was worth the extra cycle on its own: it refuted a mutation-verification claim two batches had made, and a test that passes against deleted code buys false confidence in exactly the path a user hits when a phone is unplugged mid-annotation."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-auto",
+    "approved": true,
+    "at": "2026-10-15T06:01:56Z"
+  }
+}

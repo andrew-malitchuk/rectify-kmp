@@ -1,6 +1,6 @@
 {
   "spec": "drag-annotate-frozen-frame",
-  "updatedAt": "2026-10-15T05:15:02Z",
+  "updatedAt": "2026-10-15T06:01:56Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -66,11 +66,27 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 148005,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 122464,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1190006,
+    "tokens": 1460475,
     "durationMs": 0,
-    "invocations": 8
+    "invocations": 10
   }
 }
