@@ -95,3 +95,86 @@ Two consequences for the chosen fix:
 A useful property for the regression test: because the cost is fixed rather than
 distributed, the cold-start path is reproducible on demand with
 `adb kill-server` and does not need a timing tolerance.
+
+## `start-server` is idempotent and non-disruptive (measured)
+
+With a daemon already running and the Pixel 8 attached:
+
+| check | result |
+|---|---|
+| daemon pid before | 78433 |
+| `adb start-server` wall time | **0.00 s** |
+| daemon pid after | 78433 — unchanged, not restarted |
+| `adb devices` after | `38031FDJH00JVF  device` — session undisturbed |
+
+So the healing step costs nothing on a warm daemon and does not bounce a live
+connection.
+
+**This simplifies the chosen fix.** The decision was worded as "before the
+first poll and after any timeout-failed poll", which implies tracking whether
+the daemon is believed up and whether the last poll failed on a timeout
+specifically. That conditional state is unnecessary: because the warm case is
+free (0.00 s) and side-effect-free (same pid, device retained), the step can be
+run **unconditionally** ahead of each discovery poll.
+
+Fewer moving parts, and it removes a failure mode of its own — a stale "daemon
+is up" belief that survives a daemon the user killed from a shell. Prefer the
+unconditional form unless the plan has a reason this measurement does not cover.
+
+Caveat worth keeping: this measures the *same* adb binary talking to its own
+daemon. A version mismatch (a second adb from a different SDK) makes
+`start-server` kill and restart the daemon rather than no-op, which WOULD
+disturb a live session. That is a pre-existing hazard of the environment, not
+of this fix, but the error path should not assume the 0.00 s case.
+
+## A WEDGED daemon is a second, distinct failure mode — and `start-server` does not heal it
+
+Measured by `SIGSTOP`-ing the running daemon (pid 78433) to simulate a daemon
+that is alive but not serving — a hung daemon, not a missing one:
+
+| command, against a wedged daemon | result |
+|---|---|
+| `adb devices` | **hung, >8 s, never returned** |
+| `adb start-server` | **also hung** (one earlier run returned 0.00 s instead) |
+
+Two things follow, and the second one contradicts the simplification proposed
+in the section above.
+
+### 1. This validates minting `HostCommand.KillServer`
+
+`start-server` cannot recover a wedged daemon — it is not a repair command, it
+is a "make sure one exists" command, and one already exists. Only
+`kill-server` (or killing the pid) clears it. So the AC-27 "Restart adb" action
+genuinely needs `kill-server` + `start-server`, not `start-server` alone. The
+judge's ruling to widen the closed set is therefore empirically correct, not
+merely a copy-fidelity concern.
+
+### 2. The UNCONDITIONAL `start-server` idea is WRONG — withdraw it
+
+The preceding section recommended running `start-server` unconditionally ahead
+of every discovery poll, on the grounds that the warm case costs 0.00 s and is
+side-effect-free. That reasoning only covered a *healthy* warm daemon. Against
+a wedged one the call hangs, so an unconditional pre-poll `start-server` would
+burn the full `DaemonStartTimeoutMs` (15 s) watchdog on **every** poll — a
+second livelock, introduced by the fix itself and strictly worse than the
+3-second one it replaces, because the watchdog is five times longer.
+
+**The step must stay budgeted and must escalate**, roughly:
+
+1. `ListDevices` at its 3 s budget. Success — done.
+2. On a timeout: `StartServer` under `DaemonStartTimeoutMs`. This covers the
+   cold case (3.03 s, fixed).
+3. If `StartServer` itself times out, the daemon is wedged rather than absent:
+   `KillServer`, then `StartServer`. This is the only path that recovers a
+   wedged daemon, and it is also what AC-27's button does.
+4. Still failing — surface `PollFailed` with the reason. Do not loop silently.
+
+### Honesty note on determinism
+
+Unlike the cold-start cost (3.03 s on every run, to the hundredth), the wedged
+case was **not** deterministic: `start-server` hung in one run and returned
+0.00 s in another against the same stopped daemon. Treat "wedged" as a flaky
+state, which is a further argument for every step carrying its own budget
+rather than relying on any observed timing. A `SIGSTOP`-ed daemon is also only
+an approximation of the real-world wedge (a half-open socket, a USB-stack
+hang); do not over-fit the recovery logic to this exact simulation.

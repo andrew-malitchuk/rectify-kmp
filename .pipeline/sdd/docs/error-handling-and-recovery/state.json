@@ -1,8 +1,11 @@
 {
   "spec": "error-handling-and-recovery",
-  "currentStage": "plan",
+  "currentStage": "backlog",
   "stages": {
     "preparation": {
+      "status": "done"
+    },
+    "plan": {
       "status": "done"
     }
   },
@@ -18,6 +21,16 @@
     },
     "preparation": {
       "status": "done"
+    },
+    "plan-draft": {
+      "status": "done"
+    },
+    "plan-evaluate": {
+      "status": "done"
+    },
+    "plan-refine": {
+      "status": "done",
+      "note": "refiner stopped mid-write (no Edit tool); its reasoning was preserved and the plan body was assembled by the orchestrator"
     }
   },
   "tasks": {},

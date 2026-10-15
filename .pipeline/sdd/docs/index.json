@@ -16,5 +16,11 @@
     "currentStage": "done",
     "verdict": "complete-with-waivers",
     "updatedAt": "2026-10-15T06:01:56Z"
+  },
+  {
+    "spec": "error-handling-and-recovery",
+    "currentStage": "preparation",
+    "verdict": "",
+    "updatedAt": "2026-10-15T06:02:30Z"
   }
 ]
