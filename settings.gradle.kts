@@ -38,6 +38,7 @@ include(":common-core")
 
 // data
 include(":data-core")
+include(":data-device-api")
 include(":data-preference-api")
 include(":data-preference-impl")
 include(":data-database-api")
