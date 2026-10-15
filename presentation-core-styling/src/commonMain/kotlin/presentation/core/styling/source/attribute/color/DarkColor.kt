@@ -24,6 +24,7 @@ internal val attributeDarkColorPalette: ThemeColor =
         stageDot = Color(0x0EFFFFFF), // rgba(255,255,255,.055)
         surface = Color(0xFF2B2B2E),
         pop = Color(0xFF2C2D31),
+        overlayScrim = Color(0xFF0C0C0E), // rgb(12,12,14) — fixed near-black, identical in LightColor by design
         // endregion
         // region Ink
         ink = Color(0xFFF1F1F2),

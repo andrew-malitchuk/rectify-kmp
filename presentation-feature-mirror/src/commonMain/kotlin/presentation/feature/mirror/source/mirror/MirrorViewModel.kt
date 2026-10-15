@@ -122,6 +122,13 @@ public class MirrorViewModel(
             is MirrorIntent.DeleteAnnotation -> deleteAnnotation(intent.index)
             MirrorIntent.ClearStaged -> clearStaged()
             MirrorIntent.ResumeLive -> resumeLive()
+            // Listed, not `else`-swallowed: the handlers land with the surfaces that dispatch
+            // them, and an `else` here would silently absorb the next intent added too.
+            MirrorIntent.Reconnect -> Unit
+            MirrorIntent.RetryDiscovery -> Unit
+            MirrorIntent.RestartAdb -> Unit
+            MirrorIntent.LocateAdb -> Unit
+            is MirrorIntent.AdbPathChosen -> Unit
         }
     }
 

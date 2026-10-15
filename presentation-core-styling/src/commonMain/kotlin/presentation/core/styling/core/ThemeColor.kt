@@ -7,8 +7,8 @@ import androidx.compose.ui.graphics.Color
  * 01 — Color).
  *
  * A flat ink/surface system — one accent ladder ([primary]/[primaryHover]/[primaryPress]), no
- * multi-accent "bento" scheme. [annotate]/[sentFixed]/[warnStillOff]/[measure] are identical in
- * both themes by design.
+ * multi-accent "bento" scheme. [annotate]/[sentFixed]/[warnStillOff]/[measure] and
+ * [overlayScrim] are identical in both themes by design.
  *
  * @param bg Root app background.
  * @param chrome Toolbar / header / nav chrome background — one step up from [bg].
@@ -18,6 +18,12 @@ import androidx.compose.ui.graphics.Color
  * @param surface Card / tile content surface.
  * @param pop Highest-contrast surface — popovers, code chips, tooltips. Deliberately dark-ish
  *   in both themes.
+ * @param overlayScrim Opaque base colour of the frozen-frame dimming veil — the design's fixed
+ *   `rgba(12,12,14,0.42)`, stored here without its alpha so the call site applies it the same way
+ *   [line]/[hover]/[seg] overlays are composited. **Deliberately theme-invariant: the same value
+ *   in both palettes.** Unlike [pop] it must not theme-follow, because the scrim sits over
+ *   mirrored device UI of unknown brightness — a lighter dark-theme plate would fail to dim a
+ *   bright screenshot (the same reasoning that keeps `CommentPopover` always dark).
  * @param ink Primary text / icon ink.
  * @param ink2 Secondary ink — captions, labels.
  * @param ink3 Tertiary ink — metadata, placeholders.
@@ -45,6 +51,7 @@ public data class ThemeColor(
     val stageDot: Color,
     val surface: Color,
     val pop: Color,
+    val overlayScrim: Color,
     // endregion
     // region Ink
     val ink: Color,

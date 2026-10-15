@@ -76,7 +76,14 @@ internal object ProcessRunner {
             }
             if (completed == null) {
                 log.d { "${argv.joinToString(" ")} exceeded ${timeoutMs}ms, killing it" }
-                throw DeviceCommandException(argv, null, "timed out after ${timeoutMs}ms")
+                // Built from the shared constant, never retyped: DeviceCommandException.isTimeout()
+                // matches on it down in the escalation ladder, and an inlined literal here would
+                // let a reword disarm that ladder with the whole suite still green.
+                throw DeviceCommandException(
+                    argv,
+                    null,
+                    "${DeviceCommandException.TIMEOUT_REASON_PREFIX}${timeoutMs}ms",
+                )
             }
             if (completed.exitCode != 0) throw DeviceCommandException(argv, completed.exitCode, completed.stderrTail)
             completed.stdout

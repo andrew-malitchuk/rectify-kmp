@@ -15,6 +15,25 @@ private const val TEXT_MINIMUM: Double = 4.5
 /** WCAG 2.2 SC 1.4.11 AA, non-text UI components and graphical objects. */
 private const val NON_TEXT_MINIMUM: Double = 3.0
 
+/**
+ * Tokens deliberately absent from the sweep, each for a stated structural reason — not an
+ * oversight, and asserted as such by `every declared colour token is either swept or
+ * explicitly exempt`.
+ *
+ * - `stageDot` and `overlayScrim` are decorative and have **no palette surface behind them**.
+ *   The dot grid is texture on the stage; the scrim is painted over mirrored device pixels of
+ *   unknown colour. The sweep's method is to composite a token over the surfaces it is actually
+ *   drawn on (A11Y-2), and for these there are none — a row would measure a pairing the app
+ *   never paints. `overlayScrim`'s 0.42 alpha also lives in `presentation-core-ui`, so this
+ *   module could not composite it correctly even if a surface existed.
+ * - `primaryHover` / `primaryPress` are measured as backgrounds under `onPrimary`, so they are
+ *   covered by those rows rather than needing their own.
+ */
+private val EXEMPT_TOKENS: Set<String> = setOf(
+    "stageDot",
+    "overlayScrim",
+)
+
 /** Baselines are recorded to two decimals; this absorbs that rounding and nothing more. */
 private const val BASELINE_TOLERANCE: Double = 0.01
 
@@ -67,6 +86,12 @@ private fun MutableList<Pairing>.frozen(label: String, fg: Color, bg: Color, bas
  *   text minimum. This is why `ink3` is swept as incidental/meta ink at 3:1, not at 4.5:1.
  * - **SC 1.4.11, purely decorative graphic** — `StageSurface`'s dotted grid carries no
  *   information, so its composited dot colour is not a measured pairing at all.
+ * - **Not a foreground at all** — `overlayScrim` is a dimming veil, not text and not a UI-component
+ *   boundary, so neither SC 1.4.3 nor SC 1.4.11 applies to it as a foreground. It is also the one
+ *   token with no palette surface behind it: it is painted over mirrored device pixels of unknown
+ *   colour, and its 0.42 alpha lives at the `presentation-core-ui` call site, not in the token. Any
+ *   `overlayScrim over <surface>` row would therefore be a fabricated pairing the shell never
+ *   paints, so it is exempted by name here rather than frozen at a meaningless baseline.
  *
  * DEVIATION from the gate's Tier 1 list, flagged rather than hidden: the gate also named the
  * composited `line` and `line2` hairlines at 3:1. That threshold is arithmetically unreachable
@@ -90,6 +115,38 @@ class PaletteContrastTest {
     fun `every pairing in both palettes is measured - none silently skipped`() {
         assertEquals(56, lightPairings().size)
         assertEquals(56, darkPairings().size)
+    }
+
+    /**
+     * Makes the test above's promise real: every token declared on [ThemeColor] is either swept
+     * or named in [EXEMPT_TOKENS], so adding a colour can never slip past the sweep in silence.
+     *
+     * The frozen pairing count alone did not do this. It asserts the *list length*, so a new
+     * token could be added to [ThemeColor], never measured, and this file would stay green while
+     * claiming "none silently skipped" — which is exactly how `stageDot` and `overlayScrim` came
+     * to be unmeasured. A test whose name over-promises is the same defect class this project
+     * keeps finding: it cannot fail for the reason it says it can.
+     *
+     * Token names come from the data class's own `toString()` rather than reflection, which
+     * `commonTest` does not have on every target. `Color`'s `toString()` is positional, so the
+     * `name=` pattern matches only [ThemeColor]'s own properties and never a nested value.
+     */
+    @Test
+    fun `every declared colour token is either swept or explicitly exempt`() {
+        val declared = Regex("""(\w+)=""")
+            .findAll(attributeLightColorPalette.toString())
+            .map { it.groupValues[1] }
+            .toSet()
+        assertTrue(declared.size >= 20, "token names did not parse out of toString: \$declared")
+
+        val swept = (lightPairings() + darkPairings()).flatMap { it.label.split(' ', '-') }.toSet()
+        val unaccounted = declared.filter { it !in swept && it !in EXEMPT_TOKENS }
+
+        assertTrue(
+            unaccounted.isEmpty(),
+            "these ThemeColor tokens are neither measured nor exempt: \$unaccounted — add a " +
+                "pairing, or add the token to EXEMPT_TOKENS with the reason it cannot be measured",
+        )
     }
 
     @Test

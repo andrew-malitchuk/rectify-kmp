@@ -561,14 +561,14 @@
         "kind": "logic",
         "status": "new",
         "registryRef": "",
-        "responsibility": "New internal file data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/discovery/TimeoutMatcher.kt: `internal fun DeviceCommandException.isTimeout(): Boolean = exitCode == null && stderrTail.startsWith(\"timed out after\")`. Matches ProcessRunner's exact timeout message shape (ProcessRunner.kt:79) and deliberately excludes the IOException 'could not start the binary' case and every non-zero exit. internal rather than private purely so T1b/T1c can assert it directly — the distinction it draws is the difference between a restart and a pointless process spawn on every parse error."
+        "responsibility": "SUPERSEDED BY THE JUDGE'S GRAFT - no TimeoutMatcher.kt is created. The timeout classifier lives on DeviceCommandException in data-device-api as TIMEOUT_REASON_PREFIX + isTimeout(), beside the constant its single producer (ProcessRunner.kt:79) formats the reason with and its single consumer (DeviceRepositoryImpl's escalation ladder) reads. candidate-c put an internal matcher in data-repository-impl; that leaves the producer free to reword its literal while every test stays green and the ladder silently stops firing. Binding both ends to one constant makes that drift a compile error instead. See architecture.interfaces and backlog T-3."
       },
       {
         "name": "DeviceRepositoryImpl daemon-start policy",
         "kind": "logic",
         "status": "reuse",
         "registryRef": "",
-        "responsibility": "Edit to the existing observeDiscovery loop (data-repository-impl/.../source/DeviceRepositoryImpl.kt:72-105). Adds a collector-local `var daemonStarted = false`; before the first poll and after any poll whose DeviceCommandException isTimeout(), calls adbHostSource.startServer() inside its own try/catch that turns a failure into the same PollFailed value (never throws out of observeDiscovery). Order matters: the probe()-not-found short-circuit inside poll() still wins, so a genuinely absent adb reports ToolMissing and no start-server is attempted."
+        "responsibility": "Edit to the existing observeDiscovery loop (data-repository-impl/.../source/DeviceRepositoryImpl.kt:72-105). Implements FR-36's budgeted ESCALATION, with NO collector-local daemonStarted flag and NO pre-first-poll call - both belonged to the withdrawn unconditional design, and keying solely on a timeout means there is no 'daemon is believed up' state to track (which was a failure mode of its own: the belief outlived a daemon the user killed from a shell). The ladder: ListDevices at HostCommandTimeoutMs (3s); on a DeviceCommandException whose isTimeout() is true - and ONLY then - adbHostSource.startServer() under DaemonStartTimeoutMs (15s), covering the cold daemon measured at a fixed 3.03s; if that start itself times out the daemon is wedged rather than absent, so killServer() then startServer(), the only sequence that recovers a wedge (measured: start-server alone HANGS against a wedged daemon); if it still fails, emit PollFailed carrying the reason rather than looping silently. Each step is wrapped so a tooling failure becomes a PollFailed, never an escaped exception."
       },
       {
         "name": "MirrorIntent.Reconnect + MirrorViewModel.reconnect()",
@@ -772,7 +772,7 @@
     "affectedModules": [
       "data-device-api — HostCommand.StartServer + buildHostArgv branch; MirrorTuning.DaemonStartTimeoutMs; AdbHostSource.startServer()",
       "data-device-impl — AdbHostSourceImpl.startServer (desktopMain), UnsupportedDeviceSources actual (commonMain), ToolResolver userPath seam, Koin wiring; NEW api-only Gradle dependency on data-preference-api",
-      "data-repository-impl — observeDiscovery daemon-start policy, core/discovery/TimeoutMatcher.kt, DeviceRepositoryImpl.setAdbPath",
+      "data-repository-impl - observeDiscovery's escalation-ladder policy (FR-36) and DeviceRepositoryImpl.setAdbPath. The timeout classifier is NOT here: it lives on DeviceCommandException in data-device-api per the judge's graft.",
       "data-preference-api / data-preference-impl — AdbPathPreference, AdbPathPreferenceSource(+Impl), DataPreferenceImplModule registration",
       "domain-repository-api — DeviceRepository.setAdbPath",
       "domain-usecase-api / domain-usecase-impl — SetAdbPathUseCase (+Impl) and its Koin binding",
@@ -889,7 +889,7 @@
       "HostCommand.StartServer + buildHostArgv branch (data-device-api)",
       "MirrorTuning.DaemonStartTimeoutMs (data-device-api)",
       "AdbHostSource.startServer() + AdbHostSourceImpl + UnsupportedDeviceSources actual (data-device-api/impl)",
-      "core/discovery/TimeoutMatcher.kt (data-repository-impl)",
+      "DeviceCommandException.TIMEOUT_REASON_PREFIX + isTimeout() (data-device-api) - replaces candidate-c's core/discovery/TimeoutMatcher.kt, which is NOT built",
       "Daemon-start policy inside the existing observeDiscovery loop (data-repository-impl)",
       "AdbPathPreference + AdbPathPreferenceSource + Impl + DI registration (data-preference-api/impl)",
       "DeviceRepository.setAdbPath + SetAdbPathUseCase + Impl + DI binding (domain-repository-api, domain-usecase-api/impl)",
@@ -1272,14 +1272,14 @@
     },
     {
       "step": 5,
-      "title": "TimeoutMatcher + the poll-loop daemon policy; T1 GREEN, T1b, T1c",
+      "title": "The shared timeout classifier + the poll-loop escalation ladder; T1 GREEN, T1b, T1c",
       "dependsOn": [
         4
       ],
       "linkedAC": [
         "AC-53"
       ],
-      "estimate": "2 h — core/discovery/TimeoutMatcher.kt; the collector-local daemonStarted flag and the two call sites in observeDiscovery, each wrapped so a start-server failure becomes PollFailed rather than escaping the flow. Then apply T1's mutation (delete the call) and observe red; add T1b (a non-zero exit is not a timeout) and T1c (a parse error spawns nothing)."
+      "estimate": "2 h - TIMEOUT_REASON_PREFIX + isTimeout() on DeviceCommandException (data-device-api), ProcessRunner.kt:79 reformatted to use the constant, and the escalation ladder in observeDiscovery. NO collector-local daemonStarted flag and NO pre-first-poll call site: both belonged to the withdrawn unconditional design, and the ladder is keyed solely on a timeout-classified ListDevices failure, so there is no 'daemon is believed up' state to track."
     },
     {
       "step": 6,
@@ -1437,8 +1437,8 @@
   "testStrategy": {
     "unit": [
       "T1 coldDaemonPollRecoversAfterStartServer (data-repository-impl commonTest, virtual time) - fake AdbHostSource throws DeviceCommandException(argv, null, \"timed out after 3000ms\") from listDevices() until startServer() has been called; assert a DiscoveryModel.Found is emitted within two polls. RED FIRST: no production call exists pre-fix, so the loop emits PollFailed forever (record the run). MUTATION: delete the `adbHostSource.startServer()` call from step 2 of observeDiscovery's escalation ladder in DeviceRepositoryImpl.kt - the 'Found within two polls' assertion must fail. NOTE: the mutation target changed when the pre-first-poll call was withdrawn; the ladder's step 2 is now the only production call site, so this mutation is the whole fix.",
-      "T1b timeoutFailureIsDistinguishedFromAParseFailure (data-repository-impl commonTest) — isTimeout() is true for exitCode == null with \"timed out after 3000ms\" and false for exitCode == 1 with a stderr tail and for exitCode == null with an IOException message. MUTATION: change TimeoutMatcher.kt's body to `exitCode == null` — the non-zero-exit and could-not-start assertions must fail.",
-      "T1c parseFailureDoesNotRestartTheDaemon (data-repository-impl commonTest, virtual time) — the fake counts startServer() calls; after three non-timeout failures the count must still be 1 (the pre-first-poll call only). MUTATION: call startServer() on every DeviceCommandException regardless of isTimeout() — the count assertion must fail.",
+      "T1b timeoutFailureIsDistinguishedFromAParseFailure (data-device-api commonTest) - DeviceCommandException.isTimeout() is true for exitCode == null with a reason built from TIMEOUT_REASON_PREFIX, and false for exitCode == 1 with a stderr tail and for exitCode == null with an IOException message. MUTATION: change isTimeout()'s body to `exitCode == null` - the non-zero-exit and could-not-start assertions must fail. CORRECTED: the earlier wording named TimeoutMatcher.kt in data-repository-impl, which the judge's TIMEOUT_REASON_PREFIX graft removed - the classifier now lives on DeviceCommandException in data-device-api, beside the constant its producer formats with. Mutating a file that no longer exists is an unrunnable test.",
+      "T1c parseFailureDoesNotRestartTheDaemon (data-repository-impl commonTest, virtual time) - the fake counts startServer() calls; after three consecutive NON-timeout failures (parse error, non-zero exit, could-not-start) the count must still be ZERO. MUTATION: call startServer() on every DeviceCommandException regardless of isTimeout() - the zero-count assertion must fail. CORRECTED: the earlier wording asserted `count == 1 (the pre-first-poll call only)`. That call was WITHDRAWN when the wedged-daemon measurement killed the unconditional form, so the correct expectation is zero - the ladder fires startServer ONLY on a timeout-classified failure. As written the test would have failed against correct code, which is the inverse of the vacuous-test problem and just as bad.",
       "T4 resumeLiveIsNotOfferedWhileTheSessionIsLost (presentation-feature-mirror commonTest) — canResumeLive is true for frozen + Streaming and false for frozen + Lost and for no frozen frame. MUTATION: make canResumeLive return `frozen != null` unconditionally — the Lost case must fail.",
       "T5 toolMissingProjectsTheInstallCommandCard (presentation-feature-mirror commonTest, AC-26) — kind == ToolMissing, command == probe.installCommand, and the diagnostic contains every probedPaths entry plus the envHint. MUTATION: drop probedPaths from the diagnostic builder in DiscoveryErrorProjection.kt — the contains-every-path assertion must fail.",
       "T6 pollFailedProjectsItsOwnCardDistinctFromNoDeviceFound (presentation-feature-mirror commonTest, AC-53/FR-32) — assertNotEquals on the two projections, kind == PollFailed, and the reason string present in the diagnostic. MUTATION: map PollFailed through the NoDeviceFound branch (clarify.json's rejected option B) — both the inequality and the kind assertion must fail. This test IS the guard on binding decision 1.",
