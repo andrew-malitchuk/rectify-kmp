@@ -78,45 +78,75 @@ internal class DeviceRepositoryImpl(
         var emptyPolls = 0
 
         while (true) {
-            val probe = adbHostSource.probe()
-            if (!probe.found) {
-                // Not an error: a missing tool is a rendered state, so the counter does not
-                // advance - we learned nothing about whether a device is attached.
-                emptyPolls = 0
-                emit(
-                    DiscoveryModel.ToolMissing(
+            // The guard belongs HERE and not in a `Flow.catch` further up: `catch` is
+            // terminal, so a use-case or collector guard could render the failure exactly
+            // once and discovery would still be over for good. Only the loop itself can
+            // turn a failed poll into "try again on the next tick" - and `adb` fails
+            // transiently all the time, most reliably on the cold start where the very
+            // first `adb devices -l` has to boot the server inside HostCommandTimeoutMs.
+            val emission = try {
+                poll(avdNames, emptyPolls).also { emptyPolls = it.emptyPolls }
+            } catch (failure: DeviceCommandException) {
+                // emptyPolls is left exactly as it was: a poll that never answered neither
+                // confirms an empty bench nor clears a streak of them.
+                PollOutcome(
+                    model = DiscoveryModel.PollFailed(
                         tool = ToolKind.Adb.binaryName,
-                        probedPaths = probe.probedPaths,
-                        installCommand = probe.installCommand,
-                        envHint = probe.envHint,
-                    )
-                )
-            } else {
-                adbVersion.value = probe.version.orEmpty()
-                val devices = adbHostSource.listDevices()
-                avdNames.keys.retainAll(devices.mapTo(mutableSetOf()) { it.id.value })
-                val usable = devices.count { it.state == DeviceStateResource.Device }
-                emptyPolls = if (usable == 0) emptyPolls + 1 else 0
-
-                emit(
-                    if (emptyPolls >= MirrorTuning.EmptyPollEscalation) {
-                        DiscoveryModel.NoDeviceFound(
-                            toolVersion = probe.version.orEmpty(),
-                            lastPollEpochMs = nowMs(),
-                            attempts = emptyPolls,
-                            attachedCount = devices.count { it.state != DeviceStateResource.Device },
-                        )
-                    } else {
-                        DiscoveryModel.Found(
-                            physical = devices.filterNot(DeviceResource::isEmulator)
-                                .map(DeviceResourceMapper.toModel::map),
-                            emulators = emulators(devices, avdNames),
-                        )
-                    }
+                        reason = failure.stderrTail.ifBlank { failure.message.orEmpty() },
+                    ),
+                    emptyPolls = emptyPolls,
                 )
             }
+            // Emitted outside the try: catching around `emit` would also swallow a
+            // downstream failure, which flow exception transparency forbids.
+            emit(emission.model)
             delay(MirrorTuning.DiscoveryPollMs)
         }
+    }
+
+    /** One poll's emission plus the empty-poll streak it leaves behind. */
+    private data class PollOutcome(val model: DiscoveryModel, val emptyPolls: Int)
+
+    /**
+     * One discovery round trip. Throws [DeviceCommandException] like any other data-layer
+     * call - the caller decides what a failed round trip means for the stream.
+     */
+    private suspend fun poll(avdNames: MutableMap<String, AvdName>, emptyPolls: Int): PollOutcome {
+        val probe = adbHostSource.probe()
+        if (!probe.found) {
+            // Not an error: a missing tool is a rendered state, so the counter does not
+            // advance - we learned nothing about whether a device is attached.
+            return PollOutcome(
+                model = DiscoveryModel.ToolMissing(
+                    tool = ToolKind.Adb.binaryName,
+                    probedPaths = probe.probedPaths,
+                    installCommand = probe.installCommand,
+                    envHint = probe.envHint,
+                ),
+                emptyPolls = 0,
+            )
+        }
+        adbVersion.value = probe.version.orEmpty()
+        val devices = adbHostSource.listDevices()
+        avdNames.keys.retainAll(devices.mapTo(mutableSetOf()) { it.id.value })
+        val usable = devices.count { it.state == DeviceStateResource.Device }
+        val streak = if (usable == 0) emptyPolls + 1 else 0
+
+        val model = if (streak >= MirrorTuning.EmptyPollEscalation) {
+            DiscoveryModel.NoDeviceFound(
+                toolVersion = probe.version.orEmpty(),
+                lastPollEpochMs = nowMs(),
+                attempts = streak,
+                attachedCount = devices.count { it.state != DeviceStateResource.Device },
+            )
+        } else {
+            DiscoveryModel.Found(
+                physical = devices.filterNot(DeviceResource::isEmulator)
+                    .map(DeviceResourceMapper.toModel::map),
+                emulators = emulators(devices, avdNames),
+            )
+        }
+        return PollOutcome(model, streak)
     }
 
     override suspend fun bootEmulator(avdName: String) {

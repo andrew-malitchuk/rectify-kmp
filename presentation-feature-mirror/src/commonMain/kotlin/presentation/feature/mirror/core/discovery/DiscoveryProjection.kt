@@ -23,6 +23,11 @@ internal fun MirrorUiState.applyDiscovery(discovery: DiscoveryModel): MirrorUiSt
         // A probe in flight says nothing about what is attached — keep what is on screen.
         DiscoveryModel.Detecting -> copy(discovery = discovery)
 
+        // Same reasoning: a poll that failed produced no information, so the rows stand and
+        // only the status label changes. Clearing them would make an adb hiccup look like
+        // the device had been unplugged.
+        is DiscoveryModel.PollFailed -> copy(discovery = discovery)
+
         // No tool means no information at all, so the list is cleared rather than kept stale.
         is DiscoveryModel.ToolMissing -> copy(
             discovery = discovery,

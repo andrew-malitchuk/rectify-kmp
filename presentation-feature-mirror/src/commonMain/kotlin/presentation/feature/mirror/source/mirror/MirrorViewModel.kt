@@ -113,6 +113,15 @@ public class MirrorViewModel(
         reduce { state.copy(tools = tools) }
     }
 
+    /**
+     * No `.catch` here, unlike [observeFrames], and the asymmetry is deliberate: `catch` is
+     * terminal, so guarding the discovery stream at this end would render one failure and
+     * then stop polling for the life of the process. The guard sits inside the repository's
+     * poll loop, which is the only place that can report the failure AND try again two
+     * seconds later; a `DeviceCommandException` therefore arrives here as a
+     * `DiscoveryModel.PollFailed` value. [observeFrames] is the opposite case - a lost
+     * device really does end that session, so terminating is the right behaviour there.
+     */
     private fun observeDiscoveryWhileIdle() {
         viewModelScope.launch {
             sessionDeviceId

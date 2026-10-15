@@ -44,6 +44,22 @@ public sealed class DiscoveryModel : Model {
     ) : DiscoveryModel()
 
     /**
+     * A poll could not be completed because the tool itself failed or timed out.
+     *
+     * Deliberately NOT [NoDeviceFound]: that state means we looked and nothing was attached,
+     * this one means we learned nothing at all. Collapsing the two would tell a user holding
+     * a connected phone that there is no device, and would restart the empty-poll escalation
+     * on every adb hiccup. The next poll retries on its normal cadence.
+     *
+     * @property tool Binary name that failed, e.g. `adb`.
+     * @property reason Tool's own words for the failure - stderr tail or a timeout note.
+     */
+    public data class PollFailed(
+        val tool: String,
+        val reason: String,
+    ) : DiscoveryModel()
+
+    /**
      * At least one device or configured emulator is known.
      *
      * @property physical Attached devices, usable or not.

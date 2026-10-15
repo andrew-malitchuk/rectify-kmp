@@ -5,6 +5,7 @@ import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
 import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
+import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
 import data.device.api.source.model.AvdResource
 import data.device.api.source.model.DeviceCommand
@@ -176,6 +177,53 @@ class DeviceDiscoveryPollingTest {
         assertEquals(1, executor.calls)
     }
 
+    @Test
+    fun `a failed poll is reported and the next tick polls again`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.devices = listOf(device("R5CT10ABCDE", DeviceStateResource.Device))
+        adb.failuresLeft = 1
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(1)
+        val failed = assertIs<DiscoveryModel.PollFailed>(received.last().second)
+        assertEquals("adb", failed.tool)
+        assertEquals("timed out after 3000ms", failed.reason)
+
+        // The stream is still alive - a terminal operator would have ended it here.
+        advanceTimeBy(MirrorTuning.DiscoveryPollMs)
+        val found = assertIs<DiscoveryModel.Found>(received.last().second)
+        assertEquals(listOf("R5CT10ABCDE"), found.physical.map { it.id })
+    }
+
+    @Test
+    fun `a stream of failed polls keeps polling forever`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.failuresLeft = Int.MAX_VALUE
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(5 * MirrorTuning.DiscoveryPollMs + 1)
+
+        assertEquals(6, received.count { it.second is DiscoveryModel.PollFailed })
+    }
+
+    @Test
+    fun `a failed poll does not advance the empty poll escalation`() = runTest {
+        val adb = FakeAdbHostSource()
+        val received = collectDiscovery(adb)
+
+        // Two empty polls, then one that never answered, then the third empty one. If the
+        // failure counted as empty the escalation would already have fired by now.
+        advanceTimeBy(MirrorTuning.DiscoveryPollMs + 1)
+        adb.failuresLeft = 1
+        advanceTimeBy(MirrorTuning.DiscoveryPollMs)
+        assertIs<DiscoveryModel.PollFailed>(received.last().second)
+        assertTrue(received.none { it.second is DiscoveryModel.NoDeviceFound })
+
+        advanceTimeBy(MirrorTuning.DiscoveryPollMs)
+        val escalated = assertIs<DiscoveryModel.NoDeviceFound>(received.last().second)
+        assertEquals(MirrorTuning.EmptyPollEscalation, escalated.attempts)
+    }
+
     /**
      * Starts collecting the discovery flow on the background scope and returns the list it
      * fills, each emission stamped with the virtual time it arrived at.
@@ -219,6 +267,9 @@ private class FakeAdbHostSource(
 
     var devices: List<DeviceResource> = emptyList()
 
+    /** Set to make the next [listDevices] calls fail, the way a cold adb server does. */
+    var failuresLeft: Int = 0
+
     override suspend fun probe(): ToolProbe = ToolProbe(
         kind = ToolKind.Adb,
         found = found,
@@ -229,7 +280,13 @@ private class FakeAdbHostSource(
         envHint = "set ANDROID_HOME",
     )
 
-    override suspend fun listDevices(): List<DeviceResource> = devices
+    override suspend fun listDevices(): List<DeviceResource> {
+        if (failuresLeft > 0) {
+            failuresLeft--
+            throw DeviceCommandException(listOf("adb", "devices", "-l"), null, "timed out after 3000ms")
+        }
+        return devices
+    }
 }
 
 /** An `idb` probe that answers without touching a process. */
