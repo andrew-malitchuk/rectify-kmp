@@ -10,7 +10,7 @@
 | producedBy | sdd-build-plan-refine |
 | schemaVersion | 1 |
 | createdAt | 2026-10-15T00:19:33Z |
-| updatedAt | 2026-10-15T00:19:33Z |
+| updatedAt | 2026-10-15T00:19:55Z |
 
 ## Gate
 
@@ -34,7 +34,7 @@ true
 
 ### selfHash
 
-bb3b2f22d4d522e383cfa6e7fde9e11790951afba161015de0dfe77fd3dbbb6a
+685e70a97c538c5bf3ac6b5b50a06601c803863ee89f04bc6dfccfc721dd1d3e
 
 ### inputs
 
@@ -774,3 +774,8 @@ Every pure function this spec adds (7 parser/argv/probe functions, 2 presentatio
 true
 
 ### survey
+
+| question | options | answer | source | rationale |
+| --- | --- | --- | --- | --- |
+| Comp 01 draws an explicit 'Start mirroring' CTA (and FR-4/AC-3 mandate it), while comp 02's subtitle says 'Mirroring starts on its own as soon as adb sees one.' Which behaviour ships in v1? | ["A explicit CTA only, NO SIGNAL subtitle rewritten", "B auto-start first discovered device", "C auto-SELECT but still require Enter/click"] | A - Explicit CTA only. FR-4 mandates the action and AC-3 verifies it, so B would contradict a signed requirement and need a new AC plus a stop control. There is also a privacy argument: a mirrored screen can show anything on the user's phone, and auto-start would put it on screen with no act of consent, while F-2 deliberately ships no stop/reconnect UX (that is F-3's). The NO SIGNAL subtitle is rewritten to match in the SAME commit - now a DoD line, so the app never promises auto-start next to a button that requires a click. | ai-proposed | Autonomous run; recommended option taken. Cost comparison: A is one localised string, B is a requirement change plus a new AC plus a stop control plus a privacy posture. |
+| compose-application must gain project dependencies on :data-device-impl and :presentation-feature-mirror. Which source set? | ["A commonMain alongside the existing eight", "B desktopMain, splitting initKoin per platform"] | A - commonMain, matching every existing module in initKoin()'s list. initKoin() lives in commonMain and imports each Koin module by package, so B would force a change to the single file every platform entry point calls, purely to avoid linking two modules that already compile for all four targets. Explicitly NOT F-1's CON-1 mistake: that was desktop-only LIBRARIES (compose.material3, kermit) in commonMain; these are KMP project dependencies. | ai-proposed | Autonomous run; recommended option taken. If iOS framework size later matters, B is a contained follow-up rather than a rewrite. |
