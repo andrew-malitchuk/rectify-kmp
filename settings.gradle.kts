@@ -62,6 +62,7 @@ include(":presentation-core-ui")
 // presentation-feature
 include(":presentation-feature-about")
 include(":presentation-feature-home")
+include(":presentation-feature-mirror")
 include(":presentation-feature-onboarding")
 include(":presentation-feature-settings")
 include(":presentation-feature-splash")

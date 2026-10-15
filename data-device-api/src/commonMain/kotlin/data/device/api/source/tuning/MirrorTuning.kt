@@ -9,7 +9,29 @@ package data.device.api.source.tuning
  */
 public object MirrorTuning {
 
-    /** Minimum delay between two captures, in milliseconds. */
+    /**
+     * Minimum delay between two captures, in milliseconds.
+     *
+     * STILL UNMEASURED, and deliberately left at its original value rather than quietly
+     * tuned: no authorised device was reachable from the machine this was built on (the only
+     * handset attached reported `unauthorized`, and the one installed AVD — an arm64
+     * `android-tv` image — never left `offline`), so every candidate number would have been a
+     * guess dressed up as a measurement.
+     *
+     * To settle it, with a device whose USB-debugging prompt has been accepted:
+     * 1. `adb devices -l` — record the model, `wm size` for the resolution, and the link
+     *    (USB 2, USB 3 or TCP).
+     * 2. Run a 60 s session and read the achieved rate off `TransportStats.fps` and the
+     *    round-trip off `TransportStats.latencyMs` — both are measured by the transport, not
+     *    modelled, so the status bar is the instrument. Record mean and p95, and
+     *    `droppedFrames` at the end.
+     * 3. Wave test for end-to-end latency: run a stopwatch app on the device and photograph
+     *    the device and the mirror together.
+     * 4. Repeat once with the stage's dot grid covered by the frame and once with it visible,
+     *    to settle whether the grid costs frame time (PRF-1).
+     * 5. Set this floor just above the measured mean capture round-trip — above it the loop
+     *    only burns CPU, below it the overrun counter inflates.
+     */
     public const val CaptureFloorMs: Long = 100L
 
     /** Timeout for a single screen capture, in milliseconds. */

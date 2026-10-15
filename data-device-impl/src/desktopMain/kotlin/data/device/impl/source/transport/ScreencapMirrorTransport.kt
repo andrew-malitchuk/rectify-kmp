@@ -29,9 +29,14 @@ private val log = Logger.withTag("ScreencapMirrorTransport")
  * second `adb` child on the USB interface - it costs frames, which are counted, not processes.
  *
  * @property executor The device-scoped command path.
+ * @property nowMs Wall-clock reader. A parameter for the same reason
+ *   `DeviceRepositoryImpl` takes one: the dropped-frame arithmetic and the fps window are
+ *   measured against the real clock, so they are only assertable under virtual time if the
+ *   clock is injectable.
  */
 internal class ScreencapMirrorTransport(
     private val executor: DeviceCommandExecutor,
+    private val nowMs: () -> Long = System::currentTimeMillis,
 ) : MirrorTransport {
 
     private val transportStats = MutableStateFlow(TransportStats())
@@ -42,15 +47,15 @@ internal class ScreencapMirrorTransport(
         transportStats.value = TransportStats()
         var dropped = 0
         var framesInWindow = 0
-        var windowStartedAtMs = System.currentTimeMillis()
+        var windowStartedAtMs = nowMs()
 
         while (currentCoroutineContext().isActive) {
-            val issuedAtMs = System.currentTimeMillis()
+            val issuedAtMs = nowMs()
             // A DeviceCommandException propagates on purpose: the device vanishing mid-stream
             // ends the session (the collector sees the failure and flips the chip to Lost)
             // rather than spinning on a dead serial. ProcessRunner has already killed the child.
             val raw = executor.run(device, DeviceCommand.Screencap)
-            val captureMs = System.currentTimeMillis() - issuedAtMs
+            val captureMs = nowMs() - issuedAtMs
             val png = trimToPngSignature(raw)
             val size = png?.let(::pngSize)
 
@@ -73,7 +78,7 @@ internal class ScreencapMirrorTransport(
             // frames the user did not get, so they are reported rather than silently smoothed.
             dropped += ((captureMs / MirrorTuning.CaptureFloorMs) - 1).coerceAtLeast(0).toInt()
 
-            val now = System.currentTimeMillis()
+            val now = nowMs()
             val windowMs = now - windowStartedAtMs
             val achievedFps = if (windowMs >= MirrorTuning.StatsTickMs) {
                 (framesInWindow * 1000f / windowMs).also {

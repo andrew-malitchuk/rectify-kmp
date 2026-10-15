@@ -25,5 +25,7 @@ internal actual fun Module.provideDeviceSources() {
     singleOf(::AdbHostSourceImpl) bind AdbHostSource::class
     singleOf(::EmulatorSourceImpl) bind EmulatorSource::class
     singleOf(::DeviceCommandExecutorImpl) bind DeviceCommandExecutor::class
-    singleOf(::ScreencapMirrorTransport) bind MirrorTransport::class
+    // Not singleOf: the transport's second parameter is an injectable clock with a default,
+    // and singleOf would try to resolve it from Koin instead of honouring the default.
+    single<MirrorTransport> { ScreencapMirrorTransport(executor = get()) }
 }
