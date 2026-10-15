@@ -21,33 +21,51 @@ presentation/core/ui/
     icon/                 ← iconCatalogue list + resolveIcon() (public API for icon picker)
     kit/
       atom/               ← indivisible building blocks
-        button/           ← IconButton, Toggle, ButtonSizeType
+        annotation/       ← AnnotationMark, MeasureMark
+        badge/            ← CounterBadge, GlyphBadge
+        button/           ← AppButton (3 variants × 6 sizes), IconButton, Toggle, ButtonSizeType
         chip/             ← Chip
         container/        ← SafeContainer, WindowSize, LocalWindowSize, IconContainer, MaxSideDetector
         divider/          ← HorizontalAnimatedDivider
+        glyph/            ← ErrorGlyph
         handle/           ← PanelResizeHandle (8 dp grab strip; owns the stage/panel seam, reports drag deltas, owns no width)
         icon/             ← 22 SVG ImageVector constants (AlertTriangle … Wizard)
-        indicator/        ← StatusIndicator + StatusIndicatorState
+        indicator/        ← StatusIndicator + StatusIndicatorState, RadioMark
         input/            ← Input (animated border), FilledTextField (filled), MultilineInput
-        progress/         ← WavyProgressIndicator (Canvas, no Material dependency)
-        shape/            ← SquircleShape, GentleSquircleShape, CornerSmoothing; util math
+        keycap/           ← KeyCap
+        pill/             ← StatusPill + StatusPillTone
+        progress/         ← SegmentedProgressIndicator (Canvas, no Material dependency)
         slider/           ← WavySlider (gesture, wavy fill track)
         snackbar/         ← StackedSnackbarHost, StackedSnakbarHostState, rememberStackedSnackbarHostState()
+        tag/              ← MeasureTag
         text/             ← AutoSizeText, SectionHeader, SectionHeaderWithIcon
+        tile/             ← BentoTile
         toggle/           ← SimpleToggle (animated thumb)
         tween/            ← cupertinoTween()
       molecule/           ← compound components built from atoms
-        bar/tab/          ← TabBar + TabBarItem
+        annotation/       ← AnnotationPopover, Ruler
+        bar/tab/          ← TabBar + TabBarItem, SidebarTabs + SidebarTabItem
         button/           ← SegmentedButtonGroup
-        chip/             ← ChipGroup
+        card/             ← PlatformToolCard + PlatformToolState
+        chip/             ← ChipGroup, DeviceChip + DeviceChipState
+        command/          ← CommandBlock
         form/             ← FormSection (label + content slot + error)
         header/           ← ScreenHeader, NavigationHeader, ActionHeader, SimpleHeader
         item/             ← SelectableCard, SelectionRow, LanguageOptionRow
+        mirror/           ← MirrorFrameView
+        row/              ← SourceListRow + SourceListHeader, AnnotationRow, HierarchyRow,
+                            HistoryRow, KeyValueRow, VerificationRow
+        select/           ← EmulatorSelect
         state/            ← ErrorState
+        status/           ← StatusLine + StatusStep, FeedbackBar
       organism/           ← self-contained sections
         animatedsequence/ ← AnimationSequenceHost, AnimatedItem, SequentialAnimationScope
+        annotation/       ← CommentPopover, MeasureCard
         bottomsheet/      ← AppBottomSheet, ConfirmationSheet
+        error/            ← ErrorCard
+        picker/           ← DevicePickerPanel + PickerPlatform / PickerDevice / PickerDeviceTrailing
         pulltorefresh/    ← AppPullToRefreshBox
+        stage/            ← NoSignalStage
         shell/            ← RectifyWindowShell, ShellToolbar, ShellStatusBar, StageSurface,
                             SidePanelFrame + ShellState / ShellTab / ShellWindowDefaults / clampPanelWidth
     showcase/             ← StyleguideScreen (visual QA; all tokens + components)
@@ -85,13 +103,10 @@ presentation/core/ui/
 | `MaxSideDetector` | Portrait vs landscape content slot switch |
 | `HorizontalAnimatedDivider` | Alpha-animated divider driven by `isVisible` |
 | `PanelResizeHandle` | 8 dp horizontal grab strip filled with `stage` + the single seam hairline; emits drag deltas, no clamping or persistence |
-| `StatusIndicator` | 6 dp dot + label; `Connected`/`Offline`/`Standby`/`Active` states |
+| `StatusIndicator` | 7 dp dot + mono label; `Live`/`Frozen`/`Dumping`/`Sent`/`Dropped`/`Offline` |
 | `Input` | Single-line with animated border, optional regex, clear button |
 | `FilledTextField` | Single-line with solid fill (no border); compact form variant |
 | `MultilineInput` | Scrollable multi-line text area (120–240 dp) |
-| `WavyProgressIndicator` | Canvas-drawn wavy progress; no Material dependency |
-| `SquircleShape` / `GentleSquircleShape` | Squircle shape classes with smoothing control |
-| `CornerSmoothing` | Presets: `None`=0, `Small`=20, `Medium`=48, `High`=67, `Full`=100 |
 | `WavySlider` | Gesture slider with wavy filled track and circular thumb |
 | `StackedSnackbarHost` | Host for stacked snackbars with swipe-to-dismiss |
 | `StackedSnakbarHostState` | State holder: `showSnackbar()` / `showCustomSnackbar()` |
@@ -99,6 +114,18 @@ presentation/core/ui/
 | `SectionHeader` | Uppercase section label, bold, letter-spaced |
 | `SectionHeaderWithIcon` | Section label row with leading tinted icon |
 | `cupertinoTween()` | iOS cubic-bezier tween (0.2833, 0.99, 0.31833, 0.99); 400 ms default |
+| `AppButton` | The Rectify button — 3 variants × 6 interaction states × 6 size tiers; `busy` implies disabled |
+| `RadioMark` | Single-choice mark: ink dot when picked, ring otherwise. Canvas-drawn, no ripple, no semantics — the clickable parent owns `Role.RadioButton` |
+| `StatusPill` | `● Fixed` / `● In progress` — neutral fill, only the dot carries the tone |
+| `CounterBadge` | Circular count + optional label (`0 staged`); `Empty`/`Staged`/`Sent` fills |
+| `GlyphBadge` | Square badge for a short glyph — annotation index, `✓`, `!` |
+| `KeyCap` | A key rendered as a cap — `⌘`, `↵`, `esc`. Presentational; never handles input |
+| `AnnotationMark` | Numbered mark pinned on the frame; state drives colour and border |
+| `MeasureMark` | Measurement endpoint mark; role drives the outline treatment |
+| `MeasureTag` | Signal-filled chip labelling a mark's size or a ruler extent |
+| `ErrorGlyph` | Leading glyph naming the kind of problem an error reports |
+| `BentoTile` | Fixed-height bento grid tile (free-form heights deliberately not allowed) |
+| `SegmentedProgressIndicator` | Segmented progress bar; the RECTIFY replacement for the old wavy indicator |
 
 ### Molecules — `source/kit/molecule/`
 
@@ -116,6 +143,18 @@ presentation/core/ui/
 | `SelectionRow` | Current-value row with trailing chevron (navigate to picker) |
 | `LanguageOptionRow` | Language option: name + ISO code, brand border when selected |
 | `ErrorState` | Full-screen error placeholder: icon, title, description |
+| `SourceListRow` + `SourceListHeader` | Device row in the picker: `RadioMark`, mono serial, trailing slot. `enabled = false` drops the click handler *and* marks the row disabled (A11Y-6), it does not merely dim |
+| `PlatformToolCard` | `PLATFORM` card (comp 01): name + trailing `RadioMark`, tool dot + mono `adb 35.0.1 · /opt/homebrew/bin` line; ink outline when selected |
+| `EmulatorSelect` | AVD dropdown (M3 `DropdownMenu`). Zero AVDs → disabled with an explanatory label, never an empty open menu |
+| `MirrorFrameView` | Dumb, stateless aspect-fit `ImageBitmap` frame; opaque only where it covers, `FilterQuality.None`, device named in the contentDescription |
+| `SidebarTabs` | Panel tab row (`Annotations 3 · Payload · History 1`); filled chip selection |
+| `DeviceChip` | Toolbar device chip; connection state drives the dot |
+| `CommandBlock` | Copyable shell command — `$ brew install …` |
+| `StatusLine` | Pipeline line `Streaming › Frozen › Dumping › Sent`; per-step state |
+| `FeedbackBar` | Outcome bar; the outcome drives the leading mark |
+| `AnnotationRow` / `HierarchyRow` / `HistoryRow` / `KeyValueRow` / `VerificationRow` | Sidebar list rows: annotation, dumped node, past session, key/value, re-check result |
+| `AnnotationPopover` | Gutter popover carrying a comment off a crowded frame |
+| `Ruler` | Horizontal ruler measuring the frame in device pixels |
 
 ### Organisms — `source/kit/organism/`
 
@@ -132,6 +171,11 @@ presentation/core/ui/
 | `StageSurface` | Bezel-less mirror region on `Theme.color.stage` + Canvas dot grid |
 | `SidePanelFrame` | Panel chrome: `SidebarTabs` header (Notes · Payload · History), per-tab content slot |
 | `ShellState` / `ShellTab` / `ShellWindowDefaults` | Hoisted shell state, the three tabs, window & panel geometry + `clampPanelWidth` / `shortcutToTab` |
+| `DevicePickerPanel` | First-run picker (comps 01/03). Fills the stage content slot **opaquely** with `Theme.color.bg` so no dots read through; owns a `FocusRequester` + root `onPreviewKeyEvent` (↑↓/↵ → intents) and **no selection state** |
+| `NoSignalStage` | Empty stage (comp 02): dashed phone outline + numbered recovery steps + `EmulatorSelect`/`Boot`. Renders **on** the dot grid — paints no background |
+| `ErrorCard` | The standard actionable error report |
+| `CommentPopover` | Always-dark comment popover |
+| `MeasureCard` | Measured-dimension card |
 
 ### `source/showcase/`
 
@@ -160,6 +204,21 @@ presentation/core/ui/
 
 ### AnimationSequenceHost lifecycle
 `AnimatedItem` registers itself with `LocalSequentialAnimationHost` via `DisposableEffect` and deregisters on leave. The host calculates `enterDuration + delay` per item to sequence transitions correctly across a parent/child tree.
+
+### Picker copy must agree with picker behaviour
+`DevicePickerPanel` ships an explicit `Start mirroring` CTA — nothing mirrors until `onStart`
+fires. `NoSignalStage`'s subtitle therefore defaults to
+`Plug one in or boot an emulator, then press Start mirroring.` and **not** comp 02's
+`Mirroring starts on its own as soon as adb sees one.`, which promises an auto-start this build
+does not implement. The two are a pair: changing one without the other makes the app lie about
+itself. The shipped copy lives in `presentation-core-localisation` as `mirror_waiting_subtitle`.
+
+### Kit components take copy as parameters, not resources
+`presentation-core-ui` depends on `presentation-core-styling` only — never on
+`presentation-core-localisation`. Every string a kit component renders is a parameter with an
+English default (so the `@Preview` works standalone); feature modules pass
+`stringResource(Res.string.…)`. Machine output (serials, versions, `adb` command lines, fps)
+is rendered mono and deliberately carries no resource key at all.
 
 ## Build
 
