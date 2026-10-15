@@ -13,7 +13,14 @@ import androidx.compose.ui.geometry.Rect
  */
 internal const val NOMINAL_POPOVER_WIDTH_DP: Float = 280f
 
-/** Nominal popover height in dp — one line of text: a 20 dp index badge plus 8 dp above and below. */
+/**
+ * Nominal popover height in dp — **one** line of text.
+ *
+ * Checked against the composition it describes rather than left as arithmetic: `AnnotationPopover`
+ * is a row of a 20 dp index badge and 19 dp body text with `spacingS` (8 dp) above and below, so
+ * `max(20, 19) + 16 = 36`. A two-line comment measures 54 and the gutter pitches its rows at that
+ * figure instead — see `GutterRowHeight` in `MirrorAnnotationStage.kt`.
+ */
 internal const val NOMINAL_POPOVER_HEIGHT_DP: Float = 36f
 
 /**
