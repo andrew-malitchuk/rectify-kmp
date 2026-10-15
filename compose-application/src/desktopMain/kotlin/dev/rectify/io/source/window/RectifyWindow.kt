@@ -16,6 +16,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
@@ -24,6 +25,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import co.touchlab.kermit.Logger
 import domain.core.source.model.ThemeModel
+import domain.core.source.model.device.PlatformModel
 import domain.usecase.api.source.usecase.configuration.GetSidePanelWidthUseCase
 import domain.usecase.api.source.usecase.configuration.ObserveApplicationLanguageUseCase
 import domain.usecase.api.source.usecase.configuration.ObserveThemeUseCase
@@ -43,8 +45,6 @@ import presentation.core.ui.source.kit.atom.button.AppButtonVariant
 import presentation.core.ui.source.kit.atom.button.ButtonSizeType
 import presentation.core.ui.source.kit.atom.button.IconButton
 import presentation.core.ui.source.kit.atom.icon.Sun
-import presentation.core.ui.source.kit.atom.indicator.StatusIndicator
-import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.core.ui.source.kit.molecule.button.SegmentedButtonGroup
 import presentation.core.ui.source.kit.molecule.chip.DeviceChip
 import presentation.core.ui.source.kit.molecule.chip.DeviceChipState
@@ -56,6 +56,12 @@ import presentation.core.ui.source.kit.organism.shell.ShellToolbar
 import presentation.core.ui.source.kit.organism.shell.ShellWindowDefaults
 import presentation.core.ui.source.kit.organism.shell.rememberShellState
 import presentation.core.ui.source.kit.organism.shell.shortcutToTab
+import presentation.feature.mirror.source.mirror.MirrorHost
+import presentation.feature.mirror.source.mirror.MirrorIntent
+import presentation.feature.mirror.source.mirror.MirrorSession
+import presentation.feature.mirror.source.mirror.MirrorStageContent
+import presentation.feature.mirror.source.mirror.MirrorStatusLine
+import presentation.feature.mirror.source.mirror.MirrorUiState
 import java.awt.Dimension
 import kotlin.math.roundToInt
 
@@ -67,8 +73,15 @@ private const val WINDOW_TITLE = "Rectify"
 /** Build marker rendered in the status bar's trailing slot. */
 private const val VERSION_LABEL = "Rectify 0.4"
 
-/** Platform sources offered by the toolbar switch; iOS is inert in this deliverable. */
+/**
+ * Platform sources offered by the toolbar switch, in `PlatformModel` order — the index the
+ * switch reports is mapped straight onto that enum.
+ */
 private val PLATFORM_SOURCES = listOf("Android", "iOS")
+
+/** Chip label before anything has been selected. */
+private const val NO_DEVICE_LABEL = "No device"
+
 
 /**
  * The Rectify desktop window: geometry, macOS chrome, shortcut dispatch and preference wiring.
@@ -133,24 +146,32 @@ public fun ApplicationScope.RectifyWindow() {
         // without this, pref_language is inert on desktop.
         AppLocaleProvider(languageCode = languageCode) {
             AppTheme(mode = themeModel.toThemeMode()) {
-                RectifyShellContent(
-                    state = shellState,
-                    sidePanel = sidePanel,
-                    onPanelWidthCommit = { width ->
-                        // Fires on drag END only (RectifyWindowShell contract) — one write per
-                        // resize that changed something, never one per frame.
-                        scope.launch {
-                            setSidePanelWidth(width.value.roundToInt())
-                                .onFailure { log.w(it) { "Side panel width not persisted." } }
-                        }
-                    },
-                    onThemeCycle = {
-                        scope.launch {
-                            setTheme(themeModel.next())
-                                .onFailure { log.w(it) { "Theme override not persisted." } }
-                        }
-                    },
-                )
+                // The mirror ViewModel is resolved HERE, not inside RectifyShellContent:
+                // the shell composition stays Koin-free so a render harness can drive it
+                // from literals.
+                MirrorHost { mirror, frame, onMirrorIntent ->
+                    RectifyShellContent(
+                        state = shellState,
+                        mirror = mirror,
+                        frame = frame,
+                        onIntent = onMirrorIntent,
+                        sidePanel = sidePanel,
+                        onPanelWidthCommit = { width ->
+                            // Fires on drag END only (RectifyWindowShell contract) — one write per
+                            // resize that changed something, never one per frame.
+                            scope.launch {
+                                setSidePanelWidth(width.value.roundToInt())
+                                    .onFailure { log.w(it) { "Side panel width not persisted." } }
+                            }
+                        },
+                        onThemeCycle = {
+                            scope.launch {
+                                setTheme(themeModel.next())
+                                    .onFailure { log.w(it) { "Theme override not persisted." } }
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -162,31 +183,51 @@ public fun ApplicationScope.RectifyWindow() {
  * Separate from [RectifyWindow] and free of Koin, AWT and coroutines on purpose — this is what
  * a screenshot harness and a human reviewer can both look at in isolation.
  *
- * Every slot here is a **static stub** (AC-37): nothing detects a device, and nothing in this
- * file knows what adb or idb is.
+ * The device slots are live, driven entirely by the [mirror] snapshot and [frame] handed in.
+ * All three mirror parameters are defaulted so a harness — and every pre-existing call site —
+ * can compose the shell with no ViewModel at all.
  *
  * @param state Hoisted shell state (active tab + panel width).
  * @param onPanelWidthCommit Called once per resize drag that changed the width.
  * @param onThemeCycle Called when the status-bar theme override is clicked.
  * @param modifier Modifier applied to the shell.
  * @param sidePanel Panel content for the live session, or `null` while none exists.
+ * @param mirror Mirror state snapshot.
+ * @param frame Latest decoded device frame, or `null` when nothing is streaming.
+ * @param onIntent Mirror intent sink.
  */
 @Composable
+@Suppress("LongParameterList")
 internal fun RectifyShellContent(
     state: ShellState,
     onPanelWidthCommit: (Dp) -> Unit,
     onThemeCycle: () -> Unit,
     modifier: Modifier = Modifier,
     sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null,
+    mirror: MirrorUiState = MirrorUiState(),
+    frame: ImageBitmap? = null,
+    onIntent: (MirrorIntent) -> Unit = {},
 ) {
     RectifyWindowShell(
         toolbar = {
             ShellToolbar(
                 platformSwitch = {
-                    SegmentedButtonGroup(items = PLATFORM_SOURCES, selectedIndex = 0, onSelect = {})
+                    SegmentedButtonGroup(
+                        items = PLATFORM_SOURCES,
+                        selectedIndex = mirror.platform.ordinal,
+                        onSelect = { index ->
+                            onIntent(MirrorIntent.SelectPlatform(PlatformModel.entries[index]))
+                        },
+                    )
                 },
                 deviceIndicator = {
-                    DeviceChip(name = "No device", state = DeviceChipState.None, onClick = {})
+                    DeviceChip(
+                        name = mirror.selectedDeviceName ?: NO_DEVICE_LABEL,
+                        state = mirror.chipState(),
+                        // AC-43: the chip is the way back to the picker once a device is picked.
+                        onClick = { onIntent(MirrorIntent.OpenPicker) },
+                        detail = mirror.chipDetail(),
+                    )
                 },
                 stagedCounter = {
                     CounterBadge(count = 0, state = CounterBadgeState.Empty, label = "staged")
@@ -206,12 +247,7 @@ internal fun RectifyShellContent(
         },
         statusBar = {
             ShellStatusBar(
-                leading = {
-                    StatusIndicator(
-                        state = StatusIndicatorState.Offline,
-                        label = "Waiting for device…",
-                    )
-                },
+                leading = { MirrorStatusLine(state = mirror) },
                 trailing = {
                     Text(
                         text = VERSION_LABEL,
@@ -229,12 +265,10 @@ internal fun RectifyShellContent(
         sidePanel = sidePanel,
         onPanelWidthCommit = onPanelWidthCommit,
         stage = {
-            // One neutral placeholder: the dashed outline and onboarding copy of comp 02 are
-            // the downstream device spec's content, not the shell's.
-            Text(
-                text = "NO SIGNAL",
-                style = Theme.typography.monoMeta,
-                color = Theme.color.ink2,
+            MirrorStageContent(
+                state = mirror,
+                frame = frame,
+                onIntent = onIntent,
                 modifier = Modifier.align(Alignment.Center),
             )
         },
@@ -302,6 +336,16 @@ private fun ThemeModel.toThemeMode(): ThemeMode = when (this) {
     ThemeModel.Dark -> ThemeMode.Dark
     ThemeModel.System -> ThemeMode.System
 }
+
+/** Dot colour of the toolbar chip, from the session the user actually has. */
+private fun MirrorUiState.chipState(): DeviceChipState = when (session) {
+    is MirrorSession.Streaming -> DeviceChipState.Ready
+    is MirrorSession.Lost -> DeviceChipState.Lost
+    MirrorSession.Idle -> if (selectedDeviceId == null) DeviceChipState.None else DeviceChipState.Warn
+}
+
+/** Machine detail beside the chip name — the serial, which is what identifies the device. */
+private fun MirrorUiState.chipDetail(): String? = selectedDeviceId
 
 /** Next theme in the status-bar override cycle: System → Light → Dark → System. */
 private fun ThemeModel.next(): ThemeModel = when (this) {
