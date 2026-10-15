@@ -26,7 +26,6 @@ import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicator
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.core.ui.source.kit.molecule.card.PlatformToolState
-import presentation.core.ui.source.kit.molecule.mirror.MirrorFrameView
 import presentation.core.ui.source.kit.organism.picker.DevicePickerPanel
 import presentation.core.ui.source.kit.organism.picker.PickerDevice
 import presentation.core.ui.source.kit.organism.picker.PickerDeviceGroup
@@ -103,7 +102,22 @@ public fun MirrorStageContent(
             // A session that has not produced its first frame leaves the stage's own dot grid
             // showing: a one-frame flash of "no device" copy would contradict the status bar.
             MirrorStage.Mirror -> if (frame != null) {
-                MirrorFrameView(frame = frame, deviceName = state.selectedDeviceName.orEmpty())
+                MirrorLiveStage(
+                    frame = frame,
+                    deviceName = state.selectedDeviceName.orEmpty(),
+                    onIntent = onIntent,
+                )
+            }
+
+            // [frame] is the pinned bitmap here, not the live one: MirrorHost resolves
+            // `frozenFrame ?: frame` so this branch needs no second parameter.
+            MirrorStage.Frozen -> if (frame != null && state.frozen != null) {
+                MirrorFrozenStage(
+                    frame = frame,
+                    deviceName = state.selectedDeviceName.orEmpty(),
+                    frozen = state.frozen,
+                    onIntent = onIntent,
+                )
             }
 
             MirrorStage.NoSignal -> NoSignalStage(
@@ -152,8 +166,15 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
     }
 }
 
-/** Dot colour of the status indicator: live only while frames are actually arriving. */
+/**
+ * Dot colour of the status indicator: live only while frames are actually arriving.
+ *
+ * Frozen is checked ahead of Streaming — the session really is still running underneath (FR-30),
+ * but the pixels on screen are pinned, and a LIVE dot over a still frame is a lie. This is the
+ * first production caller of the shipped-but-unused [StatusIndicatorState.Frozen].
+ */
 private fun MirrorUiState.indicatorState(): StatusIndicatorState = when {
+    frozen != null -> StatusIndicatorState.Frozen
     session is MirrorSession.Streaming -> StatusIndicatorState.Live
     session is MirrorSession.Lost -> StatusIndicatorState.Dropped
     else -> StatusIndicatorState.Offline
@@ -161,6 +182,8 @@ private fun MirrorUiState.indicatorState(): StatusIndicatorState = when {
 
 @Composable
 private fun MirrorUiState.indicatorLabel(): String = when {
+    // Machine state, not prose — uppercased from the enum exactly as the LIVE label is.
+    frozen != null -> StatusIndicatorState.Frozen.name.uppercase()
     session is MirrorSession.Streaming -> StatusIndicatorState.Live.name.uppercase()
     discovery is DiscoveryModel.ToolMissing -> stringResource(Res.string.mirror_status_tool_missing)
     // A failed poll is its own label: "waiting for device" would claim adb answered.

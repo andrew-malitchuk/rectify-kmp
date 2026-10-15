@@ -1,5 +1,9 @@
 package presentation.feature.mirror
 
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageBitmapConfig
+import androidx.compose.ui.graphics.colorspace.ColorSpace
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
@@ -101,10 +105,46 @@ internal class FakeObserveMirrorStats(
 }
 
 /**
+ * A frame the tests can hold and compare without a graphics backend.
+ *
+ * `ImageBitmap(w, h)` is NOT usable here: this module's `desktopTest` runtime has no Skiko
+ * native library (only `:compose-application` pulls `compose.desktop.currentOs`), so the real
+ * factory throws `LibraryLoadException: Cannot find libskiko-macos-arm64.dylib.sha256`.
+ * `ImageBitmap` is a plain interface, though, so implementing it is enough to assert which
+ * frame got pinned — which is the whole of AC-47 — with no native dependency and no
+ * `build.gradle.kts` edit.
+ */
+internal class FakeFrameBitmap(override val width: Int, override val height: Int) : ImageBitmap {
+    override val config: ImageBitmapConfig = ImageBitmapConfig.Argb8888
+    override val colorSpace: ColorSpace = ColorSpaces.Srgb
+    override val hasAlpha: Boolean = false
+
+    override fun prepareToDraw(): Unit = Unit
+
+    override fun readPixels(
+        buffer: IntArray,
+        startX: Int,
+        startY: Int,
+        width: Int,
+        height: Int,
+        bufferOffset: Int,
+        stride: Int,
+    ): Unit = Unit
+}
+
+/**
+ * A decoder whose output differs in **both** axes per frame, so an assertion on the pinned
+ * frame cannot pass by accidentally matching one dimension.
+ */
+internal fun sizedFrameDecoder(): suspend (ByteArray) -> ImageBitmap? = { bytes ->
+    FakeFrameBitmap(width = 100 + bytes.size, height = 200 + bytes.size * 2)
+}
+
+/**
  * Builds a ViewModel with every seam faked.
  *
- * The decode seam returns `null`: these tests assert the state machine, and a real
- * `ImageBitmap` would drag a graphics backend into a unit test for no added coverage.
+ * The decode seam returns `null` by default: most tests assert the state machine and need no
+ * frame at all. Pass [sizedFrameDecoder] when the test is about *which* frame got pinned.
  */
 internal fun mirrorViewModel(
     detectTools: DetectToolsUseCase = FakeDetectTools(),
@@ -112,13 +152,14 @@ internal fun mirrorViewModel(
     boot: BootEmulatorUseCase = FakeBootEmulator(),
     mirroring: StartMirroringUseCase = FakeStartMirroring(),
     stats: ObserveMirrorStatsUseCase = FakeObserveMirrorStats(),
+    decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
 ): MirrorViewModel = MirrorViewModel(
     detectTools = detectTools,
     observeDiscovery = discovery,
     bootEmulator = boot,
     startMirroring = mirroring,
     observeMirrorStats = stats,
-    decodeFrame = { null },
+    decodeFrame = decodeFrame,
 )
 
 /**

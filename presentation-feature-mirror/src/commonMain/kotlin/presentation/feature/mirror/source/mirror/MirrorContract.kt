@@ -1,5 +1,6 @@
 package presentation.feature.mirror.source.mirror
 
+import androidx.compose.ui.unit.IntSize
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
@@ -90,6 +91,14 @@ public enum class MirrorStage {
 
     /** iOS is detected but not mirrorable this release. */
     IosDeferred,
+
+    /**
+     * A drag has pinned one frame; the capture loop keeps running behind it (FR-30).
+     *
+     * Frozen is a **render** decision, not a transport one: nothing is stopped, so Resume Live
+     * costs no `adb` reconnection.
+     */
+    Frozen,
 }
 
 /**
@@ -111,6 +120,10 @@ public enum class MirrorStage {
  * @property stats Latest transport statistics, reduced at most once a second.
  * @property avds Known AVD names, retained across an escalated poll.
  * @property selectedAvd AVD chosen in the waiting stage's inline picker.
+ * @property frozen The pinned frame's semantics, or `null` while the stage is live. Carries no
+ *   pixels either, for the same reason this class carries no frame: the bitmap itself lives on
+ *   [MirrorViewModel.frozenFrame]. Annotations, unlike pixels, DO belong here — they are small,
+ *   value-equal and change only when the user acts.
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -125,7 +138,11 @@ public data class MirrorUiState(
     val stats: MirrorStatsModel? = null,
     val avds: List<String> = emptyList(),
     val selectedAvd: String? = null,
+    val frozen: FrozenFrame? = null,
 ) {
+
+    /** How many annotations are staged — the toolbar's counter badge (AC-48). */
+    public val stagedCount: Int get() = frozen?.annotations?.size ?: 0
 
     /** Row under the cursor, or `null` when the list is empty. */
     public val highlightedRow: MirrorRow? get() = rows.getOrNull(highlightedIndex)
@@ -151,6 +168,9 @@ public data class MirrorUiState(
         get() = when {
             isPickerOpen -> MirrorStage.Picker
             platform == PlatformModel.Ios -> MirrorStage.IosDeferred
+            // Ahead of Streaming: the session is still running under a frozen frame, and the
+            // stage must show the pinned pixels rather than the ones still arriving.
+            frozen != null -> MirrorStage.Frozen
             session is MirrorSession.Streaming -> MirrorStage.Mirror
             else -> MirrorStage.NoSignal
         }
@@ -214,6 +234,45 @@ public sealed interface MirrorIntent {
 
     /** End the session and resume discovery. */
     public data object StopMirroring : MirrorIntent
+
+    /**
+     * Commit a finished drag as a new annotation, freezing the frame on the first one.
+     *
+     * Carries the finished rectangle only — the drag in progress never reaches the reducer, or
+     * a 60 Hz pointer stream would become 60 state copies a second.
+     *
+     * @property rect Drawn bounds, in device pixels.
+     */
+    public data class StageAnnotation(val rect: DeviceRect) : MirrorIntent
+
+    /**
+     * Put the comment popover on one annotation, or dismiss it.
+     *
+     * @property index 1-based annotation index, or `null` to deselect. Deselecting keeps the
+     *   annotation and the staged count (AC-50).
+     */
+    public data class SelectAnnotation(val index: Int?) : MirrorIntent
+
+    /**
+     * Store the note typed against one annotation.
+     *
+     * @property index 1-based annotation index.
+     * @property comment Text as typed.
+     */
+    public data class CommentAnnotation(val index: Int, val comment: String) : MirrorIntent
+
+    /**
+     * Remove one annotation; the survivors renumber and the staged count drops (AC-8).
+     *
+     * @property index 1-based annotation index.
+     */
+    public data class DeleteAnnotation(val index: Int) : MirrorIntent
+
+    /** Empty the staged list. The frame stays frozen (AC-48). */
+    public data object ClearStaged : MirrorIntent
+
+    /** Unpin the frame and drop the staged list — back to the live mirror (AC-51). */
+    public data object ResumeLive : MirrorIntent
 }
 
 /** One-shot events of the mirror surface. */
@@ -257,4 +316,44 @@ public data class DeviceRect(
 
     /** Height in device pixels. */
     public val height: Int get() = bottom - top
+}
+
+/**
+ * One annotation drawn on the frozen frame and waiting to be filed.
+ *
+ * Lives inside [MirrorUiState] rather than beside it: a handful of value-equal records that
+ * change only on a user action is exactly what a reducer is for. Frames are the opposite case
+ * and stay out — see [MirrorUiState]'s own note.
+ *
+ * @property index 1-based badge number, contiguous across the list. Renumbered on delete so the
+ *   badge on the frame and the row in the sidebar can never disagree.
+ * @property rect Bounds in device pixels.
+ * @property comment Note typed by the user; empty until they type one.
+ */
+public data class StagedAnnotation(
+    val index: Int,
+    val rect: DeviceRect,
+    val comment: String = "",
+)
+
+/**
+ * Everything about the pinned frame **except its pixels**.
+ *
+ * [deviceSize] and not the bitmap: it is all the reducer needs to place a mark, it is value-equal,
+ * and keeping the `ImageBitmap` out means a state copy stays cheap. The bitmap sits on
+ * [MirrorViewModel.frozenFrame], the second `StateFlow` beside `frame`.
+ *
+ * @property deviceSize Size of the pinned screenshot, in device pixels.
+ * @property annotations Staged annotations in badge order.
+ * @property selectedIndex [StagedAnnotation.index] of the annotation whose popover is open, or
+ *   `null` when none is.
+ */
+public data class FrozenFrame(
+    val deviceSize: IntSize,
+    val annotations: List<StagedAnnotation> = emptyList(),
+    val selectedIndex: Int? = null,
+) {
+    /** The annotation the popover belongs to, or `null`. */
+    public val selected: StagedAnnotation?
+        get() = annotations.firstOrNull { it.index == selectedIndex }
 }
