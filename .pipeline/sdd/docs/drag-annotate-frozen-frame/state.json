@@ -1,6 +1,6 @@
 {
   "spec": "drag-annotate-frozen-frame",
-  "currentStage": "validation",
+  "currentStage": "review",
   "stages": {
     "preparation": {
       "status": "done"
@@ -12,6 +12,9 @@
       "status": "done"
     },
     "execution": {
+      "status": "done"
+    },
+    "validation": {
       "status": "done"
     }
   },
@@ -35,7 +38,55 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-2": {
+      "status": "done"
+    },
+    "T-3": {
+      "status": "done"
+    },
+    "T-4": {
+      "status": "done"
+    },
+    "T-5": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-6": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-7": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-8": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-9": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-10": {
+      "status": "done"
+    },
+    "T-11": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-12": {
+      "status": "done"
+    },
+    "T-13": {
+      "status": "done",
+      "needsHumanReview": true
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",

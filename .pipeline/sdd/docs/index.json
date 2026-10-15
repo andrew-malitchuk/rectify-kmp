@@ -3,18 +3,18 @@
     "spec": "android-device-discovery-mirroring",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-15T02:49:07Z"
+    "updatedAt": "2026-10-15T05:33:48Z"
   },
   {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-15T02:49:07Z"
+    "updatedAt": "2026-10-15T05:33:48Z"
   },
   {
     "spec": "drag-annotate-frozen-frame",
-    "currentStage": "preparation",
+    "currentStage": "validation",
     "verdict": "",
-    "updatedAt": "2026-10-15T02:49:52Z"
+    "updatedAt": "2026-10-15T05:33:48Z"
   }
 ]
