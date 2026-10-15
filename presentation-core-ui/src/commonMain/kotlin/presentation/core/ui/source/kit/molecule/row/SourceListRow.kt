@@ -1,6 +1,5 @@
 package presentation.core.ui.source.kit.molecule.row
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,9 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -31,10 +32,13 @@ import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.button.AppButton
 import presentation.core.ui.source.kit.atom.button.AppButtonSize
 import presentation.core.ui.source.kit.atom.button.AppButtonVariant
+import presentation.core.ui.source.kit.atom.indicator.RadioMark
 
 /** Row geometry. */
 private val RowHeight: Dp = 48.dp
-private val RadioSize: Dp = 18.dp
+
+/** Dim applied to a row that cannot be picked (no adb transport, emulator mid-boot). */
+private const val DISABLED_ALPHA = 0.38f
 
 /**
  * A device row in the source list — the picker that chooses what Rectify mirrors.
@@ -48,7 +52,11 @@ private val RadioSize: Dp = 18.dp
  * @param onClick Called when the row is picked.
  * @param modifier Modifier applied to the root composable.
  * @param serial Optional device serial, rendered mono because the device reported it.
- * @param trailing Trailing slot — transport, run state, or an action.
+ * @param enabled Whether the row can be picked. `false` drops the click handler entirely and
+ *   marks the row disabled for accessibility services, so it is *announced* as unavailable
+ *   rather than merely dimmed — a dim alone is invisible to a screen reader (A11Y-6).
+ * @param trailing Trailing slot — transport, run state, or an action. Not dimmed with the row:
+ *   a cold emulator's `Boot` button stays live while the row itself is unpickable.
  */
 @Composable
 public fun SourceListRow(
@@ -57,28 +65,39 @@ public fun SourceListRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     serial: String? = null,
+    enabled: Boolean = true,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
+    val contentAlpha = if (enabled) 1f else DISABLED_ALPHA
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(RowHeight)
             .background(if (selected) Theme.color.hover else Color.Transparent)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                role = Role.RadioButton,
-                onClick = onClick,
+            .then(
+                if (enabled) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.RadioButton,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier.semantics { disabled() }
+                },
             )
             .padding(horizontal = Theme.spacing.spacingL),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS + Theme.spacing.spacingXS),
     ) {
-        RadioMark(selected = selected)
+        RadioMark(
+            selected = selected,
+            modifier = Modifier.alpha(contentAlpha),
+        )
         Text(
             text = name,
             style = Theme.typography.bodyStrong,
-            color = Theme.color.ink,
+            color = Theme.color.ink.copy(alpha = contentAlpha),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -86,29 +105,13 @@ public fun SourceListRow(
             Text(
                 text = serial,
                 style = Theme.typography.monoMeta,
-                color = Theme.color.ink3,
+                color = Theme.color.ink3.copy(alpha = contentAlpha),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(modifier = Modifier.weight(1f))
         trailing()
-    }
-}
-
-/** The selection mark — a filled dot when picked, an empty ring otherwise. */
-@Composable
-private fun RadioMark(selected: Boolean) {
-    val ring = Theme.color.line2
-    val fill = Theme.color.ink
-    Canvas(modifier = Modifier.size(RadioSize)) {
-        val radius = size.minDimension / 2f
-        val stroke = radius * 0.14f
-        drawCircle(color = ring, radius = radius - stroke / 2f, style = Stroke(width = stroke))
-        if (selected) {
-            drawCircle(color = fill, radius = radius - stroke / 2f, style = Stroke(width = stroke * 2.4f))
-            drawCircle(color = fill, radius = radius * 0.42f)
-        }
     }
 }
 
@@ -154,7 +157,13 @@ private fun SourceListRowPreview() {
             SourceListRow(name = "Pixel_7_API_34", selected = false, onClick = {}) {
                 StatusDotLabel(label = "Running")
             }
-            SourceListRow(name = "Pixel_Fold_API_35", selected = false, onClick = {}) {
+            SourceListRow(
+                name = "Pixel_Fold_API_35",
+                serial = "shut down",
+                selected = false,
+                onClick = {},
+                enabled = false,
+            ) {
                 AppButton(
                     text = "Boot",
                     onClick = {},
