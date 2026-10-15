@@ -3,6 +3,7 @@ package presentation.core.ui.source.kit.molecule.mirror
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -38,12 +39,17 @@ import presentation.core.styling.source.theme.AppTheme
  * @param deviceName Device the frame came from; named in the accessibility description so the
  *   stage announces *which* device is mirrored, not just that something is.
  * @param modifier Modifier applied to the root composable.
+ * @param overlay Content drawn on top of the frame — annotation marks and their scrim. Composed
+ *   *inside* the aspect-fit box rather than over the whole stage, so the overlay's coordinate
+ *   space and the painted pixels are literally the same rectangle and a mark cannot drift into
+ *   the letterbox. Empty by default: a frame with nothing on it is the normal live case.
  */
 @Composable
 public fun MirrorFrameView(
     frame: ImageBitmap,
     deviceName: String,
     modifier: Modifier = Modifier,
+    overlay: @Composable BoxScope.() -> Unit = {},
 ) {
     val frameAspectRatio = frame.width.toFloat() / frame.height.toFloat()
     Box(
@@ -63,6 +69,7 @@ public fun MirrorFrameView(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
+            overlay()
         }
     }
 }

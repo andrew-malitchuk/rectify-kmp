@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -94,6 +96,12 @@ private val FieldFill = Color(0xFFFFFFFF).copy(alpha = 0.07f)
  * @param meta Machine-readable position line, e.g. `218×77 @ 1035,862`; `null` hides it.
  * @param finding Optional measured finding, e.g. `⌥ top Δ6dp vs item_title`, shown under [meta].
  * @param saveHint Optional shortcut hint shown while the field has focus, e.g. `⏎ save`.
+ * @param closeLabel Accessibility label of the close control. Defaulted, because a host where
+ *   closing *deletes* the annotation (FR-8) has to say so rather than announcing "Close".
+ * @param focusRequester Requester bound to the comment field itself, so a host can focus it the
+ *   moment the popover appears (A11Y-2). Bound to the field and not to the popover root on
+ *   purpose: delegating focus through a group is one more thing that can silently land
+ *   somewhere else, and the only focusable thing in here is the field.
  */
 @Composable
 public fun CommentPopover(
@@ -106,6 +114,8 @@ public fun CommentPopover(
     meta: String? = null,
     finding: String? = null,
     saveHint: String? = null,
+    closeLabel: String = "Close",
+    focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -131,9 +141,10 @@ public fun CommentPopover(
                     placeholder = placeholder,
                     focused = isFocused,
                     interactionSource = interactionSource,
+                    focusRequester = focusRequester,
                     modifier = Modifier.weight(1f),
                 )
-                CloseButton(onClose = onClose)
+                CloseButton(onClose = onClose, closeLabel = closeLabel)
             }
 
             if (meta != null || (isFocused && saveHint != null)) {
@@ -221,6 +232,7 @@ private fun CommentField(
     placeholder: String,
     focused: Boolean,
     interactionSource: MutableInteractionSource,
+    focusRequester: FocusRequester?,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(FieldRadius)
@@ -235,6 +247,7 @@ private fun CommentField(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         modifier = modifier
             .height(FieldHeight)
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .clip(shape)
             .background(FieldFill)
             .then(
@@ -263,7 +276,7 @@ private fun CommentField(
 }
 
 @Composable
-private fun CloseButton(onClose: () -> Unit) {
+private fun CloseButton(onClose: () -> Unit, closeLabel: String) {
     Box(
         modifier = Modifier
             .size(CloseSize)
@@ -278,7 +291,7 @@ private fun CloseButton(onClose: () -> Unit) {
     ) {
         Icon(
             imageVector = X,
-            contentDescription = "Close",
+            contentDescription = closeLabel,
             tint = PopoverMetaInk,
             modifier = Modifier.size(Theme.size.iconXS),
         )

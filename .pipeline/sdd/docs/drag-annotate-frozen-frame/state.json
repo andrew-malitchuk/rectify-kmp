@@ -1,0 +1,106 @@
+{
+  "spec": "drag-annotate-frozen-frame",
+  "currentStage": "done",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done"
+    },
+    "validation": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-2": {
+      "status": "done"
+    },
+    "T-3": {
+      "status": "done"
+    },
+    "T-4": {
+      "status": "done"
+    },
+    "T-5": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-6": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-7": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-8": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-9": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-10": {
+      "status": "done"
+    },
+    "T-11": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-12": {
+      "status": "done"
+    },
+    "T-13": {
+      "status": "done",
+      "needsHumanReview": true
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  }
+}

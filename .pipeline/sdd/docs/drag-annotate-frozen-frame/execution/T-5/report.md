@@ -1,0 +1,122 @@
+# drag-annotate-frozen-frame — T-5/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-5/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T05:15:01Z |
+| updatedAt | 2026-10-15T05:15:01Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-15T05:15:01Z
+
+## Provenance
+
+### selfHash
+
+689b144fe257b3c191fa74e2fa98c8256fadfbbb702cab4acd0af2d3be33aa51
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | ad34003d23112d2823248241d2b777a5132e8b7f4e93f70c07ddb7d25a6422f1 |
+
+## Data
+
+### taskId
+
+T-5
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-core-ui/.../kit/molecule/annotation/AnnotationOverlay.kt
+- MirrorFrameView.kt
+- RectifyWindowShell.kt
+- StyleguideScreen.kt
+
+### testRun
+
+#### command
+
+./gradlew :presentation-core-ui:build ; :desktopTest --rerun-tasks ; :compileTestKotlinIosArm64
+
+#### passed
+
+true
+
+#### output
+
+29 tests still green, 0 failures. First :build died in linkReleaseFrameworkIosSimulatorArm64 (clang++ exit 1), passed on re-run - daemon memory contention under parallel native links, not a code fault.
+
+### implementation
+
+#### filesChanged
+
+- presentation-core-ui/.../kit/molecule/annotation/AnnotationOverlay.kt
+- MirrorFrameView.kt
+- RectifyWindowShell.kt
+- StyleguideScreen.kt
+
+#### summary
+
+AnnotationOverlay: one Canvas doing clipPath(union, Difference){drawRect(scrim)} then one AnnotationMark per rect. Takes DpRect, NOT pixels, so a second density conversion cannot appear in the kit outside FrameGeometry's reach. Scrim is Theme.color.pop at 0.42 - pop is documented dark in BOTH themes, whereas an ink scrim would be white in dark mode. AnnotationState.Frozen deliberately unused. MirrorFrameView and RectifyWindowShell each gained one DEFAULTED parameter, so every existing call site compiles unchanged.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| AnnotationOverlay.kt | Scrim cutouts are square rather than matching AnnotationMark's 3dp radius. | Matching it would duplicate the atom's private MarkRadius constant, which drifts on the next restyle; the visible sliver is sub-pixel. Documented inline. | info |
+
+### needsHumanReview
+
+#### required
+
+true
+
+#### reason
+
+Needs one rendered pass. This host cannot load Skiko in-process (ImageBitmap(2,3) throws LibraryLoadException) and the repo has no Compose UI-test harness, so nothing visual is asserted by a test.
+
+### linkedAC
+
+- AC-5
+- AC-7
+- AC-49
+- FR-6
+- FR-8
+- FR-26
+- FR-28
+- NFR-1
+- NFR-9

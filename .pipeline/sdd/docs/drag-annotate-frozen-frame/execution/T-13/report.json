@@ -1,0 +1,57 @@
+{
+  "spec": "drag-annotate-frozen-frame",
+  "stage": "execution",
+  "step": "T-13/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "b8ff9d5e8fe07f6e3cf1cdcc982b902fc5e60d82c2261e6806649c0a87df06f3",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "ad34003d23112d2823248241d2b777a5132e8b7f4e93f70c07ddb7d25a6422f1"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T05:15:01Z",
+  "updatedAt": "2026-10-15T05:15:01Z",
+  "data": {
+    "taskId": "T-13",
+    "type": "documentation",
+    "outcome": "success",
+    "touchedPaths": [],
+    "testRun": {
+      "command": "orchestrator-run sweep: 7-module desktopTest --rerun-tasks ; 2x compileTestKotlinIosArm64 ; :desktop-application:compileKotlin ; 5 static greps",
+      "passed": true,
+      "output": "192 desktop tests, 0 failures/errors. iOS test-compile green on presentation-feature-mirror and presentation-core-ui. Desktop app compiles. Static: gradle/libs.versions.toml diff 0 lines; ZERO build.gradle.kts edits (AS-14/AS-15 held through all three batches); no literal Color(0x or TextStyle( introduced by this spec; no backtick test name with a comma, apostrophe or colon; every mirror_* key referenced from Kotlin."
+    },
+    "implementation": {
+      "filesChanged": [],
+      "summary": "Verification sweep run by the orchestrator directly - eight mechanical checks over the merged tree cost no context reload. Every structural constraint re-proved against the integration branch after all three batches merged, not taken from the batch reports.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [
+      {
+        "at": "CommentPopover.kt:68-70",
+        "issue": "Three hardcoded Color(0xFF...) values violate design-tokens.md.",
+        "resolution": "VERIFIED PRE-EXISTING - git diff shows this spec added none of them. This spec did extend the file, so the violation is adjacent to our work without being ours. Routed to Stage 5 rather than fixed, since it is a kit-wide restyle question.",
+        "severity": "warn"
+      }
+    ],
+    "needsHumanReview": {
+      "required": true,
+      "reason": "Light/dark parity (NFR-9) and the NFR-1 fps-while-frozen check are screenshot/demo work that no agent could perform: this host cannot load Skiko in-process and denies screen capture."
+    },
+    "linkedAC": [
+      "NFR-9",
+      "NFR-1"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T05:15:01Z"
+  }
+}

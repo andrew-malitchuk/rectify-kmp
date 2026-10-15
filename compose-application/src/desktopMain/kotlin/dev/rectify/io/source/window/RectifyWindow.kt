@@ -58,6 +58,7 @@ import presentation.core.ui.source.kit.organism.shell.rememberShellState
 import presentation.core.ui.source.kit.organism.shell.shortcutToTab
 import presentation.feature.mirror.source.mirror.MirrorHost
 import presentation.feature.mirror.source.mirror.MirrorIntent
+import presentation.feature.mirror.source.mirror.MirrorNotesTab
 import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorStageContent
 import presentation.feature.mirror.source.mirror.MirrorStatusLine
@@ -123,11 +124,6 @@ public fun ApplicationScope.RectifyWindow() {
             .onFailure { log.w(it) { "Side panel width unreadable — keeping the default." } }
     }
 
-    // AC-31: no mirroring session exists in this deliverable, so there is no panel content to
-    // put in the slot. Neither the panel nor its resize handle is composed, and Cmd+1/2/3 has
-    // nothing to select — so it must stay a no-op that does NOT consume the event (SC-4).
-    val sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null
-
     Window(
         onCloseRequest = ::exitApplication,
         state = rememberWindowState(size = ShellWindowDefaults.InitialSize),
@@ -135,7 +131,11 @@ public fun ApplicationScope.RectifyWindow() {
         onPreviewKeyEvent = { event ->
             handleShellShortcut(
                 event = event,
-                isPanelVisible = sidePanel != null,
+                // The panel is composed for the whole life of the window now that the Notes tab
+                // has content (FR-28), so Cmd+1/2/3 always has something to select. This is a
+                // literal and not a read of the panel slot because `onPreviewKeyEvent` is a
+                // Window *parameter* — it cannot see into the Window's content lambda.
+                isPanelVisible = true,
                 onTabSelect = shellState::selectTab,
             )
         },
@@ -150,12 +150,31 @@ public fun ApplicationScope.RectifyWindow() {
                 // the shell composition stays Koin-free so a render harness can drive it
                 // from literals.
                 MirrorHost { mirror, frame, onMirrorIntent ->
+                    // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
+                    // only the first — the key stays true from the second one on, so a user who
+                    // has walked over to Payload is not yanked back on every drag.
+                    val hasStaged = mirror.stagedCount >= 1
+                    LaunchedEffect(hasStaged) {
+                        if (hasStaged) shellState.selectTab(ShellTab.Notes)
+                    }
+
                     RectifyShellContent(
                         state = shellState,
                         mirror = mirror,
                         frame = frame,
                         onIntent = onMirrorIntent,
-                        sidePanel = sidePanel,
+                        sidePanel = { tab ->
+                            // Notes is the only tab with content this deliverable; the other two
+                            // are empty rather than absent, because the tab strip is the thing
+                            // Cmd+1/2/3 drives and hiding a tab would make a shortcut dead.
+                            if (tab == ShellTab.Notes) {
+                                MirrorNotesTab(
+                                    state = mirror,
+                                    onIntent = onMirrorIntent,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        },
                         onPanelWidthCommit = { width ->
                             // Fires on drag END only (RectifyWindowShell contract) — one write per
                             // resize that changed something, never one per frame.
@@ -230,14 +249,24 @@ internal fun RectifyShellContent(
                     )
                 },
                 stagedCounter = {
-                    CounterBadge(count = 0, state = CounterBadgeState.Empty, label = "staged")
+                    CounterBadge(
+                        count = mirror.stagedCount,
+                        state = if (mirror.stagedCount == 0) {
+                            CounterBadgeState.Empty
+                        } else {
+                            CounterBadgeState.Staged
+                        },
+                        label = "staged",
+                    )
                 },
                 clearAction = {
                     AppButton(
                         text = "Clear",
-                        onClick = {},
+                        // Empties the staged list; the frame stays pinned until Resume live
+                        // (AC-48).
+                        onClick = { onIntent(MirrorIntent.ClearStaged) },
                         variant = AppButtonVariant.Ghost,
-                        enabled = false,
+                        enabled = mirror.stagedCount > 0,
                     )
                 },
                 primaryAction = {
@@ -263,6 +292,8 @@ internal fun RectifyShellContent(
         modifier = modifier,
         state = state,
         sidePanel = sidePanel,
+        // The Notes count and the toolbar badge read the same number by construction.
+        tabCounts = mapOf(ShellTab.Notes to mirror.stagedCount),
         onPanelWidthCommit = onPanelWidthCommit,
         stage = {
             MirrorStageContent(

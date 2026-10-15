@@ -19,6 +19,11 @@ import org.orbitmvi.orbit.compose.collectSideEffect
  * The frame is collected separately from the state on purpose: it is a `StateFlow` outside the
  * reducer, which is what keeps ten frames a second from becoming ten state copies a second.
  *
+ * Two frame flows are collected and **one** is handed on: while a frame is pinned the content
+ * layer must draw the pinned pixels, and resolving that here rather than widening [content]'s
+ * signature keeps every existing call site compiling unchanged. The capture loop keeps running
+ * behind the pinned frame either way (FR-30).
+ *
  * @param content Renders the surface. Receives the state, the latest frame and the intent sink.
  * @param viewModel The state machine; resolved from Koin by default.
  * @param onSideEffect One-shot events. F-2 renders no error UI (that is F-3's card), so the
@@ -32,8 +37,9 @@ public fun MirrorHost(
 ) {
     val state by viewModel.collectAsState()
     val frame by viewModel.frame.collectAsState()
+    val frozenFrame by viewModel.frozenFrame.collectAsState()
 
     viewModel.collectSideEffect { effect -> onSideEffect(effect) }
 
-    content(state, frame, viewModel::handleIntent)
+    content(state, frozenFrame ?: frame, viewModel::handleIntent)
 }

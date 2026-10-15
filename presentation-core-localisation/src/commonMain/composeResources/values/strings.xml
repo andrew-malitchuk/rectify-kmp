@@ -97,4 +97,14 @@
     <string name="mirror_tool_not_found">not found</string>
     <string name="mirror_ios_deferred">iOS mirroring arrives in a later release. idb is detected so you can see it is installed.</string>
     <string name="mirror_emulator_none">No AVDs installed</string>
+
+    <!-- Mirror - Annotations on a frozen frame (comps 04/05) -->
+    <string name="mirror_annotation_placeholder">What\'s wrong here?</string>
+    <string name="mirror_annotation_save_hint">⏎ save</string>
+    <string name="mirror_annotation_empty_comment">No comment yet</string>
+    <string name="mirror_annotation_notes_empty">Drag on the frame to stage an annotation.</string>
+    <!-- The close control of the popover deletes the annotation (FR-8), so its accessibility
+         label has to say so rather than announcing Close. -->
+    <string name="mirror_annotation_delete">Delete annotation</string>
+    <string name="mirror_action_resume_live">Resume live</string>
 </resources>
