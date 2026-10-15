@@ -1,6 +1,6 @@
 {
   "spec": "android-device-discovery-mirroring",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -9,6 +9,9 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -32,7 +35,63 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "done"
+    },
+    "T-2": {
+      "status": "done"
+    },
+    "T-3": {
+      "status": "done"
+    },
+    "T-4": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-5": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-6": {
+      "status": "done"
+    },
+    "T-7": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-8": {
+      "status": "done"
+    },
+    "T-9": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-10": {
+      "status": "done"
+    },
+    "T-11": {
+      "status": "done"
+    },
+    "T-12": {
+      "status": "done",
+      "outcome": "partial",
+      "needsHumanReview": true
+    },
+    "T-13": {
+      "status": "done"
+    },
+    "T-14": {
+      "status": "done",
+      "needsHumanReview": true
+    },
+    "T-15": {
+      "status": "done"
+    },
+    "T-16": {
+      "status": "done"
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",

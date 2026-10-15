@@ -1,0 +1,54 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "execution",
+  "step": "T-6/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "05a3ba80ea820fd1235bcee775a76a27abc240b3c6590041f03eb354f7bc733f",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T01:57:45Z",
+  "updatedAt": "2026-10-15T01:57:45Z",
+  "data": {
+    "taskId": "T-6",
+    "type": "test",
+    "outcome": "success",
+    "touchedPaths": [
+      "data-repository-impl/src/commonTest/kotlin/data/repository/impl/*.kt (3)"
+    ],
+    "testRun": {
+      "command": "./gradlew :data-repository-impl:desktopTest ; :compileTestKotlinIosArm64",
+      "passed": true,
+      "output": "21 new tests (10+6+5), 0 failures; pre-existing 8 still green = 29 in module. iOS test-compile green."
+    },
+    "implementation": {
+      "filesChanged": [
+        "data-repository-impl/src/commonTest/kotlin/data/repository/impl/*.kt (3)"
+      ],
+      "summary": "Entirely virtual time, no device, no real delay. Emissions stamped and asserted at exactly [0,0,2000,4000,6000,8000]. The escalation boundary is asserted from BOTH sides. ToolMissing asserted as a value carrying probedPaths and installCommand, never a throw or Result.failure, and asserted never to escalate. One test pins the per-serial AVD-name cache at exactly one executor call across three polls.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [],
+    "needsHumanReview": {
+      "required": false,
+      "reason": ""
+    },
+    "linkedAC": [
+      "AC-41",
+      "AC-42"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T01:57:45Z"
+  }
+}

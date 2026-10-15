@@ -1,0 +1,77 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "execution",
+  "step": "T-5/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "bab33ebd15eb40dda89838cc438125de3e5af08d3ccc4155a5a9a57b9fce48f3",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T01:57:45Z",
+  "updatedAt": "2026-10-15T01:57:45Z",
+  "data": {
+    "taskId": "T-5",
+    "type": "business-logic",
+    "outcome": "success",
+    "touchedPaths": [
+      "data-repository-impl/build.gradle.kts",
+      "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/*.kt (4)",
+      "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt",
+      "data-repository-impl/src/commonMain/kotlin/data/repository/impl/di/DataRepositoryImplModule.kt"
+    ],
+    "testRun": {
+      "command": "./gradlew :data-repository-impl:build",
+      "passed": true,
+      "output": "BUILD SUCCESSFUL (37s, all targets). Added exactly one commonTest.dependencies block and one implementation(projects.dataDeviceApi) line."
+    },
+    "implementation": {
+      "filesChanged": [
+        "data-repository-impl/build.gradle.kts",
+        "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/*.kt (4)",
+        "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt",
+        "data-repository-impl/src/commonMain/kotlin/data/repository/impl/di/DataRepositoryImplModule.kt"
+      ],
+      "summary": "Four never-throwing mappers plus DeviceRepositoryImpl: emits Detecting immediately then polls every 2s. A missing adb emits ToolMissing as a success value and does NOT advance the empty-poll counter - we learned nothing about devices. AVD de-duplication consumes each match out of the running map so a listed-and-running AVD appears exactly once. nowMs is an injected clock so poll metadata is assertable under virtual time, which is why the binding is single { } and not singleOf.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [
+      {
+        "at": "mappers",
+        "issue": "kotlinx-datetime 0.8.0 no longer exposes kotlinx.datetime.Clock.",
+        "resolution": "Default clock uses stdlib kotlin.time.Clock - no dependency added.",
+        "severity": "info"
+      },
+      {
+        "at": "DeviceResourceMapper",
+        "issue": "ModelResourceMapper demands a total toResource but DeviceId has a private constructor with a nullable factory.",
+        "resolution": "requireNotNull over a compile-time-constant literal, so no input can make a mapper throw.",
+        "severity": "info"
+      }
+    ],
+    "needsHumanReview": {
+      "required": true,
+      "reason": "Two cross-batch judgement calls: detectTools() returns a hardcoded not-installed iOS ToolModel because data-device-api ships no idb datasource, so AC-1's iOS dot is a placeholder rather than a real probe; and DiscoveryModel.NoDeviceFound carries no emulator list, so the ViewModel must retain the last known one (B4 confirmed this was real and implemented the retention)."
+    },
+    "linkedAC": [
+      "AC-2",
+      "AC-4",
+      "AC-41",
+      "AC-42",
+      "FR-5",
+      "SC-7"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T01:57:45Z"
+  }
+}

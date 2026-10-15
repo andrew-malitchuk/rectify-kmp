@@ -1,0 +1,105 @@
+# android-device-discovery-mirroring — T-15/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-15/report |
+| status | done |
+| producedBy | sdd-build-run-pipeline |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T01:56:10Z |
+| updatedAt | 2026-10-15T01:56:10Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-run-pipeline
+
+### approved
+
+true
+
+### at
+
+2026-10-15T01:56:10Z
+
+## Provenance
+
+### selfHash
+
+e29c00095173cd51b8e0ed29d8a860228913c4a7b82812f83027b7b6a0ef2989
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056 |
+
+## Data
+
+### taskId
+
+T-15
+
+### type
+
+test
+
+### outcome
+
+success
+
+### touchedPaths
+
+
+### testRun
+
+#### command
+
+orchestrator-run sweep: 7-module desktopTest --rerun-tasks ; 4x compileTestKotlinIosArm64 ; :desktop-application:compileKotlin ; :compose-application:linkDebugFrameworkIosArm64 ; 5 static greps
+
+#### passed
+
+true
+
+#### output
+
+186 tests, 0 failures/errors across all modules (desktop + iosSimulatorArm64 runs). iOS test-compile green for data-device-api, data-repository-impl, presentation-feature-mirror, presentation-core-ui. Desktop app compiles; iOS framework links. Static: gradle/libs.versions.toml diff is 0 lines; ProcessBuilder appears in exactly one file (data-device-impl/.../core/process/ProcessRunner.kt); zero non-OrNull withTimeout( anywhere; zero literal Color(0x or TextStyle( in new production code; zero backtick test names containing comma, apostrophe or colon.
+
+### implementation
+
+#### filesChanged
+
+
+#### summary
+
+Verification sweep run by the orchestrator directly rather than by an agent - it is eight mechanical checks over the merged tree, and doing it inline costs no context reload. Every one of the spec's structural constraints was re-proved against the integration branch after all four batches merged, not taken from the batch reports.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+
+
+### linkedAC
+
+- AC-44
+- NFR-5
+- NFR-10

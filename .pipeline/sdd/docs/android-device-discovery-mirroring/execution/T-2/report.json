@@ -1,0 +1,72 @@
+{
+  "spec": "android-device-discovery-mirroring",
+  "stage": "execution",
+  "step": "T-2/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "22efa8ea0c19b24a6135eb794fb57b0f6f5e486304557cd9d1477a822eb64470",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T01:57:45Z",
+  "updatedAt": "2026-10-15T01:57:45Z",
+  "data": {
+    "taskId": "T-2",
+    "type": "business-logic",
+    "outcome": "success",
+    "touchedPaths": [
+      "settings.gradle.kts",
+      "data-device-api/** (24 files)"
+    ],
+    "testRun": {
+      "command": "./gradlew :data-device-api:build",
+      "passed": true,
+      "output": "BUILD SUCCESSFUL (44s). gradle/libs.versions.toml diff empty."
+    },
+    "implementation": {
+      "filesChanged": [
+        "settings.gradle.kts",
+        "data-device-api/** (24 files)"
+      ],
+      "summary": "New library-convention-only module. Every contract, resource and PURE PARSER in commonMain - the placement that makes the feature testable with no phone. DeviceId/AvdName are private-constructor value classes with validating of(); DeviceCommand and HostCommand are closed sealed sets; buildDeviceArgv is the single [tool,-s,id,...] construction point. Four mechanisms together enforce NFR-5 by type rather than by call-site discipline.",
+      "reusedFromRegistry": []
+    },
+    "troubleshooting": [
+      {
+        "at": "ToolProbeCandidates",
+        "issue": "Plan text said every tool probes $SDK/platform-tools/<bin>, but the emulator binary lives in <sdk>/emulator.",
+        "resolution": "Modelled as ToolKind.sdkSubdirectory and pinned by two tests.",
+        "severity": "info"
+      },
+      {
+        "at": "DeviceArgv.kt",
+        "issue": "Plan listed buildHostArgv with no host command type.",
+        "resolution": "Added a closed HostCommand sealed interface so 'device-less commands never emit -s' is enumerable and testable per variant.",
+        "severity": "info"
+      }
+    ],
+    "needsHumanReview": {
+      "required": false,
+      "reason": ""
+    },
+    "linkedAC": [
+      "AC-2",
+      "AC-41",
+      "AC-44",
+      "FR-25",
+      "NFR-5"
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-business-implement",
+    "approved": true,
+    "at": "2026-10-15T01:57:45Z"
+  }
+}

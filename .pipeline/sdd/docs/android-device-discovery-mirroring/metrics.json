@@ -1,6 +1,6 @@
 {
   "spec": "android-device-discovery-mirroring",
-  "updatedAt": "2026-10-15T00:19:34Z",
+  "updatedAt": "2026-10-15T01:57:46Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -50,11 +50,35 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 157238,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 0,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 0,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 173883,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 889506,
+    "tokens": 1220627,
     "durationMs": 0,
-    "invocations": 6
+    "invocations": 8
   }
 }

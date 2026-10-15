@@ -1,0 +1,120 @@
+# android-device-discovery-mirroring — T-14/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-14/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-15T01:57:46Z |
+| updatedAt | 2026-10-15T01:57:46Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-15T01:57:46Z
+
+## Provenance
+
+### selfHash
+
+7971e4fb6c4b58752a82ff7781184f2b7d04a7338122dee5e94f265cabfbd2bb
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 5f2a490e5882f332cb358e5e0bb113a5f5c69beedb37ec61f3ba29412a140056 |
+
+## Data
+
+### taskId
+
+T-14
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- compose-application/build.gradle.kts
+- compose-application/src/commonMain/.../InitKoin.kt
+- compose-application/src/desktopMain/.../window/RectifyWindow.kt
+
+### testRun
+
+#### command
+
+compile desktop + iOS framework link ; :desktop-application:run ; headless discovery probe
+
+#### passed
+
+true
+
+#### output
+
+All compiles and linkDebugFrameworkIosArm64 BUILD SUCCESSFUL - NFR-10 holds with both new deps. :desktop-application:run started cleanly with no Koin error but NO WINDOW OBSERVED (a 30s ps loop saw zero adb children and 0.17s CPU, so the composition did not render in this sandbox). Substituted a headless probe against the REAL ObserveDeviceDiscoveryUseCase on production jars: Detecting -> Found(38031FDJH00JVF Unauthorized, isSelectable=false; AVD Television_720p cold) -> Found -> NoDeviceFound(adb 1.0.41, attempts=3, attachedCount=2) -> NoDeviceFound(attempts=4). Real adb, real serial, real AVD, real 3-poll escalation, projecting to the NO SIGNAL stage.
+
+### implementation
+
+#### filesChanged
+
+- compose-application/build.gradle.kts
+- compose-application/src/commonMain/.../InitKoin.kt
+- compose-application/src/desktopMain/.../window/RectifyWindow.kt
+
+#### summary
+
+Every shell slot is live: platformSwitch on the real index, deviceIndicator a real DeviceChip that reopens the picker, the status bar's leading slot a MirrorStatusLine, and the stage DevicePickerPanel / NoSignalStage / MirrorFrameView by state. RectifyShellContent gained three DEFAULTED parameters so F-1's render harness and every existing call site compile unchanged, and its body stays Koin/AWT/coroutine-free.
+
+#### reusedFromRegistry
+
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| RectifyShellContent | T14-TAC2 verified by reading the function and its callee set, not by grep. | One disclosure: DevicePickerPanel (B3 kit, reached through MirrorStageContent) carries its own LaunchedEffect for focus. That is the component's own contract and runs fine under a harness - flagged so a reviewer is not surprised. | info |
+| toolbar chip | The label 'No device' is still a hardcoded English literal. | Pre-existing F-1 copy; T-10 shipped no key for it and T-14's scope adds no strings. Left rather than inventing a key out of scope. | warn |
+
+### needsHumanReview
+
+#### required
+
+true
+
+#### reason
+
+Visual confirmation only: no window could be observed in this environment. A human should run :desktop-application:run once and confirm the picker, tool dots, keyboard select, the chip reopening the panel and the live stage. The logic behind all of them is covered by tests and the two headless probes.
+
+### linkedAC
+
+- AC-1
+- AC-3
+- AC-4
+- AC-25
+- AC-43
+- AC-45
+- FR-22
+- SC-1
