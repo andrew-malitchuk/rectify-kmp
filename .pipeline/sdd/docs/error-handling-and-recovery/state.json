@@ -1,0 +1,21 @@
+{
+  "spec": "error-handling-and-recovery",
+  "currentStage": "preparation",
+  "stages": {},
+  "steps": {
+    "input": {
+      "status": "done"
+    }
+  },
+  "tasks": {},
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  }
+}

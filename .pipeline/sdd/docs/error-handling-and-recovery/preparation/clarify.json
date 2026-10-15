@@ -1,0 +1,149 @@
+{
+  "overview": "Wires F-2's three typed discovery states (ToolMissing, NoDeviceFound, PollFailed) and the multi-device case into the already-shipped ErrorCard/CommandBlock/SourceListRow components (FR-23), adds the non-blocking stream-drop banner over a stale mirror (FR-24), and fixes a real regression: F-4's merged session-loss path routes through resumeLive and clears staged annotations plus the frozen frame, violating NFR-6's 'survive a full disconnect/reconnect cycle' requirement. Three of four acceptance criteria are pure wiring against fully-formed kit components; the fourth (NFR-6) is a behavioural fix to shipped code, and the only test written against it must first be demonstrated failing — the area has already produced one vacuous session-loss test that passed against deleted code.",
+  "problemStatement": "F-2 deliberately left ToolMissing/NoDeviceFound/PollFailed unrendered and F-4 shipped a session-loss path that clears annotations on any disconnect by reusing the user-initiated Resume Live code path. Neither gap is cosmetic: an unrendered error state means a tester sees nothing actionable when adb is missing or no device is found, and annotation loss on a stream drop destroys unsent bug reports the moment a USB cable wiggles.",
+  "purpose": "Make every recoverable failure mode (missing tool, no device, multiple devices, mid-session disconnect) produce a clear, actionable, keyboard-navigable card or banner, and guarantee that an involuntary disconnect never discards work the way a deliberate Resume Live click intentionally does.",
+  "goals": [
+    "Wire, not author: ErrorCard/CommandBlock/SourceListRow already have the exact shape FR-23 needs; zero new atoms/molecules.",
+    "Fix NFR-6 at the root: separate the involuntary-disconnect path from resumeLive's deliberate clear-and-return-to-live semantics so a session loss can never take the clearing branch.",
+    "Prove the NFR-6 fix with a test that is shown failing against the pre-fix code first — this exact area already shipped one test that passed against deleted code.",
+    "Resolve PollFailed explicitly rather than silently folding it into NoDeviceFound, since F-2's own KDoc says the two assert different things."
+  ],
+  "acceptanceCriteria": [
+    { "id": "AC-26", "text": "Given adb is not found on PATH (DiscoveryModel.ToolMissing), then an ErrorCard renders with the platform install command in a copyable CommandBlock, primary action 'Locate adb…', secondary action 'Retry', and a footer line listing the probed paths and $ANDROID_HOME state.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-27", "text": "Given no Android device is detected after repeated polls (DiscoveryModel.NoDeviceFound), then an ErrorCard renders with the kill-server command, primary action 'Restart adb', secondary action 'Boot emulator instead', and a footer line showing tool version, last-poll age, and attached count.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-28", "text": "Given 3 devices are connected simultaneously, then an ErrorCard renders an inline SourceListRow list of all attached devices (not a modal), every row enabled and clickable to mirror that device directly, with the card's primary action labeled 'Mirror <top device>' as a one-click shortcut to the first-listed device.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-29", "text": "Given a stream drops mid-session with staged annotations present, then a non-blocking banner appears over the stale (frozen) mirror reading 'Stream dropped' / 'Your N annotations are kept on the frozen frame', with a primary 'Reconnect' action; 'Resolve & Send' remains clickable and every staged annotation remains pinned and unchanged while disconnected.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-53", "text": "Given adb itself fails or times out mid-poll (DiscoveryModel.PollFailed), then an ErrorCard renders distinct from the NoDeviceFound card — title/body convey a tool-level failure (not an empty device bench), footer shows the tool name and failure reason, primary action 'Retry'.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-54", "text": "Given staged annotations and a frozen frame exist, when the session is lost involuntarily (onSessionLost, not a user-initiated Resume Live click) and later reconnects, then every staged annotation and the frozen frame are bit-for-bit unchanged before and after the cycle; this test is run against the pre-fix code first and demonstrated to fail (annotations/frame cleared) before the fix lands, per this chain's prior vacuous-test incident.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-55", "text": "Given any ErrorCard instance (AC-26/27/28/53) or the stream-drop banner (AC-29), then every primary/secondary/copy/row action is reachable via Tab and activatable via Enter/Space without a pointer.", "priority": "must", "verificationMethod": "test", "confirmed": true },
+    { "id": "AC-56", "text": "Given the light and dark themes, then ErrorCard (all four states) and the stream-drop banner meet the project's existing contrast baseline (same method as presentation-core-styling's PaletteContrastTest), with no state relying on a signal color that differs between themes.", "priority": "should", "verificationMethod": "test", "confirmed": true }
+  ],
+  "functionalRequirements": [
+    { "id": "FR-23", "text": "Render ErrorCard instances for DiscoveryModel's typed discovery-failure states: ToolMissing (FR-23a / AC-26), NoDeviceFound (FR-23b / AC-27), and multiple-devices-connected (FR-23c / AC-28) — wiring only, zero new kit primitives. NOTE: this id collides with an unrelated FR-23 already minted by app-shell-window-layout's clarify.json ('signal colors render identically in light/dark'); this spec's FR-23 is the PRD-canonical id for the structured error card and takes precedence per the approved PRD — see traceNotes." },
+    { "id": "FR-24", "text": "On a mid-session stream drop, show a non-blocking floating banner over the stale (frozen) mirror: 'Stream dropped' / 'Your N annotations are kept on the frozen frame', primary action 'Reconnect'; staged annotations stay pinned and 'Resolve & Send' remains usable while disconnected. NOTE: this id collides with an unrelated FR-24 already minted by android-device-discovery-mirroring's clarify.json ('v1 screenshot-polling mirror transport'); this spec's FR-24 is the PRD-canonical id for the stream-drop banner and takes precedence per the approved PRD — see traceNotes." },
+    { "id": "FR-32", "text": "Render DiscoveryModel.PollFailed as its own ErrorCard state, distinct from NoDeviceFound — its KDoc explicitly distinguishes 'nothing learned' (poll itself failed/timed out) from 'nothing attached' (bench confirmed empty). Title/body/footer convey the tool-level failure and its reason string; primary action 'Retry'." },
+    { "id": "FR-33", "text": "Split F-4's session-termination handling into two distinct code paths: involuntary disconnect (onSessionLost) must not invoke resumeLive's clear-annotations/clear-frozen-frame logic. Instead it transitions to a 'disconnected, frame and annotations preserved' sub-state that FR-24's banner renders over. The user-initiated Resume Live control (F-4's AC-51) keeps its existing clear-and-return-to-live behavior unchanged — the two are different user intents and must not share a code path." },
+    { "id": "FR-34", "text": "The multiple-devices-connected card's inline device list uses SourceListRow with every row enabled (F-2's enabled parameter) and clickable to mirror that device directly; the card's primary action is a convenience shortcut equivalent to clicking the top-listed row, not a separate flow." },
+    { "id": "FR-35", "text": "The stream-drop banner's 'Reconnect' action re-attempts the capture/transport session against the same sessionDeviceId; on success the stage returns to live, the banner dismisses, and all staged annotations remain intact; on repeated failure the banner persists rather than silently disappearing." }
+  ],
+  "nonFunctionalRequirements": [
+    { "id": "NFR-6", "category": "reliability", "text": "Stream-drop handling must preserve all staged annotations and the frozen frame without loss across a disconnect/reconnect cycle. CURRENTLY VIOLATED by merged F-4 code: onSessionLost's downstream path reaches resumeLive's clear logic. This spec's FR-33 is the fix." },
+    { "id": "NFR-8", "category": "a11y", "text": "Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers, Tab/Enter for error-card and banner actions)." },
+    { "id": "NFR-9", "category": "ux", "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes." }
+  ],
+  "outOfScope": [
+    "Measurement/measure-mode (F-5), payload preview (F-6), MCP send (F-7), capture/annotation history (F-8), iOS (F-10).",
+    "Closing SEC-1 (F-2's unvalidated GetProp free text into adb shell) — stays open; this spec must not become GetProp's first production caller without closing it first.",
+    "New visual primitives — every element is assembled from ErrorCard/CommandBlock/SourceListRow/AppButton/StatusIndicator/DeviceChip, already shipped.",
+    "Design comps for AC-28 and FR-24 — none exist; both are derived from shipped components with invented values recorded as named constants, not pixel-measured against a comp."
+  ],
+  "constraints": [
+    { "type": "tech", "text": "No literal Color(0x...), raw .dp, or hardcoded TextStyle at any new call site; invented values (banner geometry, reconnect-retry delay) are named constants or Theme tokens." },
+    { "type": "tech", "text": "commonTest names: plain camelCase only — a backtick name with a comma/apostrophe/colon compiles on the JVM but fails compileTestKotlinIosArm64 (already broke the repo build once, per F-1)." },
+    { "type": "tech", "text": "withTimeoutOrNull only, never withTimeout, for any reconnect-retry logic — resultLauncher's existing CancellationException handling depends on this." },
+    { "type": "tech", "text": "Every new user-facing string gets an actually-referenced mirror_*-style localisation key; no dead keys (F-4's T-12 precedent)." },
+    { "type": "business", "text": "Keep the existing 196 desktop tests green; this spec adds tests, it does not destabilize the suite." },
+    { "type": "business", "text": "NFR-6's test must be shown failing against pre-fix code before the fix lands and the suite is declared green — a test that cannot fail is worse than no test (this chain has shipped one already)." }
+  ],
+  "assumptions": [
+    { "id": "AS-14", "text": "PollFailed gets its own distinct ErrorCard state rather than folding into NoDeviceFound (per survey Q1/FR-32)." },
+    { "id": "AS-15", "text": "F-4's resumeLive (user-initiated Resume Live button, AC-51) keeps clearing annotations/frame unchanged; only the involuntary onSessionLost path is rerouted away from it (per survey Q2/FR-33)." },
+    { "id": "AS-16", "text": "AC-28's device list rows are individually clickable/enabled to mirror that device directly, with the primary button as a convenience shortcut to the top row, not a separate confirm step (per survey Q3/FR-34)." },
+    { "id": "AS-17", "text": "The banner's 'N annotations' count reads the same staged-annotation list F-4 already exposes to the toolbar's CounterBadge/stagedCounter slot — no new counting logic." }
+  ],
+  "dependencies": [
+    { "on": "F-2 (android-device-discovery-mirroring)", "note": "DiscoveryModel's ToolMissing/NoDeviceFound/PollFailed typed states; SourceListRow's enabled parameter for AC-28." },
+    { "on": "F-4 (drag-annotate-frozen-frame)", "note": "MirrorViewModel.onSessionLost/resumeLive, the Orbit staged-annotation state, and the separate frozen-bitmap StateFlow that FR-33 must stop routing through resumeLive's clear path on involuntary disconnect." },
+    { "on": "presentation-core-ui kit", "note": "ErrorCard, CommandBlock, SourceListRow, AppButton, StatusIndicator, DeviceChip — all reused as-is." }
+  ],
+  "scenarios": [
+    { "id": "SC-10", "title": "adb not on PATH shows install-command error card", "type": "happy", "steps": ["Launch with adb missing from PATH", "ErrorCard renders with copyable install command", "Footer shows probed paths and $ANDROID_HOME state", "Click Retry re-probes"] },
+    { "id": "SC-11", "title": "No device detected shows kill-server error card", "type": "happy", "steps": ["Launch with no device attached after repeated polls", "ErrorCard renders with kill-server command", "Footer shows tool version/last-poll/attached count", "Click 'Boot emulator instead'"] },
+    { "id": "SC-12", "title": "Multiple devices connected shows inline list, not a modal", "type": "edge", "steps": ["Connect 3 devices simultaneously", "ErrorCard renders inline SourceListRow list, all enabled", "Click a non-top row to mirror that device directly", "Click primary action to mirror the top device as a shortcut"] },
+    { "id": "SC-13", "title": "Stream drop preserves annotations and keeps Resolve & Send usable", "type": "edge", "steps": ["Stage annotations on a frozen frame", "Drop the stream mid-session (involuntary disconnect)", "Non-blocking banner appears; annotations remain pinned, unchanged", "Click 'Resolve & Send' while still disconnected — remains clickable", "Click Reconnect; stage returns to live with annotations intact"] },
+    { "id": "SC-14", "title": "PollFailed renders distinctly from NoDeviceFound", "type": "edge", "steps": ["Force adb to time out mid-poll (PollFailed)", "Assert the rendered card differs from the NoDeviceFound card", "Footer shows tool name and failure reason, not attached-count stats"] },
+    { "id": "SC-15", "title": "NFR-6 regression test demonstrated failing before the fix", "type": "error", "steps": ["Run the disconnect/reconnect annotation-survival test against pre-fix (merged) code", "Confirm it fails (annotations/frame cleared via resumeLive)", "Apply FR-33's path split", "Re-run; confirm it now passes"] }
+  ],
+  "successMetrics": [
+    "196 pre-existing desktop tests stay green; new tests added for AC-26/27/28/29/53/54/55.",
+    "AC-54's NFR-6 regression test is documented as failing against pre-fix code, then passing after FR-33 lands — closing this chain's second vacuous-test risk."
+  ],
+  "openQuestions": [
+    "Exact retry/backoff cadence for the banner's Reconnect action beyond 'persist on repeated failure' is left to implementation; no SLA was specified upstream.",
+    "SEC-1 (F-2's unvalidated GetProp) remains open; revisit only if a later spec needs device properties.",
+    "Exact copy for PollFailed's title/body is not specified upstream (no design comp); implementation should pick plain language distinguishing 'adb itself failed' from 'no device found' and record the string as a named mirror_* key."
+  ],
+  "traceNotes": [
+    "ID COLLISION (SC-10/SC-11): F-4's clarify.json bound SC-10 ('Escape dismisses, delete removes') and SC-11 ('Resume live after annotating') to its own scenarios. This PRD uses SC-10..SC-13 for the error/recovery scenarios. The PRD's canonical ids are kept here per the aggregate's explicit instruction; Stage 5 must treat SC-10/SC-11 as spec-scoped, not globally unique.",
+    "ID COLLISION (FR-23): app-shell-window-layout's clarify.json independently minted FR-23 for 'signal colors render identically in light/dark themes' (unrelated to this spec). This PRD uses FR-23 as the canonical id for the structured error card. Both are preserved verbatim in their own specs; Stage 5 must treat FR-23 as spec-scoped, not globally unique.",
+    "ID COLLISION (FR-24): android-device-discovery-mirroring's clarify.json independently minted FR-24 for 'v1 screenshot-polling mirror transport' (unrelated to this spec). This PRD uses FR-24 as the canonical id for the stream-drop banner. Both are preserved verbatim in their own specs; Stage 5 must treat FR-24 as spec-scoped, not globally unique.",
+    "New ids minted in this artifact come from a clean, non-colliding range relative to F-1/F-2/F-4: FR-32..FR-35, AC-53..AC-56, SC-14..SC-15, AS-14..AS-17. Pre-existing PRD-canonical ids reused verbatim: AC-26..AC-29, FR-23, FR-24, NFR-6, NFR-8, NFR-9, SC-10..SC-13 (collisions noted above)."
+  ],
+  "proposedSurvey": [
+    {
+      "question": "DiscoveryModel.PollFailed (tool itself failed/timed out) is KDoc'd as distinct from NoDeviceFound (bench confirmed empty), but no AC names it and no comp illustrates it. Should F-3 render it as its own ErrorCard state?",
+      "options": [
+        "A) Give PollFailed its own ErrorCard state distinct from NoDeviceFound — title/body convey a tool-level failure, footer shows the reason string, primary 'Retry' (FR-32/AC-53/SC-14).",
+        "B) Fold PollFailed into the NoDeviceFound card's rendering, ignoring the KDoc's stated distinction.",
+        "C) Render nothing special for PollFailed (silent auto-retry, no card)."
+      ],
+      "recommended": "A) Give PollFailed its own ErrorCard state distinct from NoDeviceFound — title/body convey a tool-level failure, footer shows the reason string, primary 'Retry' (FR-32/AC-53/SC-14).",
+      "rationale": "F-2's own KDoc explicitly says these are not the same assertion ('nothing learned' vs 'nothing attached'); a tester who sees 'No Android device detected' when adb itself crashed gets actionable-looking advice (check USB cabling) for the wrong problem. ErrorCard already supports this with zero new primitives — the cost of option A is one more typed-state branch, not new UI. Option B contradicts the codebase's own documented semantics; option C leaves the user with no information on an actual tool failure, which is worse than any ambiguity it resolves."
+    },
+    {
+      "question": "NFR-6 is violated because F-4's onSessionLost reaches resumeLive's clear-annotations/clear-frame logic. How should the fix be structured relative to AC-51 (F-4's user-initiated Resume Live, which is SUPPOSED to clear annotations)?",
+      "options": [
+        "A) Split into two distinct paths: involuntary disconnect (onSessionLost) never calls resumeLive's clear logic at all — it moves to a separate 'disconnected, preserved' sub-state; the user-initiated Resume Live button keeps its existing clear-and-return behavior completely unchanged (FR-33).",
+        "B) Change resumeLive itself to stop clearing annotations/frame, affecting both the disconnect path and the user-initiated button — meaning AC-51 (Resume Live clears the staged list) no longer holds.",
+        "C) Parameterize the shared function (e.g. resumeLive(preserve: Boolean)) called with different values from the two call sites, keeping one function for both intents."
+      ],
+      "recommended": "A) Split into two distinct paths: involuntary disconnect (onSessionLost) never calls resumeLive's clear logic at all — it moves to a separate 'disconnected, preserved' sub-state; the user-initiated Resume Live button keeps its existing clear-and-return behavior completely unchanged (FR-33).",
+      "rationale": "AC-51 (F-4, already shipped and confirmed) explicitly requires Resume Live to clear the staged list — that is a deliberate, confirmed user intent ('I'm done with this frame, discard it'), not a bug. Option B would silently break a confirmed acceptance criterion from a merged spec. Option C keeps one function serving two unrelated intents behind a boolean flag, which is exactly the kind of shared-code-path smell that caused this bug in the first place — a disconnect accidentally routing through logic meant only for a deliberate discard. Option A is the smallest change that makes the two intents structurally impossible to conflate again."
+    },
+    {
+      "question": "AC-28's PRD text says 'inline device list rather than a modal, primary action naming the top device' but doesn't specify whether non-top rows are independently actionable. How should the list and the primary action compose?",
+      "options": [
+        "A) Every row is enabled and clickable to mirror that specific device directly (reusing F-2's existing SourceListRow.enabled); the card's primary action is a one-click shortcut equivalent to clicking the top row — no separate confirm step, no modal (FR-34).",
+        "B) Rows are display-only (disabled/non-interactive); a secondary action 'Choose device…' reopens F-2's existing picker modal for selection.",
+        "C) Drop ErrorCard for this case entirely and reuse F-2's device-picker panel directly, pre-filtered to attached devices only."
+      ],
+      "recommended": "A) Every row is enabled and clickable to mirror that specific device directly (reusing F-2's existing SourceListRow.enabled); the card's primary action is a one-click shortcut equivalent to clicking the top row — no separate confirm step, no modal (FR-34).",
+      "rationale": "The PRD text explicitly says 'inline device list rather than a modal' — option B's secondary action reopening a modal, and option C's full modal reuse, both reintroduce the exact interaction the PRD says to avoid. F-2 already built SourceListRow's enabled parameter for exactly this kind of clickable-row scenario (A11Y-6: disabled means no handler AND marked disabled, which is the inverse of what's needed here — enabled rows with real click handlers). Making the primary button a shortcut to the top row, rather than a separate flow, keeps the component honest: the button does exactly what clicking the top row would do."
+    }
+  ],
+  "survey": [
+    {
+      "question": "DiscoveryModel.PollFailed (tool itself failed/timed out) is KDoc'd as distinct from NoDeviceFound (bench confirmed empty), but no AC names it and no comp illustrates it. Should F-3 render it as its own ErrorCard state?",
+      "options": [
+        "A) Give PollFailed its own ErrorCard state distinct from NoDeviceFound — title/body convey a tool-level failure, footer shows the reason string, primary 'Retry' (FR-32/AC-53/SC-14).",
+        "B) Fold PollFailed into the NoDeviceFound card's rendering, ignoring the KDoc's stated distinction.",
+        "C) Render nothing special for PollFailed (silent auto-retry, no card)."
+      ],
+      "answer": "A) Give PollFailed its own ErrorCard state distinct from NoDeviceFound — title/body convey a tool-level failure, footer shows the reason string, primary 'Retry' (FR-32/AC-53/SC-14).",
+      "source": "ai-proposed",
+      "rationale": "Autonomous run per operator dictation; gate closed by orchestrator taking the recommended option. F-2's own KDoc explicitly separates the two states' semantics, so rendering them identically would mislead the user about which failure occurred."
+    },
+    {
+      "question": "NFR-6 is violated because F-4's onSessionLost reaches resumeLive's clear-annotations/clear-frame logic. How should the fix be structured relative to AC-51 (F-4's user-initiated Resume Live, which is SUPPOSED to clear annotations)?",
+      "options": [
+        "A) Split into two distinct paths: involuntary disconnect (onSessionLost) never calls resumeLive's clear logic at all — it moves to a separate 'disconnected, preserved' sub-state; the user-initiated Resume Live button keeps its existing clear-and-return behavior completely unchanged (FR-33).",
+        "B) Change resumeLive itself to stop clearing annotations/frame, affecting both the disconnect path and the user-initiated button — meaning AC-51 (Resume Live clears the staged list) no longer holds.",
+        "C) Parameterize the shared function (e.g. resumeLive(preserve: Boolean)) called with different values from the two call sites, keeping one function for both intents."
+      ],
+      "answer": "A) Split into two distinct paths: involuntary disconnect (onSessionLost) never calls resumeLive's clear logic at all — it moves to a separate 'disconnected, preserved' sub-state; the user-initiated Resume Live button keeps its existing clear-and-return behavior completely unchanged (FR-33).",
+      "source": "ai-proposed",
+      "rationale": "Autonomous run per operator dictation; gate closed by orchestrator taking the recommended option. Preserves F-4's already-confirmed AC-51 unchanged and makes the two intents (deliberate discard vs involuntary loss) structurally impossible to conflate again, which is how the NFR-6 violation happened in the first place."
+    },
+    {
+      "question": "AC-28's PRD text says 'inline device list rather than a modal, primary action naming the top device' but doesn't specify whether non-top rows are independently actionable. How should the list and the primary action compose?",
+      "options": [
+        "A) Every row is enabled and clickable to mirror that specific device directly (reusing F-2's existing SourceListRow.enabled); the card's primary action is a one-click shortcut equivalent to clicking the top row — no separate confirm step, no modal (FR-34).",
+        "B) Rows are display-only (disabled/non-interactive); a secondary action 'Choose device…' reopens F-2's existing picker modal for selection.",
+        "C) Drop ErrorCard for this case entirely and reuse F-2's device-picker panel directly, pre-filtered to attached devices only."
+      ],
+      "answer": "A) Every row is enabled and clickable to mirror that specific device directly (reusing F-2's existing SourceListRow.enabled); the card's primary action is a one-click shortcut equivalent to clicking the top row — no separate confirm step, no modal (FR-34).",
+      "source": "ai-proposed",
+      "rationale": "Autonomous run per operator dictation; gate closed by orchestrator taking the recommended option. Matches the PRD's explicit 'not a modal' instruction and reuses F-2's already-built SourceListRow.enabled parameter rather than reopening the device-picker modal the PRD rules out."
+    }
+  ]
+}
