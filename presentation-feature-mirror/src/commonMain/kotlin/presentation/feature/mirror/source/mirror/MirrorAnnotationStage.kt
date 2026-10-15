@@ -59,9 +59,10 @@ import presentation.core.ui.source.kit.molecule.mirror.MirrorFrameView
 import presentation.core.ui.source.kit.organism.annotation.CommentPopover
 import presentation.feature.mirror.core.annotation.NOMINAL_POPOVER_HEIGHT_DP
 import presentation.feature.mirror.core.annotation.NOMINAL_POPOVER_WIDTH_DP
-import presentation.feature.mirror.core.annotation.anyOverlap
+import presentation.feature.mirror.core.annotation.POPOVER_TAIL_GAP_DP
 import presentation.feature.mirror.core.annotation.closesPopover
 import presentation.feature.mirror.core.annotation.metaLine
+import presentation.feature.mirror.core.annotation.popoverLayout
 import presentation.feature.mirror.core.annotation.sizeLabel
 import presentation.feature.mirror.core.geometry.FrameGeometry
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
@@ -98,7 +99,7 @@ private val PopoverNominalHeight: Dp = NOMINAL_POPOVER_HEIGHT_DP.dp
  * `CommentPopover` draws its own tail but does not reserve space above it, so without this the
  * tail would sit on the mark's border rather than pointing at it.
  */
-private val PopoverTailGap: Dp = 6.dp
+private val PopoverTailGap: Dp = POPOVER_TAIL_GAP_DP.dp
 
 /**
  * Height one gutter row is laid out at.
@@ -271,13 +272,17 @@ private fun MirrorAnnotationStage(
             }
 
             frozen?.let { pinned ->
-                if (anyOverlap(nominalPopoverRects(geometry = geometry, frozen = pinned))) {
-                    AnnotationGutter(
-                        geometry = geometry,
-                        frameBounds = frameBounds,
-                        frozen = pinned,
-                    )
-                }
+                val layout = popoverLayout(geometry = geometry, frozen = pinned)
+                AnchoredComments(
+                    geometry = geometry,
+                    frameBounds = frameBounds,
+                    annotations = layout.anchored,
+                )
+                AnnotationGutter(
+                    geometry = geometry,
+                    frameBounds = frameBounds,
+                    relocated = layout.gutter,
+                )
                 SelectedComment(
                     geometry = geometry,
                     frameBounds = frameBounds,
@@ -335,23 +340,43 @@ private fun overlayMarks(
 }
 
 /**
- * Where every comment popover *would* sit if it stayed on its mark — the input to the crowding
- * test (FR-9 / AC-9).
+ * The read-only popovers that stay on their own marks — every non-selected annotation, whenever
+ * the frame is not crowded (FR-8).
  *
- * Plain dp floats in the overlay's own space, matching what [SelectedComment] does with the one
- * popover it actually places. Nominal sizes, never measured: see [PopoverNominalWidth].
+ * Unconditional on purpose: a committed comment must not disappear from the stage just because
+ * the selection moved to another mark. Crowding only decides whether this set sits here or in
+ * [AnnotationGutter]; see `popoverLayout`.
+ *
+ * `AnnotationPopover` installs no pointer input, so these plates are invisible to hit-testing
+ * and the drag layer underneath still starts a new annotation through them.
  */
-private fun nominalPopoverRects(geometry: FrameGeometry, frozen: FrozenFrame): List<Rect> =
-    frozen.annotations.map { annotation ->
+@Composable
+private fun BoxScope.AnchoredComments(
+    geometry: FrameGeometry,
+    frameBounds: DpRect,
+    annotations: List<StagedAnnotation>,
+) {
+    if (annotations.isEmpty()) return
+
+    val emptyLabel = stringResource(Res.string.mirror_annotation_empty_comment)
+    val maxX = (frameBounds.width - PopoverNominalWidth).coerceAtLeast(Dp.Hairline)
+    val maxY = (frameBounds.height - PopoverNominalHeight).coerceAtLeast(Dp.Hairline)
+
+    annotations.forEach { annotation ->
         val mark = geometry.toDp(geometry.toFrame(annotation.rect))
-        val top = (mark.bottom + PopoverTailGap).value
-        Rect(
-            left = mark.left.value,
-            top = top,
-            right = mark.left.value + NOMINAL_POPOVER_WIDTH_DP,
-            bottom = top + NOMINAL_POPOVER_HEIGHT_DP,
+        AnnotationPopover(
+            text = annotation.comment.ifEmpty { emptyLabel },
+            index = annotation.index,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(
+                    x = mark.left.coerceIn(Dp.Hairline, maxX),
+                    y = (mark.bottom + PopoverTailGap).coerceIn(Dp.Hairline, maxY),
+                )
+                .width(PopoverNominalWidth),
         )
     }
+}
 
 /**
  * The right-edge gutter: comments that no longer fit on their marks, each on a leader line
@@ -373,9 +398,8 @@ private fun nominalPopoverRects(geometry: FrameGeometry, frozen: FrozenFrame): L
 private fun BoxScope.AnnotationGutter(
     geometry: FrameGeometry,
     frameBounds: DpRect,
-    frozen: FrozenFrame,
+    relocated: List<StagedAnnotation>,
 ) {
-    val relocated = frozen.annotations.filter { it.index != frozen.selectedIndex }
     if (relocated.isEmpty()) return
 
     val inset = Theme.spacing.spacingS
