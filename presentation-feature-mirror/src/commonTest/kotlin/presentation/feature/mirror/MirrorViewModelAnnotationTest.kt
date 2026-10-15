@@ -271,16 +271,30 @@ class MirrorViewModelAnnotationTest {
         assertEquals(MirrorStage.IosDeferred, viewModel.currentState.stage)
     }
 
+    /**
+     * The device is unplugged **after** the session opened, so the failure has to break an
+     * already-running collection — `failure` would not, its `onStart` ran long ago. Asserting
+     * [MirrorSession.Lost] first is what keeps the rest of this test honest: without it every
+     * claim below would hold with the whole session-loss path deleted.
+     */
     @Test
     fun sessionLostWhileFrozenKeepsTheAnnotations() = runTest(mainDispatcher) {
         val mirroring = FakeStartMirroring()
         val viewModel = frozenWithTwoAnnotations(mirroring)
+        viewModel.handleIntent(MirrorIntent.CommentAnnotation(index = 1, comment = "cut off"))
+        advanceUntilIdle()
+        val pinned = viewModel.frozenFrame.value
 
-        mirroring.failure = IllegalStateException("device unplugged")
-        mirroring.pushFrame(frameOf(9))
+        mirroring.failStream(IllegalStateException("device unplugged"), frameOf(9))
         advanceUntilIdle()
 
+        assertEquals(MirrorSession.Lost(PHONE), viewModel.currentState.session)
+        assertEquals(0, mirroring.activeCollectors)
+        // The user's work outlives the device it was drawn on.
         assertEquals(2, viewModel.currentState.stagedCount)
+        assertEquals(listOf(FIRST_RECT, SECOND_RECT), viewModel.currentState.frozen?.annotations?.map { it.rect })
+        assertEquals("cut off", viewModel.currentState.frozen?.annotations?.first()?.comment)
+        assertSame(pinned, viewModel.frozenFrame.value)
         assertEquals(MirrorStage.Frozen, viewModel.currentState.stage)
     }
 
