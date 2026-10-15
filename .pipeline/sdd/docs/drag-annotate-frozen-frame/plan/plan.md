@@ -10,7 +10,7 @@
 | producedBy | sdd-build-plan-refine |
 | schemaVersion | 1 |
 | createdAt | 2026-10-15T04:04:05Z |
-| updatedAt | 2026-10-15T04:04:05Z |
+| updatedAt | 2026-10-15T04:04:30Z |
 
 ## Gate
 
@@ -34,7 +34,7 @@ true
 
 ### selfHash
 
-98cd1c66c2b867d333fcba915d51f5cb64bd736351324d23541a418bc386edd3
+19e5721b179547175cdc20448c90994475aefbd6f9c608c9a5f955f674e098cf
 
 ### inputs
 
@@ -708,6 +708,11 @@ Every pure function in this spec (FrameGeometry's four members across BOTH conve
 
 ### survey
 
+| question | options | answer | source | rationale |
+| --- | --- | --- | --- | --- |
+| AC-5 and AC-7 carry verificationMethod=test, but this repo has zero Compose UI tests among 160 green. How are they verified? | ["A ship as planned (pure + reducer + preview + demo) with adopt-compose-ui-test as a follow-up ticket", "B adopt a Compose UI-test harness inside this spec", "C downgrade the ACs to inspection"] | A - ship as planned with a follow-up ticket. The ACs are satisfied by pure and reducer tests plus a preview and a demo, and no rendered assertion is implied anywhere in the plan. Standing up a UI-test harness inside a feature spec is the Stage-5-consuming yak-shave F-1 already declined; downgrading the ACs would quietly rewrite an upstream verification method. | ai-proposed | Autonomous run; recommended taken. The mismatch is inherited from the PRD, so it is recorded honestly rather than resolved by weakening either side. |
+| Is the side panel composed permanently, or gated on an active session? | ["A permanently composed", "B session-gated"] | A - permanently composed. B would require mirror state to be read inside a Window parameter, which is exactly the coupling F-1 kept out of the shell. | ai-proposed | Autonomous run; recommended taken on a structural rather than aesthetic ground. |
+| Does the Notes tab auto-switch when an annotation is created? | ["A on the first annotation only", "B on every annotation", "C never"] | A - on the first annotation only. B would yank the tab out from under a user who deliberately navigated away mid-session; C hides the feature's own output the first time it is produced. | ai-proposed | Autonomous run; recommended taken. |
 
 ### readyForBacklog
 
