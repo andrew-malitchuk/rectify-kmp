@@ -1,0 +1,2314 @@
+{
+  "spec": "drag-annotate-frozen-frame",
+  "stage": "plan",
+  "step": "plan",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-plan-refine",
+  "provenance": {
+    "selfHash": "98cd1c66c2b867d333fcba915d51f5cb64bd736351324d23541a418bc386edd3",
+    "inputs": [
+      {
+        "artifact": "preparation/preparation.json",
+        "hash": "2e847f2a4b2049c279333c6ef0c618bd8f2329c2beb0adbed90b9bdb30bcdd36"
+      },
+      {
+        "artifact": "plan/candidates/candidate-1.json",
+        "hash": "22fa611c8fece6ae41ee67908f43ff1936d0abc0986a9dfd6a79156e7112dd22"
+      },
+      {
+        "artifact": "plan/evaluation.json",
+        "hash": "82a4af496c9accdae585f220cf17ffa8fbddbcc8fb013817cc99ea68fd2ef070"
+      }
+    ]
+  },
+  "createdAt": "2026-10-15T04:04:05Z",
+  "updatedAt": "2026-10-15T04:04:05Z",
+  "data": {
+    "meta": {
+      "title": "Drag-to-Annotate & Frozen Frame (F-4)",
+      "version": 2,
+      "status": "final"
+    },
+    "goal": "Give a tester one drag gesture on the live Android mirror that freezes the exact frame they saw the bug in, boxes it, numbers it and opens a focused place to describe it — with the box stored in device screenshot pixels so it stays correct across host density, window resize and panel resize. New code is deliberately tiny: one pure geometry function, one kit molecule (the dim scrim), two defaulted kit parameters, and six Orbit intents. Everything visible is assembled from shipped, previewed kit components.",
+    "problemStatement": "F-1 (shell) and F-2 (device discovery + live mirror) deliver a live mirror with no way to mark anything on it — a tester can only describe a bug in prose or attach a raw screenshot, which is exactly what this product exists to replace. rectify-poc proved the drag-box interaction is feasible but documented a silent density-conversion bug: pointer events and the composable's own layout are in raw screen pixels, while Modifier.offset/size take Dp which Compose multiplies by density again, so every drawn rectangle lands `density`x from the cursor (2x on this Retina host). Note precisely where that bug lives: on the RENDER leg, not the storage leg. No existing test would catch it. Separately, F-1 shipped three slots reserved for this feature — ShellToolbar.stagedCounter, ShellToolbar.clearAction and SidePanelFrame's Notes tab — as inert stubs, and StatusIndicatorState.Frozen shipped with zero callers. This spec closes the coordinate hole and fills the reserved slots.",
+    "highLevelDescription": "Four layers, no new Gradle module, no new catalog entry, no persistence. (1) GEOMETRY — a new internal, pure, non-Composable FrameGeometry in presentation-feature-mirror/core/geometry/, unit-tested BEFORE any UI exists. Pointer offsets from pointerInput and the frame box size from onSizeChanged are in the SAME pixel space, so `devicePx = pointerPx / frameBoxPx * deviceSize` contains no density at all; density applies in exactly one place, converting back out for rendering — which is exactly where the POC's bug lived, so that leg is the one the regression test must exercise. (2) STATE — MirrorUiState gains `frozen: FrozenFrame?` holding a List<StagedAnnotation> and a selectedIndex; the frozen ImageBitmap goes on a second StateFlow beside `frame`, with the reducer storing only its IntSize. Annotations belong IN reduced state for the exact inverse of F-2's reason for keeping frames out: they are a handful of small value-equal records mutated by discrete user actions and read simultaneously by three consumers (toolbar badge, Notes tab, stage marks), whereas frames are identity-compared blobs arriving ten times a second. (3) FREEZE — a render-path switch only. sessionDeviceId and F-2's flatMapLatest capture gate are never touched, so Resume Live costs no new adb session and no first-frame latency; drag-in-progress offsets live in composable `remember` and never enter Orbit. (4) UI — assemble from AnnotationMark, Ruler, CommentPopover, AnnotationPopover, AnnotationRow, CounterBadge, StatusIndicatorState.Frozen and AppButton; author exactly one new kit molecule (AnnotationOverlay = scrim via clipPath(ClipOp.Difference) + one AnnotationMark per rect, fed Dp rects so the kit never converts density itself) and add two source-compatible defaulted parameters to shipped kit components. FR-9's gutter is an in-stage right-edge column, not the Notes tab, because FR-28 already fills that tab.",
+    "background": "Branch sdd/drag-annotate-frozen-frame off development, with F-1 and F-2 merged and the desktop suite green (F-2 recorded 160 tests; re-confirm at branch tip rather than assuming). Preparation is signed off (readyForPlan true) with 10 FR, 3 NFR, 12 AC, 6 scenarios, 4 assumptions, 9 binding decisions, 8 open risks and 11 open questions, all carried forward unchanged. All nine binding decisions are settled and this plan plans TO them. No design comp exists for any part of this feature — all five cached comps are device-discovery screens — so every invented visual value ships as a named private constant for a later one-line design pass, the precedent F-1 set with the stage dot grid. This is the refined plan: the fast tier ran no judge, so refine is the only validation pass before Stage 3, and every load-bearing reuse claim below was re-verified against source during it.",
+    "sources": [
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/preparation/preparation.json",
+        "cached": "preparation/preparation.json"
+      },
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/preparation/brainstorm.json",
+        "cached": "preparation/brainstorm.json"
+      },
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/preparation/clarify.json",
+        "cached": "preparation/clarify.json"
+      },
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/preparation/input.json",
+        "cached": "preparation/input.json"
+      },
+      {
+        "type": "code",
+        "ref": "/Users/andrew-malitchuk/StudioProjects/rectify-poc/app/src/main/kotlin/rectify/Main.kt#L122-L237",
+        "cached": "Reference only, never imported. RE-VERIFIED in refine: lines 122-126 are the density-trap comment verbatim, ending `fun Float.toDisplayDp() = (this / density).dp` — locating the trap on the RENDER leg. Lines 229-237 are the per-corner conversion FrameGeometry replaces."
+      },
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/android-device-discovery-mirroring/plan/plan.json",
+        "cached": "F-2's plan — shape reference, dependency contract for MirrorViewModel.frame and the sessionDeviceId gate."
+      },
+      {
+        "type": "code",
+        "ref": ".pipeline/sdd/docs/app-shell-window-layout/plan/plan.json",
+        "cached": "F-1's plan — source of the SidePanelFrame signature whose forwarding gap this spec closes, and of the SC-3/SC-4 ids F-1 bound to different shell scenarios."
+      }
+    ],
+    "scope": {
+      "in": [
+        "Drag-to-draw dashed outline + live device-pixel size label + ruler/tick guides on the live mirror (FR-6)",
+        "Freeze-on-release of the exact release-time frame, creating a staged annotation anchored to the box (FR-7)",
+        "Frozen-frame dim-outside-boxes treatment + per-annotation comment popover (badge, autofocus, delete, meta line) (FR-8)",
+        "Crowded-popover relocation to an in-stage right-edge gutter with straight leader lines, at demo fidelity (FR-9)",
+        "Canonical device-screenshot-pixel conversion as one pure internal function covering BOTH legs: storage (pointer px -> device px, no density) and render (frame px -> dp, the only density division) (FR-26)",
+        "Wiring ShellToolbar's stagedCounter and clearAction stubs (FR-27)",
+        "Filling the side panel's Notes tab with AnnotationRows + the Notes tab count (FR-28)",
+        "Keyboard scoping for popover Enter/Escape via onPreviewKeyEvent on the popover focus subtree, no new dispatch layer (FR-29)",
+        "Resume Live control; freeze is render-only and the capture loop is never paused (FR-30)",
+        "Repeated annotation on an already-frozen frame without re-freezing (FR-31)",
+        "Two source-compatible defaulted parameters on shipped kit components: MirrorFrameView(overlay) and RectifyWindowShell(tabCounts)",
+        "One new kit molecule: AnnotationOverlay (scrim + marks), taking Dp-space rects only",
+        "New localisation keys in presentation-core-localisation for the copy this feature's own composables render"
+      ],
+      "out": [
+        "Measurement / measure-mode (F-5) — MeasureCard/MeasureMark exist in the kit but are not wired here",
+        "Payload preview (F-6) and MCP send (F-7) — the Payload tab and any network/export behaviour",
+        "Capture/annotation history (F-8) — exactly one frozen frame lives in memory at a time (AS-11)",
+        "Error cards (F-3)",
+        "Device rotation / resolution change mid-annotation-session (AS-12)",
+        "The gutter/leader-line 8 px elbow-stagger polish named in AnnotationPopover's KDoc (deferred)",
+        "Pausing the capture/transport loop while frozen for power/perf (FR-30 keeps it running)",
+        "Introducing a Compose UI-test harness / compose-ui-test dependency — its own follow-up ticket",
+        "Annotation move/resize after creation — AnnotationMark's showHandles exists but no resize gesture is wired",
+        "Lifting StagedAnnotation into domain-core — one consumer, no serialization need until F-7",
+        "Localising RectifyWindow.kt's pre-existing literal labels (Clear, Resolve & Send, No device, staged) — F-1's pattern for that file; its own small ticket",
+        "Any new Gradle module, convention-plugin change, Koin module or version-catalog entry"
+      ]
+    },
+    "assumptions": [
+      "AS-10: Manual/dev verification happens at host density 2.0 (Retina, per F-1's T-12 probe), but FrameGeometry takes density as a parameter rather than hardcoding 2.0.",
+      "AS-11: Exactly one frozen frame and its staged-annotation set exist in memory at a time; multi-frame capture history is F-8's.",
+      "AS-12: The mirrored device does not rotate or change resolution mid-annotation-session.",
+      "AS-13: Clicking clearAction empties the staged list without a confirmation dialog — a direct, reversible-by-redrawing action, consistent with the toolbar's existing design.",
+      "AS-14 (plan, RE-VERIFIED in refine): presentation-feature-mirror's build.gradle.kts needs NO edit. Read directly: it declares domainCore, domainUsecaseApi, presentationCoreLocalisation, presentationCoreStyling, presentationCoreUi, compose.material3, the three orbit artifacts, and kotlinx-coroutines-test in commonTest. FeatureConventionPlugin.kt line 123 wires kotlin-test into commonTest for every feature module. compose-application/build.gradle.kts line 25 already declares projects.presentationFeatureMirror, so RectifyWindow.kt can compose the new public MirrorNotesTab with no Gradle edit either. This is the class of omission that bit F-2's draft; all three files were opened, not inferred.",
+      "AS-15 (plan, RE-VERIFIED in refine): No Koin or initKoin change is needed. MirrorViewModel's constructor (lines 68-75) takes detectTools, observeDiscovery, bootEmulator, startMirroring, observeMirrorStats and an already-defaulted `decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng`. This spec adds no parameter, so PresentationFeatureMirrorModule.kt and InitKoin.kt's load-order-significant list are untouched.",
+      "AS-16 (plan, RE-VERIFIED in refine): MirrorHost's and MirrorStageContent's PUBLIC signatures do not change. MirrorHost.kt line 31 declares `content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit`; MirrorHost internally computes `frozenFrame ?: frame` and passes the single bitmap it already passes."
+    ],
+    "constraints": [
+      {
+        "type": "tech",
+        "text": "No literal Color(0x...), no raw .dp at a call site, no hardcoded TextStyle. Every invented value (scrim alpha, gutter width, Resume Live inset, minimum drag size, nominal popover bounds) is a named private file-top constant with a KDoc rationale — the pattern MirrorContent.kt's NoticeMaxWidth and the kit's geometry blocks already use — or a new Theme token. Per .claude/rules/design-tokens.md."
+      },
+      {
+        "type": "tech",
+        "text": "A commonTest backtick test name containing a comma, apostrophe or colon compiles on the JVM and fails compileTestKotlinIosArm64 with 'Name contains illegal characters'. This broke the repo once in F-1 and is recorded in .claude/rules/testing.md and presentation-feature-mirror/CLAUDE.md. Plain camelCase names only, no backticks at all, and the iOS test-compile guard runs BEFORE the PR."
+      },
+      {
+        "type": "tech",
+        "text": "presentation-core-ui takes no dependency on presentation-core-localisation. AnnotationOverlay and every kit-level change takes copy as a parameter with an English default; the feature module supplies stringResource()."
+      },
+      {
+        "type": "tech",
+        "text": "presentation-core-ui enforces strict atom -> molecule -> organism layering. AnnotationOverlay lives in molecule/annotation/ and imports AnnotationMark (atom) only — never CommentPopover (organism). Popover placement and leader-line routing stay with the feature-module host."
+      },
+      {
+        "type": "tech",
+        "text": "AnnotationOverlay's rect parameter is Dp space (DpRect), never pixels. The caller has already run FrameGeometry.toFrame then toDp, so the kit performs no density conversion of its own and cannot grow a second one. This keeps FR-26's single conversion path true across the module boundary, not only inside the feature module."
+      },
+      {
+        "type": "tech",
+        "text": "Orbit MVI four-file convention, with the module's two documented deviations intact (MirrorHost not MirrorScreen; no pixels in reduced state). The no-pixels rule extends to the frozen bitmap: a StateFlow beside frame, never in MirrorUiState."
+      },
+      {
+        "type": "tech",
+        "text": "core/ holds internal declarations only; source/ holds the public API. FrameGeometry, AnnotationFormat and popoverCrowding are internal under core/; DeviceRect, StagedAnnotation and FrozenFrame are public contract types in source/mirror/MirrorContract.kt. explicitApi() is enforced repo-wide: every public declaration needs an explicit visibility modifier and return type."
+      },
+      {
+        "type": "tech",
+        "text": "FrameGeometry is internal, pure, has no @Composable and no ViewModel side effects — the single code path for pointer-px -> device-px AND device-px -> dp. No other module may grow its own variant (FR-26)."
+      },
+      {
+        "type": "tech",
+        "text": "Do NOT use AnnotationState.Frozen. RE-VERIFIED: AnnotationMark.kt line 98 is `val fill = if (isFrozen) Theme.color.surface else accent.copy(alpha = FILL_ALPHA)` — an opaque fill covering the exact pixels the annotation points at, contradicting its own KDoc at lines 79-80. Use Pinned/Selected plus the new scrim. AnnotationState.Frozen stays shipped with no caller — record that so a later reviewer does not read it as an oversight."
+      },
+      {
+        "type": "tech",
+        "text": "Zero new version-catalog entries, zero new Gradle modules, zero convention-plugin changes, zero build.gradle.kts edits. Build per module — the Kotlin daemon is capped at 3 GB, so :presentation-core-ui and :presentation-feature-mirror build separately, never via a root build."
+      },
+      {
+        "type": "tech",
+        "text": "withTimeoutOrNull, never withTimeout, anywhere a timeout is needed."
+      },
+      {
+        "type": "business",
+        "text": "AC-9 / FR-9 ship at minimum-demo fidelity only — straight Canvas leader lines, nominal popover bounds, no elbow-stagger. Explicitly deferred, not silently dropped."
+      },
+      {
+        "type": "business",
+        "text": "AC-5 and AC-7 carry verificationMethod: test from the PRD, but this repo has ZERO Compose UI tests. They are satisfied by pure geometry/format tests plus reducer tests plus a light/dark @Preview and a manual demo. No rendered coverage is claimed that will not exist; 'adopt compose-ui-test' is its own follow-up ticket. Stage 5 must not read 'test' on these two ACs as a promise of a rendered assertion."
+      },
+      {
+        "type": "business",
+        "text": "SC-3 and SC-4 here are the PRD's canonical ANNOTATION scenarios. F-1 already bound the same two ids to different shell scenarios. Scenario ids are spec-scoped, not globally unique — Stage 5 must not conflate them."
+      }
+    ],
+    "dependencies": [
+      {
+        "on": "F-1 (app-shell-window-layout)",
+        "note": "Reuses ShellToolbar's stagedCounter/clearAction slots (RE-VERIFIED as inert stubs at RectifyWindow.kt lines 232-242: `CounterBadge(count = 0, state = CounterBadgeState.Empty, label = \"staged\")` and `AppButton(text = \"Clear\", onClick = {}, variant = Ghost, enabled = false)`), SidePanelFrame's per-tab content slot and tabCounts map, StageSurface's content slot, and ShellTab/shortcutToTab's Cmd+1/2/3 mapping. VERIFIED GAP, CONFIRMED IN REFINE: SidePanelFrame.kt line 59 declares `tabCounts: Map<ShellTab, Int> = emptyMap()` and line 76 feeds it to SidebarTabItem(count = ...), but RectifyWindowShell.kt lines 87-92 composes SidePanelFrame with activeTab, onTabSelect, modifier and content ONLY. The parameter is unreachable from the window; FR-28's Notes count cannot be wired without a +1 defaulted parameter on RectifyWindowShell. The brainstorm's 'no shell change is needed at all' is wrong on this point. One defaulted parameter plus one forwarded argument is the minimal fix — the only alternative is a second SidePanelFrame call site, which is worse."
+      },
+      {
+        "on": "F-2 (android-device-discovery-mirroring)",
+        "note": "Reuses MirrorViewModel.frame (StateFlow<ImageBitmap?>, line 83), MirrorUiState / MirrorStage / MirrorIntent, MirrorHost's content lambda, MirrorStageContent's stage when() (MirrorContent.kt line 92 — exhaustive over an enum with no else), MirrorStatusLine's private indicatorState(), and the sessionDeviceId-gated flatMapLatest capture loop that must keep running unpaused while frozen. The gate itself is NOT edited."
+      },
+      {
+        "on": "presentation-core-ui kit",
+        "note": "AnnotationMark, Ruler, CommentPopover, AnnotationPopover, AnnotationRow, CounterBadge, GlyphBadge, MeasureTag, StatusIndicator(Frozen), AppButton, MirrorFrameView, SidePanelFrame, ShellToolbar. Every signature re-read from source during refine. Two get a defaulted parameter; one new molecule is authored; the rest are used unchanged."
+      },
+      {
+        "on": "presentation-core-localisation",
+        "note": "New mirror_annotation_* / mirror_action_resume_live / mirror_status_frozen keys in values/strings.xml. Only the English values/ file exists; keys follow <feature>_<element>."
+      },
+      {
+        "on": "rectify-poc Main.kt",
+        "note": "Reference only, never imported. Lines 122-126 document the density trap and locate it on the RENDER leg (Modifier.offset/size take Dp); lines 229-237 are the per-corner conversion FrameGeometry replaces."
+      }
+    ],
+    "risks": [
+      {
+        "text": "Density-trap regression: a future call site converts frame px to dp by hand instead of going through FrameGeometry.toDp, and every annotation anchor silently shifts by 2x on Retina. The trap lives on the RENDER leg — a test that only exercises pointer-px-to-device-px cannot see it, because that leg has no density term to get wrong.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "One pure conversion path (FR-26) built and tested as step 1 before any UI exists, with the regression fixture exercising the FULL round trip pointer px -> device px -> frame px -> dp -> (x density) and asserting it lands back on the original pointer offset; FrameGeometry kept internal; AnnotationOverlay takes Dp rects so the kit cannot convert either; a review-checklist line that any new .dp or /density arithmetic on frame coordinates is a defect; a grep in the Definition of Done."
+      },
+      {
+        "text": "The annotation overlay is drawn in a box that is not pixel-identical to MirrorFrameView's aspect-fit image, producing a constant small offset no unit test can see.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Compose the overlay INSIDE MirrorFrameView's own aspect-fit Box via the new overlay slot — RE-VERIFIED as the inner Box at lines 53-59 carrying .aspectRatio(matchHeightConstraintsFirst = true), the opaque background and the semantics, with the Image at 60-65 filling it. The overlay literally cannot be a different rectangle. Duplicating the aspectRatio maths in the feature module is forbidden. Verify visually at two window sizes and both panel width bounds."
+      },
+      {
+        "text": "A FocusRequester on CommentPopover's root Column may not forward focus to the inner BasicTextField, breaking AC-7's autofocus. RE-VERIFIED: CommentPopover.kt lines 99-108 declare value, onValueChange, onClose, modifier, index, placeholder, meta, finding, saveHint — no focusRequester — and line 110 creates the BasicTextField's interactionSource privately.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "First try parent FocusRequester + Modifier.focusRequester().focusGroup() on the popover root. If focus does not land on the field, add `focusRequester: FocusRequester? = null` and pass it to the BasicTextField — a 3-line, source-compatible, defaulted change. Budgeted in step 8, not a surprise."
+      },
+      {
+        "text": "Making sidePanel non-null activates Cmd+1/2/3 for the first time: handleShellShortcut returns false while the panel is absent (RE-VERIFIED: `if (!isPanelVisible) return false` at RectifyWindow.kt line 328). F-1's shortcut behaviour becomes live in this spec.",
+        "likelihood": "high",
+        "impact": "low",
+        "mitigation": "Expected and desirable — F-1's own comment at lines 126-128 says the panel is null only because there was no content, which is what this spec supplies. handleShellShortcut is private and untested and ShortcutToTabTest covers only the pure mapper, so the suite is not mechanically at risk; the exposure is behavioural. Run the full desktop suite immediately after step 9 and call it out in the PR."
+      },
+      {
+        "text": "REFINE-ADDED: moving RectifyWindow.kt's `sidePanel` val into the MirrorHost content lambda does not compile. The val is declared at line 129, OUTSIDE the Window(...) call, and read at line 138 inside the `onPreviewKeyEvent` PARAMETER; MirrorHost is at line 152, inside the Window's content. A val moved into that lambda is out of scope at line 138.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "Step 9 states the mechanics explicitly: DELETE the line-129 val, build the panel lambda inside the MirrorHost content lambda where mirror and onIntent are in scope, and change line 138 to the literal `isPanelVisible = true` in the SAME edit. handleShellShortcut keeps its parameter (F-3 or a session-gated panel may need it again); only the argument becomes constant. One commit, so the file never sits non-compiling."
+      },
+      {
+        "text": "A commonTest backtick name containing a comma, apostrophe or colon compiles on the JVM and breaks compileTestKotlinIosArm64. This broke the repo once in F-1.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Plain camelCase names, zero backticks, in all four new test files and the changed helper. Run :presentation-feature-mirror:compileTestKotlinIosArm64 and :presentation-core-ui:compileTestKotlinIosArm64 before the PR, not after."
+      },
+      {
+        "text": "AC-47 needs two distinguishable ImageBitmaps, but MirrorFakes hardcodes `decodeFrame = { null }` (MirrorFakes.kt line 121) to keep a graphics backend out of unit tests, and ImageBitmap(w,h) pulls in Skiko's native library. REFINE CORRECTION: the draft's fallback — assert FrozenFrame.deviceSize instead — is NOT Skiko-free and is vacuous. deviceSize is derived from the frozen bitmap; if Skiko will not load, currentFrame stays null, StageAnnotation is dropped, and there is no FrozenFrame to assert on.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "Do not plan both branches in the abstract — measure. Step 4 opens with a three-line throwaway probe asserting `ImageBitmap(2, 3).width == 2` in desktopTest. If it passes (likely — MirrorFrameViewPreview already constructs ImageBitmap(1080, 2400) in commonMain), add a `decodeFrame` parameter to MirrorFakes.mirrorViewModel() defaulting to the existing null decoder, plus a fake decoder producing bitmaps that differ in BOTH width and height so the assertion cannot pass by accident, and assert frozenFrame.value's width AND height. If the probe fails, AC-47 drops honestly to inspection of the single currentFrame.value read in the StageAnnotation handler plus the SC-3 demo, and its verificationNote is updated to say so."
+      },
+      {
+        "text": "Keeping the capture loop running while frozen means continuous screencap during what may be minutes of typing.",
+        "likelihood": "high",
+        "impact": "low",
+        "mitigation": "Accepted by FR-30 and already a logged open question. If it bites, the fix is an isFrozen flag folded into the transport's adaptive interval, not a session teardown — setting sessionDeviceId = null would also restart discovery polling and tear the adb session down."
+      },
+      {
+        "text": "The scrim colour is a deliberate literal (always dark in both themes) rather than a Theme token, which design-tokens.md generally forbids.",
+        "likelihood": "low",
+        "impact": "low",
+        "mitigation": "Follows the documented exception already in CommentPopover (PopoverInk, FieldFill) and CounterBadge (Color.White on a signal fill): a fixed value with an explicit KDoc rationale because it sits over unknown-brightness device content. One named constant in one file; promote to a ThemeColor token the moment a second call site appears."
+      },
+      {
+        "text": "FR-9's relocation threshold uses nominal popover-bounds constants rather than measured sizes, so a long comment could crowd without triggering relocation.",
+        "likelihood": "low",
+        "impact": "low",
+        "mitigation": "AC-9 is demo-verified. Measuring in order to decide whether to compose is a circular layout dependency needing SubcomposeLayout — not worth it at this fidelity. Named constant, one-line tune."
+      },
+      {
+        "text": "Adding MirrorStage.Frozen makes the when(state.stage) in MirrorStageContent non-exhaustive.",
+        "likelihood": "high",
+        "impact": "low",
+        "mitigation": "A feature, not a risk: MirrorStage is an enum (MirrorContract.kt line 81) and the when at MirrorContent.kt line 92 has no else, so the compiler forces the branch. Step 3 lands a `-> Unit` placeholder and step 7 fills it; step 3's verify is compile-only for exactly this reason."
+      },
+      {
+        "text": "Deleting the last annotation leaves the frame frozen with zero holes, so the scrim degrades to a full-frame dim over a static picture with nothing marked.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "Accepted as the honest rendering — AC-48 explicitly keeps the stage frozen after Clear and Resume Live stays visible as the way out. AnnotationOverlay must handle an empty rect list without building a degenerate Path."
+      }
+    ],
+    "requirements": {
+      "functional": [
+        {
+          "id": "FR-6",
+          "text": "Support click-and-drag on the live mirror to draw a selection box, rendering a dashed red outline, a live device-pixel size label, and ruler/tick coordinate guides during the drag."
+        },
+        {
+          "id": "FR-7",
+          "text": "On drag release, freeze the exact current frame and create a new staged annotation anchored to the drawn box."
+        },
+        {
+          "id": "FR-8",
+          "text": "On a frozen frame, dim everything outside annotation boxes and show a per-annotation popover with a numbered badge, an autofocused free-text comment field (placeholder 'What's wrong here?'), a delete control, and a size/position meta line; Enter saves, clicking the delete control removes the annotation."
+        },
+        {
+          "id": "FR-9",
+          "text": "When annotation popovers would crowd/overlap, relocate them to a gutter/sidebar panel connected to their boxes via leader lines."
+        },
+        {
+          "id": "FR-26",
+          "text": "Establish device screenshot pixels as the single canonical storage space for annotation geometry. Implement the pointer-px -> density -> composable-dp -> frame-display-scale -> device-px conversion as one pure, platform-agnostic function (no Composable, no ViewModel side effects) rather than inline per call site, so every caller (the live drag box, the size label, the ruler extent) shares one code path and one set of tests."
+        },
+        {
+          "id": "FR-27",
+          "text": "Wire the toolbar's stagedCounter slot to the live staged-annotation count (CounterBadgeState.Empty at 0, Staged otherwise) and the clearAction slot to removing every staged annotation while leaving the stage frozen (not ending the session)."
+        },
+        {
+          "id": "FR-28",
+          "text": "Fill the side panel's Notes tab with one AnnotationRow per staged annotation (index, comment or the empty-state copy, position meta line), kept in sync with the same staged-annotation list FR-27 wires to the toolbar; selecting a row selects the corresponding mark on the frame."
+        },
+        {
+          "id": "FR-29",
+          "text": "Scope annotation keyboard handling to the focused popover: Enter commits the comment text and keeps the annotation pinned; Escape collapses the popover back to a pinned, unselected mark without deleting it; the delete control (CommentPopover's existing close affordance, repurposed to mean delete per FR-8) removes the annotation and decrements the staged count. None of these three consume or bubble into the window-level Cmd+1/2/3 tab shortcut or the device picker's own Escape handler — both already key off disjoint event shapes (meta-modified keys vs. a focus subtree that cannot coexist with the frozen-frame stage)."
+        },
+        {
+          "id": "FR-30",
+          "text": "On freeze, replace the live MirrorFrameView with a static render of the captured bitmap plus a dim/scrim treatment outside every annotation box, retain the device name in the existing toolbar/status chrome, and expose a 'Resume Live' control that discards the frozen frame and its staged annotations and returns the stage to live streaming. Freezing is a display-level snapshot only: the underlying sessionDeviceId-gated capture/transport loop is never paused or restarted, so resuming needs no new adb session."
+        },
+        {
+          "id": "FR-31",
+          "text": "While a frame is frozen, further drag-and-release gestures on the stage add additional staged annotations against the same frozen frame rather than re-triggering the freeze transition or replacing the captured bitmap."
+        }
+      ],
+      "nonFunctional": [
+        {
+          "id": "NFR-1",
+          "category": "performance",
+          "text": "Live mirror glass-to-glass latency should stay low enough (target under ~150 ms) that drag-to-select and freeze feel responsive."
+        },
+        {
+          "id": "NFR-8",
+          "category": "a11y",
+          "text": "Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers)."
+        },
+        {
+          "id": "NFR-9",
+          "category": "ux",
+          "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes."
+        }
+      ]
+    },
+    "acceptanceCriteria": [
+      {
+        "id": "AC-5",
+        "text": "Given live mirror is streaming, when the user drags on the mirror, then a dashed red outline, live pixel-size label, and ruler guides render in real time.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "PRD-inherited mismatch: no Compose UI-test harness exists in this repo (zero UI tests). Satisfied by FrameGeometryTest (where the box lands, including the render-leg round trip) + AnnotationFormatTest (what the size label says) + a light/dark @Preview of the drawing state + a manual demo via ./gradlew :desktop-application:run. The dashed-ness of the border and the Ruler's ticks are verified by preview and demo, not by assertion. 'Adopt compose-ui-test' is a follow-up ticket, not a silent substitution. Stage 5 must not read this AC's 'test' method as a rendered assertion."
+      },
+      {
+        "id": "AC-6",
+        "text": "When the user releases the drag, then the exact frame is frozen and a new staged annotation is created anchored to the drawn box.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-7",
+        "text": "Given a frozen frame with one annotation, then everything outside the box dims and a popover with numbered badge, autofocused comment field, delete control, and meta line appears.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "Same PRD-inherited test/no-harness mismatch as AC-5. Satisfied by MirrorViewModelAnnotationTest (stage == Frozen with one annotation and selectedIndex set, so the popover is composed) + AnnotationFormatTest (the meta line string) + a light/dark @Preview of AnnotationOverlay and the frozen stage + a manual demo for the dim, the autofocus and the delete affordance. No rendered assertion exists or is promised."
+      },
+      {
+        "id": "AC-8",
+        "text": "Given an annotation popover is focused, when the user presses Enter, then the comment saves; when the user clicks the delete control, then the annotation is removed and the staged count decrements.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-9",
+        "text": "Given three annotations are drawn close together, when their popovers would overlap, then they relocate to a sidebar/gutter panel connected via leader lines.",
+        "priority": "should",
+        "verificationMethod": "demo",
+        "verificationNote": "The pure overlap predicate IS unit-tested (PopoverCrowdingTest); the relocation rendering and leader lines are demo-verified. The gutter is the stage's own right edge, not the Notes tab (binding decision 8)."
+      },
+      {
+        "id": "AC-46",
+        "text": "Given a host density of 2.0 and a known frame display scale, when a drag's raw pointer start/end offsets are converted through the canonical coordinate function, then the resulting device-pixel rect matches the hand-computed expected value (density-trap regression test — the POC's documented 2x offset must not reproduce).",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "REFINE CORRECTION to the draft's coverage: the POC's bug lives on the RENDER leg (Modifier.offset/size take Dp), not the storage leg. toDevice contains no density term at all, so a toDevice-only fixture exercises the one leg where the bug cannot live and would pass against buggy code. AC-46 is therefore covered by THREE tests, not one: densityTwoDoesNotScaleTheStoredRect (storage leg carries no density factor), toDpDividesByDensityExactlyOnce (render leg), and pointerToDeviceToDpRoundTripLandsUnderTheCursor (the full trip pointer px -> device px -> frame px -> dp, multiplied back by density, must return the original pointer offset — the test that actually reproduces the POC trap)."
+      },
+      {
+        "id": "AC-47",
+        "text": "Given the mirror is streaming and MirrorViewModel.frame publishes a new bitmap mid-drag, when the user releases, then the frozen bitmap is the one frame held at release time, not the one held at drag start.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "Conditional on a headless-Skiko probe at the top of step 4 (assert ImageBitmap(2,3).width == 2). If it passes, the test asserts frozenFrame.value's width AND height against two fake-decoded bitmaps differing in both dimensions. If it fails, AC-47 drops honestly to inspection of the single currentFrame.value read in the StageAnnotation handler plus the SC-3 demo — the draft's 'assert FrozenFrame.deviceSize instead' fallback does not work, because deviceSize is itself derived from a bitmap that could not be allocated. The chosen branch is recorded in the PR."
+      },
+      {
+        "id": "AC-48",
+        "text": "Given N staged annotations, then the toolbar's stagedCounter slot renders CounterBadge(count=N, state=Staged) (or Empty at N=0); clicking the clearAction slot empties the staged list and the badge returns to Empty/0 while the stage remains frozen.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "The reducer half (list emptied, frozen survives Clear) is unit-tested. The CounterBadge Empty/Staged mapping is a one-expression private helper in RectifyWindow.kt and is inspected, since compose-application has no test source set."
+      },
+      {
+        "id": "AC-49",
+        "text": "Given staged annotations exist, then the side panel's Notes tab renders one AnnotationRow per annotation in index order; clicking a row selects its corresponding mark on the frame (AnnotationState.Selected).",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "The selection reducer (SelectAnnotation sets selectedIndex; the stage maps selectedIndex to AnnotationState.Selected) is unit-tested, and the ordering invariant (always index-ordered, indices recomputed after delete) is unit-tested. One-row-per-annotation rendering is inspected in the Notes tab preview and the demo."
+      },
+      {
+        "id": "AC-50",
+        "text": "Given an annotation popover has focus, pressing Escape collapses only that popover (keeping the annotation pinned, count unchanged) without affecting the device picker or the active side-panel tab; Cmd+1/2/3 still switches side-panel tabs while a popover is focused.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "verificationNote": "The reducer half (SelectAnnotation(null) keeps the annotation and the count) is unit-tested. The non-interference half is argued structurally and demo-verified: handleShellShortcut matches only isMetaPressed (RectifyWindow.kt line 327 via shortcutToTab), and MirrorStage.Picker and MirrorStage.Frozen are mutually exclusive enum values so the picker's focus subtree cannot coexist with the popover's. ShortcutToTabTest.kt already covers the meta-only mapping."
+      },
+      {
+        "id": "AC-51",
+        "text": "Given a frame is frozen with staged annotations, when the user activates the Resume Live control, then the stage returns to the live mirror and the staged annotation list is cleared; a subsequent drag freezes a new frame.",
+        "priority": "must",
+        "verificationMethod": "demo",
+        "verificationNote": "The reducer half (ResumeLive nulls frozen and frozenFrame; stage returns to Mirror; a following StageAnnotation freezes again) IS unit-tested even though the AC is marked demo — the demo covers the perceptual half, that live frames resume with no reconnection stall."
+      },
+      {
+        "id": "AC-52",
+        "text": "Given a frame is already frozen with one staged annotation, when the user drags and releases again on the stage, then a second staged annotation is added against the same frozen frame without re-triggering the freeze transition.",
+        "priority": "must",
+        "verificationMethod": "test"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-3",
+        "title": "Draw and freeze a single annotation (this spec's SC-3 — NOT F-1's SC-3)",
+        "type": "happy",
+        "steps": [
+          "Drag on the live mirror to draw a box",
+          "Release to freeze the exact frame",
+          "Popover appears autofocused",
+          "Type a comment and press Enter to save"
+        ]
+      },
+      {
+        "id": "SC-4",
+        "title": "Multiple crowded annotations relocate to gutter (this spec's SC-4 — NOT F-1's SC-4)",
+        "type": "edge",
+        "steps": [
+          "Draw three annotation boxes close together",
+          "Popovers would overlap",
+          "Popovers relocate to the stage's right-edge gutter with straight leader lines"
+        ]
+      },
+      {
+        "id": "SC-8",
+        "title": "Density-trap regression on a Retina host",
+        "type": "edge",
+        "steps": [
+          "Drag from a known pointer offset on a density=2.0 host",
+          "Convert through the canonical function to device pixels",
+          "Convert back out through toFrame and toDp for rendering",
+          "Assert the dp result multiplied by density returns the original pointer offset — the box lands at the cursor, not density-x away from it"
+        ]
+      },
+      {
+        "id": "SC-9",
+        "title": "Multiple annotations against one frozen frame",
+        "type": "edge",
+        "steps": [
+          "Drag once to freeze the frame and create annotation #1",
+          "Drag a second time on the still-frozen stage",
+          "Assert annotation #2 is added against the same frozen bitmap, with no second freeze transition"
+        ]
+      },
+      {
+        "id": "SC-10",
+        "title": "Escape dismisses, delete removes",
+        "type": "edge",
+        "steps": [
+          "Open an annotation's popover",
+          "Press Escape — annotation remains pinned, staged count unchanged",
+          "Reselect the annotation's row and click the delete control",
+          "Annotation is removed and the staged count decrements"
+        ]
+      },
+      {
+        "id": "SC-11",
+        "title": "Resume live after annotating",
+        "type": "happy",
+        "steps": [
+          "Freeze a frame and add one annotation",
+          "Click Resume Live",
+          "Stage returns to the live streaming mirror and the staged list is empty",
+          "Drag again to freeze a new frame"
+        ]
+      }
+    ],
+    "definitionOfReady": [
+      "Preparation is signed off with readyForPlan true — done, gate approved 2026-10-15.",
+      "Branch sdd/drag-annotate-frozen-frame exists off development with F-1 and F-2 merged.",
+      "The desktop suite is green on the branch tip before the first commit and the actual test count is RECORDED as the baseline (F-2 reported 160; confirm, do not assume).",
+      "Every reused kit component's real signature has been read and confirmed to fit — done and re-verified in refine; the three that need a change (MirrorFrameView, RectifyWindowShell, conditionally CommentPopover) are named with their exact parameter additions.",
+      "The module-wiring question is settled: presentation-feature-mirror is EXTENDED, no new Gradle module, and neither its build.gradle.kts nor initKoin() needs an edit (AS-14, AS-15, both re-verified against source).",
+      "The nine binding decisions are accepted as settled and not reopened during implementation.",
+      "It is accepted up front that AC-5 and AC-7 will not have rendered-assertion coverage in this deliverable.",
+      "It is accepted that SC-3/SC-4 here are the annotation scenarios and collide by id only with F-1's shell scenarios."
+    ],
+    "definitionOfDone": [
+      "All 10 FR and 12 AC are satisfied or explicitly recorded as inspection/demo-verified with the evidence named.",
+      "FrameGeometry exists, is internal and pure, has no @Composable and no ViewModel reference, and is the only place in the repo converting pointer px to device px or frame px to dp — verified by grep for `/ density`, `* density` and `.dp` arithmetic on frame coordinates.",
+      "The full per-module desktopTest list is green with every pre-existing test still passing plus the new ones: ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest",
+      "./gradlew :presentation-core-ui:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64 is green — the F-1 backtick-name trap does not recur. Run BEFORE the PR.",
+      "./gradlew :presentation-core-ui:build, ./gradlew :presentation-feature-mirror:build and ./gradlew :compose-application:build each pass, run separately for the 3 GB daemon cap.",
+      "./gradlew :desktop-application:run launches, the Koin graph resolves with no 'No definition found', and SC-3 / SC-9 / SC-10 / SC-11 are walked by hand at host density 2.0 with the result recorded.",
+      "AC-9's relocation is demonstrated once with three crowded annotations and a screenshot attached to the PR.",
+      "Every new invented value is a named constant with a KDoc rationale; grep finds no literal Color(0x…), no raw .dp at a call site and no inline TextStyle in the new code.",
+      "AnnotationOverlay appears in StyleguideScreen with light and dark previews.",
+      "New localisation keys exist in values/strings.xml and every one is referenced (grep each — this repo has accumulated unused keys before).",
+      "The PR text calls out the two behaviour changes made live for the first time: Cmd+1/2/3 tab switching, and the side panel being permanently composed.",
+      "The PR text records that AnnotationState.Frozen remains deliberately uncalled, so its zero callers are not later read as an oversight.",
+      "A follow-up ticket 'Adopt compose-ui-test (desktop) and add rendering assertions for AC-5/AC-7' is filed.",
+      "The AC-47 Skiko probe result is recorded in the PR and AC-47's verificationNote matches the branch taken."
+    ],
+    "successMetrics": [
+      "Every drag-to-annotate action on the density-2.0 dev host lands the drawn box within 1 device pixel of the pointer — no density-trap regression, proven by the round-trip test and confirmed by eye.",
+      "The pre-existing desktop tests stay green; this spec adds roughly 27-32 tests rather than destabilising any.",
+      "New production code stays small: three new pure files, two new feature composables, one new kit molecule, two defaulted kit parameters, six intents. Past roughly 900 added production lines the reuse-first premise has failed and the plan should be revisited.",
+      "Resume Live returns to live pixels with no visible reconnection stall, because no adb session was torn down.",
+      "Zero new Gradle modules, zero new catalog entries, zero convention-plugin edits, zero initKoin edits, zero build.gradle.kts edits."
+    ],
+    "architecture": {
+      "approach": "Extend presentation-feature-mirror in place across four layers — pure geometry, Orbit state, a render-only freeze, and assembled UI — plus two source-compatible defaulted parameters and one new molecule in presentation-core-ui, and a call-site rewiring in compose-application's RectifyWindow.kt. No new Gradle module, no new Koin module, no persistence, no serialization, no build.gradle.kts edit anywhere.",
+      "rationale": "Every visual element the input artifact called unillustrated already exists as a shipped, previewed kit component except the dim-outside-boxes scrim, small enough to author as one molecule now. This matches the 'assemble, don't author' norm F-1 and F-2 both reached. The coordinate conversion is isolated into one pure internal function because an off-by-density bug there silently corrupts every annotation anchor and no other test would catch it; device screenshot pixels is the canonical space because it is resolution- and window-stable and is exactly what FR-6's label, Ruler's extentPx and F-7's eventual payload need. The conversion is deliberately TWO-legged and both legs are tested: the storage leg (pointer px -> device px) has no density term by construction, and the render leg (frame px -> dp) is the only division by density in the feature — precisely where the POC's bug lived. Freeze-at-release rather than at drag start, because FR-6 frames the drag as happening live, so 'the exact current frame' reads as current-at-release — and reading MirrorViewModel.frame's latest value once inside the release handler needs no buffering, making AC-47 true by construction. Annotations go into reduced state, the opposite of frames, because they are small, value-equal, mutated a handful of times per session and read by three simultaneous consumers. A new presentation-feature-annotation module was rejected: it would need the live frame StateFlow and the stage state from MirrorViewModel, and two ViewModels sharing a bitmap stream is worse coupling than one class with six more handlers, on top of a new convention-plugin wiring and a load-order-significant initKoin entry for a split F-5..F-8 have not yet justified.",
+      "alternativesConsidered": [
+        {
+          "title": "Inline coordinate conversion per call site, POC-style",
+          "whyRejected": "Three call sites (drag box, size label, ruler extent) would each have to get density right independently, and the POC shape is exactly what produced the documented 2x offset. It is also untestable without a display. This is the one place in the spec where laziness buys a silent data-corruption bug."
+        },
+        {
+          "title": "Test only the storage leg (pointer px -> device px) for AC-46, as the draft proposed",
+          "whyRejected": "REFINE REJECTION. toDevice has no density term at all, so a toDevice-only fixture passes identically against correct and POC-buggy code. The trap is on the render leg. AC-46 must exercise toDp and the full pointer-to-dp round trip or it is a test that cannot fail for the reason it exists."
+        },
+        {
+          "title": "Store annotations in composable dp and convert only at send time (F-7's job)",
+          "whyRejected": "dp is not resolution-stable across an aspect-fit frame — the stored value breaks the moment the window or the side panel is resized, which the shell supports as a first-class interaction."
+        },
+        {
+          "title": "Give AnnotationOverlay pixel rects and let it convert to dp internally",
+          "whyRejected": "REFINE REJECTION. That puts a second density division inside presentation-core-ui, outside FrameGeometry's reach and untestable by its tests — reintroducing the many-call-sites shape FR-26 exists to prevent. AnnotationOverlay takes DpRect; the feature host has already run toFrame then toDp. The overlay's Canvas converts back to px once, internally, for the Path only."
+        },
+        {
+          "title": "Put the frozen ImageBitmap into MirrorUiState alongside the annotations",
+          "whyRejected": "Violates the module's documented deviation 2: a ByteArray-bearing type compares by identity and could never deduplicate in the reducer. The bitmap goes on a second StateFlow beside frame; the reducer stores only its IntSize, which is all the meta lines, the Ruler extent and FrameGeometry need."
+        },
+        {
+          "title": "A new presentation-feature-annotation Gradle module",
+          "whyRejected": "Needs the live frame StateFlow and the stage state from MirrorViewModel; two ViewModels sharing a bitmap stream is worse coupling than one class with six more handlers. Also costs a convention-plugin wiring, a Koin module and a load-order-significant initKoin entry for a split F-5/F-6/F-7/F-8 have not landed to justify. When F-7 needs StagedAnnotation in a payload, lift the MODEL to domain-core — a 20-line move needing no module today."
+        },
+        {
+          "title": "Pause the capture/transport loop while frozen",
+          "whyRejected": "Pausing means setting sessionDeviceId = null, which also restarts discovery polling and tears the adb session down — a far bigger behavioural change than the power it saves, and it would put a reconnection stall in front of Resume Live. Explicitly accepted by FR-30 and recorded as a deferred optimisation."
+        },
+        {
+          "title": "Use AnnotationState.Frozen for frozen-frame marks",
+          "whyRejected": "AnnotationMark.kt line 98 fills the mark with an opaque Theme.color.surface in that state, covering the exact device pixels the annotation points at — it would hide the bug the user is reporting. Pinned/Selected plus the new scrim needs no kit change. Binding decision 7."
+        },
+        {
+          "title": "Scrim as an even-odd hole path, as four rects around each box, or via BlendMode.Clear in a saveLayer",
+          "whyRejected": "An even-odd path XORs overlapping holes and would re-dim their intersection; four-rects-per-box is simply wrong with two or more boxes; BlendMode.Clear needs a saveLayer, allocating a full-frame offscreen Skia surface every draw. clipPath(ClipOp.Difference) + one drawRect is a single path fill that unions overlapping holes correctly and never touches the ImageBitmap."
+        },
+        {
+          "title": "FR-9's gutter inside the Notes tab, as the clarify gate literally worded it",
+          "whyRejected": "FR-28 already fills the Notes tab with one AnnotationRow per annotation, so every annotation would render twice in the same panel, and each leader line would have to cross from the stage over the resize handle into a separately-composed panel via onGloballyPositioned window coordinates. It also silently breaks when the user hides the side panel. Binding decision 8 revises this to an in-stage right-edge gutter where the mark and the line live in one coordinate space."
+        },
+        {
+          "title": "Add compose-ui-test (desktop) in this spec and write real rendering assertions for AC-5/AC-7",
+          "whyRejected": "A cross-cutting decision about the project's whole testing strategy, landing a new test dependency in every module through the convention plugins. It deserves its own spec. Nearly all the real risk in AC-5/AC-7 — where the box lands, what the label says, which marks exist — is pure and is covered here; what a renderer would add is 'the dashed border is dashed', which a preview shows faster. Raised as a follow-up ticket and surfaced in the survey rather than decided silently."
+        },
+        {
+          "title": "Author a second VerticalRuler kit component for FR-6's vertical guide",
+          "whyRejected": "Ruler's own KDoc rules it out: 'the vertical ruler in the reference is the same strip rotated by the host, and duplicating the tick maths for it would buy nothing.' The host rotates the existing Ruler in a fixed-size Box with swapped dimensions."
+        },
+        {
+          "title": "Change MirrorHost's and MirrorStageContent's signatures to carry both the live and the frozen bitmap",
+          "whyRejected": "Two positional nullable ImageBitmaps is a footgun and would churn RectifyShellContent's parameter list and every existing call site. MirrorHost instead computes frozenFrame ?: frame internally; the fallback is unreachable because StageAnnotation is dropped when frame is null, so frozen != null implies a non-null bitmap."
+        },
+        {
+          "title": "Move RectifyWindow.kt's sidePanel val into the MirrorHost content lambda and leave onPreviewKeyEvent reading it",
+          "whyRejected": "REFINE REJECTION — it does not compile. The val is declared at line 129, outside the Window(...) call, and read at line 138 inside the onPreviewKeyEvent PARAMETER; MirrorHost is at line 152 inside the Window's content. The val must be deleted and line 138 must take the literal true in the same edit."
+        }
+      ],
+      "components": [
+        {
+          "name": "FrameGeometry",
+          "kind": "logic",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/geometry/FrameGeometry.kt. `internal data class FrameGeometry(val framePx: Size, val deviceSize: IntSize, val density: Float)` with four pure members: toDevice(start, end): IntRect (normalises reversed drags, scales per axis by deviceSize/framePx with NO density term, rounds each corner independently rather than rounding the size so adjacent rects cannot overlap by a rounding artifact, clamps into 0..deviceSize); toFrame(rect: IntRect): Rect (device px -> frame-local px for rendering); toDp(rect: Rect): DpRect (frame px -> dp via density — THE ONLY place density is applied, and the leg the POC got wrong); isMeaningfulDrag(rect): Boolean against MIN_DRAG_DEVICE_PX. Returns an empty rect when framePx has a zero dimension (first composition, before onSizeChanged) instead of dividing by zero. Internal, pure, no @Composable, no ViewModel reference — FR-26."
+        },
+        {
+          "name": "AnnotationFormat",
+          "kind": "logic",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-feature-mirror/.../core/annotation/AnnotationFormat.kt. `internal fun metaLine(rect: DeviceRect): String` producing CommentPopover's and AnnotationRow's documented `218×77 @ 1035,862` shape, and `internal fun sizeLabel(rect: DeviceRect): String` producing AnnotationMark's `545 × 254` shape. Pure and directly testable — the testable half of AC-5's size label and AC-7's meta line. Lands together with DeviceRect in step 2 so there is no ordering ambiguity about which type it takes."
+        },
+        {
+          "name": "popoverCrowding",
+          "kind": "logic",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-feature-mirror/.../core/annotation/PopoverCrowding.kt. `internal fun anyOverlap(rects: List<Rect>): Boolean` — an O(n^2) pairwise bounding-box test over a handful of nominal popover bounds. Uses constants rather than measured sizes because measuring in order to decide whether to compose is a circular layout dependency. Drives FR-9/AC-9."
+        },
+        {
+          "name": "MirrorContract additions",
+          "kind": "logic",
+          "status": "reuse",
+          "registryRef": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "responsibility": "CHANGED FILE. Adds public DeviceRect(left, top, right, bottom) with width/height (lands in step 2, ahead of the rest, because AnnotationFormat takes it), StagedAnnotation(index, rect, comment), FrozenFrame(deviceSize: IntSize, annotations: List<StagedAnnotation>, selectedIndex: Int?); a `frozen: FrozenFrame? = null` field on MirrorUiState; a Frozen entry on the MirrorStage enum (line 81) with the stage getter ordered Picker > IosDeferred > Frozen > Streaming/Mirror > NoSignal; and six MirrorIntent cases: StageAnnotation(rect), SelectAnnotation(index: Int?), CommentAnnotation(index, text), DeleteAnnotation(index), ClearStaged, ResumeLive. A convenience `val stagedCount: Int get() = frozen?.annotations?.size ?: 0` so the toolbar does not reach through two nullables. No new sealed hierarchy outside the contract file."
+        },
+        {
+          "name": "MirrorViewModel additions",
+          "kind": "logic",
+          "status": "reuse",
+          "registryRef": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "responsibility": "CHANGED FILE. Adds `private val currentFrozenFrame = MutableStateFlow<ImageBitmap?>(null)` and `public val frozenFrame: StateFlow<ImageBitmap?>` beside the existing currentFrame/frame pair (lines 80-83), six private handlers dispatched from the existing handleIntent when(), and extends selectPlatform() and stopSession() to null both the frozen bitmap and the frozen state. StageAnnotation: read currentFrame.value once (null -> drop the intent), set currentFrozenFrame.value = currentFrozenFrame.value ?: thatFrame, then reduce the annotation in with the next index. sessionDeviceId and the flatMapLatest gate are NEVER touched. Constructor (lines 68-75) unchanged, so no Koin or initKoin edit."
+        },
+        {
+          "name": "MirrorHost",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt",
+          "responsibility": "CHANGED FILE, UNCHANGED PUBLIC SIGNATURE. Collects viewModel.frozenFrame alongside viewModel.frame (line 34) and passes `frozenFrame ?: frame` as the single bitmap to the existing three-argument content lambda (line 31). Keeps RectifyShellContent's parameter list and every existing call site source-compatible."
+        },
+        {
+          "name": "MirrorContent / MirrorStageContent / MirrorStatusLine",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt",
+          "responsibility": "CHANGED FILE. The when(state.stage) at line 92 gains a Frozen branch (the compiler forces it — enum, no else). The Mirror branch delegates to MirrorLiveStage and the Frozen branch to MirrorFrozenStage. The private indicatorState() gains `state.frozen != null -> StatusIndicatorState.Frozen` ahead of the Streaming check, and indicatorLabel() gains the matching stringResource — the first production caller of the shipped-but-unused StatusIndicatorState.Frozen."
+        },
+        {
+          "name": "MirrorAnnotationStage",
+          "kind": "ui",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt. Two internal composables plus the file-top named constants. MirrorLiveStage: MirrorFrameView(frame, deviceName, overlay = { ... }) where the overlay carries Modifier.onSizeChanged into a remembered framePx, a Modifier.pointerInput/detectDragGestures layer holding dragStart/dragCurrent in remember (never in Orbit), one AnnotationMark(state = Drawing, sizeLabel = sizeLabel(rect)) positioned from FrameGeometry.toFrame -> toDp, and a horizontal Ruler(totalPx = deviceWidth, extentPx = selection) at the top edge plus the same Ruler rotated 270 degrees in a fixed-size Box at the leading edge for the vertical guide. On release it emits StageAnnotation only when isMeaningfulDrag passes. MirrorFrozenStage: the same MirrorFrameView over the frozen bitmap with an overlay carrying AnnotationOverlay (scrim + Pinned/Selected marks, fed DpRects), the per-mark CommentPopover or the FR-9 gutter, and a Resume Live AppButton(size = AppButtonSize.Toolbar) at the stage's top-right."
+        },
+        {
+          "name": "MirrorNotesTab",
+          "kind": "ui",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-feature-mirror/.../source/mirror/MirrorNotesTab.kt. `public fun MirrorNotesTab(state: MirrorUiState, onIntent: (MirrorIntent) -> Unit, modifier: Modifier)` — public because compose-application composes it, which it can do with no Gradle edit (compose-application/build.gradle.kts line 25 already declares projects.presentationFeatureMirror). One AnnotationRow per staged annotation in index order (index, comment-or-null for the empty copy, meta = metaLine(rect), selected = index == selectedIndex, onClick -> SelectAnnotation). Renders an empty-state line with no annotations. Carries its own @Preview per the compose-preview-convention."
+        },
+        {
+          "name": "AnnotationOverlay",
+          "kind": "ui",
+          "status": "new",
+          "registryRef": "",
+          "responsibility": "NEW FILE presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationOverlay.kt. The one genuinely new visual piece. Stateless: takes a list of DpRect-bearing marks (NOT pixels — the caller has already run FrameGeometry.toDp, so the kit performs no density conversion of its own) with their AnnotationState, badge and sizeLabel, plus `dimmed: Boolean`. Draws one Canvas doing clipPath(unionPath, ClipOp.Difference) { drawRect(ScrimFill) } when dimmed and the rect list is non-empty — the Dp-to-px conversion for the Path happens once inside that Canvas via LocalDensity — then composes one AnnotationMark per rect positioned by Modifier.offset/size taking the DpRect directly. Imports atoms only (AnnotationMark). ScrimFill is a named private constant, deliberately dark in both themes with a KDoc rationale following CommentPopover's and CounterBadge's documented precedent. Ships with light and dark @Previews and a StyleguideScreen entry."
+        },
+        {
+          "name": "MirrorFrameView",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/mirror/MirrorFrameView.kt",
+          "responsibility": "CHANGED, +1 SOURCE-COMPATIBLE DEFAULTED PARAMETER: `overlay: @Composable BoxScope.() -> Unit = {}`, composed as the last child of the INNER aspect-fit Box — RE-VERIFIED as lines 53-59, the Box carrying .aspectRatio(matchHeightConstraintsFirst = true), .background(Theme.color.ink) and the semantics contentDescription, with the Image at lines 60-65 filling it. This guarantees the annotation layer is literally the same rectangle as the image and keeps the aspect-fit maths in one file. Needs a BoxScope import. No other change; the existing preview and every existing call site keep compiling."
+        },
+        {
+          "name": "RectifyWindowShell",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/RectifyWindowShell.kt",
+          "responsibility": "CHANGED, +1 SOURCE-COMPATIBLE DEFAULTED PARAMETER: `tabCounts: Map<ShellTab, Int> = emptyMap()`, appended in the defaulted block after `sidePanel` (ahead of the deliberately-undefaulted onPanelWidthCommit and the trailing stage lambda), forwarded to the SidePanelFrame call at lines 87-92. VERIFIED GAP, CONFIRMED IN REFINE: SidePanelFrame.kt line 59 declares tabCounts and line 76 consumes it, but the shell passes only activeTab, onTabSelect, modifier and content — the parameter is unreachable from the window and FR-28's Notes count cannot be wired without this. Every existing named-argument call site and preview keeps compiling."
+        },
+        {
+          "name": "CommentPopover",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/CommentPopover.kt",
+          "responsibility": "USED UNCHANGED IF POSSIBLE. RE-VERIFIED signature (lines 99-108): value, onValueChange, onClose, modifier, index = 1, placeholder = \"What's wrong here?\" (the exact PRD string), meta, finding, saveHint. It renders the index badge, the meta line, a focus-gated saveHint and an onClose the PRD repurposes as delete — FR-8 line by line. CONTINGENT +1 DEFAULTED PARAMETER `focusRequester: FocusRequester? = null` forwarded to the BasicTextField, only if parent-delegated focus does not reach the field (risk 3). The interactionSource is created privately at line 110 and there is no focus hook, so the contingency is real and budgeted in step 8."
+        },
+        {
+          "name": "AnnotationMark + AnnotationState",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/annotation/AnnotationMark.kt",
+          "responsibility": "ZERO CHANGES. Signature re-verified at lines 88-95: modifier, state = Pinned, badge, sizeLabel, showHandles. Drawing state already carries the dashed border (line 106 `dashed = state == AnnotationState.Drawing`), the GlyphBadge corner index badge and the MeasureTag size label — the whole of FR-6's drag box. Use Drawing live, Pinned when frozen, Selected for the active mark. AnnotationState.Frozen is deliberately never used (binding decision 7; line 98 is the reason)."
+        },
+        {
+          "name": "Ruler",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/Ruler.kt",
+          "responsibility": "ZERO CHANGES. RE-VERIFIED signature at lines 47-52: totalPx: Int, modifier, extentPx: IntRange? = null, majorTickEvery: Int = 500, minorTicksPerMajor: Int = 4 — already in DEVICE pixels, exactly this spec's canonical space — and it draws the red extent plus the delta MeasureTag itself. The vertical guide is this same component rotated 270 degrees by the host, as its own KDoc prescribes."
+        },
+        {
+          "name": "AnnotationPopover",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationPopover.kt",
+          "responsibility": "ZERO CHANGES. RE-VERIFIED signature at lines 47-51: text: String, modifier, index: Int? = null, indexColor: Color = Theme.color.annotate. The read-only gutter form for FR-9. Its KDoc already states placement and leader routing belong to the host, exactly the division of labour here."
+        },
+        {
+          "name": "AnnotationRow",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/AnnotationRow.kt",
+          "responsibility": "ZERO CHANGES. RE-VERIFIED signature at lines 43-51: index, meta, onClick, modifier, comment = null, finding = null, selected = false, emptyLabel = \"No comment yet\". Purpose-built for FR-28. The feature supplies the empty copy through stringResource rather than relying on the English default."
+        },
+        {
+          "name": "CounterBadge + CounterBadgeState",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/badge/CounterBadge.kt",
+          "responsibility": "ZERO CHANGES. RE-VERIFIED: CounterBadge(count: Int, state: CounterBadgeState, modifier, label: String? = null) at lines 51-55, with Empty/Staged/Sent at lines 31-40. FR-27's stagedCounter verbatim — RectifyWindow.kt line 233 already composes it with a hardcoded count = 0 that this spec replaces with the live count."
+        },
+        {
+          "name": "StatusIndicator + StatusIndicatorState.Frozen",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/indicator/StatusIndicator.kt",
+          "responsibility": "ZERO CHANGES. RE-VERIFIED: Frozen is declared at line 73 with the KDoc 'The stream is paused on a frame so it can be annotated' and ships with zero callers. MirrorStatusLine's private indicatorState() gains one branch, giving the frozen stage its status-bar signal for free and the enum value its first caller."
+        },
+        {
+          "name": "AppButton",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/button/AppButton.kt",
+          "responsibility": "ZERO CHANGES. The clearAction (Ghost, enabled when stagedCount > 0) and the Resume Live control. RE-VERIFIED: the parameter is `size: AppButtonSize = AppButtonSize.Toolbar` (line 174), with AppButtonSize declared at line 128 (InlineRow/ListAction/Banner/Toolbar/Dialog/PageCta). It is NOT ButtonSizeType — that belongs to IconButton (used at RectifyWindow.kt line 259). The brainstorm said ButtonSizeType; it is wrong."
+        },
+        {
+          "name": "ShellToolbar / SidePanelFrame / ShellState",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/",
+          "responsibility": "ZERO CHANGES to all three. ShellToolbar's stagedCounter and clearAction are named slots reserved for this feature. SidePanelFrame already accepts tabCounts (line 59) — it just was not being handed one. ShellState.activeTab has a private setter, so the Notes auto-activation must go through shellState.selectTab(ShellTab.Notes) from RectifyWindow — the feature module cannot and must not reach it."
+        },
+        {
+          "name": "RectifyWindow.kt",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt",
+          "responsibility": "CHANGED FILE. stagedCounter (line 232) -> CounterBadge(count = mirror.stagedCount, state = Empty-at-0-else-Staged). clearAction (line 235) -> AppButton(enabled = stagedCount > 0, onClick = ClearStaged). The `sidePanel` val at line 129 is DELETED and rebuilt inside the MirrorHost content lambda (line 152) where mirror and onIntent are in scope — and in the SAME edit, line 138's `isPanelVisible = sidePanel != null` becomes the literal `isPanelVisible = true`, because onPreviewKeyEvent is a Window parameter and cannot see into the Window's content. handleShellShortcut keeps its parameter; only the argument is constant. RectifyShellContent forwards `tabCounts = mapOf(ShellTab.Notes to mirror.stagedCount)` to RectifyWindowShell — derived from the `mirror` parameter it already has, so RectifyShellContent needs no new parameter. A LaunchedEffect on 'stagedCount >= 1' calls shellState.selectTab(ShellTab.Notes) so the first annotation of a frozen frame reveals the panel; it deliberately does not re-select on later annotations. Existing literal labels stay literal; all NEW copy is rendered by the feature module through stringResource."
+        },
+        {
+          "name": "Localisation strings",
+          "kind": "data",
+          "status": "reuse",
+          "registryRef": "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml",
+          "responsibility": "CHANGED FILE. New keys following <feature>_<element>: mirror_annotation_placeholder, mirror_annotation_save_hint, mirror_annotation_empty_comment, mirror_annotation_notes_empty, mirror_annotation_delete, mirror_action_resume_live, mirror_status_frozen. Only the English values/ file exists. Every key must have a live reference — this repo has previously accumulated unused keys."
+        },
+        {
+          "name": "StyleguideScreen",
+          "kind": "ui",
+          "status": "reuse",
+          "registryRef": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/showcase/StyleguideScreen.kt",
+          "responsibility": "CHANGED FILE, one added section showing AnnotationOverlay over a placeholder bitmap with two holes, so visual QA can see the scrim in both themes."
+        }
+      ],
+      "dataModel": [
+        {
+          "entity": "DeviceRect",
+          "fields": [
+            "left: Int — device screenshot pixels",
+            "top: Int — device screenshot pixels",
+            "right: Int — device screenshot pixels, exclusive",
+            "bottom: Int — device screenshot pixels, exclusive",
+            "width: Int (derived)",
+            "height: Int (derived)"
+          ]
+        },
+        {
+          "entity": "StagedAnnotation",
+          "fields": [
+            "index: Int — 1-based, matches the GlyphBadge and the AnnotationRow badge",
+            "rect: DeviceRect — the canonical anchor",
+            "comment: String = \"\" — empty means the row renders its empty-state copy"
+          ]
+        },
+        {
+          "entity": "FrozenFrame",
+          "fields": [
+            "deviceSize: IntSize — the frozen bitmap's dimensions; the ONLY pixel-derived value that enters reduced state",
+            "annotations: List<StagedAnnotation> — always index-ordered, indices recomputed after a delete",
+            "selectedIndex: Int? — null means no popover is open; clamped or nulled whenever the selected annotation is removed"
+          ]
+        },
+        {
+          "entity": "FrameGeometry (internal, transient, never stored)",
+          "fields": [
+            "framePx: Size — the aspect-fit frame box, in the same pixel space as the pointer offsets",
+            "deviceSize: IntSize — read from the decoded ImageBitmap, never from GetProp",
+            "density: Float — applied on the render leg only (toDp), never on the storage leg (toDevice)"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "FrameGeometry.toDevice",
+          "contract": "(start: Offset, end: Offset) -> IntRect. Pure. Normalises a reversed drag to a positive rect, converts via devicePx = pointerPx / framePx * deviceSize with NO density term, rounds each corner independently, clamps into 0..deviceSize on both axes. Returns IntRect.Zero when framePx has a zero dimension."
+        },
+        {
+          "name": "FrameGeometry.toFrame",
+          "contract": "(rect: IntRect) -> Rect. Pure. Device px back to frame-local px for rendering. Inverse of toDevice up to rounding."
+        },
+        {
+          "name": "FrameGeometry.toDp",
+          "contract": "(rect: Rect) -> DpRect. Pure. Frame px to dp by dividing by density. The single place in the entire feature where density appears, and the leg the POC got wrong — covered by its own test and by the full round-trip test, not only by a toDevice fixture."
+        },
+        {
+          "name": "FrameGeometry.isMeaningfulDrag",
+          "contract": "(rect: IntRect) -> Boolean. True when both width and height are at least MIN_DRAG_DEVICE_PX (8). Guards the worst accidental interaction in a live-mirroring tool: a stray click freezing the mirror."
+        },
+        {
+          "name": "MirrorViewModel.frozenFrame",
+          "contract": "StateFlow<ImageBitmap?>. Non-null exactly while MirrorUiState.frozen is non-null. Set only inside the StageAnnotation handler and cleared inside ResumeLive, selectPlatform and stopSession — always in the same intent as the matching reduce, so the two channels cannot drift."
+        },
+        {
+          "name": "MirrorFrameView.overlay",
+          "contract": "@Composable BoxScope.() -> Unit = {}. Composed as the last child of the inner aspect-fit Box (lines 53-59), so the overlay's coordinate space is byte-identical to the painted image's. Defaulted, so every existing call site is unaffected. Must not clear or replace the existing semantics contentDescription."
+        },
+        {
+          "name": "RectifyWindowShell.tabCounts",
+          "contract": "Map<ShellTab, Int> = emptyMap(). Forwarded verbatim to SidePanelFrame's existing tabCounts parameter at the shell's lines 87-92. Defaulted, so every existing call site and preview is unaffected."
+        },
+        {
+          "name": "AnnotationOverlay",
+          "contract": "@Composable public fun AnnotationOverlay(marks: List<OverlayMark>, modifier: Modifier = Modifier, dimmed: Boolean = true): Unit, where OverlayMark carries a DpRect, an AnnotationState, an optional badge and an optional sizeLabel. Dp in, Dp out — the kit never divides by density, so FR-26's single conversion path survives the module boundary."
+        },
+        {
+          "name": "MirrorNotesTab",
+          "contract": "public @Composable (state: MirrorUiState, onIntent: (MirrorIntent) -> Unit, modifier: Modifier) -> Unit. The only new public composable in the feature module; composed by RectifyWindow into SidePanelFrame's Notes slot."
+        }
+      ],
+      "stateManagement": "Orbit MVI in presentation-feature-mirror, four-file convention, existing container. Three tiers by mutation frequency: (1) transient drag offsets live in composable remember and never reach Orbit — a pointer move at 60 Hz through the reducer is the mistake F-2 avoided for frames; (2) pixel blobs (the live frame and now the frozen frame) live on plain StateFlows outside the reducer, preserving deviation 2; (3) semantic state (the staged annotation list, the selected index, the frozen frame's IntSize) lives in MirrorUiState because it is small, value-equal, mutated a handful of times per session and read simultaneously by the toolbar badge, the Notes tab and the stage marks. MirrorStage.Frozen is derived from frozen != null in the existing stage getter, so no second flag exists to fall out of sync. The frozen bitmap and the frozen reduced state are set inside the same intent, and the render path falls back to the live frame if the bitmap were ever null — one ?:, no sync machinery.",
+      "navigation": [
+        "None. presentation-feature-mirror has no Destination and will not get one — it is a set of shell slots the desktop window fills, as its module CLAUDE.md documents (deviation 1). The five-step checklist in .claude/rules/navigation.md is deliberately not applied: no Destination case, no navSavedStateConfiguration entry, no NavigationHost branch.",
+        "The only navigation-like change is within the shell: Cmd+1/2/3 side-panel tab switching becomes live for the first time because the panel slot stops being null, and the first annotation of a frozen frame auto-selects the Notes tab."
+      ],
+      "affectedModules": [
+        "presentation-feature-mirror — 3 new core files, 2 new source files, 4 changed files, 4 new test files, 1 changed test helper. No build.gradle.kts edit (AS-14). No Koin edit (AS-15).",
+        "presentation-core-ui — 1 new molecule, 2 defaulted parameters on shipped components (MirrorFrameView, RectifyWindowShell), 1 contingent defaulted parameter (CommentPopover), 1 StyleguideScreen section. No build.gradle.kts edit.",
+        "presentation-core-localisation — 7 new string keys in values/strings.xml. No build.gradle.kts edit.",
+        "compose-application — RectifyWindow.kt (desktopMain) call-site rewiring only, including the line-129 val deletion and the line-138 literal. No build.gradle.kts edit (projects.presentationFeatureMirror already declared at line 25), no InitKoin.kt edit.",
+        "NOT touched: data-device-api, data-device-impl, data-repository-impl, domain-core, domain-usecase-api, domain-usecase-impl, build-logic, gradle/libs.versions.toml, aos-application, ios-application, desktop-application."
+      ]
+    },
+    "projectContext": {
+      "reuseComponents": [
+        {
+          "id": "AnnotationMark",
+          "name": "AnnotationMark + AnnotationState",
+          "registryRef": "presentation-core-ui/.../kit/atom/annotation/AnnotationMark.kt",
+          "note": "Zero changes. Drawing/Pinned/Selected used; Frozen deliberately not used (line 98 opaque fill)."
+        },
+        {
+          "id": "Ruler",
+          "name": "Ruler",
+          "registryRef": "presentation-core-ui/.../kit/molecule/annotation/Ruler.kt",
+          "note": "Zero changes. totalPx/extentPx already in device pixels (lines 47-52)."
+        },
+        {
+          "id": "CommentPopover",
+          "name": "CommentPopover",
+          "registryRef": "presentation-core-ui/.../kit/organism/annotation/CommentPopover.kt",
+          "note": "Zero changes intended; one contingent defaulted focusRequester parameter if parent-delegated focus does not reach the BasicTextField."
+        },
+        {
+          "id": "AnnotationPopover",
+          "name": "AnnotationPopover",
+          "registryRef": "presentation-core-ui/.../kit/molecule/annotation/AnnotationPopover.kt",
+          "note": "Zero changes. FR-9's gutter form."
+        },
+        {
+          "id": "AnnotationRow",
+          "name": "AnnotationRow",
+          "registryRef": "presentation-core-ui/.../kit/molecule/row/AnnotationRow.kt",
+          "note": "Zero changes. FR-28's Notes tab row."
+        },
+        {
+          "id": "CounterBadge",
+          "name": "CounterBadge + CounterBadgeState",
+          "registryRef": "presentation-core-ui/.../kit/atom/badge/CounterBadge.kt",
+          "note": "Zero changes. FR-27's stagedCounter."
+        },
+        {
+          "id": "StatusIndicator",
+          "name": "StatusIndicator + StatusIndicatorState.Frozen",
+          "registryRef": "presentation-core-ui/.../kit/atom/indicator/StatusIndicator.kt",
+          "note": "Zero changes. Frozen (line 73) shipped with no callers; this spec is its first."
+        },
+        {
+          "id": "AppButton",
+          "name": "AppButton (Ghost / Primary, AppButtonSize)",
+          "registryRef": "presentation-core-ui/.../kit/atom/button/AppButton.kt",
+          "note": "Zero changes. The size parameter is AppButtonSize (line 174), not ButtonSizeType."
+        },
+        {
+          "id": "GlyphBadge",
+          "name": "GlyphBadge",
+          "registryRef": "presentation-core-ui/.../kit/atom/badge/GlyphBadge.kt",
+          "note": "Zero changes. Used transitively by AnnotationMark and AnnotationRow."
+        },
+        {
+          "id": "MeasureTag",
+          "name": "MeasureTag",
+          "registryRef": "presentation-core-ui/.../kit/atom/tag/MeasureTag.kt",
+          "note": "Zero changes. Used transitively by AnnotationMark's sizeLabel and Ruler's extent label."
+        },
+        {
+          "id": "ShellToolbar",
+          "name": "ShellToolbar (stagedCounter / clearAction slots)",
+          "registryRef": "presentation-core-ui/.../kit/organism/shell/ShellToolbar.kt",
+          "note": "Zero changes. Slots reserved for this feature; only the window call site changes."
+        },
+        {
+          "id": "SidePanelFrame",
+          "name": "SidePanelFrame (tabCounts + per-tab content slot)",
+          "registryRef": "presentation-core-ui/.../kit/organism/shell/SidePanelFrame.kt",
+          "note": "Zero changes to the component itself — but its tabCounts parameter (line 59) is currently unreachable because RectifyWindowShell does not forward one."
+        },
+        {
+          "id": "ShellState",
+          "name": "ShellState / ShellTab / shortcutToTab",
+          "registryRef": "presentation-core-ui/.../kit/organism/shell/ShellState.kt",
+          "note": "Zero changes. selectTab is the only way to set the active tab (activeTab has a private setter)."
+        },
+        {
+          "id": "DevicePickerPanel",
+          "name": "DevicePickerPanel's onPreviewKeyEvent pattern",
+          "registryRef": "presentation-core-ui/.../kit/organism/picker/DevicePickerPanel.kt",
+          "note": "Pattern reuse only, no code change: the established in-repo way to scope keys to a focus subtree. The popover copies it instead of inventing a dispatch layer."
+        },
+        {
+          "id": "MirrorViewModel.frame",
+          "name": "MirrorViewModel.frame + the sessionDeviceId gate",
+          "registryRef": "presentation-feature-mirror/.../source/mirror/MirrorViewModel.kt",
+          "note": "frame.value read once at release IS the freeze (AC-47). The gate is deliberately not touched, which is what makes Resume Live free (FR-30)."
+        },
+        {
+          "id": "MirrorFakes",
+          "name": "MirrorFakes / Orbit test harness",
+          "registryRef": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt",
+          "note": "Extended, not replaced: already pins Orbit's dispatchers via Orbit.configureDefaults (line 133) and documents the runCurrent() subscription quirk. Gains an optional decodeFrame parameter on mirrorViewModel() (line 109) replacing the hardcoded `decodeFrame = { null }` at line 121, plus a size-distinguishing fake decoder — conditional on the step-4 Skiko probe."
+        }
+      ],
+      "reuseAssets": [
+        {
+          "id": "X",
+          "name": "X icon (CommentPopover's close affordance, repurposed as delete)",
+          "registryRef": "presentation-core-ui/.../kit/atom/icon/X.kt"
+        }
+      ],
+      "reuseStyles": [
+        {
+          "id": "Theme.color.annotate",
+          "name": "The annotation red — the signal colour reserved for annotations",
+          "registryRef": "presentation-core-styling Theme.color"
+        },
+        {
+          "id": "Theme.color.pop",
+          "name": "The always-dark popover plate",
+          "registryRef": "presentation-core-styling Theme.color"
+        },
+        {
+          "id": "Theme.color.seg",
+          "name": "Selected-row fill (AnnotationRow) and CounterBadgeState.Empty fill",
+          "registryRef": "presentation-core-styling Theme.color"
+        },
+        {
+          "id": "Theme.spacing / Theme.stroke / Theme.typography / Theme.cornerToken",
+          "name": "All spacing, stroke widths, type roles and corner tokens for the new molecule and the new feature composables",
+          "registryRef": "presentation-core-styling Theme"
+        }
+      ],
+      "existingFeatures": [
+        {
+          "id": "F-1",
+          "name": "app-shell-window-layout",
+          "note": "Merged. Supplies the toolbar slots, the side panel frame, the stage surface and the Cmd+1/2/3 mapping that this spec activates. Also the source of the SC-3/SC-4 id collision and of the backtick test-name trap."
+        },
+        {
+          "id": "F-2",
+          "name": "android-device-discovery-mirroring",
+          "note": "Merged. Supplies MirrorViewModel, the live frame StateFlow and the sessionDeviceId-gated capture loop this spec must leave running. Its plan-review precedent (a named DI change without the matching Gradle dependency) is why AS-14/AS-15 were re-verified by opening the files."
+        }
+      ],
+      "newToBuild": [
+        {
+          "id": "FrameGeometry",
+          "name": "presentation-feature-mirror/.../core/geometry/FrameGeometry.kt",
+          "note": "internal, pure, tested first — both legs"
+        },
+        {
+          "id": "AnnotationFormat",
+          "name": "presentation-feature-mirror/.../core/annotation/AnnotationFormat.kt",
+          "note": "internal, pure — metaLine / sizeLabel"
+        },
+        {
+          "id": "PopoverCrowding",
+          "name": "presentation-feature-mirror/.../core/annotation/PopoverCrowding.kt",
+          "note": "internal, pure — anyOverlap"
+        },
+        {
+          "id": "MirrorAnnotationStage",
+          "name": "presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt",
+          "note": "internal composables: MirrorLiveStage + MirrorFrozenStage"
+        },
+        {
+          "id": "MirrorNotesTab",
+          "name": "presentation-feature-mirror/.../source/mirror/MirrorNotesTab.kt",
+          "note": "public composable, the Notes tab content"
+        },
+        {
+          "id": "AnnotationOverlay",
+          "name": "presentation-core-ui/.../kit/molecule/annotation/AnnotationOverlay.kt",
+          "note": "THE one new kit component: scrim + marks, Dp rects only"
+        },
+        {
+          "id": "FrameGeometryTest",
+          "name": "presentation-feature-mirror/src/commonTest/.../FrameGeometryTest.kt",
+          "note": "new test file — 9 tests including the render-leg round trip"
+        },
+        {
+          "id": "AnnotationFormatTest",
+          "name": "presentation-feature-mirror/src/commonTest/.../AnnotationFormatTest.kt",
+          "note": "new test file"
+        },
+        {
+          "id": "PopoverCrowdingTest",
+          "name": "presentation-feature-mirror/src/commonTest/.../PopoverCrowdingTest.kt",
+          "note": "new test file"
+        },
+        {
+          "id": "MirrorViewModelAnnotationTest",
+          "name": "presentation-feature-mirror/src/commonTest/.../MirrorViewModelAnnotationTest.kt",
+          "note": "new test file — 13 reducer tests plus the Skiko probe"
+        }
+      ],
+      "registryNote": "No registry exists at .pipeline/sdd/docs/registry/ — components.json, assets.json, styles.json, features.json and bugs.json are all absent (verified by glob in both draft and refine). Every registryRef above is therefore a verified source path, not a registry pointer, and knownRisksFromQA is populated from re-read source and from the two merged specs' shipped artifacts rather than from bugs.json. The orchestrator owns any registry delta."
+    },
+    "resources": {
+      "rules": [
+        {
+          "ref": "CLAUDE.md#Build Commands",
+          "why": "Per-module gradle invocations; the Kotlin daemon is capped at 3 GB so modules build separately, never via a root build."
+        },
+        {
+          "ref": ".claude/rules/design-tokens.md",
+          "why": "No literal Color(0x…), no raw .dp at a call site, no inline TextStyle; strict atom -> molecule -> organism layering, which places AnnotationOverlay in molecule/annotation/ importing atoms only."
+        },
+        {
+          "ref": ".claude/rules/orbit-mvi.md",
+          "why": "The four-file contract shape for MirrorContract/MirrorViewModel additions; handlers are `= intent { reduce { state.copy(...) } }`."
+        },
+        {
+          "ref": ".claude/rules/package-layout.md",
+          "why": "core/ is internal-only (FrameGeometry, AnnotationFormat, PopoverCrowding), source/ is the public surface (DeviceRect, StagedAnnotation, MirrorNotesTab); explicitApi() polices the boundary at compile time."
+        },
+        {
+          "ref": ".claude/rules/testing.md",
+          "why": "No Compose UI test exists anywhere; commonTest names must be plain camelCase with no backticks; the convention plugin already wires kotlin-test so no per-module test dependency is added."
+        },
+        {
+          "ref": ".claude/rules/localisation.md",
+          "why": "<feature>_<element> key convention; only values/strings.xml exists; grep before assuming a key is live and keep a key only as long as something references it."
+        },
+        {
+          "ref": ".claude/rules/koin-di.md",
+          "why": "Read to confirm the negative: no new use case means no new binding, so the load-order-significant initKoin list is untouched."
+        },
+        {
+          "ref": ".claude/rules/navigation.md",
+          "why": "Read to confirm the negative: presentation-feature-mirror has no Destination by design, so the five-step checklist does not apply."
+        },
+        {
+          "ref": ".claude/rules/compose-preview-convention.md",
+          "why": "Every new content composable ends with a private <Name>Preview wrapped in AppTheme passing a default-constructed state with no-op callbacks; previews are the documented evidence for AC-5/AC-7's unrenderable half."
+        },
+        {
+          "ref": ".claude/rules/convention-plugins.md",
+          "why": "Confirms FeatureConventionPlugin already supplies kotlin-test to commonTest (line 123) and registers the desktop target, so no build-logic change is needed."
+        },
+        {
+          "ref": ".claude/rules/platform-coverage.md",
+          "why": "commonTest compiles for iOS even though only desktopTest runs — the reason the backtick-name trap matters and the reason compileTestKotlinIosArm64 is in the Definition of Done."
+        },
+        {
+          "ref": ".claude/rules/version-catalog-hygiene.md",
+          "why": "Zero new catalog entries in this spec; read to confirm nothing new is required."
+        },
+        {
+          "ref": "presentation-feature-mirror/CLAUDE.md",
+          "why": "The module's two documented deviations (MirrorHost not MirrorScreen; no pixels in reduced state) and the two Orbit test-environment facts (configureDefaults pinning, runCurrent for the subscription) the new ViewModel tests depend on."
+        },
+        {
+          "ref": "presentation-core-ui/CLAUDE.md",
+          "why": "The atom/molecule/organism placement table and the 'kit components take copy as parameters, not resources' rule AnnotationOverlay must follow."
+        },
+        {
+          "ref": "compose-application/CLAUDE.md",
+          "why": "initKoin's load-order significance and the core/ vs source/ split in the window module."
+        }
+      ],
+      "skills": [
+        {
+          "name": "sdd-build-run-pipeline",
+          "why": "Owns the stage gates, the plan schema this payload validates against, and the Stage 3 backlog slicing that consumes implementationPlan."
+        }
+      ],
+      "agents": [],
+      "docs": [
+        {
+          "ref": "rectify-poc/app/src/main/kotlin/rectify/Main.kt#L122-L126",
+          "why": "The density-trap comment, verbatim: pointer events and layout are raw screen px while Modifier.offset/size take Dp, which Compose multiplies by density again. This is what locates the bug on the RENDER leg and drives AC-46's corrected test set."
+        },
+        {
+          "ref": "rectify-poc/app/src/main/kotlin/rectify/Main.kt#L229-L237",
+          "why": "The per-corner `/ density / scale` conversion FrameGeometry replaces with one tested function; its comment confirms device screenshot pixels as the target space."
+        },
+        {
+          "ref": ".pipeline/sdd/docs/android-device-discovery-mirroring/plan/plan.json",
+          "why": "Shape reference for this plan, and the source of the per-module desktopTest command list used in the Definition of Done."
+        }
+      ]
+    },
+    "errorStates": [
+      {
+        "state": "empty",
+        "behavior": "Frozen frame with zero annotations (after Clear, or after deleting the last one): the stage stays frozen per AC-48, the scrim degrades to a plain full-frame dim because the hole list is empty, and Resume Live stays visible as the way out. AnnotationOverlay must not build a degenerate Path from an empty list."
+      },
+      {
+        "state": "empty",
+        "behavior": "Notes tab with zero annotations: renders one muted line of empty-state copy (mirror_annotation_notes_empty), never a blank panel. The tab count renders as absent rather than 0 so SidebarTabs does not show a meaningless zero."
+      },
+      {
+        "state": "empty",
+        "behavior": "Annotation with no comment yet: AnnotationRow renders its empty-state copy rather than collapsing, because the mark still exists on the frame and the user needs a way back to it."
+      },
+      {
+        "state": "loading",
+        "behavior": "Frame box size is 0 on first composition, before onSizeChanged reports: FrameGeometry returns an empty rect and the drag layer composes nothing rather than dividing by zero."
+      },
+      {
+        "state": "loading",
+        "behavior": "Session started but no frame decoded yet (frame == null on the Mirror stage): unchanged F-2 behaviour, the stage's dot grid shows. A drag release in this state drops the StageAnnotation intent and the stage stays live — nothing to freeze."
+      },
+      {
+        "state": "error",
+        "behavior": "Sub-minimum drag (a click, or under MIN_DRAG_DEVICE_PX in either axis): discarded silently — no annotation, no freeze. Without this a stray click on the stage freezes the mirror, the worst accidental interaction in a live-mirroring tool."
+      },
+      {
+        "state": "error",
+        "behavior": "Drag starting inside the frame and ending in the letterbox, or a reversed right-to-left / bottom-to-top drag: toDevice normalises to a positive rect and clamps into device bounds, so the stored rect is never negative and never past width/height."
+      },
+      {
+        "state": "error",
+        "behavior": "Delete of the currently selected annotation: selectedIndex is recomputed — clamped into the new range or nulled — never left dangling at a removed index, and the remaining annotations are renumbered so the badges stay 1..N."
+      },
+      {
+        "state": "error",
+        "behavior": "MirrorSession.Lost while frozen: the frozen frame and its annotations are KEPT. The user is mid-sentence and a device dying must not erase their work. The status indicator stays Frozen; Resume Live then lands on NoSignal."
+      },
+      {
+        "state": "error",
+        "behavior": "Platform switched to iOS, or StopMirroring, while frozen: selectPlatform/stopSession already null the session and must also null both the frozen state and the frozen bitmap, or a stale Android frame would sit under the iOS notice."
+      },
+      {
+        "state": "error",
+        "behavior": "An annotation drawn at the extreme right or bottom edge: CommentPopover (PopoverMinWidth) would overflow the stage, so its x is clamped into the stage bounds. Its tail has a fixed 18 dp inset (CommentPopover.kt line 54, TailInset) and will not follow — a known demo-fidelity limitation whose eventual fix is a tailOffset parameter."
+      },
+      {
+        "state": "error",
+        "behavior": "Escape pressed with no popover focused: falls through untouched. The device picker's own Escape handler and the shell must still behave (AC-50)."
+      }
+    ],
+    "observability": {
+      "logs": [
+        "No new Kermit logger is introduced in presentation-feature-mirror — it has none today and a reducer that logs every annotation would be noise. The existing RectifyWindow logger keeps its warnings.",
+        "One exception worth considering at review time only: a single Logger.w when StageAnnotation is dropped because frame == null, since that is the one silent discard a user could report as 'the drag did nothing'. Deferred unless review asks for it."
+      ],
+      "metrics": [
+        "No new metric. The existing MirrorStatsModel line (tool version, frame dimensions, fps) keeps rendering while frozen, which is itself the honest signal that the capture loop was never paused."
+      ],
+      "analyticsEvents": [
+        "None. This project ships no analytics pipeline and this spec does not introduce one."
+      ]
+    },
+    "accessibility": [
+      {
+        "id": "A11Y-1",
+        "requirement": "NFR-8: the comment popover is fully keyboard operable — Enter commits the comment and keeps the annotation pinned, Escape collapses the popover to a pinned unselected mark without deleting it. Both handled by onPreviewKeyEvent on the popover's own focus subtree, the pattern DevicePickerPanel already established."
+      },
+      {
+        "id": "A11Y-2",
+        "requirement": "The popover's comment field receives focus automatically when an annotation is created or selected, so the user can type immediately without reaching for the pointer (AC-7). If parent-delegated focus does not reach the BasicTextField, CommentPopover gains a defaulted focusRequester parameter."
+      },
+      {
+        "id": "A11Y-3",
+        "requirement": "Enter and Escape in the popover must not consume or bubble into the window-level Cmd+1/2/3 shortcut, and Cmd+1/2/3 must keep switching tabs while a comment field has focus. The event shapes are disjoint (handleShellShortcut matches only isMetaPressed) and the stages are mutually exclusive, so no new dispatch layer is added (AC-50)."
+      },
+      {
+        "id": "A11Y-4",
+        "requirement": "Typing a bare digit into the comment field must never switch side-panel tabs — the same isMetaPressed disjointness. Explicitly walked through in the demo."
+      },
+      {
+        "id": "A11Y-5",
+        "requirement": "The delete control is a real Role.Button with a content description (CommentPopover's CloseButton already is), and the Resume Live control is an AppButton with visible text rather than an icon-only affordance."
+      },
+      {
+        "id": "A11Y-6",
+        "requirement": "MirrorFrameView's existing semantics contentDescription naming the mirrored device is preserved when the overlay slot is added — the overlay is composed inside that Box (lines 53-59) and must not replace or clear its semantics."
+      },
+      {
+        "id": "A11Y-7",
+        "requirement": "NFR-9: light and dark parity for every new surface. The scrim and the popovers are deliberately dark in BOTH themes (they sit over unknown-brightness device content), which is the documented exception pattern, not a parity failure — the mark borders, the badges, the Notes rows and the Resume Live button all follow the theme and are checked in both."
+      },
+      {
+        "id": "A11Y-8",
+        "requirement": "Annotation state is never signalled by colour alone: every mark carries a numbered GlyphBadge and every Notes row repeats that number, so the frame and the sidebar stay cross-referenceable without colour discrimination."
+      }
+    ],
+    "performanceBudget": [
+      {
+        "metric": "Scrim + overlay draw cost over a live-sized frame",
+        "target": "One Canvas, one Path built from at most ~10 rects, one clipPath(ClipOp.Difference) and one drawRect per draw. NO saveLayer, NO offscreen Skia surface, and the ImageBitmap is never read, copied or composited. Budget: at most one extra full-frame-box fill per draw pass — the frame box is the aspect-fit display rectangle (roughly 713x1584 px at the default window on a 1080x2400 device), not the 1080x2400 source bitmap."
+      },
+      {
+        "metric": "Path construction per draw",
+        "target": "O(n) in the number of annotations, n <= ~10 in practice. Build the union Path inside remember(rects) so a pointer move or a recomposition that does not change the rect list does not rebuild it."
+      },
+      {
+        "metric": "Drag feedback latency",
+        "target": "The drawn box follows the pointer within one frame (<= 16 ms at 60 Hz). Achieved by keeping dragStart/dragCurrent in composable remember so a pointer move recomposes only the overlay subtree and never passes through the Orbit reducer."
+      },
+      {
+        "metric": "Reducer passes per gesture",
+        "target": "Exactly one (the StageAnnotation on release). Zero during the drag. This is the invariant that keeps a 60 Hz gesture from becoming 60 state copies a second, mirroring F-2's frame decision."
+      },
+      {
+        "metric": "Live mirror glass-to-glass latency (NFR-1)",
+        "target": "Unchanged at under ~150 ms. Freeze is render-only — sessionDeviceId and the flatMapLatest gate are untouched — so the capture/decode/transport path has exactly the same cost before, during and after a freeze."
+      },
+      {
+        "metric": "Resume Live responsiveness",
+        "target": "First live frame visible within one capture interval (~100 ms at the current cadence), with no adb reconnection. This is the whole payoff of the render-only freeze and the headline thing the SC-11 demo checks."
+      },
+      {
+        "metric": "Frozen-stage steady-state cost",
+        "target": "No per-frame work on the stage while frozen — the static bitmap and the scrim redraw only on recomposition, not on each arriving capture. Accepted cost: the device keeps running screencap behind a static picture (FR-30), logged as a deferred optimisation whose fix would be an isFrozen flag in the transport's adaptive interval, not a session teardown."
+      },
+      {
+        "metric": "FR-9 crowding check",
+        "target": "O(n^2) pairwise over n <= ~10 nominal rects, recomputed only when the annotation list or the frame box changes — well under a microsecond and explicitly not worth a sweep-line."
+      },
+      {
+        "metric": "Memory",
+        "target": "At most one extra ImageBitmap alive at a time (the frozen frame), released on Resume Live, platform switch or StopMirroring. No history, no buffering, no serialization (AS-11)."
+      },
+      {
+        "metric": "Added production code",
+        "target": "Roughly 900 added lines or fewer across all four modules. Exceeding that means the reuse-first premise has failed and the plan should be revisited rather than the budget raised."
+      }
+    ],
+    "i18n": {
+      "locales": [
+        "en (values/strings.xml) — the only locale file that exists today"
+      ],
+      "strings": [
+        "mirror_annotation_placeholder — \"What's wrong here?\" — passed to CommentPopover, which already defaults to this exact string (line 105); the feature still passes it so the copy is translatable.",
+        "mirror_annotation_save_hint — \"⏎ save\" — CommentPopover's focus-gated saveHint.",
+        "mirror_annotation_empty_comment — \"No comment yet\" — AnnotationRow's emptyLabel, overriding the kit's English default (line 51).",
+        "mirror_annotation_notes_empty — the Notes tab's zero-annotation line.",
+        "mirror_annotation_delete — accessibility label for the delete control, which means DELETE here rather than close.",
+        "mirror_action_resume_live — \"Resume Live\" — the stage's top-right control.",
+        "mirror_status_frozen — \"FROZEN\" — MirrorStatusLine's label for StatusIndicatorState.Frozen."
+      ],
+      "notes": "presentation-core-ui must not depend on presentation-core-localisation, so AnnotationOverlay and every other kit-level change takes copy as a parameter with an English default and the feature module supplies stringResource(). Machine output — the device-pixel size label and the `218×77 @ 1035,862` meta line — is rendered mono and deliberately carries no resource key, matching how serials, versions and fps are already handled. RectifyWindow.kt's existing literal labels (Clear, Resolve & Send, No device, staged) stay literal: that is F-1's established pattern for that file and converting them is out-of-scope churn; it should be its own small ticket."
+    },
+    "security": {
+      "dataHandling": [
+        "Annotations are held in memory only. No disk write, no serialization, no new data module, no file I/O — the POC's JSON writer is F-7's and F-8's business (AS-11).",
+        "The frozen bitmap is a reference to an already-decoded in-memory frame. Nothing new is captured, copied to disk or transmitted.",
+        "Comment text is free user input but never reaches a shell command, a file path or a network call in this spec. It is rendered and held, nothing more."
+      ],
+      "permissions": [
+        "No new OS permission, no new adb capability, no new process invocation. The capture loop this spec rides on is F-2's and is unchanged."
+      ],
+      "privacy": [
+        "SEC-1 stays closed. Frame dimensions are read from the decoded ImageBitmap, never from GetProp. F-2 left GetProp with zero production callers and NFR-5 holds there only by that absence; this spec creates no new caller — a grep for GetProp must still return zero production hits after this lands.",
+        "No telemetry, no analytics, no crash reporting: a device screenshot and a bug note never leave the host in this deliverable."
+      ]
+    },
+    "rollout": {
+      "featureFlags": [
+        "None. The feature is unconditional once merged — a flag for a desktop developer tool with one user-facing surface would be scaffolding for a rollback that a revert already covers."
+      ],
+      "migrations": [
+        "None. No persistence, no schema, no stored preference is added or changed."
+      ],
+      "backwardCompatibility": "Every kit API change is a defaulted parameter (MirrorFrameView.overlay, RectifyWindowShell.tabCounts, contingently CommentPopover.focusRequester), so every existing call site, preview and test compiles unchanged. MirrorHost's and MirrorStageContent's public signatures do not change at all. Two user-visible behaviour changes DO land and must be called out in the PR: (1) Cmd+1/2/3 side-panel tab switching becomes live for the first time, because handleShellShortcut only consumed the event while a panel was on screen and the panel was always null; (2) the side panel is now composed permanently rather than never, so the window layout differs from F-1's shipped appearance from the first frame. Both are intended — F-1's own comment says the panel was null only because there was no content, which is precisely what this spec supplies. MirrorStage gaining a Frozen enum entry is source-compatible inside the feature module, and the compiler enforces the new when branch rather than letting it be forgotten. One compile-breaking internal change is NOT backward compatible and must land as a single commit: RectifyWindow.kt's line-129 sidePanel val deletion together with the line-138 isPanelVisible literal."
+    },
+    "knownRisksFromQA": [
+      {
+        "bugRef": "NO BUG REGISTRY EXISTS",
+        "description": "There is no .pipeline/sdd/docs/registry/bugs.json (nor components/assets/styles/features.json) — verified by glob in both the draft and this refine pass. Nothing below is a registry entry. Every item is either a defect re-read in source at the file and line given, or a precedent pointed at in F-1's/F-2's shipped artifacts. No commit hashes are cited, because none were verified during this pass and F-2's refine was previously caught fabricating a bugRef.",
+        "watchFor": "Any downstream stage treating these entries as registry-backed history, or any future plan citing a bug id that has no file, line or shipped artifact behind it.",
+        "mitigation": "Entries are stated as source observations with their coordinates so a reviewer can re-check each in one open. When a registry is introduced, these six become its seed entries."
+      },
+      {
+        "bugRef": "F-1 precedent — backtick test-name defect (recorded in .claude/rules/testing.md and presentation-feature-mirror/CLAUDE.md)",
+        "description": "A commonTest backtick test name containing a comma, apostrophe or colon compiles on the JVM and fails compileTestKotlinIosArm64 with 'Name contains illegal characters'. It broke the repo once during F-1. Both rule files record it; no commit hash is cited here because none was verified.",
+        "watchFor": "Any new test name in FrameGeometryTest, AnnotationFormatTest, PopoverCrowdingTest or MirrorViewModelAnnotationTest that uses backticks at all.",
+        "mitigation": "Plain camelCase names, zero backticks, and ./gradlew :presentation-feature-mirror:compileTestKotlinIosArm64 :presentation-core-ui:compileTestKotlinIosArm64 run before the PR rather than after. In the Definition of Done."
+      },
+      {
+        "bugRef": "F-2 precedent — a plan that named a DI change without the matching Gradle dependency",
+        "description": "F-2's draft plan specified wiring that would not have compiled because the module dependency it implied was never named; the plan review caught it. Cited as process precedent from that spec's artifacts, not as a registry entry.",
+        "watchFor": "Any file this plan names that needs a module dependency or a DI registration the plan has not also named.",
+        "mitigation": "Re-verified in refine by OPENING the files, not inferring: presentation-feature-mirror/build.gradle.kts declares presentationCoreUi/Localisation/Styling, compose.material3 and kotlinx-coroutines-test; FeatureConventionPlugin.kt line 123 wires kotlin-test into commonTest; compose-application/build.gradle.kts line 25 declares projects.presentationFeatureMirror so the new public MirrorNotesTab is composable from RectifyWindow; MirrorViewModel's constructor (lines 68-75) gains no parameter so no Koin or initKoin change exists. AS-14/AS-15/AS-16."
+      },
+      {
+        "bugRef": "rectify-poc Main.kt lines 122-126 — the density trap, documented in the POC's own source comment",
+        "description": "Pointer events and composable layout are in raw screen pixels, but Modifier.offset/size take Dp which Compose multiplies by density again; without dividing back out, every drawn rectangle lands density-x further from the cursor than it should — 2x on this Retina host. The trap is on the RENDER leg, which the draft plan's AC-46 coverage did not exercise.",
+        "watchFor": "Any new `/ density`, `* density`, `.dp` or `.toPx()` arithmetic applied to frame or annotation coordinates outside FrameGeometry, including inside presentation-core-ui. Visually: a box that lands roughly twice as far from the cursor as the pointer travelled.",
+        "mitigation": "One pure conversion path kept internal (FR-26); AC-46 covered by three tests including the full pointer -> device -> frame -> dp round trip that actually reproduces the trap; AnnotationOverlay takes Dp rects so the kit cannot grow a conversion; FrameGeometry built and tested before any UI exists; a grep in the Definition of Done."
+      },
+      {
+        "bugRef": "presentation-core-ui — AnnotationMark.kt line 98, Frozen state contradicts its own KDoc",
+        "description": "AnnotationState.Frozen fills the mark with an opaque Theme.color.surface (line 98) while its KDoc at lines 79-80 justifies the state by saying the host dims everything else. An opaque plate and a visible annotated region are mutually exclusive — using it would hide the exact pixels the annotation points at, i.e. hide the bug being reported. Re-read in refine.",
+        "watchFor": "Any use of AnnotationState.Frozen in this spec's code, and any later reviewer reading its zero callers as an oversight.",
+        "mitigation": "Binding decision 7: use Pinned/Selected plus the new scrim; no kit change. Record in the PR that AnnotationState.Frozen is deliberately uncalled after this spec, so the absence is legible. In the Definition of Done."
+      },
+      {
+        "bugRef": "presentation-core-ui — CommentPopover.kt line 54, fixed TailInset = 18.dp with no placement logic",
+        "description": "The popover draws its own tail at a fixed 18 dp inset (private val TailInset: Dp = 18.dp, applied at line 184) and has no idea where its mark sits. A popover clamped away from its mark's left edge will point at the wrong place. Re-read in refine.",
+        "watchFor": "Annotations near the stage's right or bottom edge, where the popover's minimum width forces a clamp.",
+        "mitigation": "Accepted at demo fidelity and recorded as an open question. The eventual fix is a tailOffset parameter; not taken here because it is cosmetic and the gutter relocation already handles the crowded case."
+      },
+      {
+        "bugRef": "presentation-core-ui — RectifyWindowShell.kt lines 87-92, SidePanelFrame.tabCounts is unreachable",
+        "description": "SidePanelFrame.kt line 59 accepts `tabCounts: Map<ShellTab, Int> = emptyMap()` and line 76 feeds it to SidebarTabItem(count = ...), but RectifyWindowShell composes SidePanelFrame passing only activeTab, onTabSelect, modifier and content, so no caller can ever set a tab count. Found while verifying this spec's reuse claims; the brainstorm asserted the opposite. Both files re-opened in refine and the omission confirmed.",
+        "watchFor": "An implementer assuming the count can be set from RectifyWindow alone and quietly dropping FR-28's count, or adding a second SidePanelFrame call site to work around it.",
+        "mitigation": "Step 5 adds the defaulted tabCounts parameter to RectifyWindowShell and forwards it. Called out explicitly in implementationPlan step 5 so it cannot be sliced away."
+      },
+      {
+        "bugRef": "compose-application — RectifyWindow.kt line 129 vs line 138, a scope trap in this spec's own edit",
+        "description": "REFINE-FOUND. The draft plan's step 9 says the `sidePanel` val 'moves inside the MirrorHost content lambda'. The val is declared at line 129, OUTSIDE the Window(...) call, and read at line 138 inside the onPreviewKeyEvent PARAMETER; MirrorHost is at line 152, inside the Window's content. Moving the val as described leaves line 138 referencing an out-of-scope name and the file does not compile.",
+        "watchFor": "A slice that moves the val without also changing line 138 in the same commit, or that changes line 138 first and leaves a now-unused val behind.",
+        "mitigation": "Step 9 names the three edits as one atomic change: delete the line-129 val, build the panel lambda inside the MirrorHost content lambda, and pass the literal `isPanelVisible = true` at line 138. handleShellShortcut keeps its parameter."
+      },
+      {
+        "bugRef": "presentation-feature-mirror/CLAUDE.md + MirrorFakes.kt — Orbit test-environment traps",
+        "description": "Two environment facts the existing ViewModel tests depend on: Orbit runs its container event loop on Dispatchers.Default, so a test must pin it via Orbit.configureDefaults (MirrorFakes.kt line 133) or nothing the reducer does is visible to advanceUntilIdle(); and since coroutines 1.11, advanceUntilIdle() ignores backgroundScope work, so the state subscription that triggers Orbit's lazy onCreate must be started with runCurrent(). Additionally MirrorFakes.kt line 121 hardcodes `decodeFrame = { null }`, so no test can currently produce a frame.",
+        "watchFor": "A new annotation test that builds its own ViewModel harness instead of using MirrorFakes and then mysteriously observes an unchanged initial state; or an AC-47 test that assumes a frame exists without supplying a decoder.",
+        "mitigation": "MirrorViewModelAnnotationTest extends MirrorFakes' mirrorViewModel() / useTestDispatcherForOrbit() / subscribe() helpers rather than re-solving either trap, and the decodeFrame parameter is added to mirrorViewModel() (defaulting to the existing null decoder) only after the step-4 Skiko probe says a bitmap can be allocated."
+      }
+    ],
+    "implementationPlan": [
+      {
+        "step": 1,
+        "title": "FrameGeometry (pure) + its tests, BOTH legs — FIRST, before any UI exists",
+        "dependsOn": [],
+        "linkedAC": [
+          "AC-46",
+          "AC-5"
+        ],
+        "estimate": "M",
+        "files": [
+          "NEW presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/geometry/FrameGeometry.kt",
+          "NEW presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/FrameGeometryTest.kt"
+        ],
+        "detail": "internal data class FrameGeometry(framePx: Size, deviceSize: IntSize, density: Float) with toDevice/toFrame/toDp/isMeaningfulDrag and the MIN_DRAG_DEVICE_PX = 8 constant. No @Composable, no ViewModel import, no UI touched. Nine tests, all camelCase, no backticks: densityTwoDoesNotScaleTheStoredRect (framePx 1426x3168 pointer px against a 1080x2400 device at density 2.0 — note the frame scale 1426/1080 = 1.320 is deliberately neither 1.0 nor equal to the density, so a density/scale confusion is distinguishable — hand-computed expectation asserting the absence of a factor of 2), toDpDividesByDensityExactlyOnce (the render leg: a 100x50 frame-px rect at density 2.0 must be 50x25 dp), pointerToDeviceToDpRoundTripLandsUnderTheCursor (THE POC-trap test: pointer offset -> toDevice -> toFrame -> toDp, then multiplied back by density, must return the original pointer offset within rounding; a missing /density in toDp makes this fail by exactly the density factor), reversedDragNormalisesToPositiveRect, dragEndingInLetterboxClampsToDeviceBounds, nonIntegerScaleRoundsEachCornerIndependently, zeroFrameBoxReturnsEmptyRect, roundTripToFrameAndBackIsStable, subMinimumDragIsNotMeaningful.",
+        "verify": "./gradlew :presentation-feature-mirror:desktopTest"
+      },
+      {
+        "step": 2,
+        "title": "DeviceRect + AnnotationFormat (pure) — the testable half of the size label and the meta line",
+        "dependsOn": [],
+        "linkedAC": [
+          "AC-5",
+          "AC-7"
+        ],
+        "estimate": "S",
+        "files": [
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorContract.kt (public DeviceRect ONLY — the rest of the contract is step 3)",
+          "NEW presentation-feature-mirror/.../core/annotation/AnnotationFormat.kt",
+          "NEW presentation-feature-mirror/src/commonTest/.../AnnotationFormatTest.kt"
+        ],
+        "detail": "REFINE CHANGE: DeviceRect lands HERE, not in step 3, which removes the draft's 'the slice may choose' hedge about which type AnnotationFormat takes. public data class DeviceRect(left, top, right, bottom) with derived width/height and explicit visibility and return types (explicitApi). Then internal metaLine(rect) producing CommentPopover's and AnnotationRow's documented `218×77 @ 1035,862` shape and internal sizeLabel(rect) producing AnnotationMark's `545 × 254` shape. Tests: metaLineMatchesTheDocumentedShape, sizeLabelMatchesTheMarkShape, zeroSizeRectFormatsWithoutCrashing.",
+        "verify": "./gradlew :presentation-feature-mirror:desktopTest"
+      },
+      {
+        "step": 3,
+        "title": "MirrorContract additions — remaining types, stage value, six intents",
+        "dependsOn": [
+          2
+        ],
+        "linkedAC": [
+          "AC-6",
+          "AC-48",
+          "AC-49",
+          "AC-50",
+          "AC-51",
+          "AC-52"
+        ],
+        "estimate": "M",
+        "files": [
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorContract.kt",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorContent.kt (placeholder `MirrorStage.Frozen -> Unit` branch only)"
+        ],
+        "detail": "Public StagedAnnotation and FrozenFrame; MirrorUiState.frozen and the derived stagedCount; MirrorStage.Frozen with the stage getter ordered Picker > IosDeferred > Frozen > Streaming > NoSignal; six MirrorIntent cases. Compile-only. The when(state.stage) at MirrorContent.kt line 92 is exhaustive with no else, so the compiler forces a branch — add a `-> Unit` placeholder here and fill it in step 7. Every new public declaration needs an explicit visibility modifier and return type (explicitApi).",
+        "verify": "./gradlew :presentation-feature-mirror:compileKotlinDesktop"
+      },
+      {
+        "step": 4,
+        "title": "MirrorViewModel: Skiko probe, frozenFrame StateFlow, six handlers + their tests",
+        "dependsOn": [
+          3
+        ],
+        "linkedAC": [
+          "AC-6",
+          "AC-8",
+          "AC-47",
+          "AC-48",
+          "AC-49",
+          "AC-50",
+          "AC-51",
+          "AC-52"
+        ],
+        "estimate": "L",
+        "files": [
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorViewModel.kt",
+          "CHANGED presentation-feature-mirror/src/commonTest/.../MirrorFakes.kt (optional decodeFrame parameter + a size-distinguishing fake decoder — conditional on the probe)",
+          "NEW presentation-feature-mirror/src/commonTest/.../MirrorViewModelAnnotationTest.kt"
+        ],
+        "detail": "START WITH THE PROBE (REFINE-ADDED): a three-line throwaway test asserting ImageBitmap(2, 3).width == 2 in desktopTest. Pass -> take the bitmap path for AC-47 (add decodeFrame to MirrorFakes.mirrorViewModel() defaulting to the existing null decoder at line 121, plus a fake decoder producing bitmaps differing in BOTH width and height, and assert frozenFrame.value's width AND height). Fail -> AC-47 becomes inspection + demo and its verificationNote is updated; do not attempt the deviceSize fallback, which is not Skiko-free. Then add currentFrozenFrame/frozenFrame and the six handlers; extend selectPlatform and stopSession to clear both channels. sessionDeviceId and observeFrames are NOT edited — verify by diff that the flatMapLatest block is untouched. Tests (camelCase, no backticks): firstStageAnnotationFreezesTheFrame (AC-6), freezeUsesTheFrameHeldAtRelease (AC-47, probe-dependent), secondDragAddsAnnotationWithoutRefreezing (AC-52/SC-9), stageAnnotationWithNoFrameIsDropped, commentCommitStoresTheText (AC-8), deleteDecrementsStagedCountAndRenumbers (AC-8/SC-10), deleteOfSelectedAnnotationClearsOrClampsSelection, selectAnnotationNullKeepsTheAnnotationAndTheCount (AC-50/SC-10), clearStagedEmptiesTheListAndKeepsTheFrameFrozen (AC-48), resumeLiveClearsTheFrozenFrameAndAnnotations (AC-51), dragAfterResumeLiveFreezesANewFrame (AC-51/SC-11), selectPlatformIosClearsTheFrozenFrame, sessionLostWhileFrozenKeepsTheAnnotations.",
+        "verify": "./gradlew :presentation-feature-mirror:desktopTest && ./gradlew :presentation-feature-mirror:compileTestKotlinIosArm64"
+      },
+      {
+        "step": 5,
+        "title": "Kit layer: AnnotationOverlay molecule + the two defaulted parameters + Styleguide",
+        "dependsOn": [],
+        "linkedAC": [
+          "AC-7",
+          "AC-49",
+          "NFR-9"
+        ],
+        "estimate": "L",
+        "files": [
+          "NEW presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationOverlay.kt",
+          "CHANGED presentation-core-ui/.../kit/molecule/mirror/MirrorFrameView.kt (+ overlay: @Composable BoxScope.() -> Unit = {})",
+          "CHANGED presentation-core-ui/.../kit/organism/shell/RectifyWindowShell.kt (+ tabCounts: Map<ShellTab, Int> = emptyMap(), forwarded to SidePanelFrame)",
+          "CHANGED presentation-core-ui/.../source/showcase/StyleguideScreen.kt"
+        ],
+        "detail": "REFINE CHANGE: dependsOn is now EMPTY (the draft said step 1). AnnotationOverlay has no dependency on FrameGeometry — it takes Dp rects — so this whole step can be sliced in parallel with steps 1-4. AnnotationOverlay: one Canvas doing clipPath(unionPath, ClipOp.Difference){ drawRect(ScrimFill) } guarded on a non-empty rect list, then one AnnotationMark per rect. Takes DpRect-bearing marks, NEVER pixels; the single Dp-to-px conversion for the Path happens inside that Canvas via LocalDensity. Imports AnnotationMark (atom) only — never CommentPopover (organism). ScrimFill is a named private constant, deliberately dark in both themes, with the KDoc rationale CommentPopover and CounterBadge already set the precedent for. Build the union Path inside remember(rects). Light and dark @Previews. MirrorFrameView's overlay goes inside the inner aspect-fit Box (lines 53-59, the one with .aspectRatio and the semantics block), as its last child, must not disturb the existing contentDescription, and needs a BoxScope import. RectifyWindowShell's tabCounts closes the verified gap at its lines 87-92 — append it in the defaulted block after `sidePanel`, ahead of the undefaulted onPanelWidthCommit and the trailing stage lambda. All three parameters are defaulted, so every existing preview, call site and test still compiles.",
+        "verify": "./gradlew :presentation-core-ui:build (built alone — 3 GB daemon cap)"
+      },
+      {
+        "step": 6,
+        "title": "Live drag layer on the Mirror stage",
+        "dependsOn": [
+          1,
+          4,
+          5
+        ],
+        "linkedAC": [
+          "AC-5",
+          "AC-6"
+        ],
+        "estimate": "L",
+        "files": [
+          "NEW presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt (MirrorLiveStage half + the file-top named constants)",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorHost.kt (collect frozenFrame; pass frozenFrame ?: frame — PUBLIC SIGNATURE UNCHANGED)",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorContent.kt (Mirror branch delegates to MirrorLiveStage)"
+        ],
+        "detail": "MirrorFrameView(frame, deviceName, overlay = { ... }). Inside the overlay: Modifier.onSizeChanged into a remembered framePx; a pointerInput/detectDragGestures layer with dragStart/dragCurrent in remember (NEVER in Orbit); one AnnotationMark(state = Drawing, sizeLabel = sizeLabel(deviceRect)) positioned via FrameGeometry.toFrame then toDp; a horizontal Ruler(totalPx = deviceWidth, extentPx = x-extent) at the top edge and the same Ruler rotated 270 degrees inside a fixed-size Box at the leading edge for the vertical guide — authoring a VerticalRuler is ruled out by Ruler's own KDoc. On release, emit StageAnnotation only when isMeaningfulDrag passes. Every invented value (ruler inset, gutter and control geometry) is a named file-top private constant.",
+        "verify": "./gradlew :presentation-feature-mirror:build, then ./gradlew :desktop-application:run and drag on a live mirror at density 2.0 — the box must land under the cursor"
+      },
+      {
+        "step": 7,
+        "title": "Frozen stage: static frame, scrim, pinned marks, CommentPopover, Resume Live, FROZEN indicator",
+        "dependsOn": [
+          6
+        ],
+        "linkedAC": [
+          "AC-7",
+          "AC-8",
+          "AC-51",
+          "AC-52"
+        ],
+        "estimate": "L",
+        "files": [
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt (MirrorFrozenStage half)",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorContent.kt (fill the Frozen branch; add the Frozen case to the private indicatorState() and indicatorLabel())"
+        ],
+        "detail": "MirrorFrozenStage composes MirrorFrameView over the frozen bitmap with an overlay carrying AnnotationOverlay(dimmed = true, marks = Pinned with the selected index as Selected, all as DpRects from FrameGeometry.toDp), one CommentPopover for the selected mark (value, onValueChange -> CommentAnnotation, onClose -> DeleteAnnotation per FR-8, index, meta = metaLine(rect), saveHint, placeholder — all via stringResource), the drag layer still active so FR-31/AC-52 works on the frozen stage, and a Resume Live AppButton(size = AppButtonSize.Toolbar) at the stage's top-right over the scrim. Clamp the popover's x into the stage bounds; the fixed 18 dp TailInset will not follow, the accepted demo-fidelity limitation. indicatorState() gains `frozen != null -> StatusIndicatorState.Frozen` ahead of the Streaming check — the first production caller of that shipped-but-unused enum value.",
+        "verify": "./gradlew :presentation-feature-mirror:build; demo SC-3 and SC-9 by hand"
+      },
+      {
+        "step": 8,
+        "title": "Focus and keyboard: autofocus, Enter to save, Escape to collapse",
+        "dependsOn": [
+          7
+        ],
+        "linkedAC": [
+          "AC-7",
+          "AC-8",
+          "AC-50",
+          "NFR-8"
+        ],
+        "estimate": "M",
+        "files": [
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt",
+          "CONTINGENT CHANGE presentation-core-ui/.../kit/organism/annotation/CommentPopover.kt (+ focusRequester: FocusRequester? = null forwarded to the BasicTextField)"
+        ],
+        "detail": "A FocusRequester plus Modifier.focusRequester().focusGroup() on the popover's root, requested in a LaunchedEffect keyed on the selected index, and onPreviewKeyEvent on that subtree handling Enter (commit, keep pinned) and Escape (SelectAnnotation(null), keep the annotation and the count) and consuming only those two. No global dispatch layer — handleShellShortcut matches only isMetaPressed and MirrorStage.Picker and MirrorStage.Frozen are mutually exclusive, so the conflict does not exist. CONTINGENCY: CommentPopover has no focus hook (lines 99-110); if parent-delegated focus does not reach the field, add the defaulted focusRequester parameter — budgeted here, not a surprise. If it is taken, rerun :presentation-core-ui:build before the feature build.",
+        "verify": "./gradlew :presentation-core-ui:build && ./gradlew :presentation-feature-mirror:build; demo SC-10 by hand, including typing a digit and pressing Cmd+2 while the field has focus"
+      },
+      {
+        "step": 9,
+        "title": "Window wiring: stagedCounter, clearAction, the Notes tab, the tab count, Notes auto-select — then the FULL desktop suite",
+        "dependsOn": [
+          5,
+          7
+        ],
+        "linkedAC": [
+          "AC-48",
+          "AC-49"
+        ],
+        "estimate": "L",
+        "files": [
+          "NEW presentation-feature-mirror/.../source/mirror/MirrorNotesTab.kt",
+          "CHANGED compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+        ],
+        "detail": "MirrorNotesTab: public composable, one AnnotationRow per annotation in index order with selected/onClick wired to SelectAnnotation, an empty-state line, and its own private @Preview. RectifyWindow, as ONE atomic edit (REFINE-CLARIFIED — partial application does not compile): (a) stagedCounter at line 232 -> CounterBadge(mirror.stagedCount, Empty at 0 else Staged); (b) clearAction at line 235 -> AppButton(enabled = stagedCount > 0, onClick -> ClearStaged); (c) DELETE the `sidePanel` val at line 129 and build the panel lambda inside the MirrorHost content lambda at line 152, where mirror and onIntent are in scope, unconditionally non-null; (d) IN THE SAME EDIT change line 138 to the literal `isPanelVisible = true` — onPreviewKeyEvent is a Window parameter and cannot see into the Window's content, so leaving it reading `sidePanel` does not compile; handleShellShortcut keeps its parameter; (e) RectifyShellContent forwards tabCounts = mapOf(ShellTab.Notes to mirror.stagedCount) through the parameter step 5 added — no new RectifyShellContent parameter is needed, it already takes `mirror`; (f) a LaunchedEffect on (stagedCount >= 1) calling shellState.selectTab(ShellTab.Notes) so the first annotation reveals the panel, deliberately not re-selecting on later annotations. Existing literal labels stay literal. THIS IS THE COMMIT THAT MAKES Cmd+1/2/3 LIVE AND THE PANEL PERMANENT — run the full desktop suite here, not at the end, and note both changes in the PR.",
+        "verify": "./gradlew :compose-application:build, then the full suite: ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest — every pre-existing test plus the new ones must be green"
+      },
+      {
+        "step": 10,
+        "title": "FR-9: popoverCrowding + the in-stage right-edge gutter + straight leader lines",
+        "dependsOn": [
+          8,
+          9
+        ],
+        "linkedAC": [
+          "AC-9"
+        ],
+        "estimate": "M",
+        "files": [
+          "NEW presentation-feature-mirror/.../core/annotation/PopoverCrowding.kt",
+          "NEW presentation-feature-mirror/src/commonTest/.../PopoverCrowdingTest.kt",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt"
+        ],
+        "detail": "internal anyOverlap(rects: List<Rect>): Boolean — O(n^2) pairwise bounding-box test over nominal popover bounds constants, because measuring in order to decide whether to compose is a circular layout dependency needing SubcomposeLayout. When it returns true, stack read-only AnnotationPopovers in index order in a named-width column at the stage's right edge and draw one straight Canvas line from each mark to its popover — all in the overlay's own coordinate space, no cross-composable onGloballyPositioned. Demo fidelity: explicitly no 8 px elbow-stagger. Tests: nonOverlappingRectsDoNotCrowd, touchingEdgesDoNotCount, oneOverlappingPairCrowdsEverything, emptyAndSingleListsNeverCrowd.",
+        "verify": "./gradlew :presentation-feature-mirror:desktopTest; demo SC-4 with three crowded annotations and attach a screenshot"
+      },
+      {
+        "step": 11,
+        "title": "Localisation keys, light/dark parity pass, and the final full regression",
+        "dependsOn": [
+          10
+        ],
+        "linkedAC": [
+          "AC-5",
+          "AC-7",
+          "NFR-9",
+          "NFR-1"
+        ],
+        "estimate": "M",
+        "files": [
+          "CHANGED presentation-core-localisation/src/commonMain/composeResources/values/strings.xml",
+          "CHANGED presentation-feature-mirror/.../source/mirror/MirrorAnnotationStage.kt, MirrorNotesTab.kt and MirrorContent.kt (swap any remaining inline copy for stringResource)"
+        ],
+        "detail": "Add the seven mirror_annotation_* / mirror_action_resume_live / mirror_status_frozen keys and reference every one — grep each, this repo has accumulated unused keys before. Then the NFR-9 pass: screenshot the live drag stage, the frozen stage with one annotation, the crowded gutter and the Notes tab in both light and dark; confirm the scrim and popovers are deliberately dark in both while every theme-following surface actually follows; check contrast on the Notes rows. Confirm NFR-1 by watching the stats line keep reporting fps while frozen. Finally the full regression, run in two halves if the 3 GB daemon complains.",
+        "verify": "./gradlew :presentation-core-localisation:build; the full desktopTest list from step 9; ./gradlew :presentation-core-ui:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64; ./gradlew :desktop-application:run for the final demo of SC-3/4/9/10/11"
+      }
+    ],
+    "testStrategy": {
+      "unit": [
+        "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/FrameGeometryTest.kt — NINE tests covering BOTH legs: densityTwoDoesNotScaleTheStoredRect (storage leg, AC-46/SC-8, framePx 1426x3168 against a 1080x2400 device at density 2.0, with the frame scale deliberately neither 1.0 nor equal to the density), toDpDividesByDensityExactlyOnce (render leg), pointerToDeviceToDpRoundTripLandsUnderTheCursor (the POC-trap reproduction — a missing /density in toDp fails this by exactly the density factor), reversedDragNormalisesToPositiveRect, dragEndingInLetterboxClampsToDeviceBounds, nonIntegerScaleRoundsEachCornerIndependently, zeroFrameBoxReturnsEmptyRect, roundTripToFrameAndBackIsStable, subMinimumDragIsNotMeaningful. The highest-value file in the spec: this is the only failure mode that is silent. REFINE NOTE: the draft planned a storage-leg-only fixture, which could not have failed for the reason AC-46 exists.",
+        "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/AnnotationFormatTest.kt — metaLineMatchesTheDocumentedShape, sizeLabelMatchesTheMarkShape, zeroSizeRectFormatsWithoutCrashing. The automatable half of AC-5's 'live pixel-size label' and AC-7's 'meta line'.",
+        "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PopoverCrowdingTest.kt — nonOverlappingRectsDoNotCrowd, touchingEdgesDoNotCount, oneOverlappingPairCrowdsEverything, emptyAndSingleListsNeverCrowd. The automatable half of AC-9.",
+        "All test names are plain camelCase with no backticks at all: a backtick name containing a comma, apostrophe or colon compiles on the JVM and fails compileTestKotlinIosArm64, which already broke this repo once in F-1."
+      ],
+      "integration": [
+        "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelAnnotationTest.kt — the Orbit reducer suite, extending MirrorFakes' existing harness (Orbit.configureDefaults pinning at line 133 + the runCurrent subscription quirk) rather than re-solving either trap. Thirteen tests plus the Skiko probe: firstStageAnnotationFreezesTheFrame (AC-6), freezeUsesTheFrameHeldAtRelease (AC-47, probe-dependent), secondDragAddsAnnotationWithoutRefreezing (AC-52/SC-9), stageAnnotationWithNoFrameIsDropped, commentCommitStoresTheText (AC-8), deleteDecrementsStagedCountAndRenumbers (AC-8/SC-10), deleteOfSelectedAnnotationClearsOrClampsSelection, selectAnnotationNullKeepsTheAnnotationAndTheCount (AC-50/SC-10), clearStagedEmptiesTheListAndKeepsTheFrameFrozen (AC-48), resumeLiveClearsTheFrozenFrameAndAnnotations (AC-51), dragAfterResumeLiveFreezesANewFrame (AC-51/SC-11), selectPlatformIosClearsTheFrozenFrame, sessionLostWhileFrozenKeepsTheAnnotations.",
+        "MirrorFakes.kt gains an optional decodeFrame parameter on mirrorViewModel() (replacing the hardcoded `decodeFrame = { null }` at line 121) plus a fake decoder mapping byte content to bitmaps that differ in BOTH width and height, so AC-47's assertion cannot pass by accident. This is CONDITIONAL on the step-4 probe (assert ImageBitmap(2,3).width == 2). REFINE CORRECTION: if the probe fails, do NOT fall back to asserting FrozenFrame.deviceSize — that value is derived from a bitmap that could not be allocated, so the assertion is unreachable, not merely weaker. AC-47 instead becomes inspection of the one-line currentFrame.value read plus the SC-3 demo, and its verificationNote is updated to match.",
+        "No new integration test touches adb, a device, a process or the filesystem. This spec adds no data-layer or domain-layer code at all."
+      ],
+      "ui": [
+        "NONE, and that is stated plainly rather than papered over. This repo has ZERO Compose UI tests, no compose-ui-test dependency in the catalog, and introducing one is explicitly out of scope — a cross-cutting decision that would land a test dependency in every module through the convention plugins and deserves its own spec.",
+        "In place of rendered assertions: light and dark @Previews on AnnotationOverlay (new molecule), on MirrorNotesTab, and on the live and frozen stage composables, per .claude/rules/compose-preview-convention.md; an AnnotationOverlay section added to StyleguideScreen for visual QA; and a scripted manual demo via ./gradlew :desktop-application:run walking SC-3, SC-4, SC-9, SC-10 and SC-11 at host density 2.0, with screenshots attached to the PR.",
+        "FOLLOW-UP TICKET TO FILE: 'Adopt compose-ui-test (desktop) and add rendering assertions for AC-5 and AC-7.' This is the honest resolution of the PRD-inherited mismatch — AC-5 and AC-7 are marked verificationMethod: test and will not have rendered coverage in this deliverable."
+      ],
+      "linkedScenarios": [
+        "SC-3",
+        "SC-4",
+        "SC-8",
+        "SC-9",
+        "SC-10",
+        "SC-11"
+      ],
+      "coverageGoal": "Every pure function in this spec (FrameGeometry's four members across BOTH conversion legs, metaLine, sizeLabel, anyOverlap) is covered, and every one of the six new intents has at least one reducer test — roughly 27-32 new tests. Coverage is NOT pursued in the UI layer because no harness exists to pursue it with. Of the 12 ACs: 9 are automated (AC-6, AC-8, AC-46, AC-47 subject to the Skiko probe, AC-48, AC-49, AC-50, AC-51, AC-52 — AC-51 is marked demo but its reducer half is tested anyway), and 3 are partially automated with the remainder verified by preview and demo (AC-5, AC-7, AC-9). The pass bar is the full per-module desktopTest list green with every pre-existing test intact, plus :presentation-core-ui:compileTestKotlinIosArm64 and :presentation-feature-mirror:compileTestKotlinIosArm64 green.",
+      "commands": [
+        "Per-step unit/reducer runs: ./gradlew :presentation-feature-mirror:desktopTest",
+        "Kit build (alone, 3 GB daemon cap): ./gradlew :presentation-core-ui:build",
+        "Feature build: ./gradlew :presentation-feature-mirror:build",
+        "Window build: ./gradlew :compose-application:build",
+        "FULL REGRESSION (the exact command, run after step 9 and again at step 11; split into two halves if the daemon complains): ./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest :presentation-feature-mirror:desktopTest",
+        "iOS test-compile trap guard (BEFORE the PR, not after): ./gradlew :presentation-core-ui:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64",
+        "Manual demo: ./gradlew :desktop-application:run"
+      ]
+    },
+    "traceabilityMatrix": [
+      {
+        "ac": "AC-5",
+        "kind": "AC",
+        "functional": [
+          "FR-6",
+          "FR-26"
+        ],
+        "components": [
+          "FrameGeometry",
+          "AnnotationFormat",
+          "MirrorAnnotationStage (MirrorLiveStage)",
+          "AnnotationMark",
+          "Ruler",
+          "MirrorFrameView.overlay"
+        ],
+        "steps": [
+          1,
+          2,
+          5,
+          6
+        ],
+        "tests": [
+          "FrameGeometryTest (where the box lands, both legs)",
+          "AnnotationFormatTest.sizeLabelMatchesTheMarkShape (what the label says)",
+          "SC-8",
+          "INSPECTION: light/dark @Preview of the Drawing-state mark and the Ruler",
+          "DEMO: SC-3 drag on a live mirror at density 2.0 — no Compose UI-test harness exists, so the dashed border and the live tick guides are NOT asserted"
+        ]
+      },
+      {
+        "ac": "AC-6",
+        "kind": "AC",
+        "functional": [
+          "FR-7"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler",
+          "MirrorContract (FrozenFrame, MirrorStage.Frozen)",
+          "MirrorAnnotationStage"
+        ],
+        "steps": [
+          3,
+          4,
+          6
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.firstStageAnnotationFreezesTheFrame",
+          "SC-3"
+        ]
+      },
+      {
+        "ac": "AC-7",
+        "kind": "AC",
+        "functional": [
+          "FR-8",
+          "FR-30"
+        ],
+        "components": [
+          "AnnotationOverlay (scrim)",
+          "CommentPopover",
+          "AnnotationMark (Pinned/Selected)",
+          "AnnotationFormat.metaLine",
+          "MirrorAnnotationStage (MirrorFrozenStage)"
+        ],
+        "steps": [
+          2,
+          5,
+          7,
+          8
+        ],
+        "tests": [
+          "AnnotationFormatTest.metaLineMatchesTheDocumentedShape",
+          "MirrorViewModelAnnotationTest.firstStageAnnotationFreezesTheFrame (stage == Frozen with selectedIndex set, so the popover is composed)",
+          "INSPECTION: light/dark @Preview of AnnotationOverlay and the frozen stage",
+          "DEMO: SC-3 — the dim, the autofocus and the delete affordance are NOT asserted; no UI-test harness exists"
+        ]
+      },
+      {
+        "ac": "AC-8",
+        "kind": "AC",
+        "functional": [
+          "FR-8",
+          "FR-29"
+        ],
+        "components": [
+          "MirrorViewModel.CommentAnnotation / DeleteAnnotation handlers",
+          "CommentPopover onClose repurposed as delete",
+          "onPreviewKeyEvent Enter handling"
+        ],
+        "steps": [
+          4,
+          7,
+          8
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.commentCommitStoresTheText",
+          "MirrorViewModelAnnotationTest.deleteDecrementsStagedCountAndRenumbers",
+          "MirrorViewModelAnnotationTest.deleteOfSelectedAnnotationClearsOrClampsSelection",
+          "SC-10"
+        ]
+      },
+      {
+        "ac": "AC-9",
+        "kind": "AC",
+        "functional": [
+          "FR-9"
+        ],
+        "components": [
+          "popoverCrowding",
+          "AnnotationPopover",
+          "MirrorAnnotationStage gutter column + Canvas leader lines"
+        ],
+        "steps": [
+          10
+        ],
+        "tests": [
+          "PopoverCrowdingTest (all four)",
+          "DEMO: SC-4 with three crowded annotations, screenshot attached — AC-9 is demo-verified by design, at minimum fidelity with no elbow-stagger"
+        ]
+      },
+      {
+        "ac": "AC-46",
+        "kind": "AC",
+        "functional": [
+          "FR-26"
+        ],
+        "components": [
+          "FrameGeometry.toDevice",
+          "FrameGeometry.toFrame",
+          "FrameGeometry.toDp"
+        ],
+        "steps": [
+          1
+        ],
+        "tests": [
+          "FrameGeometryTest.densityTwoDoesNotScaleTheStoredRect (storage leg)",
+          "FrameGeometryTest.toDpDividesByDensityExactlyOnce (render leg)",
+          "FrameGeometryTest.pointerToDeviceToDpRoundTripLandsUnderTheCursor (the POC-trap reproduction — REFINE-ADDED; the draft's storage-leg-only fixture could not have failed for the reason this AC exists)",
+          "FrameGeometryTest.nonIntegerScaleRoundsEachCornerIndependently",
+          "SC-8"
+        ]
+      },
+      {
+        "ac": "AC-47",
+        "kind": "AC",
+        "functional": [
+          "FR-7"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler reading currentFrame.value once at release",
+          "MirrorFakes fake decoder (conditional)"
+        ],
+        "steps": [
+          4
+        ],
+        "tests": [
+          "Step-4 Skiko probe (ImageBitmap(2,3).width == 2) decides the branch",
+          "IF PROBE PASSES: MirrorViewModelAnnotationTest.freezeUsesTheFrameHeldAtRelease asserting frozenFrame.value's width AND height against two bitmaps differing in both dimensions",
+          "IF PROBE FAILS: INSPECTION of the single currentFrame.value read in the StageAnnotation handler + DEMO SC-3. The draft's FrozenFrame.deviceSize fallback is unreachable and is NOT used."
+        ]
+      },
+      {
+        "ac": "AC-48",
+        "kind": "AC",
+        "functional": [
+          "FR-27"
+        ],
+        "components": [
+          "MirrorViewModel.ClearStaged handler",
+          "MirrorUiState.stagedCount",
+          "CounterBadge",
+          "AppButton (clearAction)",
+          "RectifyWindow.kt"
+        ],
+        "steps": [
+          4,
+          9
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.clearStagedEmptiesTheListAndKeepsTheFrameFrozen",
+          "INSPECTION: the Empty-at-0-else-Staged mapping is a one-expression private helper in RectifyWindow.kt; compose-application has no test source set",
+          "DEMO: stage three annotations, click Clear, confirm the badge returns to 0/Empty and the stage stays frozen"
+        ]
+      },
+      {
+        "ac": "AC-49",
+        "kind": "AC",
+        "functional": [
+          "FR-28"
+        ],
+        "components": [
+          "MirrorNotesTab",
+          "AnnotationRow",
+          "MirrorViewModel.SelectAnnotation handler",
+          "RectifyWindowShell.tabCounts",
+          "SidePanelFrame"
+        ],
+        "steps": [
+          4,
+          5,
+          9
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.selectAnnotationNullKeepsTheAnnotationAndTheCount",
+          "MirrorViewModelAnnotationTest.deleteDecrementsStagedCountAndRenumbers (the index-order invariant)",
+          "INSPECTION: MirrorNotesTab @Preview, one row per annotation in index order",
+          "DEMO: click a row, confirm the corresponding mark turns Selected on the frame"
+        ]
+      },
+      {
+        "ac": "AC-50",
+        "kind": "AC",
+        "functional": [
+          "FR-29"
+        ],
+        "components": [
+          "onPreviewKeyEvent on the popover focus subtree",
+          "MirrorViewModel.SelectAnnotation(null)",
+          "handleShellShortcut (parameter unchanged, argument now constant)",
+          "shortcutToTab (unchanged)"
+        ],
+        "steps": [
+          4,
+          8
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.selectAnnotationNullKeepsTheAnnotationAndTheCount",
+          "ShortcutToTabTest (pre-existing, covers the meta-only mapping)",
+          "INSPECTION: handleShellShortcut matches only isMetaPressed (line 327), and MirrorStage.Picker and MirrorStage.Frozen are mutually exclusive enum values",
+          "DEMO: SC-10 plus typing a digit and pressing Cmd+2 while the comment field has focus"
+        ]
+      },
+      {
+        "ac": "AC-51",
+        "kind": "AC",
+        "functional": [
+          "FR-30"
+        ],
+        "components": [
+          "MirrorViewModel.ResumeLive handler",
+          "AppButton (Resume Live)",
+          "MirrorAnnotationStage (MirrorFrozenStage)"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.resumeLiveClearsTheFrozenFrameAndAnnotations",
+          "MirrorViewModelAnnotationTest.dragAfterResumeLiveFreezesANewFrame",
+          "DEMO: SC-11 — the perceptual half, that live frames resume with no reconnection stall, is demo-only"
+        ]
+      },
+      {
+        "ac": "AC-52",
+        "kind": "AC",
+        "functional": [
+          "FR-31"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler (frozenFrame.value ?: currentFrame.value)",
+          "MirrorAnnotationStage drag layer active on the frozen stage"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.secondDragAddsAnnotationWithoutRefreezing",
+          "SC-9"
+        ]
+      },
+      {
+        "ac": "FR-6",
+        "kind": "FR",
+        "functional": [
+          "FR-6"
+        ],
+        "components": [
+          "MirrorAnnotationStage (MirrorLiveStage)",
+          "AnnotationMark",
+          "Ruler",
+          "MirrorFrameView.overlay",
+          "AnnotationFormat.sizeLabel"
+        ],
+        "steps": [
+          2,
+          5,
+          6
+        ],
+        "tests": [
+          "AC-5",
+          "AnnotationFormatTest",
+          "FrameGeometryTest",
+          "DEMO: SC-3"
+        ]
+      },
+      {
+        "ac": "FR-7",
+        "kind": "FR",
+        "functional": [
+          "FR-7"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler",
+          "MirrorContract.FrozenFrame"
+        ],
+        "steps": [
+          3,
+          4
+        ],
+        "tests": [
+          "AC-6",
+          "AC-47",
+          "MirrorViewModelAnnotationTest.firstStageAnnotationFreezesTheFrame",
+          "MirrorViewModelAnnotationTest.freezeUsesTheFrameHeldAtRelease (probe-dependent)"
+        ]
+      },
+      {
+        "ac": "FR-8",
+        "kind": "FR",
+        "functional": [
+          "FR-8"
+        ],
+        "components": [
+          "AnnotationOverlay",
+          "CommentPopover",
+          "AnnotationFormat.metaLine"
+        ],
+        "steps": [
+          2,
+          5,
+          7
+        ],
+        "tests": [
+          "AC-7",
+          "AC-8",
+          "AnnotationFormatTest",
+          "INSPECTION: AnnotationOverlay light/dark @Preview",
+          "DEMO: SC-3"
+        ]
+      },
+      {
+        "ac": "FR-9",
+        "kind": "FR",
+        "functional": [
+          "FR-9"
+        ],
+        "components": [
+          "popoverCrowding",
+          "AnnotationPopover",
+          "gutter column + leader lines"
+        ],
+        "steps": [
+          10
+        ],
+        "tests": [
+          "AC-9",
+          "PopoverCrowdingTest",
+          "DEMO: SC-4"
+        ]
+      },
+      {
+        "ac": "FR-26",
+        "kind": "FR",
+        "functional": [
+          "FR-26"
+        ],
+        "components": [
+          "FrameGeometry",
+          "AnnotationOverlay (Dp-only contract, so the kit cannot grow a second conversion)"
+        ],
+        "steps": [
+          1,
+          5
+        ],
+        "tests": [
+          "AC-46",
+          "FrameGeometryTest (all nine, covering both legs)",
+          "SC-8",
+          "INSPECTION: FrameGeometry is internal with no @Composable and no ViewModel import; grep finds no density arithmetic on frame coordinates anywhere else, including in presentation-core-ui"
+        ]
+      },
+      {
+        "ac": "FR-27",
+        "kind": "FR",
+        "functional": [
+          "FR-27"
+        ],
+        "components": [
+          "CounterBadge",
+          "AppButton (clearAction)",
+          "MirrorViewModel.ClearStaged",
+          "RectifyWindow.kt"
+        ],
+        "steps": [
+          4,
+          9
+        ],
+        "tests": [
+          "AC-48",
+          "MirrorViewModelAnnotationTest.clearStagedEmptiesTheListAndKeepsTheFrameFrozen",
+          "INSPECTION: the RectifyWindow.kt call site at lines 232-242"
+        ]
+      },
+      {
+        "ac": "FR-28",
+        "kind": "FR",
+        "functional": [
+          "FR-28"
+        ],
+        "components": [
+          "MirrorNotesTab",
+          "AnnotationRow",
+          "RectifyWindowShell.tabCounts",
+          "SidePanelFrame"
+        ],
+        "steps": [
+          5,
+          9
+        ],
+        "tests": [
+          "AC-49",
+          "INSPECTION: MirrorNotesTab @Preview and the RectifyWindowShell tabCounts forwarding that step 5 adds — without it the count is unreachable",
+          "DEMO: Notes tab count matches the toolbar badge"
+        ]
+      },
+      {
+        "ac": "FR-29",
+        "kind": "FR",
+        "functional": [
+          "FR-29"
+        ],
+        "components": [
+          "onPreviewKeyEvent on the popover focus subtree",
+          "CommentPopover onClose as delete"
+        ],
+        "steps": [
+          8
+        ],
+        "tests": [
+          "AC-8",
+          "AC-50",
+          "ShortcutToTabTest (pre-existing)",
+          "DEMO: SC-10"
+        ]
+      },
+      {
+        "ac": "FR-30",
+        "kind": "FR",
+        "functional": [
+          "FR-30"
+        ],
+        "components": [
+          "MirrorViewModel.ResumeLive",
+          "MirrorAnnotationStage (MirrorFrozenStage)",
+          "StatusIndicatorState.Frozen",
+          "AnnotationOverlay scrim"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "AC-51",
+          "MirrorViewModelAnnotationTest.resumeLiveClearsTheFrozenFrameAndAnnotations",
+          "INSPECTION: diff confirms sessionDeviceId and the flatMapLatest gate are untouched",
+          "DEMO: SC-11, no reconnection stall; the stats line keeps reporting fps while frozen"
+        ]
+      },
+      {
+        "ac": "FR-31",
+        "kind": "FR",
+        "functional": [
+          "FR-31"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler",
+          "drag layer active on the frozen stage"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "AC-52",
+          "MirrorViewModelAnnotationTest.secondDragAddsAnnotationWithoutRefreezing",
+          "SC-9"
+        ]
+      },
+      {
+        "ac": "NFR-1",
+        "kind": "NFR",
+        "functional": [
+          "FR-30"
+        ],
+        "components": [
+          "MirrorViewModel (capture gate untouched)",
+          "AnnotationOverlay (no saveLayer)",
+          "drag offsets in remember"
+        ],
+        "steps": [
+          4,
+          5,
+          6,
+          11
+        ],
+        "tests": [
+          "INSPECTION: the diff touches neither sessionDeviceId nor observeFrames, so the capture/decode/transport path is bit-identical",
+          "INSPECTION: performanceBudget — one path fill, no saveLayer, zero reducer passes during a drag",
+          "DEMO: the stats line's fps reading is unchanged before, during and after a freeze"
+        ]
+      },
+      {
+        "ac": "NFR-8",
+        "kind": "NFR",
+        "functional": [
+          "FR-29"
+        ],
+        "components": [
+          "onPreviewKeyEvent",
+          "FocusRequester autofocus",
+          "CommentPopover (contingent focusRequester parameter)"
+        ],
+        "steps": [
+          8
+        ],
+        "tests": [
+          "AC-50",
+          "A11Y-1",
+          "A11Y-2",
+          "A11Y-3",
+          "A11Y-4",
+          "DEMO: SC-10 walked by keyboard only, from creating an annotation to typing, saving, escaping and deleting"
+        ]
+      },
+      {
+        "ac": "NFR-9",
+        "kind": "NFR",
+        "functional": [
+          "FR-8",
+          "FR-30"
+        ],
+        "components": [
+          "AnnotationOverlay ScrimFill",
+          "AnnotationMark (Theme.color.annotate)",
+          "CommentPopover / AnnotationPopover (deliberately dark in both themes)",
+          "MirrorNotesTab",
+          "StyleguideScreen"
+        ],
+        "steps": [
+          5,
+          11
+        ],
+        "tests": [
+          "A11Y-7",
+          "A11Y-8",
+          "INSPECTION: light and dark @Previews on every new composable; the AnnotationOverlay StyleguideScreen section",
+          "INSPECTION: grep finds no literal Color(0x…), no raw .dp at a call site and no inline TextStyle in the new code",
+          "DEMO: step 11's light/dark parity pass over all four new surfaces"
+        ]
+      },
+      {
+        "ac": "SC-3",
+        "kind": "SC",
+        "functional": [
+          "FR-6",
+          "FR-7",
+          "FR-8"
+        ],
+        "components": [
+          "MirrorLiveStage",
+          "MirrorFrozenStage",
+          "CommentPopover"
+        ],
+        "steps": [
+          6,
+          7,
+          8
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.firstStageAnnotationFreezesTheFrame + commentCommitStoresTheText cover the state transitions",
+          "DEMO: the end-to-end gesture, autofocus and Enter-to-save",
+          "NOTE: this is F-4's SC-3 (annotation). F-1 bound its own SC-3 to a shell scenario — the ids are spec-scoped, not globally unique."
+        ]
+      },
+      {
+        "ac": "SC-4",
+        "kind": "SC",
+        "functional": [
+          "FR-9"
+        ],
+        "components": [
+          "popoverCrowding",
+          "gutter column",
+          "AnnotationPopover"
+        ],
+        "steps": [
+          10
+        ],
+        "tests": [
+          "PopoverCrowdingTest.oneOverlappingPairCrowdsEverything",
+          "DEMO: three crowded annotations, screenshot attached",
+          "NOTE: this is F-4's SC-4 (annotation). F-1 bound its own SC-4 to a shell scenario — the ids are spec-scoped, not globally unique."
+        ]
+      },
+      {
+        "ac": "SC-8",
+        "kind": "SC",
+        "functional": [
+          "FR-26"
+        ],
+        "components": [
+          "FrameGeometry.toDevice",
+          "FrameGeometry.toFrame",
+          "FrameGeometry.toDp"
+        ],
+        "steps": [
+          1
+        ],
+        "tests": [
+          "FrameGeometryTest.densityTwoDoesNotScaleTheStoredRect",
+          "FrameGeometryTest.toDpDividesByDensityExactlyOnce",
+          "FrameGeometryTest.pointerToDeviceToDpRoundTripLandsUnderTheCursor",
+          "FrameGeometryTest.nonIntegerScaleRoundsEachCornerIndependently"
+        ]
+      },
+      {
+        "ac": "SC-9",
+        "kind": "SC",
+        "functional": [
+          "FR-31"
+        ],
+        "components": [
+          "MirrorViewModel.StageAnnotation handler",
+          "MirrorFrozenStage drag layer"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.secondDragAddsAnnotationWithoutRefreezing",
+          "DEMO: two drags on one frozen frame, badges 1 and 2, one scrim with two holes"
+        ]
+      },
+      {
+        "ac": "SC-10",
+        "kind": "SC",
+        "functional": [
+          "FR-8",
+          "FR-29"
+        ],
+        "components": [
+          "onPreviewKeyEvent",
+          "CommentPopover onClose as delete",
+          "MirrorNotesTab row selection"
+        ],
+        "steps": [
+          4,
+          8,
+          9
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.selectAnnotationNullKeepsTheAnnotationAndTheCount",
+          "MirrorViewModelAnnotationTest.deleteDecrementsStagedCountAndRenumbers",
+          "DEMO: Escape then reselect-from-the-Notes-row then delete"
+        ]
+      },
+      {
+        "ac": "SC-11",
+        "kind": "SC",
+        "functional": [
+          "FR-30"
+        ],
+        "components": [
+          "MirrorViewModel.ResumeLive",
+          "Resume Live AppButton"
+        ],
+        "steps": [
+          4,
+          7
+        ],
+        "tests": [
+          "MirrorViewModelAnnotationTest.resumeLiveClearsTheFrozenFrameAndAnnotations",
+          "MirrorViewModelAnnotationTest.dragAfterResumeLiveFreezesANewFrame",
+          "DEMO: live pixels resume with no reconnection stall, then a second freeze"
+        ]
+      }
+    ],
+    "openQuestions": [
+      "SCENARIO-ID COLLISION (must survive into Stage 5): F-1 already bound SC-3 and SC-4 to different shell scenarios. This spec keeps the PRD's canonical annotation SC-3 (draw and freeze) and SC-4 (crowded popovers relocate). Scenario ids are spec-scoped, not globally unique — do not conflate them when slicing or reporting.",
+      "Whether to pause the capture/transport loop while frozen (power/perf) is left for later — FR-30 assumes it keeps running. If it bites, the fix is an isFrozen flag folded into the transport's adaptive interval, not a session teardown.",
+      "The gutter/leader-line 8 px elbow-stagger polish named in AnnotationPopover's KDoc is not implemented in v1 — a follow-up design/visual-QA pass should revisit it.",
+      "Whether a frozen frame should ever persist annotations across a Resume-Live -> freeze-again cycle (multi-frame annotation sets) is explicitly deferred to F-8 (history).",
+      "Vertical ruler for FR-6's 'ruler/tick guides': this plan takes the recommendation — horizontal plus vertical via the existing Ruler rotated 270 degrees in a fixed-size Box, as the component's own KDoc anticipates, rather than authoring a second VerticalRuler. The rotation wrapper is built in step 6; if rotation produces an unacceptable tick-label orientation, the fallback is horizontal-only, which still satisfies FR-6's wording.",
+      "Where the Resume Live control sits: this plan takes the recommendation — a stage top-right overlay AppButton over the scrim, because the toolbar's primaryAction is reserved for F-7's 'Resolve & Send' and the status bar is only 28 dp tall. The geometry constant is flagged for design review.",
+      "Minimum drag size before an annotation is created: a named MIN_DRAG_DEVICE_PX constant at 8 device px in both axes. A one-line tune, flagged for review after the first real session.",
+      "Does the Notes tab auto-activate on first freeze: surfaced in the survey. The plan's default is auto-select Notes on the FIRST annotation of a frozen frame only, never on subsequent ones, so a user who deliberately switched to Payload is not fought. Implemented in RectifyWindow because ShellState.activeTab has a private setter.",
+      "No design comp exists for ANY part of this feature — the scrim alpha, the Resume Live placement and geometry, the ruler placement, the gutter width and the leader-line routing are all invented. Every one ships as a named private constant so the later design conversation is a one-line change each (precedent: F-1's stage dot grid).",
+      "CommentPopover's X affordance means DELETE here (FR-8) while Escape means COLLAPSE (FR-29) — two visually similar dismissals with different destructiveness and no confirm. No design input exists on how to differentiate them; shipped as-is and flagged.",
+      "CommentPopover's tail has a fixed 18 dp inset (TailInset, line 54) and no placement logic, so a popover clamped away from its mark's edge will point at the wrong place. Accepted at demo fidelity — a tailOffset parameter is the eventual fix.",
+      "StagedAnnotation lives in the presentation contract for now (one consumer, no serialization need); lift it to domain-core only when F-7 needs it in an MCP payload — a package move, not a redesign.",
+      "NEW (plan): making the side panel permanently composed changes the window's appearance from the first frame and activates Cmd+1/2/3 for the first time. Surfaced in the survey. The alternative (session-gated) needs the mirror state inside the Window's onPreviewKeyEvent, where it is not available without a composition-time side effect.",
+      "NEW (refine): AC-47's automatability depends on whether Skiko loads in a headless desktopTest JVM. Resolved by a three-line probe at the top of step 4 rather than by planning both branches in the abstract. The probe result is recorded in the PR and AC-47's verificationNote is updated to match.",
+      "NEW (plan): RectifyWindow.kt's existing literal labels (Clear, Resolve & Send, No device, staged) are left unlocalised, consistent with F-1's choice for that file. Converting them is a separate small ticket, not this spec's churn."
+    ],
+    "survey": [],
+    "readyForBacklog": true
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-auto",
+    "approved": true,
+    "at": "2026-10-15T04:04:05Z"
+  }
+}

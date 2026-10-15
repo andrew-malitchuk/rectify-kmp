@@ -6,3 +6,7 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 79612, "at": "2026-10-15T03:15:09Z", "spec": "drag-annotate-frozen-frame"}
 {"stage": "preparation", "event": "end", "at": "2026-10-15T03:15:09Z", "spec": "drag-annotate-frozen-frame"}
 {"stage": "plan", "event": "start", "at": "2026-10-15T03:15:09Z", "spec": "drag-annotate-frozen-frame"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 229004, "at": "2026-10-15T03:34:07Z", "spec": "drag-annotate-frozen-frame"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 247712, "at": "2026-10-15T04:04:05Z", "spec": "drag-annotate-frozen-frame"}
+{"stage": "plan", "event": "end", "at": "2026-10-15T04:04:05Z", "spec": "drag-annotate-frozen-frame"}
+{"stage": "backlog", "event": "start", "at": "2026-10-15T04:04:05Z", "spec": "drag-annotate-frozen-frame"}
