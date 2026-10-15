@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -71,7 +72,8 @@ internal class FakeBootEmulator : BootEmulatorUseCase {
  * A frame source that counts its live collectors.
  *
  * [activeCollectors] is the assertion behind "rapid start/stop never leaves two capture loops
- * alive"; [failure] stands in for a device that vanished as the session opened.
+ * alive"; [failure] stands in for a device that vanished as the session opened, and
+ * [failStream] for one that vanished afterwards.
  */
 internal class FakeStartMirroring : StartMirroringUseCase {
 
@@ -82,7 +84,10 @@ internal class FakeStartMirroring : StartMirroringUseCase {
     var activeCollectors: Int = 0
         private set
 
+    /** Fails the flow at subscription — the device was already gone when the session opened. */
     var failure: Throwable? = null
+
+    private var midStreamFailure: Throwable? = null
 
     override fun invoke(deviceId: String): Flow<MirrorFrameModel> = source
         .onStart {
@@ -90,9 +95,22 @@ internal class FakeStartMirroring : StartMirroringUseCase {
             activeCollectors++
             failure?.let { throw it }
         }
+        .onEach { midStreamFailure?.let { throw it } }
         .onCompletion { activeCollectors-- }
 
     suspend fun pushFrame(frame: MirrorFrameModel) {
+        source.emit(frame)
+    }
+
+    /**
+     * Breaks an **already running** collection, which `failure` cannot do: `onStart` has long
+     * since run by the time a session is open, so only a throw on an emission reaches the
+     * ViewModel's `.catch` and the session-lost path behind it.
+     *
+     * [frame] is never delivered — it is the carrier that gets the throw into the collector.
+     */
+    suspend fun failStream(cause: Throwable, frame: MirrorFrameModel) {
+        midStreamFailure = cause
         source.emit(frame)
     }
 }

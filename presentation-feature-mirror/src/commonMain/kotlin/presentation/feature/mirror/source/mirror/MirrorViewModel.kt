@@ -260,30 +260,42 @@ public class MirrorViewModel(
      *
      * Nothing here touches [sessionDeviceId]: freezing is a render decision, the capture loop
      * keeps running (FR-30), and that is why Resume Live costs no reconnection.
+     *
+     * This and every other annotation handler read `state.frozen` **inside** `reduce`. Orbit
+     * launches each intent in its own coroutine, so a read taken outside is a pre-image two
+     * overlapping intents can both capture, and the later `reduce` then writes back a copy
+     * that never saw the earlier one — a per-keystroke comment racing a delete resurrects the
+     * annotation the user just removed. Inside `reduce` the read is safe for a concrete
+     * reason: Orbit reduces with `MutableStateFlow.update`, a CAS loop that re-runs the
+     * lambda against the winning value whenever it loses the race.
      */
     private fun stageAnnotation(rect: DeviceRect) = intent {
         val held = currentFrame.value ?: return@intent
         if (currentFrozenFrame.value == null) currentFrozenFrame.value = held
-        val frozen = state.frozen
-            ?: FrozenFrame(deviceSize = IntSize(width = held.width, height = held.height))
-        val staged = frozen.annotations +
-            StagedAnnotation(index = frozen.annotations.size + 1, rect = rect)
         reduce {
+            val frozen = state.frozen
+                ?: FrozenFrame(deviceSize = IntSize(width = held.width, height = held.height))
+            val staged = frozen.annotations +
+                StagedAnnotation(index = frozen.annotations.size + 1, rect = rect)
             state.copy(frozen = frozen.copy(annotations = staged, selectedIndex = staged.size))
         }
     }
 
     private fun selectAnnotation(index: Int?) = intent {
-        val frozen = state.frozen ?: return@intent
-        reduce { state.copy(frozen = frozen.copy(selectedIndex = index)) }
+        reduce {
+            val frozen = state.frozen ?: return@reduce state
+            state.copy(frozen = frozen.copy(selectedIndex = index))
+        }
     }
 
     private fun commentAnnotation(index: Int, comment: String) = intent {
-        val frozen = state.frozen ?: return@intent
-        val staged = frozen.annotations.map { annotation ->
-            if (annotation.index == index) annotation.copy(comment = comment) else annotation
+        reduce {
+            val frozen = state.frozen ?: return@reduce state
+            val staged = frozen.annotations.map { annotation ->
+                if (annotation.index == index) annotation.copy(comment = comment) else annotation
+            }
+            state.copy(frozen = frozen.copy(annotations = staged))
         }
-        reduce { state.copy(frozen = frozen.copy(annotations = staged)) }
     }
 
     /**
@@ -295,23 +307,23 @@ public class MirrorViewModel(
      * number.
      */
     private fun deleteAnnotation(index: Int) = intent {
-        val frozen = state.frozen ?: return@intent
-        val kept = frozen.annotations.filterNot { it.index == index }
-        val renumbered = kept.mapIndexed { position, annotation ->
-            annotation.copy(index = position + 1)
-        }
-        val selected = frozen.selected
-            ?.takeIf { it.index != index }
-            ?.let { annotation -> kept.indexOf(annotation).takeIf { it >= 0 }?.plus(1) }
         reduce {
+            val frozen = state.frozen ?: return@reduce state
+            val kept = frozen.annotations.filterNot { it.index == index }
+            val renumbered = kept.mapIndexed { position, annotation ->
+                annotation.copy(index = position + 1)
+            }
+            val selected = frozen.selected
+                ?.takeIf { it.index != index }
+                ?.let { annotation -> kept.indexOf(annotation).takeIf { it >= 0 }?.plus(1) }
             state.copy(frozen = frozen.copy(annotations = renumbered, selectedIndex = selected))
         }
     }
 
     /** Empties the staged list. The frame stays pinned — only Resume Live unpins it (AC-48). */
     private fun clearStaged() = intent {
-        val frozen = state.frozen ?: return@intent
         reduce {
+            val frozen = state.frozen ?: return@reduce state
             state.copy(frozen = frozen.copy(annotations = emptyList(), selectedIndex = null))
         }
     }
