@@ -1,6 +1,6 @@
 {
   "spec": "measure-mode",
-  "updatedAt": "2026-10-16T21:55:38Z",
+  "updatedAt": "2026-10-16T23:03:29Z",
   "sealed": false,
   "agents": {
     "sdd-build-generate-registry": {

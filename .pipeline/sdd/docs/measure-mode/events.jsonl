@@ -32,3 +32,4 @@
 {"stage": "execution", "step": "wave-3", "event": "end", "tokens": 429130, "note": "T-3+T-4 green; 2 frozen-test harness defects fixed by their authors, zero production failures", "at": "2026-10-16T21:55:38Z", "spec": "measure-mode"}
 {"stage": "execution", "event": "note", "note": "operator delegated all remaining decisions to the orchestrator and left the session", "at": "2026-10-16T22:07:08Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "wave-4", "event": "end", "tokens": 496586, "at": "2026-10-16T22:19:21Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "batch-a", "event": "end", "tokens": 663680, "at": "2026-10-16T23:03:29Z", "spec": "measure-mode"}

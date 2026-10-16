@@ -282,3 +282,84 @@ only the method's return type, which no production change could affect. It is
 recorded here because the standing rule is that the implementer never edits a
 frozen test; a mechanical return-type fix that makes a test run at all does not
 weaken anything, which is what that rule protects.
+
+---
+
+# Addendum — the design's real `measure()` recovered; a shipped @Preview value is wrong (batch A, under delegation)
+
+Recorded 2026-10-17 by the orchestrator under delegation.
+
+## The oracle exists after all
+
+`design-measure-mode.md` (149 lines) is a **prose extraction**; it contains the
+algorithm's snippets but not the literal `ELS` array, so the batch-A test author
+correctly reported there was "nothing to port". The fixture does exist: it was
+recovered from the cached bundle (`raw/rectify-screens.html`) by gzip-decoding
+its base64 `__bundler/manifest` blobs, together with the design's own
+`measure(a, u)` in full. Both are written up verbatim at
+**`inputs/design-measure-source.md`**, which now outranks the prose md and every
+paraphrase of it in this spec.
+
+Nine details the prose did not settle are listed there. The ones that changed
+test code: the design's frame is **296 × 640** (an earlier draft invented
+400 × 800); finding messages use the neighbour's **`id`**, not its `node` label;
+the touch-target branch fires at `h < 32` but advises `min touch 48`, two
+deliberately different numbers; and the design has **no density conversion at
+all** (`u` is only a label suffix), so this project's rule that guide
+suppression is evaluated after px→dp conversion is an **extension** for real
+devices rather than something the design states.
+
+## `MeasureCard`'s shipped @Preview has one value the algorithm cannot produce
+
+Running the recovered `measure()` over the real 19-node `ELS` for the
+`item_price` annotation — verified twice, once by the test author and once
+independently by the orchestrator:
+
+| source | Size | Top | Right | Bottom | Left | finding |
+|---|---|---|---|---|---|---|
+| `MeasureCard.kt` @Preview | 48×17 | **9dp** | 20dp | 49dp | 62dp | `top Δ6dp vs item_title · expected 0` |
+| the design's own algorithm | 48×17 | **15dp** | 20dp | 49dp | 62dp | identical |
+
+Four of five values and the finding string match exactly, so this is
+unambiguously the same node and the same fixture. `Top` does not. The nearest
+horizontally-overlapping node above `item_price` is `divider_1`, bottom edge
+183, giving `198 - 183 = 15`. **No node in the fixture has a bottom edge at
+189**, so `9dp` cannot be derived from this algorithm by any neighbour pick — it
+is an illustrative value that was never run through it.
+
+The two numbers are also independent by construction: the finding's `Δ6` comes
+from the **left** neighbour (`item_title`), while the Top gap comes from the
+**above** neighbour (`divider_1`). Nothing couples them, which is how the
+preview could be internally plausible and still wrong.
+
+### Rulings
+
+1. **The oracle test pins the computed `15dp`.** The implementation follows the
+   design's algorithm, not the preview. Same discipline as the 32-vs-48
+   mismatch: do not "fix" a value to make two sources agree when one of them is
+   the authority.
+2. **T-12 corrects the @Preview's `Top` to `15dp`** with a comment pointing at
+   this record, so the repo's own example agrees with the algorithm it
+   illustrates. This is a one-line change inside T-12's existing scope
+   (`MeasureCard.kt`), not new scope.
+3. **The preview is no longer admissible as ground truth** for any value other
+   than the four that reproduce. Stage 5 and Stage 6 should treat
+   `inputs/design-measure-source.md` as the authority and this preview as
+   corroboration only.
+
+## One rule the real fixture cannot exercise
+
+The design renders neighbour rects with `Math.max(e.h, 1)`, a 1px floor so its
+1px dividers stay visible. No `ELS` node has `h: 0`, so the real fixture cannot
+test the floor. Recorded as unexercised in a test comment rather than silently
+skipped.
+
+## A correctness requirement found by tracing real data, in neither plan nor backlog
+
+The hierarchy's **root node always wins `snapTarget`**: it fully contains every
+other node and always has the largest area, so against a real dump every measure
+would snap to the root and the feature could not work at all. T-1's spike note
+confirms all three dumps' roots are `[0,0][984,2132]`, i.e. the whole frame.
+`projectMeasureNodes` therefore excludes the full-frame root from candidates,
+and a test pins it. This was found by the batch-A test author tracing the real
+data path, and appears nowhere in the plan or the backlog.
