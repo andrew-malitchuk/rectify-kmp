@@ -33,6 +33,7 @@ private const val PHONE = "37281FDH2000AB"
 /** Two rectangles that are obviously not each other, in device pixels. */
 private val FIRST_RECT = DeviceRect(left = 100, top = 200, right = 318, bottom = 277)
 private val SECOND_RECT = DeviceRect(left = 40, top = 900, right = 585, bottom = 1154)
+private val THIRD_RECT = DeviceRect(left = 60, top = 1500, right = 500, bottom = 1600)
 
 private fun phone(): DeviceModel = DeviceModel(
     id = PHONE,
@@ -385,6 +386,64 @@ class MirrorViewModelAnnotationTest {
     }
 
     /** The frozen stage with two annotations staged against one pinned frame. */
+
+    /**
+     * T-17 / TAC-3 — T11, AC-29's real substance.
+     *
+     * The banner promises "Your N annotations are kept on the frozen frame." Keeping the *data*
+     * is only half of that promise: if the annotations survive but cannot be touched, the user
+     * is looking at a read-only receipt for work they can no longer finish, and the banner is
+     * still lying. So this drives the full editing surface AFTER the loss.
+     *
+     * Deliberately not folded into the reconnect test: that one proves nothing was destroyed,
+     * this one proves what survived is still usable. A single test covering both would pass
+     * while half the promise was broken.
+     *
+     * MUTATION A: gate `commentAnnotation` on `session !is Lost` — the comment clause fails.
+     * MUTATION B: gate `deleteAnnotation` the same way — the renumber and count clauses fail.
+     * No single mutation covers both, so each clause is load-bearing.
+     */
+    @Test
+    fun annotationsStayEditableWhileTheSessionIsLost() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val viewModel = frozenWithTwoAnnotations(mirroring)
+        viewModel.handleIntent(MirrorIntent.StageAnnotation(THIRD_RECT))
+        advanceUntilIdle()
+
+        mirroring.failStream(IllegalStateException("device unplugged"), frameOf(9))
+        advanceUntilIdle()
+        assertEquals(MirrorSession.Lost(PHONE), viewModel.currentState.session)
+
+        // Every editing intent the frozen surface offers, all of them post-loss.
+        viewModel.handleIntent(MirrorIntent.CommentAnnotation(index = 2, comment = "still typing"))
+        viewModel.handleIntent(MirrorIntent.SelectAnnotation(index = 1))
+        viewModel.handleIntent(MirrorIntent.DeleteAnnotation(index = 1))
+        advanceUntilIdle()
+
+        val frozen = viewModel.currentState.frozen
+        assertEquals(
+            expected = listOf(
+                "count=2",
+                // Deleting index 1 renumbers the survivors rather than leaving a hole, so the
+                // badges on the frame still read 1..n.
+                "indices=[1, 2]",
+                // The comment was written to the annotation that was index 2 and is now 1.
+                "comment=still typing",
+                // Deleting the selected mark clears the selection instead of pointing at a
+                // renumbered stranger.
+                "selected=null",
+                "stillLost=true",
+            ),
+            actual = listOf(
+                "count=${frozen?.annotations?.size}",
+                "indices=${frozen?.annotations?.map { it.index }}",
+                "comment=${frozen?.annotations?.firstOrNull { it.comment.isNotEmpty() }?.comment}",
+                "selected=${frozen?.selectedIndex}",
+                "stillLost=${viewModel.currentState.session is MirrorSession.Lost}",
+            ),
+        )
+    }
+
     private suspend fun TestScope.frozenWithTwoAnnotations(
         mirroring: FakeStartMirroring = FakeStartMirroring(),
     ): MirrorViewModel {
