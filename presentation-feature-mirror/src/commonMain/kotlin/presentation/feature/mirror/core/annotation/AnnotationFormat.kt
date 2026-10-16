@@ -8,8 +8,11 @@ import presentation.feature.mirror.source.mirror.DeviceRect
  * `×`, not the letter `x`: the shipped kit already writes `218×77 @ 1035,862` and `545 × 254`
  * in `AnnotationRow`, `CommentPopover` and `AnnotationMark`, and a stray ASCII `x` would read
  * as a different unit next to them.
+ *
+ * `internal` rather than `private` so `core/measure`'s own size label reuses the one glyph
+ * constant instead of declaring a second `×` that could drift from this one.
  */
-private const val TIMES = '×'
+internal const val TIMES: Char = '×'
 
 /**
  * The machine-readable position line, e.g. `218×77 @ 1035,862`.
