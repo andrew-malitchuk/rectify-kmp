@@ -396,4 +396,43 @@ class DiscoveryErrorProjectionTest {
             ),
         )
     }
+
+    /**
+     * AF-5 — the reachable moment for AC-28's card, pinned so it cannot become dead UI.
+     *
+     * The audit found the card unreachable on a COLD start: `isPickerOpen` defaults to true,
+     * `applyDiscovery(Found)` never closes it, and the card yields to an open picker for
+     * `Found` — deliberately, because there the picker IS the multi-device affordance and
+     * carries the keyboard navigation AC-43 and A11Y-6 were confirmed against. A second
+     * surface for the same decision, displacing the first, would break F-2's confirmed
+     * behaviour to add a worse duplicate.
+     *
+     * So the card's moment is the one the picker cannot serve: it is CLOSED and a second
+     * usable handset turns up — after a session ended, or after the user dismissed it. That
+     * moment is real, and this test is the proof it renders there, which is what stops the
+     * projection being code no path reaches.
+     *
+     * Recorded as a scope clarification rather than a silent narrowing: AC-28's card covers
+     * mid-session ambiguity, and first-run ambiguity is the picker's job.
+     *
+     * MUTATION: restore the unconditional `if (isPickerOpen) return null` — this test fails,
+     * and so does the ToolMissing clause in the guard test above.
+     */
+    @Test
+    fun theAmbiguityCardIsReachableOnceThePickerIsClosed() {
+        val base = stateOf(twoSelectablePhones())
+
+        assertEquals(
+            expected = verdicts(
+                "pickerClosed" to MirrorErrorKind.MultipleDevices,
+                "pickerOpen" to null,
+            ),
+            actual = verdicts(
+                // The picker is closed and two handsets are attached: nothing but the user can
+                // say which they meant, and no other surface is asking.
+                "pickerClosed" to base.copy(isPickerOpen = false).errorCard(NOW)?.kind,
+                "pickerOpen" to base.copy(isPickerOpen = true).errorCard(NOW)?.kind,
+            ),
+        )
+    }
 }

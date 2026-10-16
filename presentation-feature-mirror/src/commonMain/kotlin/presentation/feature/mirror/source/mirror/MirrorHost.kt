@@ -32,14 +32,18 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 @Composable
 public fun MirrorHost(
     viewModel: MirrorViewModel = koinViewModel(),
-    onSideEffect: (MirrorSideEffect) -> Unit = {},
+    // The sink is handed to the handler, not just the effect. A side effect exists to ask the
+    // platform for something the ViewModel cannot do itself - open a file dialog - and the
+    // answer has to get back in as an intent. A handler that receives only the effect can
+    // observe but never reply, which is how MirrorSideEffect.LocateAdb came to open nothing.
+    onSideEffect: (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> },
     content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit,
 ) {
     val state by viewModel.collectAsState()
     val frame by viewModel.frame.collectAsState()
     val frozenFrame by viewModel.frozenFrame.collectAsState()
 
-    viewModel.collectSideEffect { effect -> onSideEffect(effect) }
+    viewModel.collectSideEffect { effect -> onSideEffect(effect, viewModel::handleIntent) }
 
     content(state, frozenFrame ?: frame, viewModel::handleIntent)
 }

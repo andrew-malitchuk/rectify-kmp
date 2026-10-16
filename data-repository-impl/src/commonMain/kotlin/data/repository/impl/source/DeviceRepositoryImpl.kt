@@ -26,6 +26,7 @@ import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
@@ -51,6 +52,8 @@ import kotlin.time.Clock
  * @property nowMs Wall-clock reader. A parameter so the poll metadata is assertable under
  *   virtual time instead of needing a real two-second wait.
  */
+private val log = Logger.withTag("DeviceRepository")
+
 internal class DeviceRepositoryImpl(
     private val adbHostSource: AdbHostSource,
     private val idbHostSource: IdbHostSource,
@@ -217,9 +220,16 @@ internal class DeviceRepositoryImpl(
      */
     private suspend fun healDaemon() {
         try {
+            // Logged on the way IN, not on success. ProcessRunner only logs when it kills a
+            // process, so a repair that works leaves no trace at all — which made the fix
+            // indistinguishable from the bug during hardware verification: one timeout, no
+            // start-server line, and a device that appeared anyway. An unobservable repair is
+            // one nobody can support in the field.
+            log.d { "poll timed out; starting the adb daemon" }
             adbHostSource.startServer()
         } catch (failure: DeviceCommandException) {
             if (!failure.isTimeout()) throw failure
+            log.d { "daemon start timed out; it is wedged rather than absent, restarting it" }
             restartAdbServer()
         }
     }
