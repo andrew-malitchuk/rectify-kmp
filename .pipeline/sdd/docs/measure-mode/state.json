@@ -42,6 +42,16 @@
     "T-2": {
       "status": "done",
       "wave": 2
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 3,
+      "worktreeBranch": "task/wave-3"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 3,
+      "worktreeBranch": "task/wave-3"
     }
   },
   "effort": "fast",
