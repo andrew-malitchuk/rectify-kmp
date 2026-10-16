@@ -49,6 +49,19 @@ public interface DeviceRepository {
     public fun observeMirrorStats(): Flow<MirrorStatsModel>
 
     /**
+     * Restarts the `adb` daemon: kills it, then starts it again.
+     *
+     * Both halves are needed and in that order. `start-server` alone is a "make sure one
+     * exists" command, not a repair command, so it cannot clear a daemon that is alive but
+     * not serving — measured against a wedged daemon, it hangs there. Only killing it first
+     * does, which is why the recovery action is a restart and not a start.
+     *
+     * Fails rather than reporting a success it did not achieve, so a dead `adb` is visible
+     * instead of a button that appears to have worked.
+     */
+    public suspend fun restartAdbServer()
+
+    /**
      * Records the path to the `adb` binary the user pointed Rectify at, or clears it when
      * [path] is empty.
      *

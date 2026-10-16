@@ -132,7 +132,7 @@ internal class DeviceRepositoryImpl(
             )
         }
         adbVersion.value = probe.version.orEmpty()
-        val devices = adbHostSource.listDevices()
+        val devices = listDevicesEscalating()
         avdNames.keys.retainAll(devices.mapTo(mutableSetOf()) { it.id.value })
         val usable = devices.count { it.state == DeviceStateResource.Device }
         val streak = if (usable == 0) emptyPolls + 1 else 0
@@ -152,6 +152,72 @@ internal class DeviceRepositoryImpl(
             )
         }
         return PollOutcome(model, streak)
+    }
+
+    /**
+     * `adb devices -l`, with the FR-36 escalation ladder behind it.
+     *
+     * 1. Ask at the normal [MirrorTuning.HostCommandTimeoutMs] budget. Answered — done.
+     * 2. A TIMEOUT-classified failure, and only that, means the daemon may be cold: heal it
+     *    ([healDaemon]) and ask exactly once more. A parse error or a non-zero exit is a real
+     *    answer about something else and is rethrown untouched, so it reaches the caller as
+     *    `PollFailed` without a single extra process being spawned. Firing a 15 s watchdog at
+     *    output that merely failed to parse would be a bug of its own.
+     * 3. Anything still failing is rethrown, so the loop turns it into `PollFailed` with the
+     *    real reason and tries again on the next tick. One escalation per poll — never a loop.
+     *
+     * There is deliberately NO pre-emptive `startServer()` ahead of the first poll. It was
+     * proposed on the measurement that a warm `start-server` costs 0.00 s, then WITHDRAWN on
+     * the later measurement that it HANGS against a wedged daemon: unconditional, it would
+     * burn the full [MirrorTuning.DaemonStartTimeoutMs] on every poll — a second livelock,
+     * five times longer than the 3 s one this fixes. Keying on a timeout also means there is
+     * no "daemon is believed up" flag to keep, a flag whose belief outlived any daemon the
+     * user killed from a shell.
+     */
+    private suspend fun listDevicesEscalating(): List<DeviceResource> = try {
+        adbHostSource.listDevices()
+    } catch (failure: DeviceCommandException) {
+        // Step 2. Only a timeout is a candidate for healing; everything else is a real answer
+        // about something other than the daemon and goes straight back out untouched.
+        if (!failure.isTimeout()) throw failure
+        healDaemon()
+        // Step 3. Exactly one more attempt. If this throws, the caller turns it into
+        // PollFailed with the real reason and the next tick starts over - one escalation per
+        // poll, never a loop, which is what stops the cure from becoming a second livelock.
+        adbHostSource.listDevices()
+    }
+
+    /**
+     * Brings the adb daemon back, cold case first.
+     *
+     * A cold daemon is merely absent and `start-server` forks it in a measured, fixed 3.03 s.
+     * A WEDGED daemon — alive but not serving — is a second, distinct failure mode that
+     * `start-server` cannot repair: it hangs there, because one already exists. Only
+     * `kill-server` clears it, so a timed-out [AdbHostSource.startServer] escalates into the
+     * very same kill-then-start sequence AC-27's "Restart adb" button runs.
+     *
+     * A non-timeout `start-server` failure is not a wedge and is rethrown: nothing to repair.
+     */
+    private suspend fun healDaemon() {
+        try {
+            adbHostSource.startServer()
+        } catch (failure: DeviceCommandException) {
+            if (!failure.isTimeout()) throw failure
+            restartAdbServer()
+        }
+    }
+
+    /**
+     * @see DeviceRepository.restartAdbServer
+     *
+     * Each half carries its own budget inside [AdbHostSource] — `kill-server` closes a local
+     * socket at the ordinary host-command budget, `start-server` forks a daemon under the far
+     * longer [MirrorTuning.DaemonStartTimeoutMs] watchdog. Either half failing throws, so the
+     * use case reports a `Failure` rather than a button that silently did nothing.
+     */
+    override suspend fun restartAdbServer() {
+        adbHostSource.killServer()
+        adbHostSource.startServer()
     }
 
     override suspend fun bootEmulator(avdName: String) {

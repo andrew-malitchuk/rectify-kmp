@@ -169,7 +169,12 @@ class MirrorViewModelDiscoveryTest {
                     physical = listOf(device("serial-1", DeviceStateModel.Device)),
                     emulators = emptyList(),
                 ),
-                DiscoveryModel.PollFailed(tool = "adb", reason = "timed out after 3000ms"),
+                // Deliberately NOT the watchdog's wording. Presentation never classifies a
+                // reason, it renders it, and this module cannot see
+                // DeviceCommandException.TIMEOUT_REASON_PREFIX without putting the data layer
+                // on its test classpath. A hand-typed copy of that string would be a fixture
+                // claiming to be a timeout with nothing binding it to the real one.
+                DiscoveryModel.PollFailed(tool = "adb", reason = "error: protocol fault"),
             ),
         )
         val viewModel = mirrorViewModel(discovery = discovery)

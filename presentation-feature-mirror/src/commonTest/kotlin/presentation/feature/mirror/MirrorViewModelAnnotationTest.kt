@@ -225,6 +225,21 @@ class MirrorViewModelAnnotationTest {
         assertEquals(MirrorStage.Frozen, viewModel.currentState.stage)
     }
 
+    /**
+     * Also serves as T-11 / TAC-2, F-3's AC-51 regression guard — see the note below.
+     *
+     * NFR-6 requires annotations to survive a disconnect, and the cheapest way to make that
+     * true is to stop `resumeLive()` clearing anything. That would satisfy NFR-6 by breaking
+     * the behaviour F-4 deliberately shipped and had confirmed, so this test is what makes the
+     * shortcut fail loudly and stops the two requirements being traded against each other.
+     *
+     * `resumeLive()` is therefore load-bearing UNCHANGED code. F-3 does not touch it: the NFR-6
+     * fix is the Resume Live *affordance* being withheld while the session is Lost, not the
+     * handler behind it doing less (inputs/CORRECTION-nfr-6-mechanism.md).
+     *
+     * Do not weaken these assertions. MUTATION: make `resumeLive()` a no-op - this test fails,
+     * verified.
+     */
     @Test
     fun resumeLiveClearsTheFrozenFrameAndAnnotations() = runTest(mainDispatcher) {
         val mirroring = FakeStartMirroring()
