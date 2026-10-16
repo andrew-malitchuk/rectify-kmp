@@ -1,6 +1,6 @@
 {
   "spec": "error-handling-and-recovery",
-  "currentStage": "validation",
+  "currentStage": "review",
   "stages": {
     "preparation": {
       "status": "done"
@@ -14,6 +14,10 @@
     "execution": {
       "status": "done",
       "note": "30 of 32 tasks. T-8 run on hardware. T-18 SKIPPED by operator decision."
+    },
+    "validation": {
+      "status": "done",
+      "verdict": "complete-with-waivers"
     }
   },
   "steps": {
