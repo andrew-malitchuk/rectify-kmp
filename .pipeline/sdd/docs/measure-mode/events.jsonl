@@ -10,3 +10,9 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-16T17:35:15Z", "spec": "measure-mode"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 68510, "at": "2026-10-16T18:00:43Z", "spec": "measure-mode"}
 {"stage": "preparation", "event": "end", "at": "2026-10-16T18:00:43Z", "spec": "measure-mode"}
+{"stage": "plan", "event": "start", "at": "2026-10-16T18:01:05Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "note": "N=1 (effort=fast)", "at": "2026-10-16T18:01:05Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 234268, "at": "2026-10-16T18:16:11Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-16T18:36:26Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 211876, "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
+{"stage": "plan", "event": "end", "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
