@@ -6,55 +6,90 @@
   "status": "done",
   "producedBy": "sdd-build-run-pipeline",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "264bb1abfe4f4cff8e7284029163e71dedc7f9f0fd3042b0fefea549909750de",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8"
+      },
+      {
+        "artifact": "execution/T-1/report.json",
+        "hash": "de4b9988338d6ec2e50b9b7eaffebd2edfcec7dd63ef691b3e39bcc49f3d16a3"
+      }
+    ]
   },
-  "createdAt": "2026-10-16T21:36:26Z",
-  "updatedAt": "2026-10-16T21:36:26Z",
+  "createdAt": "2026-10-16T21:37:04Z",
+  "updatedAt": "2026-10-16T21:37:04Z",
   "data": {
     "taskId": "T-2",
-    "type": "docs",
+    "type": "documentation",
     "outcome": "success",
     "touchedPaths": [
       ".pipeline/sdd/docs/measure-mode/execution/GATE-step2-go-no-go.md"
     ],
-    "implementation": "Gate record written directly by the orchestrator rather than dispatched to a docs agent: the task's entire content is the operator's decision at the Stage 4 wave-2 pause, which only the main thread holds. Transcribing a known decision through a sub-agent would add a context reload and no reasoning. The downstream consequence analysis is in the record itself and is carried into T-4/T-7 dispatch as explicit context rather than by amending the human-gated immutable backlog mid-execution.",
+    "implementation": {
+      "filesChanged": [
+        ".pipeline/sdd/docs/measure-mode/execution/GATE-step2-go-no-go.md"
+      ],
+      "summary": "Gate record written directly by the orchestrator rather than dispatched to a docs agent: the task's entire content is the operator's decision at the Stage 4 wave-2 pause, which only the main thread holds. Transcribing a known decision through a sub-agent would add a context reload and no reasoning. Downstream consequences are stated in the record and carried into T-4/T-7 dispatch as explicit context, rather than by amending the human-gated immutable backlog mid-execution."
+    },
     "testRun": {
       "command": "n/a",
-      "output": "No test run: this task ships no code. Its artifact is a decision record under docs/.",
-      "passed": true
+      "passed": true,
+      "output": "No test run: this task ships no code. Its artifact is a decision record under docs/."
     },
-    "needsHumanReview": false,
+    "needsHumanReview": {
+      "required": false,
+      "reason": "The human decision IS this task's deliverable and was taken at the gate."
+    },
     "linkedAC": [
       "AC-69",
       "AC-72"
     ],
     "blockedDependents": [],
     "registryUpdates": [],
+    "backlogUpdate": {
+      "taskId": "T-2",
+      "status": "done"
+    },
     "validations": [
       {
-        "check": "TAC-3 the gate record names the operator's chosen path citing spike evidence",
-        "result": "pass",
-        "note": "Records GO/continue-as-planned, with the three untaken exits tabulated and the spike's timings, density, bounds and four findings cited from execution/T-1/spike-note.md."
+        "stage": "TAC-3 gate record names the operator's chosen path citing spike evidence",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Records GO/continue-as-planned with the three untaken exits tabulated, and cites the spike's timings, density, bounds verdict and four findings from execution/T-1/spike-note.md."
+        ]
       },
       {
-        "check": "TAC-4 no step-3-or-later work begins before this record exists",
-        "result": "pass",
-        "note": "T-3..T-13 remain status todo in state.json at the time of writing; the record precedes their dispatch."
+        "stage": "TAC-4 no step-3-or-later work begins before this record exists",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "T-3..T-13 were still status todo in state.json when the record was written; it precedes their dispatch."
+        ]
       },
       {
-        "check": "DoD clause on a BLOCKED spike",
-        "result": "n/a",
-        "note": "T-1 outcome was PASS, so the clause about the spec not closing with a blocked spike does not apply."
+        "stage": "DoD clause on a BLOCKED spike",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Not applicable: T-1 outcome was PASS, so the clause about the spec not closing with a blocked spike does not engage."
+        ]
       }
     ],
     "troubleshooting": [
       {
-        "category": "scope-change",
-        "text": "The node-id ruling supersedes the plan's resource-id-keyed node identifier with a four-step fallback chain (resource-id -> text -> content-desc -> class+[n]). Stage 5 must reconcile T-4 and T-7 against the gate record, not against the plan's original wording."
+        "at": "T-2 gate ruling on node identity",
+        "issue": "The node-id ruling supersedes the plan's resource-id-keyed node identifier with a four-step fallback chain (resource-id -> text -> content-desc -> class+[n]), because resource-id is 6 percent on Compose and Compose classes are anonymous android.view.View.",
+        "resolution": "Recorded in the gate record and carried into T-4 and T-7 dispatch as explicit context. Stage 5 must reconcile those two tasks against the gate record, not the plan's original wording.",
+        "severity": "warn"
       },
       {
-        "category": "unmeasured",
-        "text": "No FLAG_SECURE screen was attempted during the spike, so behaviour on a secure surface remains unmeasured. AC-69's dump-failure path is therefore unexercised by real evidence."
+        "at": "T-1 spike coverage",
+        "issue": "No FLAG_SECURE screen was attempted during the spike, so dump behaviour on a secure surface is unmeasured and AC-69's dump-failure path has no real evidence behind it.",
+        "resolution": "Left unmeasured and surfaced to Stage 5 rather than assumed. AC-69 should be verified by fault injection or recorded blocked, not waived on the strength of a passing spike.",
+        "severity": "warn"
       }
     ]
   },
@@ -62,6 +97,6 @@
     "type": "human",
     "approvedBy": "operator",
     "approved": true,
-    "at": "2026-10-16T21:36:26Z"
+    "at": "2026-10-16T21:37:04Z"
   }
 }
