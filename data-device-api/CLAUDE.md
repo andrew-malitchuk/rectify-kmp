@@ -13,7 +13,7 @@ testable with `kotlin.test` and **no phone attached** — which is most of what 
 Moving a parser into `data-device-impl` would drag the desktop implementation onto the test
 classpath and make those tests need hardware.
 
-39 tests in `commonTest` cover the parsers and the invariants below. They also run on
+61 tests in `commonTest` cover the parsers and the invariants below. They also run on
 `iosSimulatorArm64Test`.
 
 ## Package Layout
@@ -24,7 +24,8 @@ data.device.api/
     ├── model/        — DeviceId, AvdName, DeviceCommand, HostCommand, resources, MirrorFrame,
     │                   TransportStats, ToolKind, ToolProbe
     ├── datasource/   — DeviceCommandExecutor, AdbHostSource, EmulatorSource, MirrorTransport
-    ├── parse/        — AdbDevicesParser, WmOutputParser, AvdListParser, PngTrim, DeviceArgv
+    ├── parse/        — AdbDevicesParser, WmOutputParser, AvdListParser, PngTrim, DeviceArgv,
+    │                   UiAutomatorDumpParser
     ├── tool/         — ToolProbeCandidates
     ├── tuning/       — MirrorTuning
     └── error/        — DeviceCommandException
@@ -43,7 +44,7 @@ not because call sites are careful:
 | Mechanism | What it prevents |
 |---|---|
 | `DeviceId` / `AvdName` are `@JvmInline value class` with **private constructors** and a validating `of()` | Constructing an id from an arbitrary string |
-| `DeviceCommand` is a **closed** sealed interface (5 cases) | Expressing a command the module did not sanction |
+| `DeviceCommand` is a **closed** sealed interface (6 cases) | Expressing a command the module did not sanction |
 | `HostCommand` is a separate closed set (5 cases) | Device-less commands silently acquiring a `-s` flag |
 | `buildDeviceArgv` is the **single** `[tool, -s, id, …]` construction point | Argv assembled ad hoc somewhere else |
 
@@ -58,6 +59,10 @@ command is needed, add a case to the closed set.
   especially — prepend a warning line to `screencap` stdout, so the PNG signature is not always
   at byte 0. This quirk was carried over from the proof-of-concept, where it was found the hard way.
 - `WmOutputParser` prefers an `Override` size/density over `Physical` when both are present.
+- `parseUiAutomatorDump` is a hand-rolled scanner, not an XML parse, because the payload is not
+  XML: adb glues `UI hierchary dumped to: /dev/tty` (AOSP's own misspelling) onto `</hierarchy>`.
+  It never throws — unreadable input yields an empty list, a node with unusable `bounds` is
+  skipped — and it normalises inverted rects, which real dumps contain.
 - `ToolProbeCandidates` returns an **ordered** list — `$ANDROID_HOME`, `$ANDROID_SDK_ROOT`,
   `~/Library/Android/sdk`, `/opt/homebrew/bin`, `/usr/local/bin`, then PATH. PATH alone is not
   enough: a Finder-launched `.app` inherits a minimal PATH that excludes `/opt/homebrew/bin`, so

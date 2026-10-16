@@ -33,6 +33,7 @@ internal class DeviceCommandExecutorImpl(
     /** A screen capture moves megabytes and gets the long budget; a shell read does not. */
     private fun DeviceCommand.timeoutMs(): Long = when (this) {
         DeviceCommand.Screencap -> MirrorTuning.CaptureTimeoutMs
+        DeviceCommand.UiAutomatorDump -> MirrorTuning.DumpTimeoutMs
         else -> MirrorTuning.HostCommandTimeoutMs
     }
 }
