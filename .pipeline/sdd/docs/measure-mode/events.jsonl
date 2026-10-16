@@ -1,0 +1,2 @@
+{"stage": "startup", "step": "config", "event": "end", "note": "effort=fast fixed; dashboard skipped; registry bootstrap requested", "at": "2026-10-16T13:44:44Z", "spec": "measure-mode"}
+{"stage": "registry", "step": "scan", "agent": "sdd-build-generate-registry", "event": "end", "tokens": 209731, "at": "2026-10-16T16:51:43Z", "spec": "measure-mode"}

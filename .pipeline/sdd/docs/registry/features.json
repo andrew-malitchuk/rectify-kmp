@@ -1,0 +1,241 @@
+[
+  {
+    "id": "app-shell-window-layout",
+    "name": "App shell & canonical window layout",
+    "status": "partial",
+    "specRef": "app-shell-window-layout",
+    "modules": [
+      "presentation-core-ui",
+      "presentation-core-styling",
+      "compose-application",
+      "desktop-application",
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "build-logic/convention"
+    ],
+    "description": "The canonical macOS window: RectifyWindowShell (ShellToolbar with six fixed named slots, StageSurface, PanelResizeHandle, SidePanelFrame with Notes/Payload/History, ShellStatusBar), ShellState/ShellTab/ShellWindowDefaults, RectifyWindow in compose-application/desktopMain (1240x820 initial, 1024x700 minimum via AWT, macOS full-size-content chrome so the traffic lights sit inside the toolbar, Cmd+1/2/3 via onPreviewKeyEvent), the pref_side_panel_width preference through the full chain, and the repo's FIRST test suite (kotlin.test wired once into the Library/Feature convention plugins). RectifyWindowShell is this spec's real deliverable: it is the public contract every later spec builds against.",
+    "waived": "verdict complete-with-waivers (7 waivers). (1) Composited hairline contrast (line/line2 at 8-14% alpha) cannot reach WCAG 3:1 -- 16 frozen baselines with // WAIVED: comments instead of assertions. (2) Cmd+1/2/3 LIVE dispatch unverifiable because RectifyWindow passed sidePanel = null; only the pure shortcutToTab mapping is tested. (3) AC-31 design-screenshot match carved down to shell-scoped slots. (4) No signal token is painted by this build, so AC-40's screenshot evidence is impossible. (5) SF Pro referenced by the ACs has never existed in the repo -- Roboto Flex kept. (6) Invented visual constants (16dp stage-dot pitch, 0.5dp dot radius, 40dp panel header) have no design source. (7) IMPORTANT FOR PLANNERS: making the shell the desktop root left splash/onboarding/home/settings/about unreachable on desktop -- accepted as an expected consequence. Open follow-ups: E-resize cursor needs expect/actual PointerIcon; six module README API tables stale; no onPop token; compose-application still has no test source set."
+  },
+  {
+    "id": "android-device-discovery-mirroring",
+    "name": "Android device discovery & live mirroring",
+    "status": "partial",
+    "specRef": "android-device-discovery-mirroring",
+    "modules": [
+      "data-device-api",
+      "data-device-impl",
+      "presentation-feature-mirror",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-core-ui",
+      "presentation-core-localisation",
+      "compose-application"
+    ],
+    "description": "Makes every shell stub live for Android. Launch-time adb/idb tool probing with ordered candidates (ToolResolver, ToolProbeCandidates); the full-stage DevicePickerPanel over Physical + Emulator sources with inline Boot and arrow/Enter/Escape keys; live mirroring behind a two-member MirrorTransport interface whose v1 impl is an adaptive single-flight `adb exec-out screencap -p` loop (ScreencapMirrorTransport); the 2s-polling NoSignalStage; and live resolution/fps/latency stats in the status bar. Architecture rules worth reusing: every pure parser (AdbDevicesParser, WmOutputParser, AvdListParser, PngTrim, DeviceArgv) lives in data-device-api/commonMain so it is testable with no phone attached, and java.lang.ProcessBuilder appears in exactly ONE internal file (data-device-impl/desktopMain/core/process/ProcessRunner.kt). Publishes the typed DiscoveryModel contract (Detecting | ToolMissing | NoDeviceFound | Found). Added three Gradle modules; zero new version-catalog entries.",
+    "waived": "verdict complete-with-waivers (6 waivers). W-1 NFR-1: screenshot polling knowingly misses the ~150ms glass-to-glass target; real H.264 transport is a drop-in behind MirrorTransport. W-2 HARDWARE GATE: capture rate never measured (handset unauthorized, AVD never booted) -- MirrorTuning.CaptureFloorMs stays at an unmeasured 100ms, and latency is reported as an explicit placeholder rather than a fabricated figure. W-3 no window was ever observed (screen capture denied); substituted headless Koin + discovery probes against real hardware. W-5 comp-fidelity deltas routed to a design ticket: NoSignalStage's phone outline ships at 180x380dp vs the comp's ~274x578dp, CTA 32dp vs ~39dp (PageCta is the largest AppButtonSize tier that exists). W-6 ProcessRunner's timeout/orphan/drain behaviour is code-review-only. Open: mirror_status_ready and mirror_emulator_none are unused keys; root CLAUDE.md's module list still omits the three new modules; SEC-1 GetProp takes unvalidated free text into adb shell (no production callers)."
+  },
+  {
+    "id": "drag-annotate-frozen-frame",
+    "name": "Drag-to-annotate & frozen frame",
+    "status": "partial",
+    "specRef": "drag-annotate-frozen-frame",
+    "modules": [
+      "presentation-feature-mirror",
+      "presentation-core-ui",
+      "presentation-core-localisation"
+    ],
+    "description": "One drag gesture on the live mirror freezes the release-time frame, boxes it, numbers it and opens a focused comment popover. The load-bearing piece is FrameGeometry (presentation-feature-mirror/core/geometry/) -- a pure, non-Composable, internal, unit-tested-first conversion covering BOTH legs: storage (pointer px -> device screenshot px, NO density involved) and render (frame px -> dp, the ONLY density division). That single function is where the POC's silent 2x density bug lived. Freeze is a render-path switch only: the capture loop is never paused and Resume Live costs no new adb session. Annotations live IN reduced Orbit state (small value-equal records, three simultaneous consumers) while frames deliberately stay out of it. Filled F-1's reserved stagedCounter / clearAction slots and the Notes tab; added exactly one kit molecule (AnnotationOverlay) and two source-compatible defaulted parameters (MirrorFrameView.overlay, RectifyWindowShell.tabCounts). No new Gradle module, no new catalog entry, no persistence -- exactly one frozen frame lives in memory at a time.",
+    "waived": "verdict complete-with-waivers (5 waivers), 196 desktop tests green. W-1/W-2/W-3: nothing visual is asserted anywhere -- the repo has ZERO Compose UI tests and this host cannot load Skiko in-process, so the dashed border, ruler ticks, scrim, autofocus, delete affordance, light/dark parity and frozen-frame fps are covered only by pure/reducer tests plus @Preview pairs. adopt-compose-ui-test is filed as a follow-up. W-4: CommentPopover carries four hardcoded Color values with a documented always-dark rationale -- pre-existing, routed to design-tokens.md as an explicit carve-out, NOT a pattern to copy. W-5: isMeaningfulDrag requires the threshold in BOTH axes (AND, not OR). Deferred by design: annotation move/resize (AnnotationMark.showHandles exists, no gesture wired), the gutter leader-line elbow-stagger polish, and lifting StagedAnnotation into domain-core."
+  },
+  {
+    "id": "error-handling-and-recovery",
+    "name": "Error handling & recovery",
+    "status": "partial",
+    "specRef": "error-handling-and-recovery",
+    "modules": [
+      "data-device-api",
+      "data-device-impl",
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-feature-mirror",
+      "presentation-core-localisation",
+      "compose-application"
+    ],
+    "description": "Three deliberately decoupled changes. DATA: HostCommand.StartServer/KillServer join the closed command set and DeviceRepositoryImpl's poll loop gains a BUDGETED ESCALATION -- ListDevices at the 3s HostCommandTimeoutMs, and on a timeout-classified failure StartServer under a new 15s DaemonStartTimeoutMs, then KillServer+StartServer if the daemon is wedged rather than absent, then PollFailed with a reason. This fixes a reproduced livelock (a cold adb daemon forks in a FIXED 3.03s against a 3000ms budget, so it failed deterministically forever) and a second distinct wedged-daemon mode where start-server itself hangs. Classification keys off a shared TIMEOUT_REASON_PREFIX constant so a reworded message cannot silently disarm the healing. PRESENTATION STATE: MirrorIntent.Reconnect gets its own handler that touches neither the frozen bitmap nor the annotation list (resumeLive() left byte-for-byte unchanged), and a derived MirrorUiState.canResumeLive stops the stage OFFERING the work-destroying affordance while disconnected -- the NFR-6 fix. RetryDiscovery and RestartAdb are two distinct intents. PRESENTATION PROJECTION: two pure Compose-free projections, MirrorUiState.errorCard(nowMs) -> MirrorErrorCard? and MirrorUiState.dropBanner() -> MirrorDropBanner?, are the assertable surface for every test-verified AC; MirrorErrorStage renders the first through the shipped ErrorCard + SourceListRow and FeedbackBar renders the second. Also added pref_adb_path with a 'Locate adb...' java.awt.FileDialog seam supplied to MirrorHost from RectifyWindow.",
+    "waived": "verdict complete-with-waivers. 28 of 29 tasks done, T-18 SKIPPED by explicit operator decision at the Stage-5 gate (its five steps are a mouse drag and a hand on a USB cable; manual steps written to execution/T-18-status.md). Scenario SC-15 unsatisfied. Waivers: NFR-1 re-measured on the attached Pixel 8 at 2665ms mean / 0.4fps -- the polling transport cannot be tuned into range and transport replacement is out of scope; AC-55/AC-56 verificationMethod downgraded from `test` to `inspection` because no Compose UI-test harness exists; AC-29's 'Resolve & Send remains clickable' clause unsatisfiable because the button is hard-disabled at all three call sites (F-6/F-7 territory); NFR-6's composable-level gates have no automated coverage. Several waivers are marked ai-proposed, not human-reviewed this run. Note this spec's docs are JSON-only (plan/plan.json, validation/verdict.data.json) -- there is no rendered plan.md or verdict.md."
+  },
+  {
+    "id": "splash",
+    "name": "Splash",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-feature-splash",
+      "presentation-core-navigation-api",
+      "presentation-core-navigation-impl",
+      "domain-usecase-api",
+      "domain-usecase-impl"
+    ],
+    "description": "Pre-SDD template feature. Standard four-file Orbit shape under source/splash/ (SplashContract/ViewModel/Screen/SuccessContent); its container's trailing lambda resolves the first destination (onboarding vs home) at init time -- the canonical example of init-time work in a container block. Renders the RectifyLogo ImageVector. Reachable via Destination.Splash. NOT reachable on desktop any more (the shell is the desktop root)."
+  },
+  {
+    "id": "onboarding",
+    "name": "Onboarding",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-feature-onboarding",
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-core-localisation"
+    ],
+    "description": "Pre-SDD template feature. Paged welcome flow with internal OnboardingPageContent / OnboardingPagerIndicator / ParallaxText components and an OnboardingPage enum under core/ (all internal -- not reusable kit). Completion persists through the pref_onboarding chain (OnboardingPreferenceSource -> OnboardingPreferenceMapper -> ConfigureRepository -> Get/SetOnboardingStatusUseCase). NOT reachable on desktop any more."
+  },
+  {
+    "id": "home",
+    "name": "Home",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-feature-home",
+      "presentation-core-navigation-api",
+      "presentation-core-localisation"
+    ],
+    "description": "Pre-SDD template feature -- the template's landing screen, standard four-file Orbit shape. Thin; it is the navigation hub to Settings/About/Styleguide rather than a substantial feature. NOT reachable on desktop any more."
+  },
+  {
+    "id": "settings",
+    "name": "Settings & language picker",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-feature-settings",
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-core-localisation"
+    ],
+    "description": "Pre-SDD template feature, and the richest DI example in the repo (presentationFeatureSettingsModule uses explicit `viewModel { SettingsViewModel(param = get<ParamUseCase>(), ...) }` resolution because several use-case params overlap). Two screens under source/settings/ and source/language/: theme mode, unit system, language, and a destructive erase-data flow through ConfirmationSheet. SettingsState's languageOptions/languageCodes is the list a new locale must be registered in. Has a SettingsPlaceholderContent skeleton variant. NOT reachable on desktop any more."
+  },
+  {
+    "id": "about",
+    "name": "About",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-feature-about",
+      "presentation-core-localisation"
+    ],
+    "description": "Pre-SDD template feature and the MINIMAL reference for the conventions -- the smallest complete Orbit four-file screen plus the simplest Koin module (`presentationFeatureAboutModule` = a bare viewModelOf(::AboutViewModel)). Copy this shape when scaffolding a new feature. Has an AboutPlaceholderContent skeleton variant. NOT reachable on desktop any more."
+  },
+  {
+    "id": "styleguide-showcase",
+    "name": "In-app styleguide showcase",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-core-ui",
+      "presentation-core-navigation-api",
+      "presentation-core-navigation-impl"
+    ],
+    "description": "Pre-SDD. A single ~1100-line public StyleguideScreen(onBack) in presentation-core-ui/source/showcase/ that renders every colour role, type role, spacing step, corner, stroke and motion token plus most kit components, with do/don't rule rows. Reachable via Destination.Styleguide. The fastest way to see what already exists before proposing a new component. It is NOT a feature module and has no ViewModel."
+  },
+  {
+    "id": "navigation",
+    "name": "Navigation (Navigation 3, api/impl split)",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-core-navigation-api",
+      "presentation-core-navigation-impl"
+    ],
+    "description": "Pre-SDD infrastructure. api holds the contract: a sealed Destination : NavKey with seven @Serializable cases (Splash, Onboarding, Home, Settings, About, Styleguide, LanguagePicker), the AppNavigator interface (navigate/popBackStack/backAction + NavOptions enum Default|SingleTop|ClearTask), and LocalAppNavigator/LocalBackAction which throw if read outside a NavigationHost. impl holds the only implementation (AppNavigatorImpl over a NavBackStack<NavKey>, where ClearTask adds BEFORE clearing because NavDisplay throws on a transiently empty stack) plus NavigationHost and navSavedStateConfiguration. Adding a destination is a strict five-step checklist -- a missing navSavedStateConfiguration entry throws SerializationException on process-death restore, not at compile time. A presentation-feature-* module must never import -impl."
+  },
+  {
+    "id": "localisation",
+    "name": "Localisation (Compose Resources + runtime locale override)",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-core-localisation"
+    ],
+    "description": "Pre-SDD infrastructure, extended by every spec since. AppLocaleProvider(languageCode) { } overrides the Compose Resources locale for its subtree by constructing a ResourceEnvironment from INTERNAL Compose Resources API behind @file:OptIn(InternalResourceApi::class) and @file:Suppress(\"INVISIBLE_MEMBER\", \"INVISIBLE_REFERENCE\") -- those annotations are required, not incidental, because the public API has no locale-override mechanism (and a key()-based approach would destroy the Nav3 back stack). ~95 keys, English only; generated accessors live under rectify_kmp.presentation_core_localisation.generated.resources.Res.string.*."
+  },
+  {
+    "id": "preferences",
+    "name": "Preferences (multiplatform-settings, 6 preferences)",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl"
+    ],
+    "description": "Pre-SDD infrastructure, grown by the shell and error-handling specs. Six preferences, each a PreferenceSource interface in -api with an Impl in -impl and a Mapper in data-repository-impl/core/mapper/: Theme, Language, Onboarding, UnitSystem, SidePanelWidth (added by F-1), AdbPath (added by F-3). SettingsProvider is expect/actual with four actuals (android via DataStoreSettings, ios, desktop via java.util.prefs -- which is WHY the panel width is persisted on drag-END only, since it flushes to disk). All reads/writes surface through ConfigureRepository and Get/Set/Observe*UseCase pairs. data-preference-impl is also the one module with its own local test deps (multiplatform-settings-test, kotlinx-coroutines-test) and real round-trip tests."
+  },
+  {
+    "id": "database",
+    "name": "Database (Room KMP) -- scaffold only",
+    "status": "partial",
+    "specRef": "",
+    "modules": [
+      "data-database-api",
+      "data-database-impl"
+    ],
+    "description": "Pre-SDD infrastructure that is still a SCAFFOLD, not a used feature -- worth knowing before a planner assumes persistence exists. -api declares six generic datasource interfaces (Readable/Observable/Appendable/Upsertable/Deletable/Clearable) and has no core/ directory because it has no internal declarations. -impl holds AppDatabase, a placeholder ExampleEntity/ExampleDao, Migrations, and DatabaseBuilder as expect/actual across android/ios/desktop. Room's KSP needs an explicit kspDesktop entry alongside kspAndroid/kspIosArm64/kspIosSimulatorArm64 in any module using @Database/@ConstructedBy. Nothing in the shipped product reads or writes it yet -- annotation/capture history (F-8) is the first intended consumer.",
+    "waived": "No production consumer, example entity/dao only, no tests."
+  },
+  {
+    "id": "theming",
+    "name": "Theming chain (mode persisted end to end)",
+    "status": "done",
+    "specRef": "",
+    "modules": [
+      "presentation-core-styling",
+      "data-preference-api",
+      "data-preference-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "compose-application"
+    ],
+    "description": "Pre-SDD, amended by F-1. The full pref_theme chain: ThemePreferenceSource -> ThemePreferenceMapper -> ConfigureRepository -> Get/Set/ObserveThemeUseCase -> App.kt / RectifyWindow mapping domain ThemeModel (Light, Dark, MaterialU) onto ThemeMode (Light, Dark, System -- MaterialU maps to System, a historical naming quirk). F-1's only behavioural change here was flipping the effective default from Light to System. AppTheme is the single provider; see the styles registry for the token accessors."
+  },
+  {
+    "id": "error-propagation",
+    "name": "Failure / Result error propagation",
+    "status": "partial",
+    "specRef": "",
+    "modules": [
+      "domain-core",
+      "domain-usecase-impl",
+      "common-core",
+      "data-core"
+    ],
+    "description": "Pre-SDD cross-cutting convention every layer depends on. domain-core/source/monad/Failure.kt defines Failure.Technical.{Database,Platform,Network,Preference}(cause) and Failure.Logic.{NotFound,Business(message)}. Every *UseCaseImpl body runs inside resultLauncher(errorMapper = Failure.Technical::<Kind>) { } (domain-usecase-impl/core/ResultLauncher.kt): a thrown Failure propagates unchanged, any other Throwable is mapped first, and invoke() always returns Result<T> rather than throwing past the boundary. common-core supplies Mapper/Execute, data-core the Resource base.",
+    "waived": "Two known repo-wide gaps. (1) resultLauncher catches CancellationException -- an inherited open change request carried across all four specs, still unfixed. (2) Every feature's XSideEffect.ShowError(messageId) handler IGNORES messageId and shows a hardcoded, unlocalized \"Error\" title (AboutScreen, OnboardingScreen, HomeScreen, SettingsScreen) -- explicitly documented as a gap, NOT a pattern to extend; resolve messageId through stringResource() instead. resultLauncher's Failure-passthrough-vs-errorMapper behaviour is also still untested."
+  }
+]

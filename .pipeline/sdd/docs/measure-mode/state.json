@@ -1,0 +1,17 @@
+{
+  "spec": "measure-mode",
+  "currentStage": "preparation",
+  "stages": {},
+  "steps": {},
+  "tasks": {},
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  }
+}

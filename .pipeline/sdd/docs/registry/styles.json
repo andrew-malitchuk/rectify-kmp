@@ -1,0 +1,205 @@
+[
+  {
+    "id": "theme-accessor",
+    "name": "Theme",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/Theme.kt",
+    "tags": [
+      "entry-point",
+      "accessor",
+      "singleton",
+      "composable-only"
+    ],
+    "description": "`public object Theme` in package presentation.core.styling.core -- the ONLY way to read a design token, and readable only from @Composable scope. Exactly twelve accessors, all @Composable @ReadOnlyComposable getters: Theme.color, Theme.fontSize, Theme.lineHeight, Theme.typography, Theme.spacing, Theme.spacingToken, Theme.radius, Theme.corner, Theme.cornerToken, Theme.size, Theme.stroke, Theme.motion. Never write a Color(0x...) literal, a raw .dp or a hardcoded TextStyle at a call site -- add the token to the relevant Theme* data class instead."
+  },
+  {
+    "id": "app-theme",
+    "name": "AppTheme",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/theme/AppTheme.kt",
+    "tags": [
+      "entry-point",
+      "provider",
+      "theming",
+      "composable"
+    ],
+    "description": "`public fun AppTheme(mode: ThemeMode = ThemeMode.Dark, reducedMotion: Boolean = false, content: @Composable () -> Unit)` -- the single theme provider. Resolves the light/dark palette (ThemeMode.System consults isSystemInDarkTheme()), builds the typography from the bundled fonts, and supplies every Local*Theme composition local in ONE CompositionLocalProvider. Never provide a Local*Theme manually anywhere else. Wraps the app root and every @Preview."
+  },
+  {
+    "id": "theme-mode",
+    "name": "ThemeMode",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeMode.kt",
+    "tags": [
+      "theming",
+      "enum",
+      "mode"
+    ],
+    "description": "`public enum class ThemeMode { Light, Dark, System }`. Dark is documented as the primary Rectify experience; System is the effective first-run default via the pref_theme chain (domain ThemeModel.MaterialU maps to ThemeMode.System in App.kt -- a historical naming quirk worth knowing)."
+  },
+  {
+    "id": "theme-color",
+    "name": "ThemeColor (Theme.color)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeColor.kt",
+    "tags": [
+      "color",
+      "palette",
+      "roles",
+      "24-tokens"
+    ],
+    "description": "Flat ink/surface system, 24 roles, one accent ladder -- no Material color scheme anywhere. SURFACES: bg, chrome, stage, stageDot, surface, pop, overlayScrim. INK: ink, ink2, ink3, primary, primaryHover, primaryPress, onPrimary, focus. LINES & FILLS: line, line2, hover, seg, codeBg. SIGNAL (identical in BOTH themes by design): annotate, sentFixed, warnStillOff, measure. overlayScrim stores its base colour WITHOUT alpha (the design's rgba(12,12,14,0.42)) -- the call site applies it. KNOWN GAP: there is no `onPop` token; it is an open change request deferred to whichever spec first needs ink on a popover."
+  },
+  {
+    "id": "color-palettes",
+    "name": "Light / Dark palettes (internal)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/attribute/color/",
+    "tags": [
+      "color",
+      "palette",
+      "internal",
+      "light",
+      "dark"
+    ],
+    "description": "`internal val attributeLightColorPalette` (LightColor.kt) and `internal val attributeDarkColorPalette` (DarkColor.kt) -- BOTH INTERNAL, reachable only through AppTheme/Theme.color. Their internal visibility is why PaletteContrastTest has to live in presentation-core-styling's own commonTest. Shipped values are authoritative over the PRD (e.g. sentFixed = Color(0xFF3EAB5E) wins over the PRD's oklch hue 152)."
+  },
+  {
+    "id": "theme-typography",
+    "name": "ThemeTypography (Theme.typography) + ThemeFontSize / ThemeLineHeight",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeTypography.kt",
+    "tags": [
+      "typography",
+      "scale",
+      "textstyle",
+      "19-roles"
+    ],
+    "description": "19 roles, identical names across Theme.typography (TextStyle), Theme.fontSize (TextUnit) and Theme.lineHeight (TextUnit): titleL, titleM, titleS, body, bodyStrong, comment, label, secondary, small, caption, monoData, monoMeta, overline, monoBadge, monoTag, monoRuler, display, numeralXl, numeralLg. The mono* roles bind JetBrains Mono, everything else Roboto Flex. Built at runtime by the internal AttributeTypography() in source/attribute/Typography.kt. `display`/`numeralXl`/`numeralLg` are marked legacy in ThemeLineHeight's KDoc."
+  },
+  {
+    "id": "theme-spacing",
+    "name": "ThemeSpacing (Theme.spacing) + ThemeSpacingToken (Theme.spacingToken)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeSpacing.kt",
+    "tags": [
+      "spacing",
+      "layout",
+      "dp"
+    ],
+    "description": "Theme.spacing is the raw ladder -- spacingXS, spacingS, spacingL, spacingXL, spacing2XL, spacing3XL, spacing4XL. NOTE THE GAP: there is deliberately no `spacingM`; do not cite one. Theme.spacingToken (ThemeSpacingToken.kt) is the semantic layer derived from it: contentPadding, itemGap, sectionGap, inlinePadding, compactGap. Prefer the semantic token at a call site."
+  },
+  {
+    "id": "theme-radius-corner",
+    "name": "ThemeRadius / ThemeCorner / ThemeCornerToken",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeCornerToken.kt",
+    "tags": [
+      "radius",
+      "corner",
+      "shape"
+    ],
+    "description": "Three related accessors. Theme.radius (ThemeRadius.kt) is Dp: xs, sm, md, lg, xl, pill. Theme.corner (ThemeCorner.kt) is the same ladder as RoundedCornerShape: xs, sm, md, lg, xl, pill. Theme.cornerToken is the semantic layer and the one components actually use: tile, tileHero, sheet, card, nested, badge, button, chip, input."
+  },
+  {
+    "id": "theme-size",
+    "name": "ThemeSize (Theme.size)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeSize.kt",
+    "tags": [
+      "size",
+      "icon",
+      "dp"
+    ],
+    "description": "Icon-size ladder only, nine steps: iconXXS, iconXS, iconS, iconM, iconL, iconXL, icon2XL, icon3XL, icon4XL. Defined in source/attribute/IconSize.kt."
+  },
+  {
+    "id": "theme-stroke",
+    "name": "ThemeStroke (Theme.stroke)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeStroke.kt",
+    "tags": [
+      "stroke",
+      "border",
+      "hairline",
+      "dp"
+    ],
+    "description": "Three widths: hairline, thin, regular. There is no elevation/shadow token system in this design -- depth is expressed with surface steps (bg -> chrome -> stage -> surface -> pop) and hairlines, so do not look for a Theme.elevation."
+  },
+  {
+    "id": "theme-motion",
+    "name": "ThemeMotion (Theme.motion)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeMotion.kt",
+    "tags": [
+      "motion",
+      "animation",
+      "duration",
+      "easing",
+      "reduced-motion"
+    ],
+    "description": "Theme.motion.durations (ThemeMotionDurations: instantMs=0, fastMs=140, normalMs=240, slowMs=380, tileCascadeMs=40, numeralRefreshMs=250), Theme.motion.easings (ThemeMotionEasings: easeOut, easeIn, easeInOut, step) and Theme.motion.reducedMotion: Boolean. reducedMotion is resolved ONCE centrally by AppTheme -- a component reads Theme.motion.* and must never take a reducedMotion boolean parameter of its own. source/attribute/Motion.kt holds the collapsed reduced-motion duration set."
+  },
+  {
+    "id": "theme-locals",
+    "name": "Local*Theme composition locals (internal)",
+    "path": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/provider/Provider.kt",
+    "tags": [
+      "internal",
+      "composition-local",
+      "plumbing"
+    ],
+    "description": "Twelve INTERNAL composition locals (LocalThemeColor, LocalThemeFontSize, LocalThemeLineHeight, LocalThemeTypography, LocalThemeSpacing, LocalThemeSpacingToken, LocalThemeRadius, LocalThemeCorner, LocalThemeCornerToken, LocalThemeSize, LocalThemeStroke, LocalThemeMotion) backing the Theme accessors. Not part of the public API -- listed so a planner does not try to provide or read one directly."
+  },
+  {
+    "id": "palette-contrast-test",
+    "name": "PaletteContrastTest (WCAG sweep)",
+    "path": "presentation-core-styling/src/commonTest/kotlin/presentation/core/styling/contrast/PaletteContrastTest.kt",
+    "tags": [
+      "accessibility",
+      "contrast",
+      "wcag",
+      "test",
+      "frozen-baselines"
+    ],
+    "description": "Sweeps BOTH shipped palettes with WcagContrast.kt. Must composite the alpha tokens (line, line2, hover, seg, codeBg) over their base surface before measuring or it reports nonsense. 16 composited-hairline baselines run 1.19-1.58:1 and are recorded as frozen baselines with inline `// WAIVED:` comments rather than asserted -- 8-14% alpha cannot reach 3:1 by construction. Four light-mode signal pairs also fail the literal 3:1 threshold and were carried forward. Extend this test when adding a colour token."
+  },
+  {
+    "id": "shell-window-defaults",
+    "name": "ShellWindowDefaults",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellWindowDefaults.kt",
+    "tags": [
+      "layout",
+      "window",
+      "geometry",
+      "constants",
+      "desktop"
+    ],
+    "description": "Window and panel geometry tokens for the desktop shell: InitialSize = DpSize(1240,820), MinimumSize = DpSize(1024,700), PanelMinWidth = 260.dp, PanelMaxWidth = 480.dp, PanelDefaultWidth = 300.dp, TrafficLightInset = 99.dp, plus `public fun clampPanelWidth(width: Dp): Dp`. These live in presentation-core-ui rather than compose-application specifically so they are unit-testable (the application convention plugin wires no test source set)."
+  },
+  {
+    "id": "window-size",
+    "name": "WindowSize / LocalWindowSize",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/container/WindowSize.kt",
+    "tags": [
+      "layout",
+      "responsive",
+      "breakpoint",
+      "composition-local"
+    ],
+    "description": "`public enum class WindowSize { Compact, Medium, Expanded }`, `public fun Dp.toWindowSize(): WindowSize` and `public val LocalWindowSize: ProvidableCompositionLocal<WindowSize>`. The repo's entire responsive-breakpoint story -- there is no AndroidX adaptive/WindowSizeClass dependency."
+  },
+  {
+    "id": "animation-configuration",
+    "name": "AnimationConfiguration",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/core/configuration/AnimationConfiguration.kt",
+    "tags": [
+      "motion",
+      "transition",
+      "navigation",
+      "constants"
+    ],
+    "description": "`public object AnimationConfiguration` with nested `object Duration` and `object Transition` (incl. `fun <T> default(): AnimatedContentTransitionScope<T>.() -> ContentTransform`) -- the shared screen-transition spec. Prefer Theme.motion for component-level timing; this is for content/navigation transitions."
+  },
+  {
+    "id": "cupertino-tween",
+    "name": "cupertinoTween / CupertinoEasing",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/tween/CupertinoTween.kt",
+    "tags": [
+      "motion",
+      "easing",
+      "tween",
+      "ios-feel"
+    ],
+    "description": "`public fun <T> cupertinoTween(durationMillis, delayMillis, easing): TweenSpec<T>` and `public val CupertinoEasing: CubicBezierEasing = CubicBezierEasing(0.2833f, 0.99f, 0.31833f, 0.99f)`. Used by the Toggle atom for its iOS-like spring feel."
+  }
+]

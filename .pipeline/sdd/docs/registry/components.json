@@ -1,0 +1,583 @@
+[
+  {
+    "id": "app-button",
+    "name": "AppButton",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/button/AppButton.kt",
+    "props": "text: String, onClick: () -> Unit, modifier = Modifier, variant: AppButtonVariant = Primary, size: AppButtonSize = Toolbar, icon: ImageVector? = null, shortcut: String? = null, fillMaxWidth = false, enabled = true, busy = false, busyText: String? = null",
+    "description": "The canonical text/icon button atom with hover/press/focus-ring states, busy spinner and an optional keycap shortcut hint; AppButtonVariant (Primary/Ghost/...) and AppButtonSize (Toolbar/PageCta/...) are public enums in the same file."
+  },
+  {
+    "id": "icon-button",
+    "name": "IconButton",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/button/IconButton.kt",
+    "props": "icon: ImageVector, onClick: () -> Unit, size: ButtonSizeType, modifier = Modifier, enabled = true, isSelected = false, isLoading = false",
+    "description": "Square icon-only button with selected and loading states; sizing comes from the public ButtonSizeType enum (ButtonSizeType.kt)."
+  },
+  {
+    "id": "toggle",
+    "name": "Toggle",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/button/toggle/Toggle.kt",
+    "props": "checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier = Modifier, thumbContent: @Composable (() -> Unit)? = null, colors: ToggleColors = ToggleDefaults.colors(...theme tokens...), enabled = true, interactionSource = remember { MutableInteractionSource() }",
+    "description": "Cupertino-style draggable switch (51x31dp) with ToggleColors/ToggleDefaults for theming; use for settings rows that need drag as well as tap."
+  },
+  {
+    "id": "simple-toggle",
+    "name": "SimpleToggle",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/toggle/Toggle.kt",
+    "props": "checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier = Modifier, enabled = true",
+    "description": "Minimal tap-only switch (48x28dp track) with no drag gesture and no colour parameters — the lazy alternative to Toggle."
+  },
+  {
+    "id": "chip",
+    "name": "Chip",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/chip/Chip.kt",
+    "props": "label: String, selected: Boolean, onClick: () -> Unit, modifier = Modifier",
+    "description": "Single selectable pill chip (28dp high, Theme.cornerToken.chip); use ChipGroup for a row of them."
+  },
+  {
+    "id": "counter-badge",
+    "name": "CounterBadge",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/badge/CounterBadge.kt",
+    "props": "count: Int, state: CounterBadgeState, modifier = Modifier, label: String? = null",
+    "description": "20dp numeric badge used for the toolbar staged-annotation counter; CounterBadgeState (incl. Empty) drives container/content colour."
+  },
+  {
+    "id": "glyph-badge",
+    "name": "GlyphBadge",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/badge/GlyphBadge.kt",
+    "props": "text: String, containerColor: Color, modifier = Modifier",
+    "description": "20dp rounded badge rendering a short glyph/number on a caller-supplied fill; the primitive behind annotation index badges."
+  },
+  {
+    "id": "annotation-mark",
+    "name": "AnnotationMark",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/annotation/AnnotationMark.kt",
+    "props": "modifier = Modifier, state: AnnotationState = Pinned, badge: String? = null, sizeLabel: String? = null, showHandles = false",
+    "description": "Canvas-drawn annotation rectangle (dashed while Drawing, solid when Pinned/Selected/Frozen) with optional index badge, size label and corner handles; AnnotationState is public in the same file."
+  },
+  {
+    "id": "measure-mark",
+    "name": "MeasureMark",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/annotation/MeasureMark.kt",
+    "props": "modifier = Modifier, role: MeasureMarkRole = Target",
+    "description": "Measurement-mode outline in Theme.color.measure, solid for Target and dashed for Neighbour; shipped but currently unwired (measure-mode spec territory)."
+  },
+  {
+    "id": "measure-tag",
+    "name": "MeasureTag",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/tag/MeasureTag.kt",
+    "props": "text: String, modifier = Modifier, containerColor: Color = Theme.color.annotate",
+    "description": "Tiny mono-font pill for dimension/offset labels pinned to an annotation or measurement mark."
+  },
+  {
+    "id": "error-glyph",
+    "name": "ErrorGlyph",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/glyph/ErrorGlyph.kt",
+    "props": "kind: ErrorKind, modifier = Modifier",
+    "description": "34dp error mark whose accent follows the public ErrorKind enum (Fixable/...); the icon slot of ErrorCard."
+  },
+  {
+    "id": "status-indicator",
+    "name": "StatusIndicator",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/indicator/StatusIndicator.kt",
+    "props": "state: StatusIndicatorState, label: String = state.defaultLabel(), modifier = Modifier",
+    "description": "Dot + label status atom for the status bar; StatusIndicatorState includes Offline/Frozen and supplies a default label per state."
+  },
+  {
+    "id": "status-pill",
+    "name": "StatusPill",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/pill/StatusPill.kt",
+    "props": "label: String, tone: StatusPillTone, modifier = Modifier",
+    "description": "Dot-prefixed pill for list-row status (used by HistoryRow); StatusPillTone picks the dot colour."
+  },
+  {
+    "id": "radio-mark",
+    "name": "RadioMark",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/indicator/RadioMark.kt",
+    "props": "selected: Boolean, modifier = Modifier",
+    "description": "18dp Canvas radio indicator (ring + fill) with no click handling — the row owns the gesture."
+  },
+  {
+    "id": "key-cap",
+    "name": "KeyCap",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/keycap/KeyCap.kt",
+    "props": "text: String, modifier = Modifier",
+    "description": "Keyboard-key chrome for shortcut hints (e.g. the Cmd+Enter cap inside AppButton)."
+  },
+  {
+    "id": "icon-container",
+    "name": "IconContainer",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/container/IconContainer.kt",
+    "props": "modifier = Modifier, icon: ImageVector, backgroundColor: Color, foregroundColor: Color",
+    "description": "Rounded tinted plate holding one icon; the leading affordance in headers and rows."
+  },
+  {
+    "id": "safe-container",
+    "name": "SafeContainer",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/container/SafeContainer.kt",
+    "props": "modifier = Modifier, snackbarHostState: StackedSnakbarHostState = rememberStackedSnackbarHostState(), snackbarHost: @Composable (StackedSnakbarHostState) -> Unit = { StackedSnackbarHost(...) }, content: @Composable (PaddingValues) -> Unit",
+    "description": "Screen-root scaffold that applies systemBars+ime insets and hosts the stacked snackbar; every feature *Content composable wraps its body in this."
+  },
+  {
+    "id": "max-side-detector",
+    "name": "MaxSideDetector",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/container/MaxSideDetector.kt",
+    "props": "modifier = Modifier, byHeight: @Composable () -> Unit, byWidth: @Composable () -> Unit",
+    "description": "Picks one of two layouts depending on whether the container is taller or wider — the cheap portrait/landscape branch without a window-size class."
+  },
+  {
+    "id": "horizontal-animated-divider",
+    "name": "HorizontalAnimatedDivider",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/divider/HorizontalAnimatedDivider.kt",
+    "props": "modifier = Modifier, isVisible: Boolean",
+    "description": "Hairline divider that fades in/out, used for scroll-dependent header separators."
+  },
+  {
+    "id": "panel-resize-handle",
+    "name": "PanelResizeHandle",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/handle/PanelResizeHandle.kt",
+    "props": "onDelta: (Dp) -> Unit, onDragStarted: () -> Unit, onDragStopped: () -> Unit, modifier = Modifier",
+    "description": "8dp-hit-area vertical drag handle between the stage and the side panel; reports Dp deltas so clamping/persisting stays in ShellState. Known gap: uses PointerIcon.Hand because commonMain has no E-resize cursor."
+  },
+  {
+    "id": "filled-text-field",
+    "name": "FilledTextField",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/input/FilledTextField.kt",
+    "props": "value: String, onValueChange: (String) -> Unit, placeholder: String, modifier = Modifier, imeAction: ImeAction = Done",
+    "description": "Plain stateless single-line field — use this when the caller already owns the text state."
+  },
+  {
+    "id": "input",
+    "name": "Input",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/input/Input.kt",
+    "props": "modifier = Modifier, initialText = \"\", onTextChanged: (String) -> Unit, placeholder = \"\", textStyle = Theme.typography.body, clearIcon: ImageVector? = null, validationRegex: Regex? = null, keyboardOptions = KeyboardOptions(Done/Text/no-autocorrect), enabled = true",
+    "description": "Self-managing single-line input with animated border, optional clear icon and regex validation (error state tints the border)."
+  },
+  {
+    "id": "multiline-input",
+    "name": "MultilineInput",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/input/MultilineInput.kt",
+    "props": "modifier = Modifier, initialText = \"\", onTextChanged: (String) -> Unit, placeholder = \"\", textStyle = Theme.typography.body, clearIcon: ImageVector? = null, validationRegex: Regex? = null, minHeight = 120.dp, maxHeight = 240.dp, keyboardOptions = KeyboardOptions(Default/Text/Sentences), enabled = true",
+    "description": "Input's growing-height sibling with an internal scroll state between minHeight and maxHeight."
+  },
+  {
+    "id": "auto-size-text",
+    "name": "AutoSizeText",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/text/AutoSizeText.kt",
+    "props": "text: String, modifier = Modifier, minFontSize = TextUnit.Unspecified, plus the full Text() parameter set (color/fontSize/fontStyle/fontWeight/fontFamily/letterSpacing/textDecoration/textAlign/lineHeight/softWrap/maxLines/minLines/onTextLayout/style)",
+    "description": "Text that shrinks its font (and proportional line height) in staged steps until it fits; drop-in for Text where overflow is unacceptable."
+  },
+  {
+    "id": "section-header",
+    "name": "SectionHeader",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/text/SectionHeader.kt",
+    "props": "title: String, modifier = Modifier",
+    "description": "Plain section title row for settings/form groups."
+  },
+  {
+    "id": "section-header-with-icon",
+    "name": "SectionHeaderWithIcon",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/text/SectionHeaderWithIcon.kt",
+    "props": "icon: ImageVector, title: String, modifier = Modifier",
+    "description": "SectionHeader with a leading IconContainer."
+  },
+  {
+    "id": "bento-tile",
+    "name": "BentoTile",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/tile/BentoTile.kt",
+    "props": "modifier = Modifier, caption: String? = null, value: String? = null, unit: String? = null, variant: BentoTileVariant = Surface, height: BentoTileHeight = S, onClick: (() -> Unit)? = null, content: (@Composable ColumnScope.() -> Unit)? = null",
+    "description": "Dashboard stat tile — caption/value/unit shorthand or an arbitrary content slot; BentoTileVariant (Surface/Hero/...) and BentoTileHeight are public enums."
+  },
+  {
+    "id": "segmented-progress-indicator",
+    "name": "SegmentedProgressIndicator",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/progress/SegmentedProgressIndicator.kt",
+    "props": "progress: Float, modifier = Modifier, activeColor = Theme.color.ink, inactiveColor = Theme.color.line, height = 6.dp",
+    "description": "Fixed-segment-count progress bar (0f..1f); the same file also exports SegmentedBars(values, highlightIndex, barColor, highlightColor, height) for sparkline-style bar charts."
+  },
+  {
+    "id": "segmented-bars",
+    "name": "SegmentedBars",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/progress/SegmentedProgressIndicator.kt",
+    "props": "values: List<Float>, modifier = Modifier, highlightIndex = -1, barColor = Theme.color.ink3, highlightColor = Theme.color.primary, height = 56.dp",
+    "description": "Canvas bar chart normalised to the max value, with one optionally highlighted bar."
+  },
+  {
+    "id": "wavy-slider",
+    "name": "WavySlider",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/slider/WavySlider.kt",
+    "props": "value: Float, onValueChange: (Float) -> Unit, modifier = Modifier, enabled = true, activeColor/inactiveColor/thumbColor (theme tokens), thumbRadius = 10.dp, waveLength = 20.dp, waveHeight = 6.dp, waveThickness = 4.dp, trackThickness = 4.dp, waveSpeed = 10.dp, onValueChangeFinished: (() -> Unit)? = null",
+    "description": "Animated wave-track slider; honours Theme.motion.reducedMotion by freezing the wave. Drawing helper is core/draw/WavyPathBuilder.kt (public buildWavyPath + WavyPathDefaults)."
+  },
+  {
+    "id": "stacked-snackbar-host",
+    "name": "StackedSnackbarHost",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/snackbar/StackedSnakbarHostState.kt",
+    "props": "hostState: StackedSnakbarHostState, modifier = Modifier",
+    "description": "Host for the stacked-snackbar system. Create state with rememberStackedSnackbarHostState(maxStack, animation) (StackedSnackbarExt.kt); show with showSnackbar(title, description, actionTitle, action, duration: StackedSnackbarDuration) or showCustomSnackbar(content, duration). This is the error-surfacing path every feature ViewModel's ShowError side effect lands on."
+  },
+  {
+    "id": "placeholder-provider",
+    "name": "PlaceholderProvider / Modifier.placeholder",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/core/modifier/Placeholder.kt",
+    "props": "PlaceholderProvider(isLoading = true, content: @Composable () -> Unit); Modifier.placeholder(shape = Theme.cornerToken.nested, color = Theme.color.stage); LocalPlaceholderState: ProvidableCompositionLocal<PlaceholderState>",
+    "description": "Skeleton-loading system: wrap a subtree in PlaceholderProvider(isLoading) and tag individual nodes with Modifier.placeholder(); used by the *PlaceholderContent composables."
+  },
+  {
+    "id": "cascade-in-modifier",
+    "name": "Modifier.cascadeIn",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/core/modifier/Cascade.kt",
+    "props": "Modifier.cascadeIn(index: Int)",
+    "description": "Staggered fade+rise entrance keyed on list index, timed from Theme.motion.durations.tileCascadeMs; the standard way to animate a tile grid in."
+  },
+  {
+    "id": "annotation-overlay",
+    "name": "AnnotationOverlay",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationOverlay.kt",
+    "props": "marks: List<AnnotationOverlayMark>, modifier = Modifier, dimmed = false. AnnotationOverlayMark(bounds: DpRect, state: AnnotationState = Pinned, badge: String? = null, sizeLabel: String? = null, showHandles = false)",
+    "description": "Frozen-frame treatment: an overlayScrim with clipPath(Difference) cut-outs per mark plus one AnnotationMark each. Takes Dp-space rects only — the kit never does density conversion itself."
+  },
+  {
+    "id": "annotation-popover",
+    "name": "AnnotationPopover",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationPopover.kt",
+    "props": "text: String, modifier = Modifier, index: Int? = null, indexColor: Color = Theme.color.annotate",
+    "description": "Read-only annotation bubble (max 280dp) with an index badge; the gutter/leader-line variant of a staged comment. Use CommentPopover when the text is editable."
+  },
+  {
+    "id": "ruler",
+    "name": "Ruler",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/Ruler.kt",
+    "props": "totalPx: Int, modifier = Modifier, extentPx: IntRange? = null, majorTickEvery = 500, minorTicksPerMajor = 4",
+    "description": "22dp tick strip in device-pixel space, optionally highlighting the dragged extent; the drag guide above/beside the mirror stage."
+  },
+  {
+    "id": "sidebar-tabs",
+    "name": "SidebarTabs",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/bar/tab/SidebarTabs.kt",
+    "props": "items: List<SidebarTabItem>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier = Modifier. SidebarTabItem(label: String, count: Int? = null)",
+    "description": "26dp segmented tab strip with optional per-tab counts; SidePanelFrame's header is built from this."
+  },
+  {
+    "id": "tab-bar",
+    "name": "TabBar",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/bar/tab/TabBar.kt",
+    "props": "items: List<TabBarItem>, selectedIndex: Int, onItemClick: (Int) -> Unit, modifier = Modifier, onItemReselect: (Int) -> Unit = {}, backgroundColor = Theme.color.pop, activeColor = Theme.color.bg, inactiveColor = Theme.color.ink2. TabBarItem(icon: ImageVector, contentDescription: String)",
+    "description": "Floating icon bottom-bar for the mobile targets, with a distinct reselect callback."
+  },
+  {
+    "id": "segmented-button-group",
+    "name": "SegmentedButtonGroup",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/button/SegmentedButtonGroup.kt",
+    "props": "items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier = Modifier",
+    "description": "30dp inset segmented control — the shell toolbar's Android|iOS platform switch."
+  },
+  {
+    "id": "chip-group",
+    "name": "ChipGroup",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/chip/ChipGroup.kt",
+    "props": "items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier = Modifier",
+    "description": "Single-select row of Chip atoms."
+  },
+  {
+    "id": "device-chip",
+    "name": "DeviceChip",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/chip/DeviceChip.kt",
+    "props": "name: String, state: DeviceChipState, onClick: () -> Unit, modifier = Modifier, detail: String? = null",
+    "description": "32dp dot+name chip for the toolbar device indicator; DeviceChipState (incl. None) chooses the dot colour."
+  },
+  {
+    "id": "platform-tool-card",
+    "name": "PlatformToolCard",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/card/PlatformToolCard.kt",
+    "props": "title: String, detail: String, toolState: PlatformToolState, selected: Boolean, onClick: () -> Unit, modifier = Modifier, enabled = true",
+    "description": "80dp selectable card showing a platform and its detected CLI tool (e.g. \"adb 35.0.1 · /opt/homebrew/bin\"); PlatformToolState drives the status dot. The PLATFORM row of DevicePickerPanel."
+  },
+  {
+    "id": "command-block",
+    "name": "CommandBlock",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/command/CommandBlock.kt",
+    "props": "command: String, onCopy: () -> Unit, modifier = Modifier, copyLabel: String = \"Copy\"",
+    "description": "Mono code block on Theme.color.codeBg with a copy action; how error cards offer a shell command to run. Machine output stays unlocalised by convention."
+  },
+  {
+    "id": "form-section",
+    "name": "FormSection",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/form/FormSection.kt",
+    "props": "label: String, errorMessage: String?, content: @Composable () -> Unit",
+    "description": "Labelled form field wrapper that renders a validation message under its content slot. Note: no modifier parameter."
+  },
+  {
+    "id": "action-header",
+    "name": "ActionHeader",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/header/ActionHeader.kt",
+    "props": "title: String, actionIcon: ImageVector, onActionClick: () -> Unit, modifier = Modifier, buttonSize: ButtonSizeType = Small",
+    "description": "Title plus one trailing IconButton."
+  },
+  {
+    "id": "navigation-header",
+    "name": "NavigationHeader",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/header/NavigationHeader.kt",
+    "props": "title: String, onNavigationClick: () -> Unit, modifier = Modifier, buttonSize: ButtonSizeType = Medium",
+    "description": "Leading back/close IconButton plus title."
+  },
+  {
+    "id": "screen-header",
+    "name": "ScreenHeader",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/header/ScreenHeader.kt",
+    "props": "onBackClick: () -> Unit, modifier = Modifier, showDivider = false, trailingContent: (@Composable () -> Unit)? = null",
+    "description": "Title-less back bar with an optional divider and trailing slot — the header the detail screens use."
+  },
+  {
+    "id": "simple-header",
+    "name": "SimpleHeader",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/header/SimpleHeader.kt",
+    "props": "title: String, modifier = Modifier",
+    "description": "Title-only header, no affordances."
+  },
+  {
+    "id": "language-option-row",
+    "name": "LanguageOptionRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/item/LanguageOptionRow.kt",
+    "props": "label: String, code: String, selected: Boolean, onClick: () -> Unit",
+    "description": "Language picker row (name + ISO code + selected accent). No modifier parameter."
+  },
+  {
+    "id": "selectable-card",
+    "name": "SelectableCard",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/item/SelectableCard.kt",
+    "props": "title: String, subtitle: String, selected: Boolean, onClick: () -> Unit, modifier = Modifier",
+    "description": "Two-line card whose border switches to Theme.color.primary when selected."
+  },
+  {
+    "id": "selection-row",
+    "name": "SelectionRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/item/SelectionRow.kt",
+    "props": "label: String, onClick: () -> Unit, modifier = Modifier",
+    "description": "Settings navigation row (label + chevron)."
+  },
+  {
+    "id": "mirror-frame-view",
+    "name": "MirrorFrameView",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/mirror/MirrorFrameView.kt",
+    "props": "frame: ImageBitmap, deviceName: String, modifier = Modifier, overlay: @Composable BoxScope.() -> Unit = {}",
+    "description": "Aspect-correct bezel-less renderer for one mirrored device frame, with a BoxScope overlay slot for annotation marks. The only place device frames are drawn."
+  },
+  {
+    "id": "annotation-row",
+    "name": "AnnotationRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/AnnotationRow.kt",
+    "props": "index: Int, meta: String, onClick: () -> Unit, modifier = Modifier, comment: String? = null, finding: String? = null, selected = false, emptyLabel: String = \"No comment yet\"",
+    "description": "One staged annotation in the side panel's Notes tab — index badge, comment, coordinate meta, selection state."
+  },
+  {
+    "id": "hierarchy-row",
+    "name": "HierarchyRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt",
+    "props": "nodeId: String, depth: Int, modifier = Modifier, last = false, tag: String? = null, onClick: () -> Unit = {}",
+    "description": "26dp view-tree row with Canvas-drawn indent guides; for a UI-hierarchy / payload tree."
+  },
+  {
+    "id": "history-row",
+    "name": "HistoryRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HistoryRow.kt",
+    "props": "title: String, meta: String, statusLabel: String, statusTone: StatusPillTone, onClick: () -> Unit, modifier = Modifier, thumbnail: @Composable (() -> Unit)? = null, trailing: @Composable RowScope.() -> Unit = {}",
+    "description": "Capture-history row with 56dp thumbnail slot and a StatusPill; the History tab's intended row (tab content itself is unbuilt)."
+  },
+  {
+    "id": "key-value-row",
+    "name": "KeyValueRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/KeyValueRow.kt",
+    "props": "label: String, value: String, modifier = Modifier, state: KeyValueState = Neutral",
+    "description": "Label/value metadata row; KeyValueState tints the value (Neutral/...)."
+  },
+  {
+    "id": "source-list-row",
+    "name": "SourceListRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/SourceListRow.kt",
+    "props": "name: String, selected: Boolean, onClick: () -> Unit, modifier = Modifier, serial: String? = null, enabled = true, trailing: @Composable RowScope.() -> Unit = {}. Same file: SourceListHeader(text: String, modifier = Modifier)",
+    "description": "48dp device row (name + serial + trailing slot) with a disabled-alpha state; the SOURCE list in the device picker and in the error cards' device lists."
+  },
+  {
+    "id": "verification-row",
+    "name": "VerificationRow",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/VerificationRow.kt",
+    "props": "title: String, delta: String, outcome: VerificationOutcome, modifier = Modifier, outcomeLabel: String = outcome.defaultLabel()",
+    "description": "Before/after verification row with a signal-coloured outcome accent; shipped for the fix-verification flow, not yet wired."
+  },
+  {
+    "id": "emulator-select",
+    "name": "EmulatorSelect",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/select/EmulatorSelect.kt",
+    "props": "avds: List<String>, selected: String?, onSelect: (String) -> Unit, modifier = Modifier, emptyLabel: String = \"No AVDs installed\"",
+    "description": "Compact AVD dropdown (28dp, min 150dp) that disables itself on an empty list; the inline emulator picker in NoSignalStage."
+  },
+  {
+    "id": "error-state",
+    "name": "ErrorState",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/state/ErrorState.kt",
+    "props": "title: String, description: String, modifier = Modifier",
+    "description": "Minimal centred title+description empty/error block — the lightweight alternative to the full ErrorCard organism."
+  },
+  {
+    "id": "feedback-bar",
+    "name": "FeedbackBar",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/status/FeedbackBar.kt",
+    "props": "text: String, modifier = Modifier, status: FeedbackStatus = Success, timing: String? = null, detail: String? = null, actionLabel: String? = null, onAction: () -> Unit = {}, actionVariant: AppButtonVariant = Ghost",
+    "description": "Inline status banner with a mark, optional timing/detail and one action button; this is the stream-drop / Reconnect banner the error-handling spec overlays on the mirror stage."
+  },
+  {
+    "id": "status-line",
+    "name": "StatusLine",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/status/StatusLine.kt",
+    "props": "steps: List<StatusStep>, modifier = Modifier, trailing: String? = null. StatusStep(label: String, state: StatusStepState = Pending)",
+    "description": "34dp multi-step progress line (dot + label per step) with a trailing text slot; for send/resolve pipelines."
+  },
+  {
+    "id": "animation-sequence-host",
+    "name": "AnimationSequenceHost / AnimatedItem",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/animatedsequence/AnimatedSequenceHost.kt",
+    "props": "AnimationSequenceHost(modifier = Modifier, startByDefault = true, content: @Composable BoxScope.(scope: SequentialAnimationScope) -> Unit); AnimatedItem(modifier = Modifier, index: Int, delayAfterAnimation: Long = default, enter = fadeIn(...), exit = fadeOut(...), content: @Composable () -> Unit)",
+    "description": "Orchestrates a strictly ordered enter/exit animation sequence over indexed children (nestable, with a public SequentialAnimationScope exposing isAnimating()); used by the splash/onboarding reveal."
+  },
+  {
+    "id": "comment-popover",
+    "name": "CommentPopover",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/CommentPopover.kt",
+    "props": "value: String, onValueChange: (String) -> Unit, onClose: () -> Unit, modifier = Modifier, index = 1, placeholder: String = \"What's wrong here?\", meta: String? = null, finding: String? = null, saveHint: String? = null, closeLabel: String = \"Close\", focusRequester: FocusRequester? = null",
+    "description": "Editable annotation popover with tail, index badge, meta line and close button — the focused place a tester describes a bug. WAIVED EXCEPTION: deliberately always-dark, the only file in the kit with four hardcoded Color literals (documented carve-out in the drag-annotate verdict), so don't copy its colour style."
+  },
+  {
+    "id": "measure-card",
+    "name": "MeasureCard",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/MeasureCard.kt",
+    "props": "nodeId: String, specs: List<MeasureSpec>, modifier = Modifier, title: String = \"Measuring\", index: Int? = null, finding: String? = null. MeasureSpec(label: String, value: String)",
+    "description": "360dp spec sheet for measure mode (node id + label/value pairs); shipped by F-1/F-4 but currently has no caller."
+  },
+  {
+    "id": "app-bottom-sheet",
+    "name": "AppBottomSheet",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/bottomsheet/AppBottomSheet.kt",
+    "props": "onDismiss: () -> Unit, modifier = Modifier, title: String? = null, content: @Composable ColumnScope.() -> Unit",
+    "description": "Themed ModalBottomSheet wrapper (skipPartiallyExpanded) with an optional title."
+  },
+  {
+    "id": "confirmation-sheet",
+    "name": "ConfirmationSheet",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/bottomsheet/ConfirmationSheet.kt",
+    "props": "title: String, body: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit, modifier = Modifier, isDestructive = false",
+    "description": "Two-button confirm/dismiss sheet with a destructive variant and press-scale springs; the settings erase-data confirmation."
+  },
+  {
+    "id": "error-card",
+    "name": "ErrorCard",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/error/ErrorCard.kt",
+    "props": "title: String, body: String, modifier = Modifier, kind: ErrorKind = Fixable, command: String? = null, onCopyCommand: () -> Unit = {}, primaryActionLabel: String? = null, onPrimaryAction: () -> Unit = {}, secondaryActionLabel: String? = null, onSecondaryAction: () -> Unit = {}, diagnostic: String? = null",
+    "description": "520dp actionable error card composing ErrorGlyph + CommandBlock + up to two AppButtons + a diagnostic line. The single surface for every recoverable failure (adb missing, no device, poll failed) — reuse rather than inventing a new error layout."
+  },
+  {
+    "id": "device-picker-panel",
+    "name": "DevicePickerPanel",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/picker/DevicePickerPanel.kt",
+    "props": "platforms: List<PickerPlatform>, selectedPlatformId: String?, onPlatformClick: (String) -> Unit, devices: List<PickerDevice>, selectedDeviceId: String?, onDeviceClick: (String) -> Unit, onDeviceAction: (String) -> Unit, onMoveSelection: (Int) -> Unit, onStart: () -> Unit, modifier = Modifier, plus copy defaults (title/subtitle/platformSectionLabel/sourceSectionLabel/sourceSummary/physicalGroupLabel/emulatorGroupLabel/keyHint/startLabel/closeLabel) and onClose: (() -> Unit)? = null",
+    "description": "Full-stage 648dp device-picker takeover: PlatformToolCards + grouped SourceListRows + arrow/Enter/Escape keyboard navigation. Data types PickerPlatform, PickerDevice, PickerDeviceGroup and the sealed PickerDeviceTrailing (Detail/Running/Boot) are public in the same file."
+  },
+  {
+    "id": "app-pull-to-refresh-box",
+    "name": "AppPullToRefreshBox",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/pulltorefresh/AppPullToRefreshBox.kt",
+    "props": "isRefreshing: Boolean, onRefresh: () -> Unit, modifier = Modifier, content: @Composable () -> Unit",
+    "description": "Hand-rolled pull-to-refresh via NestedScrollConnection (80dp trigger, 140dp max drag) — no Material pull-refresh dependency."
+  },
+  {
+    "id": "rectify-window-shell",
+    "name": "RectifyWindowShell",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/RectifyWindowShell.kt",
+    "props": "toolbar: @Composable () -> Unit, statusBar: @Composable () -> Unit, modifier = Modifier, state: ShellState = rememberShellState(), sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null, tabCounts: Map<ShellTab, Int> = emptyMap(), onPanelWidthCommit: (Dp) -> Unit (deliberately NOT defaulted), stage: @Composable BoxScope.() -> Unit",
+    "description": "THE top-level app layout and the public contract every desktop feature builds against: Column[ShellToolbar, Row[StageSurface, PanelResizeHandle, SidePanelFrame], ShellStatusBar]. A null sidePanel is the pre-mirror state as a type, not a flag."
+  },
+  {
+    "id": "shell-toolbar",
+    "name": "ShellToolbar",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellToolbar.kt",
+    "props": "platformSwitch: @Composable () -> Unit, deviceIndicator: @Composable () -> Unit, stagedCounter: @Composable () -> Unit, clearAction: @Composable () -> Unit, primaryAction: @Composable () -> Unit, modifier = Modifier, leadingInset: Dp = ShellWindowDefaults.TrafficLightInset",
+    "description": "52dp toolbar with five fixed named slots in canonical order plus a reserved leading inset for the macOS traffic lights; the slot order is deliberately not caller-controllable."
+  },
+  {
+    "id": "shell-status-bar",
+    "name": "ShellStatusBar",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellStatusBar.kt",
+    "props": "leading: @Composable RowScope.() -> Unit, trailing: @Composable RowScope.() -> Unit, modifier = Modifier",
+    "description": "28dp bottom status strip with leading (tool/session state) and trailing (version) slots."
+  },
+  {
+    "id": "side-panel-frame",
+    "name": "SidePanelFrame",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/SidePanelFrame.kt",
+    "props": "activeTab: ShellTab, onTabSelect: (ShellTab) -> Unit, modifier = Modifier, tabCounts: Map<ShellTab, Int> = emptyMap(), content: @Composable ColumnScope.(ShellTab) -> Unit",
+    "description": "The three-tab (Notes/Payload/History) panel frame built on SidebarTabs, with per-tab content as a slot. Only the Notes tab has real content today."
+  },
+  {
+    "id": "stage-surface",
+    "name": "StageSurface",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/StageSurface.kt",
+    "props": "modifier = Modifier, content: @Composable BoxScope.() -> Unit",
+    "description": "Bezel-less main stage: Theme.color.stage ground plus a Canvas dot-grid texture (16dp pitch, stageDot token) and a required content slot. Everything that renders \"in the window\" goes in here."
+  },
+  {
+    "id": "shell-state",
+    "name": "ShellState / rememberShellState",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/shell/ShellState.kt",
+    "props": "rememberShellState(initialPanelWidth: Dp = ShellWindowDefaults.PanelDefaultWidth): ShellState. ShellState: activeTab, panelWidth, selectTab(tab), setPanelWidth(width), resizePanelBy(delta), onDragStarted(), onDragStopped(): Dp?, onSessionStarted()",
+    "description": "Plain Compose state holder for the shell (active tab + panel width) — deliberately NOT Orbit MVI and not a ViewModel, so the shell previews and runs from desktopMain without Koin. onDragStopped() returns a width only when it actually changed, which is what gates persistence."
+  },
+  {
+    "id": "no-signal-stage",
+    "name": "NoSignalStage",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/stage/NoSignalStage.kt",
+    "props": "avds: List<String>, selectedAvd: String?, onSelectAvd: (String) -> Unit, onBoot: () -> Unit, modifier = Modifier, plus copy defaults (noSignalLabel, title, subtitle, stepUsb, stepEmulator, bootLabel, footer)",
+    "description": "The waiting-for-a-device stage: dashed phone outline, numbered steps, inline EmulatorSelect + Boot, polling footer. Carries a known comp-fidelity waiver (outline ships at 180x380dp vs the comp's ~274x578dp)."
+  },
+  {
+    "id": "styleguide-screen",
+    "name": "StyleguideScreen",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/showcase/StyleguideScreen.kt",
+    "props": "onBack: () -> Unit",
+    "description": "Live in-app styleguide (~1100 lines) rendering every colour, type role, spacing, corner, stroke and motion token plus most kit components. Reachable via Destination.Styleguide — the fastest way to see what already exists before building anything new."
+  },
+  {
+    "id": "navigation-host",
+    "name": "NavigationHost",
+    "path": "presentation-core-navigation-impl/src/commonMain/kotlin/presentation/core/navigation/impl/source/host/NavigationHost.kt",
+    "props": "startDestination: Destination? = null",
+    "description": "The only NavDisplay host; provides LocalAppNavigator/LocalBackAction and owns the entry<Destination.X> branches. Used by the mobile targets; the desktop entry point renders RectifyWindow instead. Never import this from a presentation-feature-* module."
+  },
+  {
+    "id": "app-locale-provider",
+    "name": "AppLocaleProvider",
+    "path": "presentation-core-localisation/src/commonMain/kotlin/presentation/core/localisation/source/provider/AppLocaleProvider.kt",
+    "props": "languageCode: String, content: @Composable () -> Unit. Same file: LocalLocalization: ProvidableCompositionLocal<String>",
+    "description": "Overrides the Compose Resources locale for its subtree without recreating the composition (which would destroy the Nav3 back stack); wraps the app root so every stringResource() resolves against the chosen language."
+  },
+  {
+    "id": "mirror-host",
+    "name": "MirrorHost",
+    "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt",
+    "props": "viewModel: MirrorViewModel = koinViewModel(), onSideEffect: suspend (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> }, content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit",
+    "description": "Koin/Orbit boundary for the mirror feature: injects MirrorViewModel, pumps side effects (with an intent sink so a platform answer such as a file-dialog path can come back in) and hands state+frame+intent to a plain content lambda. This is how RectifyWindow mounts the feature into the shell slots."
+  },
+  {
+    "id": "mirror-stage-content",
+    "name": "MirrorStageContent",
+    "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt",
+    "props": "state: MirrorUiState, frame: ImageBitmap?, onIntent: (MirrorIntent) -> Unit, modifier = Modifier",
+    "description": "Stateless stage filler that dispatches on MirrorStage to the picker, NoSignalStage, error card or live/frozen annotation stage; goes in RectifyWindowShell's stage slot. Same file exports MirrorStatusLine(state, modifier) for the status-bar leading slot."
+  },
+  {
+    "id": "mirror-notes-tab",
+    "name": "MirrorNotesTab",
+    "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorNotesTab.kt",
+    "props": "state: MirrorUiState, onIntent: (MirrorIntent) -> Unit, modifier = Modifier",
+    "description": "Fills SidePanelFrame's Notes tab with AnnotationRows for the staged annotations; the only side-panel tab with real content."
+  }
+]
