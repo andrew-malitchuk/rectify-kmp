@@ -33,6 +33,8 @@ import presentation.core.ui.source.kit.organism.picker.PickerDeviceTrailing
 import presentation.core.ui.source.kit.organism.picker.PickerPlatform
 import presentation.core.ui.source.kit.organism.stage.NoSignalStage
 import presentation.feature.mirror.core.stats.formatStatusLine
+import kotlin.time.Clock
+import presentation.feature.mirror.core.discovery.errorCard
 import presentation.feature.mirror.core.discovery.dropBanner
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_close
@@ -88,8 +90,17 @@ public fun MirrorStageContent(
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Resolved ahead of the stage `when`, not inside its NoSignal branch. The plan said
+    // NoSignal-only for the smallest blast radius, but of the four discovery states only
+    // NoDeviceFound closes the picker - F-2 keeps it open for ToolMissing and PollFailed, and
+    // those are confirmed ACs - so NoSignal-only routing left AC-26, AC-53 and AC-28's cards
+    // unreachable. The projection itself stands down for `Found`, where the picker is the real
+    // affordance, so the picker still keeps the stage wherever it has something to show.
+    val card = state.errorCard(Clock.System.now().toEpochMilliseconds())
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        when (state.stage) {
+        if (card != null) {
+            MirrorErrorStage(card = card, onIntent = onIntent)
+        } else when (state.stage) {
             MirrorStage.Picker -> MirrorPicker(state = state, onIntent = onIntent)
 
             MirrorStage.IosDeferred -> Text(

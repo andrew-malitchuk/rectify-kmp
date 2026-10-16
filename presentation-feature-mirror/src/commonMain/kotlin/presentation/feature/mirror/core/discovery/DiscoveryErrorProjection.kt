@@ -54,7 +54,18 @@ private const val AMBIGUOUS_DEVICE_COUNT = 2
  * @return The card to compose, or `null` when this state has no actionable error.
  */
 internal fun MirrorUiState.errorCard(nowMs: Long): MirrorErrorCard? {
-    if (isPickerOpen || session is MirrorSession.Streaming || frozen != null) return null
+    if (session is MirrorSession.Streaming || frozen != null) return null
+    // The picker wins ONLY where it has something to offer. For `Found` it is the real
+    // multi-device affordance - it lists the devices and carries the keyboard navigation AC-43
+    // and A11Y-6 were confirmed against - so the card would be a worse duplicate of it.
+    //
+    // For the three failure states it has nothing: no tool, no answer, or no device. F-2
+    // deliberately keeps the picker open for ToolMissing and PollFailed (its own tests assert
+    // stage == Picker, and those are confirmed ACs), so routing the card only from the
+    // NoSignal branch - which is what the chosen plan said - left AC-26, AC-53 and AC-28's
+    // cards unreachable: of the four states only NoDeviceFound closes the picker. Yielding to
+    // an open picker unconditionally is what made three of four states dead UI.
+    if (isPickerOpen && discovery is DiscoveryModel.Found) return null
     return when (val outcome = discovery) {
         DiscoveryModel.Detecting -> null
 

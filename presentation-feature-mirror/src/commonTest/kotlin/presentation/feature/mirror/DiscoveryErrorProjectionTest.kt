@@ -73,6 +73,12 @@ private fun pollFailed(): DiscoveryModel.PollFailed = DiscoveryModel.PollFailed(
  * row list the card carries is the picker's own, and a hand-built one could agree with the card
  * while disagreeing with what the picker would show.
  */
+/** Two usable handsets — the ambiguity the picker exists to resolve. */
+private fun twoSelectablePhones(): DiscoveryModel.Found = DiscoveryModel.Found(
+    physical = listOf(device(PIXEL, "Pixel 8 Pro"), device(GALAXY, "Galaxy S24")),
+    emulators = emptyList(),
+)
+
 private fun stateOf(discovery: DiscoveryModel): MirrorUiState =
     MirrorUiState().applyDiscovery(discovery).copy(isPickerOpen = false)
 
@@ -228,7 +234,20 @@ class DiscoveryErrorProjectionTest {
      * This null is also what keeps AC-4's passive NO SIGNAL stage reachable instead of papering
      * a card over it.
      *
-     * MUTATION A: remove the isPickerOpen guard — the picker assertion fails.
+     * REVISED in T-14, and the reason matters. The guard was originally
+     * `if (isPickerOpen) return null` for every state, which made three of the four card kinds
+     * **unreachable**: the chosen plan routes the card from the `NoSignal` branch only, and of
+     * the four discovery states just `NoDeviceFound` closes the picker. F-2 deliberately keeps
+     * it open for `ToolMissing` and `PollFailed` — its own tests assert `stage == Picker` and
+     * those are confirmed ACs — so AC-26's and AC-53's cards could never render at all.
+     *
+     * The picker now wins only for `Found`, where it is the genuine multi-device affordance
+     * carrying the keyboard navigation AC-43 and A11Y-6 were confirmed against. For the three
+     * failure states it has nothing to show, so the card takes the stage.
+     *
+     * MUTATION A: drop the `discovery is Found` qualifier, i.e. yield to ANY open picker — the
+     * toolMissingWithPickerOpen assertion fails, which is the regression that made those three
+     * states dead UI.
      * MUTATION B: remove the session guard — the streaming assertion fails.
      */
     @Test
@@ -241,14 +260,25 @@ class DiscoveryErrorProjectionTest {
 
         assertEquals(
             expected = verdicts(
-                "pickerOpen" to null,
+                "foundWithPickerOpen" to null,
+                "toolMissingWithPickerOpen" to MirrorErrorKind.ToolMissing,
                 "streaming" to null,
                 "frozen" to null,
                 "detecting" to null,
                 "otherwise" to MirrorErrorKind.NoDevice,
             ),
             actual = verdicts(
-                "pickerOpen" to base.copy(isPickerOpen = true).errorCard(NOW)?.kind,
+                // The picker is the real affordance here, so the card stands down.
+                "foundWithPickerOpen" to base.copy(
+                    isPickerOpen = true,
+                    discovery = twoSelectablePhones(),
+                ).errorCard(NOW)?.kind,
+                // The picker has nothing to list, so the card must still be reachable - this
+                // is the assertion that stops AC-26 becoming dead UI again.
+                "toolMissingWithPickerOpen" to base.copy(
+                    isPickerOpen = true,
+                    discovery = toolMissing(),
+                ).errorCard(NOW)?.kind,
                 "streaming" to base.copy(session = MirrorSession.Streaming(PIXEL)).errorCard(NOW)?.kind,
                 "frozen" to base.copy(frozen = pinned).errorCard(NOW)?.kind,
                 "detecting" to base.copy(discovery = DiscoveryModel.Detecting).errorCard(NOW)?.kind,
