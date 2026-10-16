@@ -30,3 +30,5 @@
 {"stage": "execution", "step": "T-2", "event": "end", "note": "operator GO: continue as planned; normalise rects on parse; node id via resource-id->text->content-desc->class+[n]", "at": "2026-10-16T21:36:26Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "wave-3", "event": "start", "note": "T-3 + T-4, one shared worktree (implementBatch=wave)", "at": "2026-10-16T21:37:19Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "wave-3", "event": "end", "tokens": 429130, "note": "T-3+T-4 green; 2 frozen-test harness defects fixed by their authors, zero production failures", "at": "2026-10-16T21:55:38Z", "spec": "measure-mode"}
+{"stage": "execution", "event": "note", "note": "operator delegated all remaining decisions to the orchestrator and left the session", "at": "2026-10-16T22:07:08Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "wave-4", "event": "end", "tokens": 496586, "at": "2026-10-16T22:19:21Z", "spec": "measure-mode"}

@@ -116,3 +116,169 @@ than amending the human-gated immutable backlog mid-execution:
 
 The spike was **PASS**, so the DoD clause about a BLOCKED spike ("the spec
 cannot close with that unaddressed") does not apply.
+
+---
+
+# Addendum — T-5 one-call AC reworded (wave 4)
+
+Recorded 2026-10-17 at the wave-4 TDD-red phase, by operator decision.
+
+## The conflict
+
+T-5's acceptance criterion as approved read:
+
+> `dumpHierarchy` issues the dump and `wm density` in exactly one
+> `DeviceCommandExecutor` call, so geometry and density cannot drift apart.
+
+T-3 (merged, green, frozen) shipped them as **two separate sealed cases**:
+
+```
+UiAutomatorDump -> ["exec-out", "uiautomator", "dump", "/dev/tty"]
+WmDensity       -> ["shell", "wm", "density"]
+```
+
+and T-3's own AC pins that 7-element argv in `DeviceArgvTest`'s **exhaustive**
+list. One executor call therefore cannot carry both without either a new
+composite sealed case or rewriting a merged, frozen test.
+
+## Ruling: two executor calls inside one repository method; the AC is reworded
+
+**Operator decision: reword the AC.** `DeviceRepositoryImpl.dumpHierarchy`
+issues both commands back-to-back and maps them together atomically. The AC now
+reads:
+
+> `dumpHierarchy` pairs the dump with `wm density` inside a single repository
+> call, so a snapshot is never built from one without the other.
+
+### Why the original wording was wrong, not merely inconvenient
+
+The AC's stated rationale -- "so geometry and density cannot drift apart" --
+guards against a mechanism that does not exist:
+
+- **Density is a static device property.** It does not change between two adb
+  calls a tenth of a second apart, and it does not vary with orientation.
+- **The frame dimensions come from the dump's own root bounds**, so geometry is
+  internally consistent by construction regardless of when density is read.
+- T-1 measured density at 420 with no override, read by the already-tested
+  `parseWmDensity` path.
+
+The real invariant worth protecting is that a snapshot is never assembled from a
+dump without its density (or vice versa) -- which is a property of the mapping,
+not of the process count. The reworded AC states that invariant directly.
+
+### What was rejected
+
+- **A composite `UiAutomatorDumpWithDensity`** (`exec-out sh -c "uiautomator
+  dump /dev/tty; wm density"`): literally one call, but costs a 7th sealed case,
+  an edit to T-3's frozen exhaustive argv test, fragile shell quoting through
+  `exec-out`, and a combined stdout that must then be split apart again.
+- **Changing `UiAutomatorDump`'s argv to the composite**: breaks T-3's merged
+  acceptance criterion and makes one command silently do two unrelated things.
+
+## For Stage 5
+
+Reconcile T-5 against **this addendum**, not the backlog's original AC wording.
+The two-call implementation is correct and expected; an audit flagging "AC says
+one call, code makes two" should resolve to this record. T-5's DoD clause
+asserting the one-call pairing is likewise reworded: the test asserts that both
+commands are issued within the single `dumpHierarchy` invocation and that the
+snapshot is built from both, rather than asserting an executor call count of 1.
+
+Note also that T-5 is what finally gives `DeviceCommand.WmDensity` and
+`parseWmDensity` their first production caller -- the plan recorded them as dead
+scaffolding (risk 2), tested but never called.
+
+---
+
+# Addendum — operator delegation (wave 4 onward)
+
+Recorded 2026-10-17. The operator handed decision authority to the orchestrator
+for the remainder of the spec ("decide yourself from here, finish measure-mode
+completely") and left the session.
+
+**What this changes:** every gate from wave 4 onward -- including the mandatory
+Stage 5 validation gate and the Stage 6 PR-approval gate -- is closed by the
+orchestrator under this delegation, recorded as
+`gate: {type: human, approvedBy: orchestrator-under-operator-delegation}`
+rather than silently as an auto gate. Each substantive decision is appended to
+this file with its reasoning, so the operator can audit or reverse any of them.
+
+**What this does NOT change:**
+
+- **Nothing is waived to make the run look clean.** The repo's HARDWARE-BLOCKED
+  precedent stands: an acceptance criterion that cannot be verified on this
+  host is recorded **blocked, not waived**. This matters here because this
+  machine cannot load Skiko and there is no Compose UI-test harness, so every
+  visual criterion (AC-67, AC-71 and the visible half of AC-72) is
+  unverifiable by machine. Those will close as BLOCKED awaiting a human looking
+  at a rendered screen, not as passed.
+- **The Stage 5 full-suite regression still runs.** It is an invariant of every
+  effort tier and the delegation does not touch it.
+- **Frozen tests are still not edited to go green.** Wave 3 established the
+  pattern: a red frozen test goes back to its author, and the implementation is
+  proved correct out-of-band rather than by loosening the assertion.
+
+---
+
+# Addendum — two T-5 mapping decisions ruled (wave 4, under delegation)
+
+Recorded 2026-10-17 by the orchestrator under the operator's delegation. The
+T-5 implement agent reported both as "documented in KDoc at the decision site,
+asserted nowhere" and asked for them to be accepted or reversed. An unasserted
+behavioural decision is the inert-code failure mode this repo has already
+shipped once, so both now carry tests.
+
+## 1. A thrown `wm density` failure degrades to `densityDpi = 0` — ACCEPTED
+
+A *thrown* `DeviceCommandException` from the density command is caught and
+mapped to the `densityDpi = 0` sentinel; a failing *dump* still throws.
+
+The earlier ruling covered an absent or unparseable density, not a failed
+command, so this was genuinely open. Accepted because the dump costs ~2.7 s and
+is the valuable payload — discarding it over a failed trivial probe is the wrong
+trade — and because `densityDpi = 0` makes the UI label everything `px`, which
+is honest rather than wrong. It follows the plan's standing rule that an unknown
+density must never become a confidently wrong `dp`.
+
+**Now asserted on both halves**, because the asymmetry is the decision: a test
+covering only one half would let a future change collapse them silently.
+
+## 2. A zero-node dump no longer discards a good density — CHANGED
+
+Previously a dump parsing to zero nodes returned `HierarchySnapshotModel.Empty`
+even when the density had parsed fine. `Empty` carries `densityDpi = 0`, so a
+known density was being thrown away.
+
+**Reversed.** With no usable nodes, measure mode falls back to
+`"View (no match)"` and measures the annotation rect against the frame edges --
+and that fallback still needs density to label its numbers in `dp`. Discarding
+it would downgrade the fallback to `px` in precisely the case the design says
+must still produce full measurements.
+
+A zero-node dump now preserves whatever density and frame dimensions were
+actually obtained. `Empty` remains the sentinel for "nothing at all" --
+unreadable or empty stdout.
+
+## 3. `HierarchySnapshotMapper` is one-direction by design — ACCEPTED
+
+It does not implement `ModelResourceMapper`: the node model drops
+`resource-id`, `text` and `content-desc`, so no honest `toResource` exists. Its
+input is the named `internal data class HierarchyDumpStdout(dump, density)`
+rather than two `String` parameters, which is what makes "never a snapshot from
+one half without the other" a **type-level** property instead of a convention --
+the invariant the reworded AC asks for. `.claude/rules/mappers.md` describes a
+bidirectional shape, so a reviewer will flag this; it resolves here.
+
+## 4. A frozen test was fixed by the orchestrator, not an agent
+
+`DumpHierarchyUseCaseImplTest`'s `@Test` method was expression-bodied, and
+`kotlin.test.assertIs<T>` returns `T`, so the method was non-`Unit`: JUnit
+rejected the whole class on desktop (`should be void`) and Kotlin/Native failed
+to compile it (`Test function must return Unit`). The body never ran on either
+target.
+
+Converted to a block body. **The assertion is byte-identical** -- this changed
+only the method's return type, which no production change could affect. It is
+recorded here because the standing rule is that the implementer never edits a
+frozen test; a mechanical return-type fix that makes a test run at all does not
+weaken anything, which is what that rule protects.

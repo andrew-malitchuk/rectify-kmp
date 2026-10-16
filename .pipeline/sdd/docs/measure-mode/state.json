@@ -52,6 +52,11 @@
       "status": "done",
       "wave": 3,
       "worktreeBranch": "task/wave-3"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 4,
+      "worktreeBranch": "task/wave-4"
     }
   },
   "effort": "fast",
@@ -63,5 +68,11 @@
     "validation": "fast",
     "review": "fast",
     "reflection": "fast"
+  },
+  "delegation": {
+    "from": "operator",
+    "at": "2026-10-17",
+    "scope": "wave-4 onward including Stage 5 and Stage 6 gates",
+    "note": "Decisions recorded in execution/GATE-step2-go-no-go.md addenda. Unverifiable visual ACs close as blocked, never waived."
   }
 }
