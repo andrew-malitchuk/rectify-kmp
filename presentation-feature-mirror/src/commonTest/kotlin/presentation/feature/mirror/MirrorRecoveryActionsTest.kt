@@ -3,6 +3,7 @@ package presentation.feature.mirror
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -12,6 +13,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import domain.core.source.model.device.DiscoveryModel
+import kotlinx.coroutines.launch
+import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.MirrorIntent
 
 /**
@@ -147,5 +150,58 @@ class MirrorRecoveryActionsTest {
         advanceUntilIdle()
 
         assertEquals(expected = listOf("nudges=1"), actual = listOf("nudges=${refresh.nudges}"))
+    }
+
+    /**
+     * COR-7 — a recovery action that FAILS says so.
+     *
+     * All three handlers discarded the `Optional` their use cases returned, so a real failure
+     * — an SDK unmounted after the probe cached a success, say — was indistinguishable from the
+     * dead button FR-37 forbids: the card simply re-rendered as if the user had cancelled.
+     * `DeviceRepositoryImpl.restartAdbServer`'s KDoc justifies throwing precisely so this layer
+     * can report it, and this layer was dropping it.
+     *
+     * The second clause matters as much as the first: a failed restart must NOT be followed by
+     * a re-poll, because polling a daemon that was never restarted just reports the same
+     * failure again and buries the real reason.
+     *
+     * MUTATION A: drop `.onFailure` — the effect clause fails.
+     * MUTATION B: change `.onSuccess { refreshDiscovery() }` back to an unconditional call —
+     * the nudges clause fails. Neither mutation covers the other.
+     */
+    @Test
+    fun aFailedRestartIsReportedAndDoesNotRepoll() = runTest(mainDispatcher) {
+        val restart = FakeRestartAdbServer().apply { failure = IllegalStateException("sdk gone") }
+        val refresh = FakeRefreshDiscovery()
+        val effects = mutableListOf<MirrorSideEffect>()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedDiscovery(),
+            refreshDiscovery = refresh,
+            restartAdbServer = restart,
+        )
+        subscribe(viewModel)
+        // Unconfined, so the collector is live BEFORE the intent posts. Orbit's sideEffectFlow
+        // is hot; a lazily-started collector misses the effect and the test then reports the
+        // fix as broken when it is the harness that is.
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.container.sideEffectFlow.collect { effects += it }
+        }
+        advanceUntilIdle()
+
+        viewModel.handleIntent(MirrorIntent.RestartAdb)
+        advanceUntilIdle()
+
+        assertEquals(
+            expected = listOf(
+                "attempted=1",
+                "effect=[RecoveryFailed(action=RestartAdb)]",
+                "nudges=0",
+            ),
+            actual = listOf(
+                "attempted=${restart.restarts}",
+                "effect=${effects.filterIsInstance<MirrorSideEffect.RecoveryFailed>()}",
+                "nudges=${refresh.nudges}",
+            ),
+        )
     }
 }

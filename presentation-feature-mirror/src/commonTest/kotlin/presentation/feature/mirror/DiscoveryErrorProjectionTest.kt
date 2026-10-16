@@ -19,6 +19,8 @@ import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.StagedAnnotation
 import kotlin.test.Test
+import presentation.feature.mirror.source.mirror.MirrorRowGroup
+import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
@@ -79,6 +81,17 @@ private fun pollFailed(): DiscoveryModel.PollFailed = DiscoveryModel.PollFailed(
 private fun twoSelectablePhones(): DiscoveryModel.Found = DiscoveryModel.Found(
     physical = listOf(device(PIXEL, "Pixel 8 Pro"), device(GALAXY, "Galaxy S24")),
     emulators = emptyList(),
+)
+
+/**
+ * Two usable handsets AND a configured-but-cold AVD, so `applyDiscovery` really builds a
+ * `kind = Boot` row. Setting `avds` by hand does not — it leaves `rows` with no emulator entry,
+ * which made the first version of the COR-4 test pass against the very bug it targets. Its own
+ * mutation exposed that.
+ */
+private fun twoPhonesAndAColdAvd(): DiscoveryModel.Found = DiscoveryModel.Found(
+    physical = listOf(device(PIXEL, "Pixel 8 Pro"), device(GALAXY, "Galaxy S24")),
+    emulators = listOf(EmulatorModel(avdName = "Pixel_7_API_34", isRunning = false)),
 )
 
 private fun stateOf(discovery: DiscoveryModel): MirrorUiState =
@@ -432,6 +445,69 @@ class DiscoveryErrorProjectionTest {
                 // say which they meant, and no other surface is asking.
                 "pickerClosed" to base.copy(isPickerOpen = false).errorCard(NOW)?.kind,
                 "pickerOpen" to base.copy(isPickerOpen = true).errorCard(NOW)?.kind,
+            ),
+        )
+    }
+
+    /**
+     * COR-4 — the card lists ATTACHED devices, never a cold AVD.
+     *
+     * `rows` is physical + emulators, and a configured-but-cold AVD is `selectable = true,
+     * kind = Boot`. Listing it put three disagreeing numbers on one screen and, worse, made it
+     * clickable under body copy reading "Pick one to mirror" — `commit()` routes a Boot row to
+     * `boot()`, so the ambiguity card LAUNCHED AN EMULATOR instead of mirroring.
+     *
+     * MUTATION: pass `rows` instead of the physical filter — the rowGroups clause fails.
+     */
+    @Test
+    fun theAmbiguityCardListsOnlyAttachedDevicesAndNeverAColdAvd() {
+        val withAnAvd = stateOf(twoPhonesAndAColdAvd())
+        // Guard against a vacuous pass: if the state carries no emulator row, filtering it out
+        // proves nothing.
+        assertTrue(
+            withAnAvd.rows.any { it.group == MirrorRowGroup.Emulator },
+            "fixture built no emulator row, so this test would pass against the bug",
+        )
+        val card = assertNotNull(withAnAvd.errorCard(NOW))
+
+        assertEquals(
+            expected = listOf("rowGroups=[Physical, Physical]", "primaryIsPhysical=true"),
+            actual = listOf(
+                "rowGroups=${card.rows.map { it.group }}",
+                "primaryIsPhysical=${card.rows.any { it.id == card.primaryDeviceId }}",
+            ),
+        )
+    }
+
+    /**
+     * COR-6 — a transient poll failure must not evict the open picker.
+     *
+     * `applyDiscovery(PollFailed)` deliberately RETAINS the rows so an adb hiccup does not read
+     * as an unplug. Papering a full-stage card over them made those retained rows unreachable
+     * for exactly as long as they were retained, and flipped the stage surface back and forth
+     * once per poll on a flaky daemon.
+     *
+     * ToolMissing stays non-null with the picker open, because there the picker has nothing to
+     * list — that asymmetry is the point and is asserted here so it cannot be flattened.
+     *
+     * MUTATION: drop `|| discovery is PollFailed` from the guard — the pollFailedWithPicker
+     * clause fails.
+     */
+    @Test
+    fun aFailedPollYieldsToAnOpenPickerButAMissingToolDoesNot() {
+        assertEquals(
+            expected = verdicts(
+                "pollFailedWithPicker" to null,
+                "pollFailedWithoutPicker" to MirrorErrorKind.PollFailed,
+                "toolMissingWithPicker" to MirrorErrorKind.ToolMissing,
+            ),
+            actual = verdicts(
+                "pollFailedWithPicker" to stateOf(pollFailed())
+                    .copy(isPickerOpen = true).errorCard(NOW)?.kind,
+                "pollFailedWithoutPicker" to stateOf(pollFailed())
+                    .copy(isPickerOpen = false).errorCard(NOW)?.kind,
+                "toolMissingWithPicker" to stateOf(toolMissing())
+                    .copy(isPickerOpen = true).errorCard(NOW)?.kind,
             ),
         )
     }

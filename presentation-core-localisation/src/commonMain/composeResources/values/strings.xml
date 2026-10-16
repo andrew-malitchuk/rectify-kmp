@@ -93,7 +93,7 @@
     <string name="mirror_status_tool_missing">adb not found</string>
     <!-- Mirror - status line per discovery error state, from the design's own STATUS table.
     Machine output, so these read as diagnostics rather than prose. -->
-    <string name="mirror_status_no_device_attached">adb devices → 0 attached</string>
+    <string name="mirror_status_no_device_attached">adb devices → %1$d attached</string>
     <string name="mirror_status_awaiting_choice">%1$d devices attached — waiting for choice</string>
     <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
     <string name="mirror_status_latency_placeholder">latency —</string>

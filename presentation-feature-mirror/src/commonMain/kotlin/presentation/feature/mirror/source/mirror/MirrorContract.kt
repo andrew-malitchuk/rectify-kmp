@@ -388,6 +388,13 @@ public sealed interface MirrorIntent {
 }
 
 /** One-shot events of the mirror surface. */
+/** The recovery actions that can fail visibly (see [MirrorSideEffect.RecoveryFailed]). */
+public enum class RecoveryAction {
+    RestartAdb,
+    SaveAdbPath,
+    RetryDiscovery,
+}
+
 public sealed interface MirrorSideEffect {
 
     /**
@@ -407,6 +414,20 @@ public sealed interface MirrorSideEffect {
      * result comes back as [MirrorIntent.AdbPathChosen].
      */
     public data object LocateAdb : MirrorSideEffect
+
+    /**
+     * A recovery action failed, so the user is told instead of watching nothing happen.
+     *
+     * Added for COR-7. The three recovery handlers discarded the `Optional` their use cases
+     * returned, which made a real failure — an unmounted SDK after the probe cached a success,
+     * say — indistinguishable from the dead button FR-37 exists to forbid: the card simply
+     * re-rendered as if the user had cancelled. `DeviceRepositoryImpl.restartAdbServer`'s own
+     * KDoc justifies throwing precisely so "the use case reports a Failure rather than a button
+     * that silently did nothing", and the only reader was throwing it away.
+     *
+     * @property action Which action failed, for the message.
+     */
+    public data class RecoveryFailed(val action: RecoveryAction) : MirrorSideEffect
 }
 
 /**

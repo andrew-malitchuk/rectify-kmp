@@ -28,6 +28,8 @@ import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -75,6 +77,23 @@ internal class DeviceRepositoryImpl(
      * requests collapse into one, because "poll now" is not a queue.
      */
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
+
+    /**
+     * Serialises everything that talks to the adb daemon's lifecycle.
+     *
+     * COR-3. Without it, AC-27's "Restart adb" could make the state it repairs worse: the
+     * button runs on the Orbit intent scope while the poll loop runs on its own, so a
+     * `kill-server` could land while the loop was inside `adb devices -l`. That call then
+     * talks to a daemon that was just killed, pays the measured 3.03 s re-fork against a 3 s
+     * budget, times out, and enters the ladder — issuing its OWN `start-server` concurrently
+     * with the button's. Two racing starts, and a `PollFailed` card for a daemon the restart
+     * had already fixed. The interleaving was nondeterministic, so a successful restart could
+     * observably read as "adb stopped responding".
+     *
+     * Guards the daemon's lifecycle only, never a plain poll: holding it across every
+     * `listDevices` would serialise the whole loop behind any user action for no benefit.
+     */
+    private val daemonLifecycle = Mutex()
 
     /**
      * Probes both platforms (AC-1).
@@ -218,7 +237,7 @@ internal class DeviceRepositoryImpl(
      *
      * A non-timeout `start-server` failure is not a wedge and is rethrown: nothing to repair.
      */
-    private suspend fun healDaemon() {
+    private suspend fun healDaemon() = daemonLifecycle.withLock {
         try {
             // Logged on the way IN, not on success. ProcessRunner only logs when it kills a
             // process, so a repair that works leaves no trace at all — which made the fix
@@ -230,7 +249,7 @@ internal class DeviceRepositoryImpl(
         } catch (failure: DeviceCommandException) {
             if (!failure.isTimeout()) throw failure
             log.d { "daemon start timed out; it is wedged rather than absent, restarting it" }
-            restartAdbServer()
+            killThenStart()
         }
     }
 
@@ -242,7 +261,17 @@ internal class DeviceRepositoryImpl(
      * longer [MirrorTuning.DaemonStartTimeoutMs] watchdog. Either half failing throws, so the
      * use case reports a `Failure` rather than a button that silently did nothing.
      */
-    override suspend fun restartAdbServer() {
+    override suspend fun restartAdbServer() = daemonLifecycle.withLock { killThenStart() }
+
+    /**
+     * The kill-then-start sequence itself, WITHOUT taking [daemonLifecycle].
+     *
+     * Split out because Kotlin's `Mutex` is not reentrant: [healDaemon] already holds the lock
+     * when it escalates, so calling the public [restartAdbServer] from inside it deadlocked —
+     * caught immediately by two ladder tests, which is the whole reason the wedge path has
+     * them.
+     */
+    private suspend fun killThenStart() {
         adbHostSource.killServer()
         adbHostSource.startServer()
     }

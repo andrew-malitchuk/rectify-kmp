@@ -337,10 +337,15 @@ private fun MirrorAnnotationStage(
                 FeedbackBar(
                     text = stringResource(Res.string.mirror_banner_stream_dropped),
                     status = FeedbackStatus.Error,
-                    detail = stringResource(
-                        Res.string.mirror_banner_annotations_kept,
-                        dropped.annotationCount,
-                    ),
+                    // COR-1. Suppressed at zero. dropBanner()'s KDoc delegates this to the
+                    // content layer, and the content layer is here — without it the banner
+                    // renders "Your 0 annotations are kept on the frozen frame.", which is the
+                    // reassurance turned into an insult: it names the absence of the work it
+                    // is claiming to protect. Reachable via ClearStaged on a pinned frame
+                    // (AC-48 keeps the frame) followed by a drop.
+                    detail = dropped.annotationCount
+                        .takeIf { it > 0 }
+                        ?.let { stringResource(Res.string.mirror_banner_annotations_kept, it) },
                     actionLabel = stringResource(Res.string.mirror_banner_reconnect),
                     onAction = { onIntent(MirrorIntent.Reconnect) },
                     actionVariant = AppButtonVariant.Primary,

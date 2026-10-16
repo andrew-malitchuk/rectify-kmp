@@ -204,8 +204,15 @@ private fun MirrorUiState.indicatorLabel(): String = when {
     // The design pairs each error card with its own status line. Without these two the bar
     // kept saying "Waiting for device…" beside a card explaining that adb saw nothing, or
     // that three devices were attached and it needed a choice.
+    // COR-5. The count is READ, not hardcoded. attachedCount is the number of attached but
+    // unusable devices, so a single unauthorised handset made the card footer say "1 attached"
+    // while the line beside it said "0 attached" — the exact contradiction T-32 existed to
+    // remove, reintroduced two commits later by a literal in a string resource.
     discovery is DiscoveryModel.NoDeviceFound ->
-        stringResource(Res.string.mirror_status_no_device_attached)
+        stringResource(
+            Res.string.mirror_status_no_device_attached,
+            (discovery as DiscoveryModel.NoDeviceFound).attachedCount,
+        )
     errorCard(Clock.System.now().toEpochMilliseconds())?.kind == MirrorErrorKind.MultipleDevices ->
         stringResource(
             Res.string.mirror_status_awaiting_choice,

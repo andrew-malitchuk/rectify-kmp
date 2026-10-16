@@ -5,6 +5,7 @@ import domain.core.source.model.device.DiscoveryModel
 import presentation.feature.mirror.source.mirror.MirrorDropBanner
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.feature.mirror.source.mirror.MirrorErrorCard
+import presentation.feature.mirror.source.mirror.MirrorRowGroup
 import presentation.feature.mirror.source.mirror.MirrorErrorKind
 import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorSession
@@ -66,7 +67,18 @@ internal fun MirrorUiState.errorCard(nowMs: Long): MirrorErrorCard? {
     // NoSignal branch - which is what the chosen plan said - left AC-26, AC-53 and AC-28's
     // cards unreachable: of the four states only NoDeviceFound closes the picker. Yielding to
     // an open picker unconditionally is what made three of four states dead UI.
-    if (isPickerOpen && discovery is DiscoveryModel.Found) return null
+    // The picker wins wherever it still has something to offer. For `Found` that is the device
+    // list; for `PollFailed` it is the list it DELIBERATELY retained — applyDiscovery keeps the
+    // rows on a failed poll "so an adb hiccup does not look like an unplug", and papering a
+    // full-stage card over them made those retained rows unreachable for exactly as long as
+    // they were retained, flipping the stage back and forth once per poll on a flaky daemon
+    // (COR-6).
+    //
+    // ToolMissing and NoDeviceFound are different: there the picker has nothing to list, so
+    // yielding to it would hide the one surface that explains why.
+    if (isPickerOpen && (discovery is DiscoveryModel.Found || discovery is DiscoveryModel.PollFailed)) {
+        return null
+    }
     return when (val outcome = discovery) {
         DiscoveryModel.Detecting -> null
 
@@ -110,12 +122,20 @@ internal fun MirrorUiState.errorCard(nowMs: Long): MirrorErrorCard? {
  */
 private fun MirrorUiState.multipleDevices(outcome: DiscoveryModel.Found): MirrorErrorCard? {
     if (outcome.physical.count(DeviceModel::isSelectable) < AMBIGUOUS_DEVICE_COUNT) return null
+    // COR-4. PHYSICAL rows only. `rows` is physical + emulators, and a configured-but-cold
+    // AVD is `selectable = true, kind = Boot` — so listing it here put three disagreeing
+    // numbers on screen (title "4 devices connected", footer "3 attached", status line
+    // "2 devices attached") and, far worse, made it clickable under body copy reading "Pick one
+    // to mirror": `commit()` routes a Boot row to `boot()`, so the card LAUNCHED AN EMULATOR
+    // instead of mirroring. AC-28 asks for the attached devices, and a cold AVD is not
+    // attached.
+    val attached = rows.filter { it.group == MirrorRowGroup.Physical }
     return MirrorErrorCard(
         kind = MirrorErrorKind.MultipleDevices,
-        // Rows verbatim, unauthorised ones included: the card shows them disabled rather than
-        // hiding them, or a user holding the phone they just plugged in sees it nowhere.
-        rows = rows,
-        primaryDeviceId = rows.firstOrNull { it.selectable }?.id,
+        // Unauthorised ones stay, shown disabled rather than hidden: a user holding the phone
+        // they just plugged in must see it somewhere, even if they cannot pick it yet.
+        rows = attached,
+        primaryDeviceId = attached.firstOrNull { it.selectable }?.id,
         diagnostic = listOf("$ADB devices -l", "${outcome.physical.size} attached").joinToString(SEPARATOR),
         canBootEmulator = avds.isNotEmpty(),
     )

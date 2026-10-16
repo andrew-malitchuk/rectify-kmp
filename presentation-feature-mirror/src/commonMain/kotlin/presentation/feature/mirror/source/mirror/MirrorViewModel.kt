@@ -362,7 +362,9 @@ public class MirrorViewModel(
      * covered by virtual-time tests instead of Orbit's dispatcher scheduling.
      */
     private fun retryDiscovery() = intent {
-        refreshDiscovery()
+        refreshDiscovery().onFailure {
+            postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.RetryDiscovery))
+        }
     }
 
     /**
@@ -377,8 +379,12 @@ public class MirrorViewModel(
      * still coming up would spend the poll's budget and report the same failure again.
      */
     private fun restartAdb() = intent {
+        // COR-7. The Optional is read, not discarded. Without this an unmounted SDK made the
+        // primary action silently do nothing, which is exactly the dead button FR-37 forbids —
+        // and the repository throws here specifically so this layer can say so.
         restartAdbServer()
-        refreshDiscovery()
+            .onSuccess { refreshDiscovery() }
+            .onFailure { postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.RestartAdb)) }
     }
 
     /**
@@ -401,8 +407,12 @@ public class MirrorViewModel(
      * definition of "usable", free to drift from the one that actually decides.
      */
     private fun adbPathChosen(path: String) = intent {
+        // Re-probe only if the path actually persisted: polling against a preference that was
+        // not written would re-render the same ToolMissing card and read as the dialog having
+        // been cancelled.
         setAdbPath(path)
-        refreshDiscovery()
+            .onSuccess { refreshDiscovery() }
+            .onFailure { postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.SaveAdbPath)) }
     }
 
     private fun resumeLive() = intent {
