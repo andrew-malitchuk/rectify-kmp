@@ -38,6 +38,10 @@
       "wave": 1,
       "worktreeBranch": "task/wave-1",
       "needsHumanReview": true
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 2
     }
   },
   "effort": "fast",

@@ -27,3 +27,4 @@
 {"stage": "execution", "event": "start", "note": "Pixel 8 shiba 38031FDJH00JVF attached and authorised", "at": "2026-10-16T19:28:59Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "T-1", "agent": "sdd-build-business-implement", "event": "start", "note": "wave 1, implementBatch=wave, fast tier: implement closes gate", "at": "2026-10-16T19:29:21Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "T-1", "agent": "sdd-build-business-implement", "event": "end", "tokens": 62844, "at": "2026-10-16T21:32:50Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-2", "event": "end", "note": "operator GO: continue as planned; normalise rects on parse; node id via resource-id->text->content-desc->class+[n]", "at": "2026-10-16T21:36:26Z", "spec": "measure-mode"}

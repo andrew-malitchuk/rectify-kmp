@@ -1,0 +1,67 @@
+{
+  "spec": "measure-mode",
+  "stage": "execution",
+  "step": "T-2",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-run-pipeline",
+  "provenance": {
+    "selfHash": ""
+  },
+  "createdAt": "2026-10-16T21:36:26Z",
+  "updatedAt": "2026-10-16T21:36:26Z",
+  "data": {
+    "taskId": "T-2",
+    "type": "docs",
+    "outcome": "success",
+    "touchedPaths": [
+      ".pipeline/sdd/docs/measure-mode/execution/GATE-step2-go-no-go.md"
+    ],
+    "implementation": "Gate record written directly by the orchestrator rather than dispatched to a docs agent: the task's entire content is the operator's decision at the Stage 4 wave-2 pause, which only the main thread holds. Transcribing a known decision through a sub-agent would add a context reload and no reasoning. The downstream consequence analysis is in the record itself and is carried into T-4/T-7 dispatch as explicit context rather than by amending the human-gated immutable backlog mid-execution.",
+    "testRun": {
+      "command": "n/a",
+      "output": "No test run: this task ships no code. Its artifact is a decision record under docs/.",
+      "passed": true
+    },
+    "needsHumanReview": false,
+    "linkedAC": [
+      "AC-69",
+      "AC-72"
+    ],
+    "blockedDependents": [],
+    "registryUpdates": [],
+    "validations": [
+      {
+        "check": "TAC-3 the gate record names the operator's chosen path citing spike evidence",
+        "result": "pass",
+        "note": "Records GO/continue-as-planned, with the three untaken exits tabulated and the spike's timings, density, bounds and four findings cited from execution/T-1/spike-note.md."
+      },
+      {
+        "check": "TAC-4 no step-3-or-later work begins before this record exists",
+        "result": "pass",
+        "note": "T-3..T-13 remain status todo in state.json at the time of writing; the record precedes their dispatch."
+      },
+      {
+        "check": "DoD clause on a BLOCKED spike",
+        "result": "n/a",
+        "note": "T-1 outcome was PASS, so the clause about the spec not closing with a blocked spike does not apply."
+      }
+    ],
+    "troubleshooting": [
+      {
+        "category": "scope-change",
+        "text": "The node-id ruling supersedes the plan's resource-id-keyed node identifier with a four-step fallback chain (resource-id -> text -> content-desc -> class+[n]). Stage 5 must reconcile T-4 and T-7 against the gate record, not against the plan's original wording."
+      },
+      {
+        "category": "unmeasured",
+        "text": "No FLAG_SECURE screen was attempted during the spike, so behaviour on a secure surface remains unmeasured. AC-69's dump-failure path is therefore unexercised by real evidence."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "operator",
+    "approved": true,
+    "at": "2026-10-16T21:36:26Z"
+  }
+}
