@@ -83,4 +83,5 @@ private fun DeviceCommand.arguments(): List<String> = when (this) {
     DeviceCommand.WmDensity -> listOf("shell", "wm", "density")
     is DeviceCommand.GetProp -> listOf("shell", "getprop", name)
     DeviceCommand.EmuAvdName -> listOf("emu", "avd", "name")
+    DeviceCommand.UiAutomatorDump -> listOf("exec-out", "uiautomator", "dump", "/dev/tty")
 }
