@@ -1,6 +1,6 @@
 {
   "spec": "measure-mode",
-  "updatedAt": "2026-10-16T18:53:37Z",
+  "updatedAt": "2026-10-16T19:21:01Z",
   "sealed": false,
   "agents": {
     "sdd-build-generate-registry": {
@@ -58,11 +58,35 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 129125,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 125490,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 232323,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1031688,
+    "tokens": 1518626,
     "durationMs": 0,
-    "invocations": 7
+    "invocations": 10
   }
 }

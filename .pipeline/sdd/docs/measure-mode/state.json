@@ -1,11 +1,14 @@
 {
   "spec": "measure-mode",
-  "currentStage": "backlog",
+  "currentStage": "execution",
   "stages": {
     "preparation": {
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },
@@ -23,6 +26,9 @@
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },

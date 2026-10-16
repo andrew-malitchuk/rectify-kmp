@@ -1,0 +1,1124 @@
+{
+  "spec": "measure-mode",
+  "stage": "backlog",
+  "step": "backlog",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-backlog-validate",
+  "provenance": {
+    "selfHash": "6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "6c44577da075cc3e5585af1c8fc8afa4d2b5d70dc1bfc5115184e0bb62c1a30a"
+      }
+    ]
+  },
+  "createdAt": "2026-10-16T19:00:44Z",
+  "updatedAt": "2026-10-16T19:21:01Z",
+  "data": {
+    "epics": [
+      {
+        "id": "E-1",
+        "title": "Hardware spike and operator go/no-go gate",
+        "tasks": [
+          "T-1",
+          "T-2"
+        ]
+      },
+      {
+        "id": "E-2",
+        "title": "adb command + parser + domain/repository/use-case layer",
+        "tasks": [
+          "T-3",
+          "T-4",
+          "T-5"
+        ]
+      },
+      {
+        "id": "E-3",
+        "title": "Pure measure arithmetic (core/measure)",
+        "tasks": [
+          "T-6",
+          "T-7",
+          "T-8"
+        ]
+      },
+      {
+        "id": "E-4",
+        "title": "State surface and reducer wiring",
+        "tasks": [
+          "T-9",
+          "T-10"
+        ]
+      },
+      {
+        "id": "E-5",
+        "title": "UI wiring: Alt detection, overlay, MeasureCard",
+        "tasks": [
+          "T-11",
+          "T-12"
+        ]
+      },
+      {
+        "id": "E-6",
+        "title": "Cross-target verification and hardware demo",
+        "tasks": [
+          "T-13"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T-1",
+        "epic": "E-1",
+        "title": "BLOCKING HARDWARE SPIKE: capture three real uiautomator dumps as commonTest fixtures",
+        "description": "Capture three real `adb exec-out uiautomator dump /dev/tty` outputs from the attached device (a View-based app, a Compose app, a scrolling list) plus `wm density` output and timed exec-out runs; commit all three dumps verbatim as data-device-api commonTest fixtures. Commits whatever is captured; no code depends on the outcome yet.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Three real dumps (View-based app, Compose app, scrolling list) are committed verbatim as Kotlin raw-string constants in a commonTest fixtures file -- not a resources/ directory, which has no precedent anywhere in this codebase."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A spike note records wall-clock timings, root-bounds-vs-screencap agreement, the Compose app's resource-id density, and `wm density` output."
+          }
+        ],
+        "linkedAC": [
+          "AC-57",
+          "AC-58",
+          "AC-65",
+          "AC-69"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/android-device-discovery-mirroring/MEASURED-nfr-1-capture-rate.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/error-handling-and-recovery/execution/HARDWARE-BLOCKED.md"
+          }
+        ],
+        "expectedOutput": "Three real dump payloads committed as Kotlin raw-string constants in a new data-device-api commonTest fixtures file (this module's established inline-literal convention, confirmed against PngTrimTest/WmOutputParserTest -- no src/commonTest/resources directory exists anywhere in this codebase, and introducing one would need new cross-target resource-loading wiring this spec's zero-new-dependency scope does not budget for), plus a spike note with timings, bounds agreement, and density output, ready for the step-2 gate.",
+        "hypothesis": "uiautomator dump stdout via `exec-out ... /dev/tty` returns parseable, bounds-correct XML on the reference device for both View-based and Compose-built apps, at a wall-clock cost in the same order as the measured 2665ms screencap baseline.",
+        "definitionOfReady": [
+          "An authorised Android device is attached and `adb devices -l` lists it as `device`.",
+          "`./gradlew :data-device-api:desktopTest :data-repository-impl:desktopTest :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest` is green on current HEAD."
+        ],
+        "definitionOfDone": [
+          "3 real dumps committed verbatim (not hand-written) as Kotlin raw-string constants in a new commonTest fixtures file in data-device-api (this module's established inline-literal convention; no src/commonTest/resources directory exists anywhere in this repo).",
+          "Wall-clock times, root-bounds comparison, Compose-app resource-id density, and `wm density` output are recorded in a spike note under .pipeline/sdd/docs/measure-mode/execution/.",
+          "If no authorised device is attached, this task and its evidence are recorded BLOCKED -- not waived -- and no downstream task starts."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Any parser code.",
+          "Any fallback dump path (e.g. /sdcard + pull)."
+        ],
+        "predictedScope": [
+          "data-device-api/src/commonTest/kotlin/data/device/api/fixtures/UiAutomatorDumpFixtures.kt",
+          ".pipeline/sdd/docs/measure-mode/execution/SPIKE-uiautomator-dump.md"
+        ],
+        "parallelizable": false,
+        "executionGroup": 1,
+        "estimate": "0.5d",
+        "subtasks": []
+      },
+      {
+        "id": "T-2",
+        "epic": "E-1",
+        "title": "OPERATOR GO/NO-GO GATE on the spike's findings",
+        "description": "Record step 1's findings and present the three candidate exits (adding a /sdcard dump+cat fallback command, descoping FR-36..FR-40 to ship the FR-41 fallback only, or stopping the spec) to the operator with no pre-committed recommendation. Capture the operator's choice in writing before any downstream step starts. Stage 4 PAUSES here.",
+        "type": "documentation",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-3",
+            "text": "The gate record names the operator's chosen path (continue as planned, add the file-dump fallback, descope to FR-41 only, or stop), citing the spike evidence."
+          },
+          {
+            "id": "TAC-4",
+            "text": "No step-3-or-later work begins before this record exists."
+          }
+        ],
+        "linkedAC": [
+          "AC-69",
+          "AC-72"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/error-handling-and-recovery/execution/HARDWARE-BLOCKED.md"
+          }
+        ],
+        "expectedOutput": "A written gate record (operator's choice + the spike's evidence) under .pipeline/sdd/docs/measure-mode/execution/, gating every subsequent task.",
+        "hypothesis": "The step-1 evidence (3 fixtures, timings, bounds agreement, density output) is sufficient for the operator to make an informed go/no-go choice without this plan pre-judging the outcome.",
+        "definitionOfReady": [
+          "T-1's three fixtures and spike note are committed, or T-1 is recorded BLOCKED with that status itself handed to the operator."
+        ],
+        "definitionOfDone": [
+          "The gate record states the operator's chosen exit verbatim, with the spike's evidence cited.",
+          "If the spike was recorded BLOCKED, the gate record states plainly that the spec cannot close with that unaddressed.",
+          "No implementation work for steps 3+ begins before this record exists."
+        ],
+        "dependsOn": [
+          "T-1"
+        ],
+        "outOfScope": [
+          "Implementing any of the three candidate exits -- this task only records the decision."
+        ],
+        "predictedScope": [
+          ".pipeline/sdd/docs/measure-mode/execution/GATE-step2-go-no-go.md"
+        ],
+        "parallelizable": false,
+        "executionGroup": 2,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-3",
+        "epic": "E-2",
+        "title": "adb layer: DeviceCommand.UiAutomatorDump + argv + dedicated timeout",
+        "description": "Add DeviceCommand.UiAutomatorDump to the closed sealed set with argv [adb, -s, id, exec-out, uiautomator, dump, /dev/tty]; add MirrorTuning.DumpTimeoutMs (10_000ms); add the DeviceCommandExecutorImpl.timeoutMs() branch for the new case in the SAME commit as the sealed case, since its `when` has an `else` that would otherwise silently swallow a missing branch.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-5",
+            "text": "buildDeviceArgv(UiAutomatorDump) returns the exact 7-element argv, asserted in DeviceArgvTest's exhaustive list."
+          },
+          {
+            "id": "TAC-6",
+            "text": "DeviceCommandExecutorImpl.timeoutMs() has an explicit UiAutomatorDump -> DumpTimeoutMs branch, asserted by a test that reads the constant, not a literal."
+          }
+        ],
+        "linkedAC": [
+          "AC-69"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/parse/DeviceArgv.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-device-impl/src/desktopMain/kotlin/data/device/impl/source/datasource/DeviceCommandExecutorImpl.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/error-handling-and-recovery/execution/NEAR-MISS-t4-budget.md"
+          }
+        ],
+        "expectedOutput": "New sealed case + argv branch + MirrorTuning.DumpTimeoutMs constant + executor timeout branch, with DeviceArgvTest extended and a new DeviceCommandExecutorImplTest timeout-mapping test.",
+        "hypothesis": "Landing the sealed case and its executor timeout branch in one commit is the only way to guarantee the dump never silently inherits the 3000ms HostCommandTimeoutMs default (the NEAR-MISS-t4-budget precedent: a missing branch compiles clean because of the `else`).",
+        "definitionOfReady": [
+          "T-2's gate record selects a path that keeps this adb layer in scope (i.e. not 'stop the spec')."
+        ],
+        "definitionOfDone": [
+          "buildDeviceArgv(UiAutomatorDump) produces the exact argv, asserted in DeviceArgvTest's exhaustive case list.",
+          "DeviceCommandExecutorImpl.timeoutMs() has an explicit branch for UiAutomatorDump (never falling through to `else`), asserted by a test reading MirrorTuning.DumpTimeoutMs.",
+          "desktopTest green for data-device-api and data-device-impl."
+        ],
+        "dependsOn": [
+          "T-2"
+        ],
+        "outOfScope": [
+          "The parser.",
+          "The repository/use-case layers."
+        ],
+        "predictedScope": [
+          "data-device-api/src/commonMain/kotlin/data/device/api/source/model/DeviceCommand.kt",
+          "data-device-api/src/commonMain/kotlin/data/device/api/source/parse/DeviceArgv.kt",
+          "data-device-api/src/commonMain/kotlin/data/device/api/source/tuning/MirrorTuning.kt",
+          "data-device-api/src/commonTest/kotlin/data/device/api/DeviceArgvTest.kt",
+          "data-device-impl/src/desktopMain/kotlin/data/device/impl/source/datasource/DeviceCommandExecutorImpl.kt",
+          "data-device-impl/src/desktopTest/kotlin/data/device/impl/datasource/DeviceCommandExecutorImplTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-4",
+        "epic": "E-2",
+        "title": "parseUiAutomatorDump + HierarchyNodeResource (never-throwing commonMain parser)",
+        "description": "Hand-rolled, never-throwing, commonMain XML scanner that depth-first flattens the dump into HierarchyNodeResource (bounds, class, resource-id, clickable, depth). Unescapes exactly the five XML entities, requires a strict `[l,t][r,b]` bounds shape and skips any node that does not match it, and returns an empty list rather than throwing on anything unreadable.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-7",
+            "text": "parseUiAutomatorDump never throws on any real fixture or synthetic noise case (truncated, empty, bad bounds, entity-escaped, '>' inside an attribute)."
+          },
+          {
+            "id": "TAC-8",
+            "text": "Parser output matches known node count, depth-first order, exact bounds, resource-id and clickable extraction against the three real T-1 fixtures, including the Compose fixture's empty-resource-id labelling."
+          }
+        ],
+        "linkedAC": [
+          "AC-65",
+          "AC-69"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "code",
+            "ref": "data-device-api/CLAUDE.md"
+          }
+        ],
+        "expectedOutput": "parseUiAutomatorDump(stdout): List<HierarchyNodeResource>, fixture-tested against T-1's three real dumps plus synthetic noise cases.",
+        "hypothesis": "A strict bounds-shape filter plus five-entity unescaping is sufficient to parse real-device output correctly without a general XML library, so no java.*/javax.* import is needed and the parser compiles for iosArm64 from commonMain.",
+        "definitionOfReady": [
+          "T-1's three fixtures are committed (in the fixtures file T-1 adds).",
+          "T-2's gate record keeps FR-36..40 in scope (so this parser isn't descoped)."
+        ],
+        "definitionOfDone": [
+          "UiAutomatorDumpParserTest asserts node count, depth-first order, exact bounds of a known node, resource-id/clickable extraction, and the Compose fixture's empty-resource-id labelling against the three real fixtures.",
+          "Synthetic cases cover: leading warning line, trailing 'UI hierchary dumped to' line, &amp;/&quot; in a content-desc, '>' inside an attribute value, truncated input, empty input, and a bad-bounds node (skipped, not guessed).",
+          "compileTestKotlinIosArm64 green for data-device-api."
+        ],
+        "dependsOn": [
+          "T-1",
+          "T-2"
+        ],
+        "outOfScope": [
+          "The domain model.",
+          "The repository.",
+          "px->dp conversion.",
+          "The adb layer (DeviceCommand.UiAutomatorDump / argv / timeout -- T-3; this parser is a pure string function and does not import DeviceCommand or DeviceArgv)."
+        ],
+        "predictedScope": [
+          "data-device-api/src/commonMain/kotlin/data/device/api/source/parse/UiAutomatorDumpParser.kt",
+          "data-device-api/src/commonMain/kotlin/data/device/api/source/model/HierarchyNodeResource.kt",
+          "data-device-api/src/commonTest/kotlin/data/device/api/UiAutomatorDumpParserTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "1d",
+        "subtasks": []
+      },
+      {
+        "id": "T-5",
+        "epic": "E-2",
+        "title": "Domain model + DeviceRepository.dumpHierarchy + DumpHierarchyUseCase",
+        "description": "HierarchyNodeModel/HierarchySnapshotModel(+Empty) in domain-core; DeviceRepository.dumpHierarchy issuing the dump and `wm density` in ONE call with a one-direction HierarchySnapshotMapper reusing the already-tested parseWmDensity path; DumpHierarchyUseCase/Impl through resultLauncher(errorMapper = Failure.Technical::Platform); Koin registration alongside the existing device use cases, no new module.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-9",
+            "text": "dumpHierarchy issues the dump and `wm density` in exactly one DeviceCommandExecutor call, so geometry and density cannot drift apart."
+          },
+          {
+            "id": "TAC-10",
+            "text": "Garbage or empty stdout maps to an Empty-shaped HierarchySnapshotModel rather than throwing."
+          }
+        ],
+        "linkedAC": [
+          "AC-69",
+          "AC-72"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/parse/WmOutputParser.kt"
+          }
+        ],
+        "expectedOutput": "HierarchyNodeModel/HierarchySnapshotModel.Empty, DeviceRepository.dumpHierarchy member, DumpHierarchyUseCase(Impl), Koin wiring, DeviceHierarchyDumpTest against a fake DeviceCommandExecutor.",
+        "hypothesis": "Pairing the dump and `wm density` reads inside a single DeviceRepository call guarantees they never drift, and is itself testable with a fake executor and no phone.",
+        "definitionOfReady": [
+          "T-3 merged (DeviceCommand.UiAutomatorDump exists for the repository to issue).",
+          "T-4 merged (parser available for the repository to call)."
+        ],
+        "definitionOfDone": [
+          "DeviceHierarchyDumpTest asserts the one-call dump+density pairing, a parseable dump mapping to the snapshot with the parsed densityDpi, garbage/empty stdout mapping to an Empty-shaped snapshot, and a null density mapping to densityDpi = 0.",
+          "DumpHierarchyUseCaseImpl never throws past resultLauncher.",
+          "Koin registration uses singleOf alongside the existing device use cases, no new module.",
+          "desktopTest green for domain-usecase-impl and data-repository-impl."
+        ],
+        "dependsOn": [
+          "T-3",
+          "T-4"
+        ],
+        "outOfScope": [
+          "core/measure arithmetic.",
+          "The reducer."
+        ],
+        "predictedScope": [
+          "domain-core/src/commonMain/kotlin/**/model/device/**",
+          "domain-repository-api/src/commonMain/kotlin/**/DeviceRepository.kt",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/**",
+          "data-repository-impl/src/commonTest/**",
+          "domain-usecase-api/src/commonMain/kotlin/**/DumpHierarchyUseCase.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/**/DumpHierarchyUseCaseImpl.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/**/di/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 4,
+        "estimate": "0.75d",
+        "subtasks": []
+      },
+      {
+        "id": "T-6",
+        "epic": "E-3",
+        "title": "core/measure part 1: contract types + snap + neighbours + gaps + projection + pixel units",
+        "description": "Public MirrorContract result types core/measure returns (MeasureSide, MeasureValue, MeasureGuide, MeasureReadout incl. `rail`, HierarchyStatus); internal MeasureNode, MeasureProjection (incl. the geometry-mismatch guard against FrozenFrame.deviceSize), PixelUnits (incl. the Px degradation), snapTarget (FR-36/AC-57), neighboursOf (FR-37/AC-58), gapsOf (FR-38/AC-59), annotationAt. One test file per rule.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-11",
+            "text": "snapTarget picks the largest-area fully-contained candidate within 4px slack per edge, never nearest-centre and never first-found."
+          },
+          {
+            "id": "TAC-12",
+            "text": "neighboursOf returns the correct per-side pick under the band-overlap + closest-edge rule, excluding a diagonal node on both axes."
+          },
+          {
+            "id": "TAC-13",
+            "text": "gapsOf measures to the frame edge (0/FRAME_W/FRAME_H) on any side with no neighbour, never omitting it."
+          }
+        ],
+        "linkedAC": [
+          "AC-57",
+          "AC-58",
+          "AC-59"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/geometry/FrameGeometry.kt"
+          }
+        ],
+        "expectedOutput": "core/measure/{MeasureNode,MeasureProjection,PixelUnits,NodeSnap,Neighbours,Gaps,AnnotationHitTest}.kt + MirrorContract.kt additions, one test file per rule.",
+        "hypothesis": "Every numeric rule up through gap computation can be expressed as a pure, Compose-free, Orbit-free function in core/measure/, each independently unit-testable in commonTest with no phone and no Skiko.",
+        "definitionOfReady": [
+          "T-2's gate record keeps FR-36..40 in scope.",
+          "T-5 merged (HierarchySnapshotModel exists for MeasureProjection)."
+        ],
+        "definitionOfDone": [
+          "NodeSnapTest covers 4px-slack containment, largest-area tie-break over first-found/nearest-centre, and null-when-nothing-qualifies.",
+          "NeighboursTest covers strict band overlap, overlap exclusion, the four per-side picks, and diagonal exclusion on both axes.",
+          "GapsTest covers frame-edge fallback on each side independently and all-four-missing.",
+          "PixelUnitsTest covers the 420dpi/160dpi known pairs and the 0/negative-dpi Px fallback.",
+          "MeasureProjectionTest covers Empty projecting to an empty list and the geometry-mismatch discard.",
+          "AnnotationHitTestTest covers topmost-wins and the outside-every-annotation null case.",
+          "No `/density`, `*density`, `.toPx()` or `.dp` arithmetic appears outside FrameGeometry.",
+          "desktopTest + compileTestKotlinIosArm64 green for presentation-feature-mirror."
+        ],
+        "dependsOn": [
+          "T-2",
+          "T-5"
+        ],
+        "outOfScope": [
+          "findingOf.",
+          "MeasureFormat.",
+          "The measure() composition.",
+          "Any Compose/Orbit code."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/MeasureNode.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/MeasureProjection.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/PixelUnits.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/NodeSnap.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/Neighbours.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/Gaps.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/AnnotationHitTest.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 5,
+        "estimate": "1.5d",
+        "subtasks": []
+      },
+      {
+        "id": "T-7",
+        "epic": "E-3",
+        "title": "core/measure part 2: findingOf + MeasureFormat",
+        "description": "findingOf (FR-40, ordered single-return, reports WHICH branch fired for the rail), the FR-39 sub-unit guide suppression evaluated AFTER px->dp conversion, and MeasureFormat (×/Δ/position, the three verbatim finding strings including their `vs {id}` segment, the node id format with its '[n]' collision index, the ⌥ note line and replaceNoteLine) reusing AnnotationFormat's TIMES constant promoted to internal.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-14",
+            "text": "findingOf never returns more than one finding even when top-misalignment, left-misalignment and touch-target are all independently true."
+          },
+          {
+            "id": "TAC-15",
+            "text": "MeasureFormat renders × as U+00D7 (never 'x'), Δ as U+0394 with no space before the unit, and the three finding strings verbatim including the `vs {id}` segment."
+          }
+        ],
+        "linkedAC": [
+          "AC-60",
+          "AC-61",
+          "AC-62",
+          "AC-63",
+          "AC-64",
+          "AC-66"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/annotation/AnnotationFormat.kt"
+          }
+        ],
+        "expectedOutput": "core/measure/{Findings,MeasureFormat}.kt + GuideSuppressionTest, FindingsTest, MeasureFormatTest.",
+        "hypothesis": "A single ordered `when` with one return value guarantees the never-two-findings invariant (AC-64) without a separate dedup step.",
+        "definitionOfReady": [
+          "T-6 merged (NodeSnap/Neighbours/Gaps/PixelUnits available)."
+        ],
+        "definitionOfDone": [
+          "FindingsTest proves top-misalignment fires within ±10px and not at 11px or 0 delta; left-misalignment fires only when top does not apply and within ±24px; touch-target fires only when neither alignment applies and is tappable+<32dp; all-three-true returns exactly the top finding; a tappable 20dp node with unknown density returns none; each finding names its neighbour via `vs {id}`.",
+          "GuideSuppressionTest proves a sub-1-display-unit gap yields no guide and no numeral while the panel's five value rows still print, and nothing is rounded up to 1.",
+          "MeasureFormatTest asserts × by code point U+00D7, Δ as U+0394 with no space, position as '({x}, {y})', the three finding strings verbatim with the U+00B7 separator, node id with/without a resource-id and with a sibling '[n]' collision, the full ⌥ note-line shape, and replaceNoteLine's drop-prior-line/keep-prose/no-op-when-absent behaviour.",
+          "desktopTest + compileTestKotlinIosArm64 green."
+        ],
+        "dependsOn": [
+          "T-6"
+        ],
+        "outOfScope": [
+          "measure() composition.",
+          "The alignment rail's geometry (built in T-8).",
+          "Reducer wiring."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/Findings.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/MeasureFormat.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/annotation/AnnotationFormat.kt",
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 6,
+        "estimate": "1d",
+        "subtasks": []
+      },
+      {
+        "id": "T-8",
+        "epic": "E-3",
+        "title": "measure() composition + design's ELS fixture as end-to-end oracle + AC-68 timing",
+        "description": "Measure.kt composes snap/fallback, neighbours, gaps, suppression, finding, the alignment rail for the top-misalignment branch, and formatting into one MeasureReadout, mirroring the design's own measure(annotation, unit). Port the design's own ELS fixture into commonTest as an end-to-end oracle. Add the AC-68 ceiling-timing assertion over the real fixture's node count.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-16",
+            "text": "measure(...) reproduces the design's ELS fixture exactly, including the alignment rail for its top-misalignment case."
+          },
+          {
+            "id": "TAC-17",
+            "text": "The AC-68 ceiling-timing assertion passes with a generous bound tolerant of the slowest CI target (iosSimulatorArm64)."
+          }
+        ],
+        "linkedAC": [
+          "AC-65",
+          "AC-68",
+          "AC-10"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          }
+        ],
+        "expectedOutput": "Measure.kt, MeasureEndToEndTest (ELS oracle + ceiling-timing), MeasureFallbackTest, MeasureRailTest.",
+        "hypothesis": "A single composition function mirroring the design's own measure(annotation, unit) is deterministic enough that the design's ELS fixture reproduces exactly as an oracle, and completes well under the ~100ms NFR-2/NFR-13 budget even on the slowest target.",
+        "definitionOfReady": [
+          "T-6 and T-7 merged."
+        ],
+        "definitionOfDone": [
+          "MeasureEndToEndTest reproduces the design's ELS fixture's expected node id, five values, guide set, rail and finding exactly.",
+          "MeasureFallbackTest proves an empty node list and a no-containment list both report 'View (no match)' with five full values against the annotation rect and frame edges.",
+          "MeasureRailTest proves the rail populates only on the top-misalignment branch and stays null on the other two branches and the no-finding case.",
+          "The timing assertion uses a generous ceiling over many iterations, sized to catch an accidental O(n^2) rather than benchmark the host.",
+          "desktopTest + compileTestKotlinIosArm64 green."
+        ],
+        "dependsOn": [
+          "T-6",
+          "T-7"
+        ],
+        "outOfScope": [
+          "MirrorUiState/MirrorIntent.",
+          "The reducer.",
+          "Any Compose code."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/Measure.kt",
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 7,
+        "estimate": "0.75d",
+        "subtasks": []
+      },
+      {
+        "id": "T-9",
+        "epic": "E-4",
+        "title": "MirrorContract state surface: measure/hierarchyStatus fields + StartMeasure/EndMeasure cases",
+        "description": "Extend MirrorUiState with measure: MeasureReadout? = null and hierarchyStatus: HierarchyStatus = Absent; add MirrorIntent.StartMeasure(index)/EndMeasure as sealed cases only (no handler bodies yet, so minting stays adjacent to T-10's implementation). Extend MirrorContractTest.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-18",
+            "text": "MirrorUiState defaults measure to null and hierarchyStatus to Absent."
+          },
+          {
+            "id": "TAC-19",
+            "text": "StartMeasure/EndMeasure exist as sealed cases in this task with no handler body -- implementation is deferred to the immediately-following task."
+          }
+        ],
+        "linkedAC": [
+          "AC-70",
+          "AC-72"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/error-handling-and-recovery/execution/CARRY-FORWARD-inert-intents.md"
+          }
+        ],
+        "expectedOutput": "MirrorUiState/MirrorIntent additions + MirrorContractTest covering the two new field defaults and MeasureReadout value-equality. Note for the executor: MirrorViewModel.handleIntent's `when (intent)` is used as a statement (its enclosing function returns Unit), so Kotlin does not require exhaustiveness here -- minting the two sealed cases in this task compiles cleanly with zero changes to MirrorViewModel.kt; do not add a stub `-> Unit` branch there, that is the exact anti-pattern CARRY-FORWARD-inert-intents.md records.",
+        "hypothesis": "Minting the two new intent cases in the step immediately preceding their handler implementation (T-10, the very next task) keeps the inert-intent window to zero -- no commit in between can ship a `-> Unit` branch.",
+        "definitionOfReady": [
+          "T-8 merged (MeasureReadout's final shape exists)."
+        ],
+        "definitionOfDone": [
+          "MirrorContractTest asserts the defaults of measure (null) and hierarchyStatus (Absent), and that an unchanged MeasureReadout compares equal.",
+          "No handler is written in this task -- StartMeasure/EndMeasure exist only as sealed cases, with implementation deferred to T-10. MirrorViewModel.kt is NOT touched by this task.",
+          "desktopTest green."
+        ],
+        "dependsOn": [
+          "T-8"
+        ],
+        "outOfScope": [
+          "handleIntent's actual branches (T-10 owns them)."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 8,
+        "estimate": "0.5d",
+        "subtasks": []
+      },
+      {
+        "id": "T-10",
+        "epic": "E-4",
+        "title": "MirrorViewModel: frozenHierarchy, dumpAtFreeze, StartMeasure/EndMeasure handlers, indicatorDot Dumping branch",
+        "description": "frozenHierarchy: StateFlow<HierarchySnapshotModel> filled fire-and-forget on the freeze transition (hierarchyStatus = Dumping immediately, Ready/Unavailable on resolution -- outcome never discarded), cleared at the three existing null-out sites (selectPlatform:208, stopSession:283, resumeLive:443; reconnect() untouched). Real startMeasure/endMeasure handler bodies, one reduce each, reading state.frozen inside reduce. The indicatorDot Dumping branch inserted ABOVE the existing `frozen != null` case.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-20",
+            "text": "`grep -n '-> Unit' MirrorViewModel.kt` prints nothing."
+          },
+          {
+            "id": "TAC-21",
+            "text": "EndMeasure replaces any prior Option-prefixed note line rather than appending a second one."
+          },
+          {
+            "id": "TAC-22",
+            "text": "The freeze transition reduces Dumping immediately and Ready/Unavailable on resolution, never left stuck at Dumping."
+          }
+        ],
+        "linkedAC": [
+          "AC-69",
+          "AC-70",
+          "AC-72"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/discovery/DiscoveryErrorProjection.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/error-handling-and-recovery/execution/CARRY-FORWARD-inert-intents.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/ (MirrorViewModelAnnotationTest race precedent)"
+          }
+        ],
+        "expectedOutput": "frozenHierarchy + dumpAtFreeze + startMeasure/endMeasure handlers + the one indicatorDot branch; MirrorViewModelMeasureTest; extended DiscoveryErrorProjectionTest and MirrorViewModelAnnotationTest.",
+        "hypothesis": "Reading state.frozen inside reduce for both new handlers, exactly as the existing annotation handlers do, avoids reopening the documented reduce-race (a comment-write racing a delete).",
+        "definitionOfReady": [
+          "T-5 merged (DumpHierarchyUseCase exists).",
+          "T-9 merged (intent cases minted)."
+        ],
+        "definitionOfDone": [
+          "MirrorViewModelMeasureTest proves StartMeasure stores a readout matching the pure function, EndMeasure writes exactly one ⌥-prefixed line (replacing any prior one, preserving user prose) and clears the readout, a vanished index leaves state unchanged, a spurious EndMeasure with no readout is a no-op.",
+          "MirrorViewModelMeasureTest proves the freeze transition reduces Dumping before the fake use case resolves, success reduces Ready, failure reduces Unavailable without delaying or altering the freeze, and the three clear sites reset both fields while reconnect() clears neither.",
+          "DiscoveryErrorProjectionTest's extended table pins Dumping > Frozen > Live > Dropped > Blocked > Offline with every existing row (incl. frozenOverridesDiscovery and lost) unchanged.",
+          "MirrorViewModelAnnotationTest's race case is extended to an EndMeasure racing a DeleteAnnotation on the same index.",
+          "`grep -n '\\-> Unit' presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt` prints nothing.",
+          "desktopTest green."
+        ],
+        "dependsOn": [
+          "T-5",
+          "T-9"
+        ],
+        "outOfScope": [
+          "Compose/UI wiring (T-11).",
+          "The MeasureCard call site (T-12)."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/discovery/DiscoveryErrorProjection.kt",
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 9,
+        "estimate": "1.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-11",
+        "epic": "E-5",
+        "title": "MirrorAnnotationStage: Alt detection layer + MeasureOverlay",
+        "description": "Hover offset/altHeld/dispatch-edge in `remember`; a focus-independent pointerInput sampler reading event.keyboardModifiers.isAltPressed at PointerEventPass.Initial; a NEW overlay-root FocusRequester + onPreviewKeyEvent isAltPressed branch; EndMeasure dispatched on KeyUp, onFocusChanged(lost) and the next pointer-down; the drag-in-progress guard (FR-44 reworded -- Alt is ignored until a drag ends). MeasureOverlay: target + up to four neighbour MeasureMarks, the dashed mid-axis guide Canvas, the alignment rail, MeasureTag numerals. CommentPopover suppression while a readout exists.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-23",
+            "text": "Every overlay coordinate routes through FrameGeometry with no second density conversion."
+          },
+          {
+            "id": "TAC-24",
+            "text": "A release the key path misses is recovered via focus-loss or the next pointer-down."
+          },
+          {
+            "id": "TAC-25",
+            "text": "Typing in an open CommentPopover is unaffected by the new overlay root's focusable()."
+          }
+        ],
+        "linkedAC": [
+          "AC-10",
+          "AC-11",
+          "AC-71"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#measure-mark"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#measure-tag"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#annotation-overlay"
+          }
+        ],
+        "expectedOutput": "MeasureOverlay private composable + the Alt detection layer wired into MirrorAnnotationStage.kt; an early manual demo of the stuck-panel and popover-focus risks.",
+        "hypothesis": "A focus-requesting onPreviewKeyEvent plus a focus-independent pointer-modifier sampler plus three release paths (KeyUp, focus-loss, next pointer-down) recovers an Alt key-up the key path alone would miss, without stealing focus from an open CommentPopover (which re-requests focus in its own LaunchedEffect and wins whenever it opens).",
+        "definitionOfReady": [
+          "T-10 merged (StartMeasure/EndMeasure have real handler bodies)."
+        ],
+        "definitionOfDone": [
+          "Every coordinate in the guide Canvas and the rail routes through FrameGeometry.toFrame then .toDp exactly once (no stray `/density`, `*density`, `.toPx()` or `.dp` outside it).",
+          "The ±10/±24px finding tolerances stay in device pixels and the 32dp touch-target threshold stays in dp, never swapped.",
+          "Measure mode is gated off while dragStart != null and while frozen == null.",
+          "Opening a CommentPopover while measuring and typing in it is unaffected by the overlay root's focusable() (manual check, recorded in the step-11 demo).",
+          "An EARLY manual demo is run and recorded for the stuck-panel risk (Cmd-Tab mid-hold, Alt during a drag) and the popover-focus risk.",
+          "desktopTest + compileTestKotlinIosArm64 green.",
+          "This is a hardware/visual-dependent task -- if no device or renderer is available, the demo portion is recorded BLOCKED, not waived."
+        ],
+        "dependsOn": [
+          "T-10"
+        ],
+        "outOfScope": [
+          "The floating MeasureCard call site and its footer parameter (T-12)."
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 10,
+        "estimate": "1.5d",
+        "subtasks": []
+      },
+      {
+        "id": "T-12",
+        "epic": "E-5",
+        "title": "Floating MeasureCard call site + additive footer parameter + localisation + previews",
+        "description": "Float MeasureCard at TopStart in the frame-sized Box with Theme.spacing.spacingL inset and a named private MeasureCardWidth = 228.dp (the ErrorCardWidth/BannerTopInset precedent). Add the additive footer: String? = null parameter to the MeasureCard organism (ink3 text inside the card's padded column, below the finding block) and correct its KDoc's 'lives in the sidebar / not an overlay' claim. Add the ten new localisation keys. Add light and dark @Previews of a measuring frozen stage.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-26",
+            "text": "The footer sentence renders inside MeasureCard's border via the new additive parameter."
+          },
+          {
+            "id": "TAC-27",
+            "text": "MeasureCard's KDoc no longer describes the card as a sidebar-only panel that is 'not an overlay'."
+          },
+          {
+            "id": "TAC-28",
+            "text": "The light/dark @Previews are actually rendered by a human, not merely compiled."
+          }
+        ],
+        "linkedAC": [
+          "AC-67",
+          "AC-11"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/MeasureCard.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#measure-card"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#key-cap"
+          },
+          {
+            "type": "url",
+            "ref": "components.json#status-indicator"
+          }
+        ],
+        "expectedOutput": "MeasureCard call site wired into MirrorAnnotationStage.kt's frame-sized Box; MeasureCard.kt's additive footer parameter + corrected KDoc; ten new string keys; two rendered @Previews.",
+        "hypothesis": "An additive, default-valued footer parameter on an organism with zero existing callers is source-compatible and renders the AC-67 footer sentence inside the card border at token fidelity, without needing px-exact geometry against the design's raw 12/10/10.",
+        "definitionOfReady": [
+          "T-11 merged (MeasureOverlay and the readout state are in place for the card to display)."
+        ],
+        "definitionOfDone": [
+          "The footer sentence renders inside the card's border via the new parameter; no breaking signature change (operator decision 6, restated).",
+          "MeasureCard's KDoc no longer calls the card a sidebar panel that is 'not an overlay'.",
+          "Padding/gap/radius/border read from Theme.spacingL/spacingS/cornerToken.card/Theme.color.line, judged at token fidelity (not px-exactness against the design's raw 12/10/10).",
+          "The one named private val MeasureCardWidth: Dp = 228.dp follows the ErrorCardWidth precedent; no other raw Color/dp/TextStyle introduced at a call site.",
+          "The ten localisation keys exist in values/strings.xml with English values.",
+          "The two @Previews are actually rendered by a human (compiling is not verification -- the drag-annotate verdict's W-2 waiver).",
+          "`:presentation-core-ui:build` green."
+        ],
+        "dependsOn": [
+          "T-11"
+        ],
+        "outOfScope": [
+          "The Alt detection layer and MeasureOverlay (T-11).",
+          "Any hardware demo (T-13)."
+        ],
+        "predictedScope": [
+          "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/MeasureCard.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt",
+          "presentation-core-localisation/**/values/strings.xml"
+        ],
+        "parallelizable": false,
+        "executionGroup": 11,
+        "estimate": "0.75d",
+        "subtasks": []
+      },
+      {
+        "id": "T-13",
+        "epic": "E-6",
+        "title": "Cross-target gate + human-rendered preview pass + hardware demo",
+        "description": "Terminal coverage sweep: run the full cross-target test gate (:data-device-api:desktopTest :data-repository-impl:desktopTest :presentation-feature-mirror:desktopTest, compileTestKotlinIosArm64 for data-device-api and presentation-feature-mirror, :presentation-core-ui:build), the `-> Unit` grep check, the human-rendered preview pass, and the hardware demo script for AC-10/AC-11/AC-67/AC-69/AC-71/AC-72 with the device's dpi and the dropped-frame delta recorded.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-29",
+            "text": "All three cross-target gradle checks plus compileTestKotlinIosArm64 and :presentation-core-ui:build are green."
+          },
+          {
+            "id": "TAC-30",
+            "text": "The hardware demo script has been run on real hardware with the device's reported dpi recorded."
+          },
+          {
+            "id": "TAC-31",
+            "text": "Any criterion unrunnable for want of a device or renderer is recorded BLOCKED, not waived."
+          }
+        ],
+        "linkedAC": [
+          "AC-10",
+          "AC-11",
+          "AC-67",
+          "AC-69",
+          "AC-71",
+          "AC-72"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/drag-annotate-frozen-frame/validation/verdict.md"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/testing.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/measure-mode/inputs/design-measure-mode.md"
+          }
+        ],
+        "expectedOutput": "A recorded verdict/demo note with command outputs, grep output, device dpi, dropped-frame delta, and the px-degradation path observed at least once; anything unrunnable recorded BLOCKED, not waived.",
+        "hypothesis": "The pure-logic test suite plus a human-run demo script is the honest, complete verification this repo can offer for a feature with no Compose UI-test harness and no in-process Skiko -- nothing claimed as test-verified here was actually unasserted by code, and nothing visual is claimed covered that was only compiled.",
+        "definitionOfReady": [
+          "T-12 merged (all production code for the feature exists)."
+        ],
+        "definitionOfDone": [
+          "`./gradlew :data-device-api:desktopTest :data-repository-impl:desktopTest :presentation-feature-mirror:desktopTest` green.",
+          "`compileTestKotlinIosArm64` green for data-device-api and presentation-feature-mirror.",
+          "`:presentation-core-ui:build` green.",
+          "`grep -n '\\-> Unit' presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt` prints nothing.",
+          "The light/dark measuring-stage @Previews have been rendered by a human, not merely compiled.",
+          "The AC-10/11/67/69/71/72 demo script has been run on real hardware with the device's reported dpi recorded.",
+          "The px-degradation path (unknown density -> all `px` labels, no touch-target finding) has been observed at least once, e.g. by stubbing density unknown.",
+          "The dropped-frame delta across a freeze-with-dump is recorded as a number from TransportStats.",
+          "If no device or no renderer is available, each affected criterion is recorded BLOCKED, not waived, per HARDWARE-BLOCKED.md's framing."
+        ],
+        "dependsOn": [
+          "T-12"
+        ],
+        "outOfScope": [
+          "Fixing any defect this sweep uncovers -- that is new work, not part of this task's scope."
+        ],
+        "predictedScope": [
+          ".pipeline/sdd/docs/measure-mode/execution/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 12,
+        "estimate": "0.5d",
+        "subtasks": []
+      }
+    ],
+    "executionPlan": {
+      "waves": [
+        {
+          "wave": 1,
+          "parallel": [
+            "T-1"
+          ]
+        },
+        {
+          "wave": 2,
+          "parallel": [
+            "T-2"
+          ]
+        },
+        {
+          "wave": 3,
+          "parallel": [
+            "T-3",
+            "T-4"
+          ]
+        },
+        {
+          "wave": 4,
+          "parallel": [
+            "T-5"
+          ]
+        },
+        {
+          "wave": 5,
+          "parallel": [
+            "T-6"
+          ]
+        },
+        {
+          "wave": 6,
+          "parallel": [
+            "T-7"
+          ]
+        },
+        {
+          "wave": 7,
+          "parallel": [
+            "T-8"
+          ]
+        },
+        {
+          "wave": 8,
+          "parallel": [
+            "T-9"
+          ]
+        },
+        {
+          "wave": 9,
+          "parallel": [
+            "T-10"
+          ]
+        },
+        {
+          "wave": 10,
+          "parallel": [
+            "T-11"
+          ]
+        },
+        {
+          "wave": 11,
+          "parallel": [
+            "T-12"
+          ]
+        },
+        {
+          "wave": 12,
+          "parallel": [
+            "T-13"
+          ]
+        }
+      ],
+      "graph": [
+        {
+          "task": "T-2",
+          "dependsOn": [
+            "T-1"
+          ]
+        },
+        {
+          "task": "T-3",
+          "dependsOn": [
+            "T-2"
+          ]
+        },
+        {
+          "task": "T-4",
+          "dependsOn": [
+            "T-1",
+            "T-2"
+          ]
+        },
+        {
+          "task": "T-5",
+          "dependsOn": [
+            "T-3",
+            "T-4"
+          ]
+        },
+        {
+          "task": "T-6",
+          "dependsOn": [
+            "T-2",
+            "T-5"
+          ]
+        },
+        {
+          "task": "T-7",
+          "dependsOn": [
+            "T-6"
+          ]
+        },
+        {
+          "task": "T-8",
+          "dependsOn": [
+            "T-6",
+            "T-7"
+          ]
+        },
+        {
+          "task": "T-9",
+          "dependsOn": [
+            "T-8"
+          ]
+        },
+        {
+          "task": "T-10",
+          "dependsOn": [
+            "T-5",
+            "T-9"
+          ]
+        },
+        {
+          "task": "T-11",
+          "dependsOn": [
+            "T-10"
+          ]
+        },
+        {
+          "task": "T-12",
+          "dependsOn": [
+            "T-11"
+          ]
+        },
+        {
+          "task": "T-13",
+          "dependsOn": [
+            "T-12"
+          ]
+        }
+      ]
+    },
+    "readyForExecution": true,
+    "sequenceNotes": {
+      "cyclesFound": [],
+      "serializedForScopeOverlap": [
+        "T-11/T-12 share presentation-feature-mirror/.../MirrorAnnotationStage.kt (T-12 adds the MeasureCard call site into the same file T-11 just edited) -- kept strictly serial.",
+        "T-9/T-6 both edit MirrorContract.kt but are already separated by waves 5 and 8 via their real type dependency, not just file collision.",
+        "T-6 and T-9 cannot share a wave regardless of dependency order because both edit the same MirrorContract.kt path.",
+        "VALIDATION FIX (iteration 1): T-3 and T-4 (wave 3, parallel) both declared the identical wildcard glob `data-device-api/src/commonTest/**`, which is not concrete-file disjoint even though the actual edits (DeviceArgvTest.kt extension + a new DeviceCommandExecutorImplTest.kt for T-3; a new UiAutomatorDumpParserTest.kt for T-4) never touch the same file. Narrowed both tasks' predictedScope to the exact test files so the parallel claim is provably disjoint rather than merely assumed -- a wildcard collision here would have silently defeated the dispatcher's collision avoidance. T-3/T-4 remain parallel (NOT serialized); the parser has no code dependency on the adb/argv/timeout layer (confirmed by reading UiAutomatorDumpParser's intended scope: it imports no DeviceCommand/DeviceArgv type), so T-4's stale 'T-3 merged' definitionOfReady line (a leftover from the plan's own implementationPlan step dependsOn [1,3], not reconciled with this parallelization) was also removed and replaced with the T-2 gate precondition that actually matches T-4's dependsOn edge."
+      ],
+      "terminalWaveTasks": [
+        "T-13"
+      ]
+    }
+  },
+  "survey": [
+    {
+      "question": "Approve the backlog for execution (13 tasks, 12 waves, 4 validator corrections applied)?",
+      "options": [
+        "Approve as corrected",
+        "Request further changes before approving"
+      ],
+      "answer": "Approve as corrected.",
+      "source": "user-edited"
+    },
+    {
+      "question": "T-1 needs a real Android device attached. Is one connected now, or should Stage 4 stop before it?",
+      "options": [
+        "Stop before T-1 and tell me",
+        "Device is attached -- run T-1 now",
+        "Pause the whole run here"
+      ],
+      "answer": "Stop before T-1: Stage 4 opens and seeds task state, then halts at T-1 with the exact adb commands for the operator to run. No agent waits on absent hardware.",
+      "source": "user-edited"
+    }
+  ],
+  "gate": {
+    "type": "human",
+    "approved": true
+  }
+}

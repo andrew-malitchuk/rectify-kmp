@@ -16,3 +16,11 @@
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-16T18:36:26Z", "spec": "measure-mode"}
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 211876, "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
 {"stage": "plan", "event": "end", "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
+{"stage": "backlog", "event": "start", "at": "2026-10-16T18:54:13Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-16T18:54:13Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 129125, "at": "2026-10-16T19:00:52Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-16T19:00:52Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 125490, "at": "2026-10-16T19:08:21Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "note": "cap=1 (effort=fast)", "at": "2026-10-16T19:08:30Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 232323, "at": "2026-10-16T19:21:01Z", "spec": "measure-mode"}
+{"stage": "backlog", "event": "end", "at": "2026-10-16T19:21:01Z", "spec": "measure-mode"}
