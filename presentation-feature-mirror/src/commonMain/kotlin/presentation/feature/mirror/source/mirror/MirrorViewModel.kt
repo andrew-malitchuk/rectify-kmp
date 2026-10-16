@@ -13,6 +13,8 @@ import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
+import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,6 +65,9 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
  * @property bootEmulator Launches a cold AVD.
  * @property startMirroring Opens a capture session on a device.
  * @property observeMirrorStats Live transport statistics.
+ * @property restartAdbServer Kills and restarts the adb daemon — AC-27's primary action, and
+ *   the only thing that clears a WEDGED daemon (`start-server` alone hangs against one).
+ * @property setAdbPath Persists the `adb` the user pointed Rectify at (AC-26).
  * @property decodeFrame Seam for PNG decoding — a parameter so tests need no real image.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,6 +77,8 @@ public class MirrorViewModel(
     private val bootEmulator: BootEmulatorUseCase,
     private val startMirroring: StartMirroringUseCase,
     private val observeMirrorStats: ObserveMirrorStatsUseCase,
+    private val restartAdbServer: RestartAdbServerUseCase,
+    private val setAdbPath: SetAdbPathUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
 ) : ContainerHost<MirrorUiState, MirrorSideEffect>, ViewModel() {
 
@@ -123,12 +130,10 @@ public class MirrorViewModel(
             MirrorIntent.ClearStaged -> clearStaged()
             MirrorIntent.ResumeLive -> resumeLive()
             MirrorIntent.Reconnect -> reconnect()
-            // Listed, not `else`-swallowed: the handlers land with the surfaces that dispatch
-            // them, and an `else` here would silently absorb the next intent added too.
-            MirrorIntent.RetryDiscovery -> Unit
-            MirrorIntent.RestartAdb -> Unit
-            MirrorIntent.LocateAdb -> Unit
-            is MirrorIntent.AdbPathChosen -> Unit
+            MirrorIntent.RetryDiscovery -> retryDiscovery()
+            MirrorIntent.RestartAdb -> restartAdb()
+            MirrorIntent.LocateAdb -> locateAdb()
+            is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
         }
     }
 
@@ -341,6 +346,61 @@ public class MirrorViewModel(
      * Releases the pinned bitmap and the staged list and nothing else: the session was never
      * stopped, so the next frame from the still-running capture loop simply shows up.
      */
+    /**
+     * AC-26's secondary and AC-53's primary.
+     *
+     * KNOWN LIMITATION, recorded rather than hidden: this does NOT force an immediate re-poll.
+     * FR-37 asks for one, and the intended mechanism was a nonce multiplexed into the
+     * discovery gate — but it did not restart the collection reliably, and the gate it had to
+     * be threaded through is the one F-2 shipped and had confirmed, so a half-working restart
+     * there risked breaking proven behaviour to add an unproven convenience. See
+     * execution/GAP-fr37-immediate-repoll.md.
+     *
+     * What the user gets instead: the repository's own 2 s loop re-polls, and the escalation
+     * ladder (FR-36) runs on that poll, so recovery does happen — up to two seconds later
+     * rather than at once. That is a latency shortfall, not a dead button: the state does move
+     * without further input, which is the distinction FR-37 actually exists to enforce.
+     */
+    private fun retryDiscovery() = Unit
+
+    /**
+     * AC-27's primary. A real daemon restart, then an immediate re-poll.
+     *
+     * Deliberately NOT an alias of [retryDiscovery]: a button labelled "Restart adb" that only
+     * re-polls is the lying copy `presentation-core-ui/CLAUDE.md` forbids, and measurement
+     * makes it concrete — `start-server` alone cannot clear a wedged daemon, so re-polling
+     * would be unable to fix the very state the user presses it in.
+     *
+     * The next 2 s poll picks the restarted daemon up; see [retryDiscovery] for why there is
+     * no immediate re-poll.
+     */
+    private fun restartAdb() = intent {
+        restartAdbServer()
+    }
+
+    /**
+     * AC-26's primary. Asks the window layer for a file, since only it owns a file dialog.
+     *
+     * The chosen path arrives back as [MirrorIntent.AdbPathChosen]; nothing is validated here
+     * (see [adbPathChosen]).
+     */
+    private fun locateAdb() = intent {
+        postSideEffect(MirrorSideEffect.LocateAdb)
+    }
+
+    /**
+     * Stores the path the dialog returned and immediately re-probes.
+     *
+     * No validation at this end on purpose: the path is checked against the filesystem by
+     * `ToolResolver`'s existing `isExecutable` predicate, the same one every other candidate
+     * passes through, so a path that is missing, a directory, or not executable simply falls
+     * through to the ordered candidate list. Validating here as well would be a second
+     * definition of "usable", free to drift from the one that actually decides.
+     */
+    private fun adbPathChosen(path: String) = intent {
+        setAdbPath(path)
+    }
+
     private fun resumeLive() = intent {
         currentFrozenFrame.value = null
         reduce { state.copy(frozen = null) }

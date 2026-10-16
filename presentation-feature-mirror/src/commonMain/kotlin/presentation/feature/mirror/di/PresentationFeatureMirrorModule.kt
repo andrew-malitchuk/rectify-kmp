@@ -1,6 +1,8 @@
 package presentation.feature.mirror.di
 
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
+import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
+import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
@@ -24,6 +26,8 @@ public val presentationFeatureMirrorModule: Module = module {
             bootEmulator = get<BootEmulatorUseCase>(),
             startMirroring = get<StartMirroringUseCase>(),
             observeMirrorStats = get<ObserveMirrorStatsUseCase>(),
+            restartAdbServer = get<RestartAdbServerUseCase>(),
+            setAdbPath = get<SetAdbPathUseCase>(),
         )
     }
 }
