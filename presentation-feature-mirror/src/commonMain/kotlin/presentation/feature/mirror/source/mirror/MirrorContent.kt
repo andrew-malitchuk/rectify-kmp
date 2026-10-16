@@ -33,6 +33,7 @@ import presentation.core.ui.source.kit.organism.picker.PickerDeviceTrailing
 import presentation.core.ui.source.kit.organism.picker.PickerPlatform
 import presentation.core.ui.source.kit.organism.stage.NoSignalStage
 import presentation.feature.mirror.core.stats.formatStatusLine
+import presentation.feature.mirror.core.discovery.dropBanner
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_close
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_start
@@ -116,6 +117,8 @@ public fun MirrorStageContent(
                     frame = frame,
                     deviceName = state.selectedDeviceName.orEmpty(),
                     frozen = state.frozen,
+                    canResumeLive = state.canResumeLive,
+                    banner = state.dropBanner(),
                     onIntent = onIntent,
                 )
             }
