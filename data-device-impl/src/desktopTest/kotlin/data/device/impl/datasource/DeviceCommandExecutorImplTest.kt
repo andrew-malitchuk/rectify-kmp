@@ -44,7 +44,15 @@ class DeviceCommandExecutorImplTest {
 
 /** Runs [DeviceCommand.UiAutomatorDump] against [adb] and reduces the result to one word. */
 private suspend fun outcomeOf(adb: File): String {
-    val executor = DeviceCommandExecutorImpl(ToolResolver(isExecutable = { it == adb.absolutePath }))
+    val executor = DeviceCommandExecutorImpl(
+        ToolResolver(
+            env = mapOf("ANDROID_HOME" to adb.parentFile.parentFile.absolutePath),
+            homeDir = "",
+            // Pinned to the fake: with the real predicate the next candidate is
+            // /opt/homebrew/bin/adb, which would run the host's own daemon instead.
+            isExecutable = { it == adb.absolutePath },
+        )
+    )
     val device = requireNotNull(DeviceId.of("emulator-5554"))
     return try {
         executor.run(device, DeviceCommand.UiAutomatorDump)
@@ -54,10 +62,13 @@ private suspend fun outcomeOf(adb: File): String {
     }
 }
 
-/** A fake `adb` that answers `--version` and sleeps [sleepSeconds] for every other subcommand. */
+/**
+ * A fake `adb` at `<sdk>/platform-tools/adb` that answers `--version` and sleeps [sleepSeconds]
+ * for every other subcommand - the layout `ANDROID_HOME`-based resolution expects.
+ */
 private fun fakeAdbSleeping(sleepSeconds: Double): File {
     val sdk = Files.createTempDirectory("rectify-fake-sdk").toFile()
-    val adb = File(sdk, "adb")
+    val adb = File(sdk, "platform-tools").apply { mkdirs() }.let { File(it, "adb") }
     adb.writeText(
         """
         |#!/bin/sh
@@ -68,6 +79,6 @@ private fun fakeAdbSleeping(sleepSeconds: Double): File {
         """.trimMargin()
     )
     adb.setExecutable(true)
-    listOf(adb, sdk).forEach(File::deleteOnExit)
+    listOf(adb, adb.parentFile, sdk).forEach(File::deleteOnExit)
     return adb
 }

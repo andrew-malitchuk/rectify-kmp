@@ -230,7 +230,7 @@ class UiAutomatorDumpParserTest {
     @Test
     fun `parseUiAutomatorDump reports an empty resource-id and clickable true on the Compose fixture`() {
         val node = parseUiAutomatorDump(MID_SCROLL_LIST_DUMP)
-            .single { it.left == 42 && it.top == 201 && it.right == 942 && it.bottom == 336 }
+            .single { it.left == 42 && it.top == 201 && it.right == 942 && it.bottom == 336 && it.clickable }
 
         assertEquals("", node.resourceId)
         assertEquals("android.view.View", node.className)
