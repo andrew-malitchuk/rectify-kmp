@@ -8,6 +8,8 @@ import domain.core.source.model.device.EmulatorModel
 import presentation.feature.mirror.core.discovery.ADB_RESTART_COMMAND
 import presentation.feature.mirror.core.discovery.applyDiscovery
 import presentation.feature.mirror.core.discovery.dropBanner
+import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
+import presentation.feature.mirror.core.discovery.indicatorDot
 import presentation.feature.mirror.core.discovery.errorCard
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
@@ -340,6 +342,57 @@ class DiscoveryErrorProjectionTest {
                 "streamingWithFrozen" to lost.copy(session = MirrorSession.Streaming(PIXEL)).dropBanner(),
                 "lostWithoutFrozen" to lost.copy(frozen = null).dropBanner(),
                 "idle" to MirrorUiState(frozen = pinned).dropBanner(),
+            ),
+        )
+    }
+
+    /**
+     * T-32 — the status dot agrees with the card beside it.
+     *
+     * The design pairs them state by state. Before this, the bar said "Waiting for device…"
+     * next to a card explaining that adb was missing entirely, and the dot stayed grey —
+     * which reads as "nothing is happening" for three states that are all waiting on a person.
+     *
+     * `Blocked` exists for exactly that distinction and is asserted here rather than trusted:
+     * reusing `Offline` would have compiled and looked fine.
+     *
+     * MUTATION A: map ToolMissing to Offline — the toolMissing clause fails.
+     * MUTATION B: drop the MultipleDevices clause — the twoPhones clause fails.
+     * MUTATION C: move `frozen` below `discovery` — the frozenOverridesDiscovery clause fails.
+     * No single mutation covers all three, so each clause is load-bearing.
+     */
+    @Test
+    fun theStatusDotMatchesTheCardItSitsBeside() {
+        val pinned = FrozenFrame(
+            deviceSize = IntSize(1080, 2400),
+            annotations = listOf(StagedAnnotation(index = 1, rect = DeviceRect(10, 20, 30, 40))),
+        )
+
+        assertEquals(
+            expected = verdicts(
+                "toolMissing" to StatusIndicatorState.Blocked,
+                "pollFailed" to StatusIndicatorState.Blocked,
+                "noDevice" to StatusIndicatorState.Blocked,
+                "twoPhones" to StatusIndicatorState.Blocked,
+                "detecting" to StatusIndicatorState.Offline,
+                "streaming" to StatusIndicatorState.Live,
+                "lost" to StatusIndicatorState.Dropped,
+                "frozenOverridesDiscovery" to StatusIndicatorState.Frozen,
+            ),
+            actual = verdicts(
+                "toolMissing" to stateOf(toolMissing()).indicatorDot(),
+                "pollFailed" to stateOf(pollFailed()).indicatorDot(),
+                "noDevice" to stateOf(noDeviceFound(attachedCount = 0)).indicatorDot(),
+                "twoPhones" to stateOf(twoSelectablePhones()).indicatorDot(),
+                "detecting" to stateOf(DiscoveryModel.Detecting).indicatorDot(),
+                "streaming" to stateOf(noDeviceFound())
+                    .copy(session = MirrorSession.Streaming(PIXEL)).indicatorDot(),
+                "lost" to stateOf(noDeviceFound())
+                    .copy(session = MirrorSession.Lost(PIXEL)).indicatorDot(),
+                // A pinned frame wins over a discovery state that would otherwise say Blocked:
+                // a LIVE or BLOCKED dot over a still frame misreports what is on screen.
+                "frozenOverridesDiscovery" to stateOf(toolMissing())
+                    .copy(frozen = pinned).indicatorDot(),
             ),
         )
     }

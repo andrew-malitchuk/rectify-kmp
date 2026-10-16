@@ -3,6 +3,7 @@ package presentation.feature.mirror.core.discovery
 import domain.core.source.model.device.DeviceModel
 import domain.core.source.model.device.DiscoveryModel
 import presentation.feature.mirror.source.mirror.MirrorDropBanner
+import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.feature.mirror.source.mirror.MirrorErrorCard
 import presentation.feature.mirror.source.mirror.MirrorErrorKind
 import presentation.feature.mirror.source.mirror.MirrorIntent
@@ -143,4 +144,33 @@ internal fun MirrorUiState.dropBanner(): MirrorDropBanner? {
 private fun formatAge(ageMs: Long): String {
     val tenths = (ageMs.coerceAtLeast(0) + MS_ROUNDING) / MS_PER_TENTH
     return "${tenths / TENTHS_PER_SECOND}.${tenths % TENTHS_PER_SECOND} s"
+}
+
+/**
+ * The status-line dot, as a pure function so it is assertable without a UI harness.
+ *
+ * Lives here rather than beside the composable that renders it because the design pairs the
+ * status line with the error card state by state — `err-adb` is "adb not found in PATH",
+ * `err-nodevice` is "adb devices -> 0 attached", `err-multi` is "N devices attached, waiting
+ * for choice" — so the two projections have to agree, and the only way to keep them agreeing
+ * is to put them where one test can read both.
+ *
+ * Without this, the status bar went on saying "Waiting for device…" while the card next to it
+ * said adb was missing entirely.
+ *
+ * Order matters: a pinned frame outranks a live session (FR-30 — the session really is running
+ * underneath, but a LIVE dot over a still frame is a lie), and both outrank any discovery
+ * state, because what the user is looking at is more informative than what the poll last said.
+ */
+internal fun MirrorUiState.indicatorDot(): StatusIndicatorState = when {
+    frozen != null -> StatusIndicatorState.Frozen
+    session is MirrorSession.Streaming -> StatusIndicatorState.Live
+    session is MirrorSession.Lost -> StatusIndicatorState.Dropped
+    // Blocked, not Offline: each of these is waiting on a person, and a grey dot reads as
+    // idle. The ambiguous-choice case is Blocked too - two usable handsets is not "no device".
+    discovery is DiscoveryModel.ToolMissing -> StatusIndicatorState.Blocked
+    discovery is DiscoveryModel.PollFailed -> StatusIndicatorState.Blocked
+    discovery is DiscoveryModel.NoDeviceFound -> StatusIndicatorState.Blocked
+    errorCard(nowMs = 0L)?.kind == MirrorErrorKind.MultipleDevices -> StatusIndicatorState.Blocked
+    else -> StatusIndicatorState.Offline
 }

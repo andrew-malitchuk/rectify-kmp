@@ -35,6 +35,7 @@ import presentation.core.ui.source.kit.organism.stage.NoSignalStage
 import presentation.feature.mirror.core.stats.formatStatusLine
 import kotlin.time.Clock
 import presentation.feature.mirror.core.discovery.errorCard
+import presentation.feature.mirror.core.discovery.indicatorDot
 import presentation.feature.mirror.core.discovery.dropBanner
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_close
@@ -54,6 +55,8 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_sec
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_source_summary
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_detecting
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_latency_placeholder
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_no_device_attached
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_awaiting_choice
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_poll_failed
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_polling_hint
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_tool_missing
@@ -187,12 +190,7 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
  * but the pixels on screen are pinned, and a LIVE dot over a still frame is a lie. This is the
  * first production caller of the shipped-but-unused [StatusIndicatorState.Frozen].
  */
-private fun MirrorUiState.indicatorState(): StatusIndicatorState = when {
-    frozen != null -> StatusIndicatorState.Frozen
-    session is MirrorSession.Streaming -> StatusIndicatorState.Live
-    session is MirrorSession.Lost -> StatusIndicatorState.Dropped
-    else -> StatusIndicatorState.Offline
-}
+private fun MirrorUiState.indicatorState(): StatusIndicatorState = indicatorDot()
 
 @Composable
 private fun MirrorUiState.indicatorLabel(): String = when {
@@ -203,6 +201,16 @@ private fun MirrorUiState.indicatorLabel(): String = when {
     // A failed poll is its own label: "waiting for device" would claim adb answered.
     discovery is DiscoveryModel.PollFailed -> stringResource(Res.string.mirror_status_poll_failed)
     discovery is DiscoveryModel.Detecting -> stringResource(Res.string.mirror_status_detecting)
+    // The design pairs each error card with its own status line. Without these two the bar
+    // kept saying "Waiting for device…" beside a card explaining that adb saw nothing, or
+    // that three devices were attached and it needed a choice.
+    discovery is DiscoveryModel.NoDeviceFound ->
+        stringResource(Res.string.mirror_status_no_device_attached)
+    errorCard(Clock.System.now().toEpochMilliseconds())?.kind == MirrorErrorKind.MultipleDevices ->
+        stringResource(
+            Res.string.mirror_status_awaiting_choice,
+            rows.count { it.group == MirrorRowGroup.Physical && it.selectable },
+        )
     else -> stringResource(Res.string.mirror_status_waiting)
 }
 
