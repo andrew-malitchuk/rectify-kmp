@@ -1,6 +1,6 @@
 {
   "spec": "error-handling-and-recovery",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -18,6 +18,15 @@
     "validation": {
       "status": "done",
       "verdict": "complete-with-waivers"
+    },
+    "review": {
+      "status": "done",
+      "verdict": "approve-with-nits",
+      "note": "Six dimensions reviewed (correctness, conventions, architecture, security, maintainability, performance). 18 findings; all actioned. Reflection SKIPPED by operator decision."
+    },
+    "reflection": {
+      "status": "skipped",
+      "source": "user-decided"
     }
   },
   "steps": {

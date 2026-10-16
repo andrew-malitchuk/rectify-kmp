@@ -338,26 +338,26 @@ private fun darkPairings(): List<Pairing> = buildList {
     // region Alpha overlays, composited over every surface they are drawn on (A11Y-2).
     // Dark alphas are the design's own (.07/.13/.05/.07/.04), not the light palette's values
     // that were previously copied here - hence baselines below differ from lightPairings().
-    frozen("line over bg", c.line over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.26:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over chrome", c.line over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.27:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over stage", c.line over c.stage, c.stage, baseline = 1.20) // WAIVED: 1.22:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over surface", c.line over c.surface, c.surface, baseline = 1.24) // WAIVED: 1.28:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over bg", c.line2 over c.bg, c.bg, baseline = 1.48) // WAIVED: 1.56:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over chrome", c.line2 over c.chrome, c.chrome, baseline = 1.50) // WAIVED: 1.58:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over stage", c.line2 over c.stage, c.stage, baseline = 1.44) // WAIVED: 1.51:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over surface", c.line2 over c.surface, c.surface, baseline = 1.50) // WAIVED: 1.57:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("hover over bg", c.hover over c.bg, c.bg, baseline = 1.14) // WAIVED: 1.13:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over chrome", c.hover over c.chrome, c.chrome, baseline = 1.15) // WAIVED: 1.13:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over stage", c.hover over c.stage, c.stage, baseline = 1.12) // WAIVED: 1.11:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over surface", c.hover over c.surface, c.surface, baseline = 1.16) // WAIVED: 1.14:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over bg", c.seg over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.18:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over chrome", c.seg over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.20:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over stage", c.seg over c.stage, c.stage, baseline = 1.19) // WAIVED: 1.16:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over surface", c.seg over c.surface, c.surface, baseline = 1.23) // WAIVED: 1.19:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("line over bg", c.line over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.22:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over chrome", c.line over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over stage", c.line over c.stage, c.stage, baseline = 1.20) // WAIVED: 1.20:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over surface", c.line over c.surface, c.surface, baseline = 1.24) // WAIVED: 1.24:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over bg", c.line2 over c.bg, c.bg, baseline = 1.48) // WAIVED: 1.48:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over chrome", c.line2 over c.chrome, c.chrome, baseline = 1.50) // WAIVED: 1.50:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over stage", c.line2 over c.stage, c.stage, baseline = 1.44) // WAIVED: 1.44:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over surface", c.line2 over c.surface, c.surface, baseline = 1.50) // WAIVED: 1.50:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("hover over bg", c.hover over c.bg, c.bg, baseline = 1.14) // WAIVED: 1.14:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over chrome", c.hover over c.chrome, c.chrome, baseline = 1.15) // WAIVED: 1.15:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over stage", c.hover over c.stage, c.stage, baseline = 1.12) // WAIVED: 1.12:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over surface", c.hover over c.surface, c.surface, baseline = 1.16) // WAIVED: 1.16:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over bg", c.seg over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.22:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over chrome", c.seg over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over stage", c.seg over c.stage, c.stage, baseline = 1.19) // WAIVED: 1.19:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over surface", c.seg over c.surface, c.surface, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     frozen("codeBg over bg", c.codeBg over c.bg, c.bg, baseline = 1.10) // WAIVED: 1.10:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     frozen("codeBg over chrome", c.codeBg over c.chrome, c.chrome, baseline = 1.11) // WAIVED: 1.11:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("codeBg over stage", c.codeBg over c.stage, c.stage, baseline = 1.09) // WAIVED: 1.08:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("codeBg over surface", c.codeBg over c.surface, c.surface, baseline = 1.12) // WAIVED: 1.10:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("codeBg over stage", c.codeBg over c.stage, c.stage, baseline = 1.09) // WAIVED: 1.09:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("codeBg over surface", c.codeBg over c.surface, c.surface, baseline = 1.12) // WAIVED: 1.12:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     // endregion
 
     // region pop - no onPop token by gate decision (Q3-A); measured against Color.White.

@@ -19,6 +19,8 @@ import kotlin.test.assertEquals
  * the temp root, so `/opt/homebrew/bin/adb` on the developer's own machine cannot win the
  * probe and turn these into hardware tests.
  */
+private const val ADB_BANNER = "Android Debug Bridge"
+
 class ToolResolverTest {
 
     private val root: File = createTempDirectory("tool-resolver").toFile()
@@ -116,15 +118,70 @@ class ToolResolverTest {
      * `homeDir` is blank so `~/Library/Android/sdk` contributes nothing, and the predicate is
      * the production one narrowed to [root] - the real `isFile && canExecute` still decides.
      */
+    /**
+     * [identifyAdb] is faked for the same reason [ToolResolver.isExecutable] is — and for one
+     * more. The real check SPAWNS `<path> --version`, and spawning inside `runTest`'s virtual
+     * clock cannot work: the scheduler advances past `withTimeoutOrNull` instantly while the
+     * real child is still starting, so the call always times out and every override would be
+     * rejected here regardless of what it is.
+     *
+     * The fake answers the way the fixtures are built: `executable()` writes a script that
+     * echoes adb's banner, `plainFile()` writes `not a binary`. So "identifies as adb" maps
+     * onto "was built by `executable()`", which is what these tests mean by a usable path.
+     */
+
+    /**
+     * The trust boundary's real question: an override must IDENTIFY itself, not merely run.
+     *
+     * `isExecutable` answers "can this be run", which is not "is this adb" — and the gap was
+     * not theoretical. The path is persisted, so it is re-armed every launch; the cache is
+     * bypassed while an override is set, so it is re-executed twice per 2 s poll indefinitely;
+     * and a binary that exits 0 was indistinguishable from adb in the UI. One mis-click on a
+     * downloaded shell script became code Rectify re-ran every two seconds, every session,
+     * silently.
+     *
+     * The ordered candidates are deliberately NOT banner-checked, and that asymmetry is
+     * asserted here too: they come from the SDK layout and the user's PATH, which this program
+     * does not get to second-guess. Only a value that arrived from a file dialog has to prove
+     * what it is.
+     *
+     * MUTATION: drop `|| identifiesAsAdb(candidate)` from the predicate in `resolve` — the
+     * impostorRejected clause fails and the override wins again.
+     */
+    @Test
+    fun anExecutableThatIsNotAdbIsRejectedAsAnOverrideButNotAsACandidate() = runTest {
+        val impostor = plainFile("Downloads/rectify-adb-fix.sh").also { path ->
+            File(path).writeText("#!/bin/sh\necho 'totally adb, trust me'\n")
+            File(path).setExecutable(true)
+        }
+
+        assertEquals(
+            expected = listOf(
+                "impostorRejected=true",
+                "fellBackTo=$fallbackAdb",
+                "impostorStillListed=true",
+            ),
+            actual = resolver { impostor }.resolve(ToolKind.Adb).let { probe ->
+                listOf(
+                    "impostorRejected=${probe.path != impostor}",
+                    "fellBackTo=${probe.path}",
+                    // Still in probedPaths, so the diagnostic footer can answer "why not mine".
+                    "impostorStillListed=${impostor in probe.probedPaths}",
+                )
+            },
+        )
+    }
+
     private fun resolver(userPath: suspend () -> String?) = ToolResolver(
         env = mapOf("PATH" to "$root/path-bin"),
         homeDir = "",
         isExecutable = { path -> path.startsWith("$root/") && isExecutableFile(path) },
+        identifyAdb = { path -> File(path).let { it.isFile && it.readText().contains(ADB_BANNER) } },
         userPath = userPath,
     )
 
     private fun executable(relative: String): String = plainFile(relative).also { path ->
-        File(path).writeText("#!/bin/sh\necho 'Android Debug Bridge version 1.0.41'\n")
+        File(path).writeText("#!/bin/sh\necho '$ADB_BANNER version 1.0.41'\n")
         File(path).setExecutable(true)
     }
 

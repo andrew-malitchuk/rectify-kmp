@@ -393,19 +393,19 @@ class DiscoveryErrorProjectionTest {
                 "frozenOverridesDiscovery" to StatusIndicatorState.Frozen,
             ),
             actual = verdicts(
-                "toolMissing" to stateOf(toolMissing()).indicatorDot(),
-                "pollFailed" to stateOf(pollFailed()).indicatorDot(),
-                "noDevice" to stateOf(noDeviceFound(attachedCount = 0)).indicatorDot(),
-                "twoPhones" to stateOf(twoSelectablePhones()).indicatorDot(),
-                "detecting" to stateOf(DiscoveryModel.Detecting).indicatorDot(),
+                "toolMissing" to stateOf(toolMissing()).let { it.indicatorDot(it.errorCard(NOW)) },
+                "pollFailed" to stateOf(pollFailed()).let { it.indicatorDot(it.errorCard(NOW)) },
+                "noDevice" to stateOf(noDeviceFound(attachedCount = 0)).let { it.indicatorDot(it.errorCard(NOW)) },
+                "twoPhones" to stateOf(twoSelectablePhones()).let { it.indicatorDot(it.errorCard(NOW)) },
+                "detecting" to stateOf(DiscoveryModel.Detecting).let { it.indicatorDot(it.errorCard(NOW)) },
                 "streaming" to stateOf(noDeviceFound())
-                    .copy(session = MirrorSession.Streaming(PIXEL)).indicatorDot(),
+                    .copy(session = MirrorSession.Streaming(PIXEL)).let { it.indicatorDot(it.errorCard(NOW)) },
                 "lost" to stateOf(noDeviceFound())
-                    .copy(session = MirrorSession.Lost(PIXEL)).indicatorDot(),
+                    .copy(session = MirrorSession.Lost(PIXEL)).let { it.indicatorDot(it.errorCard(NOW)) },
                 // A pinned frame wins over a discovery state that would otherwise say Blocked:
                 // a LIVE or BLOCKED dot over a still frame misreports what is on screen.
                 "frozenOverridesDiscovery" to stateOf(toolMissing())
-                    .copy(frozen = pinned).indicatorDot(),
+                    .copy(frozen = pinned).let { it.indicatorDot(it.errorCard(NOW)) },
             ),
         )
     }

@@ -388,11 +388,17 @@ public sealed interface MirrorIntent {
 }
 
 /** One-shot events of the mirror surface. */
-/** The recovery actions that can fail visibly (see [MirrorSideEffect.RecoveryFailed]). */
+/**
+ * The recovery actions that can fail visibly (see [MirrorSideEffect.RecoveryFailed]).
+ *
+ * `RetryDiscovery` is deliberately absent: it bottoms out in `Channel.trySend`, which cannot
+ * throw, so a case for it would be unreachable in the running app. An enum case nothing can
+ * produce is worse than no case — it invites a `when` branch and a test that both look like
+ * coverage.
+ */
 public enum class RecoveryAction {
     RestartAdb,
     SaveAdbPath,
-    RetryDiscovery,
 }
 
 public sealed interface MirrorSideEffect {

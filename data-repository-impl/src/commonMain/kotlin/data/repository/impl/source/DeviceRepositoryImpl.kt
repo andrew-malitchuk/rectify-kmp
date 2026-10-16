@@ -70,6 +70,17 @@ internal class DeviceRepositoryImpl(
     private val adbVersion = MutableStateFlow("")
 
     /**
+     * @see DeviceRepository.refreshDiscovery
+     *
+     * `trySend`, not `send`: this must never suspend its caller. A refresh is a best-effort
+     * nudge, and the conflated channel means a dropped one only ever costs the user the
+     * remainder of an interval they were already waiting out.
+     */
+    override suspend fun refreshDiscovery() {
+        refreshRequests.trySend(Unit)
+    }
+
+    /**
      * Requests to cut the poll interval short.
      *
      * CONFLATED on purpose: a refresh that arrives mid-poll is kept rather than dropped, so
@@ -365,17 +376,6 @@ internal class DeviceRepositoryImpl(
      * passes through, so a bad path falls through to the ordered candidate list rather than
      * becoming an error the user has to clear.
      */
-    /**
-     * @see DeviceRepository.refreshDiscovery
-     *
-     * `trySend`, not `send`: this must never suspend its caller. A refresh is a best-effort
-     * nudge, and the conflated channel means a dropped one only ever costs the user the
-     * remainder of an interval they were already waiting out.
-     */
-    override suspend fun refreshDiscovery() {
-        refreshRequests.trySend(Unit)
-    }
-
     override suspend fun setAdbPath(path: String) {
         adbPathPreferenceSource.setData(AdbPathPreference(path))
     }

@@ -13,6 +13,8 @@ import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlin.time.Clock
+import presentation.feature.mirror.core.discovery.errorCard
 import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
@@ -212,8 +214,26 @@ public class MirrorViewModel(
     }
 
     private fun closePicker() = intent {
-        // Escape before the first selection would leave an empty stage with no way back.
-        if (state.selectedDeviceId != null) reduce { state.copy(isPickerOpen = false) }
+        // Escape before the first selection would leave an empty stage with no way back — that
+        // is why this is a no-op rather than a plain toggle, and F-2 confirmed it.
+        //
+        // COR-2 narrows it rather than removing it. The "no way back" premise assumed the stage
+        // behind the picker is empty; with an error card available it is not. Dismissing the
+        // picker on two attached handsets now reveals AC-28's ambiguity card, which HAS a route
+        // onward: its primary action mirrors the top device, and the toolbar chip reopens the
+        // picker (AC-43). Without this the card was unreachable in AC-28's own scenario — the
+        // only way to close the picker was to resolve the ambiguity first, which is the thing
+        // the card exists to help with.
+        //
+        // The original guard still holds where it was written for: no selection AND no card
+        // means there is genuinely nothing behind the picker, so Escape still does nothing.
+        // Asked counterfactually — "would a card be there if I closed?" — because `errorCard()`
+        // yields to an OPEN picker, so asking it directly here always answers null and the
+        // guard could never open.
+        val somethingIsBehindIt = state.selectedDeviceId != null ||
+            state.copy(isPickerOpen = false)
+                .errorCard(Clock.System.now().toEpochMilliseconds()) != null
+        if (somethingIsBehindIt) reduce { state.copy(isPickerOpen = false) }
     }
 
     private fun highlightRow(id: String) = intent {
@@ -362,9 +382,13 @@ public class MirrorViewModel(
      * covered by virtual-time tests instead of Orbit's dispatcher scheduling.
      */
     private fun retryDiscovery() = intent {
-        refreshDiscovery().onFailure {
-            postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.RetryDiscovery))
-        }
+        // No `.onFailure` here, and the asymmetry with restartAdb/adbPathChosen is deliberate:
+        // refreshDiscovery bottoms out in `Channel.trySend`, which cannot throw, so a failure
+        // branch would be a case the running app can never reach — and a test for it could
+        // only be written by faking the use case, which would prove nothing about this code.
+        // The sibling actions DO have real throwing paths (start/kill-server, a settings
+        // write), which is why they report.
+        refreshDiscovery()
     }
 
     /**

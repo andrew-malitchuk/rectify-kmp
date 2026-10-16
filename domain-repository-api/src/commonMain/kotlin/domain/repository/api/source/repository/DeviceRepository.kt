@@ -16,6 +16,16 @@ import kotlinx.coroutines.flow.Flow
 public interface DeviceRepository {
 
     /**
+     * Cuts the discovery poll interval short so the next poll happens now.
+     *
+     * Best-effort by design: it nudges a loop that is already running rather than guaranteeing
+     * a poll, so a request arriving mid-poll costs at most the remainder of one interval. The
+     * alternative — restarting the collection from the presentation layer — was tried and
+     * withdrawn as timing-dependent.
+     */
+    public suspend fun refreshDiscovery()
+
+    /**
      * Probes for the external platform tools.
      *
      * A missing tool is reported as `isInstalled = false`, never as an exception.
@@ -74,15 +84,5 @@ public interface DeviceRepository {
      * falls through to the ordered candidate list, which is what it would have done had the
      * user never chosen anything.
      */
-    /**
-     * Cuts the discovery poll interval short so the next poll happens now.
-     *
-     * Best-effort by design: it nudges a loop that is already running rather than guaranteeing
-     * a poll, so a request arriving mid-poll costs at most the remainder of one interval. The
-     * alternative — restarting the collection from the presentation layer — was tried and
-     * withdrawn as timing-dependent.
-     */
-    public suspend fun refreshDiscovery()
-
     public suspend fun setAdbPath(path: String)
 }

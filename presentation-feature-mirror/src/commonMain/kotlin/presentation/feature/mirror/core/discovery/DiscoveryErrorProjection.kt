@@ -57,16 +57,6 @@ private const val AMBIGUOUS_DEVICE_COUNT = 2
  */
 internal fun MirrorUiState.errorCard(nowMs: Long): MirrorErrorCard? {
     if (session is MirrorSession.Streaming || frozen != null) return null
-    // The picker wins ONLY where it has something to offer. For `Found` it is the real
-    // multi-device affordance - it lists the devices and carries the keyboard navigation AC-43
-    // and A11Y-6 were confirmed against - so the card would be a worse duplicate of it.
-    //
-    // For the three failure states it has nothing: no tool, no answer, or no device. F-2
-    // deliberately keeps the picker open for ToolMissing and PollFailed (its own tests assert
-    // stage == Picker, and those are confirmed ACs), so routing the card only from the
-    // NoSignal branch - which is what the chosen plan said - left AC-26, AC-53 and AC-28's
-    // cards unreachable: of the four states only NoDeviceFound closes the picker. Yielding to
-    // an open picker unconditionally is what made three of four states dead UI.
     // The picker wins wherever it still has something to offer. For `Found` that is the device
     // list; for `PollFailed` it is the list it DELIBERATELY retained — applyDiscovery keeps the
     // rows on a failed poll "so an adb hiccup does not look like an unplug", and papering a
@@ -182,7 +172,7 @@ private fun formatAge(ageMs: Long): String {
  * underneath, but a LIVE dot over a still frame is a lie), and both outrank any discovery
  * state, because what the user is looking at is more informative than what the poll last said.
  */
-internal fun MirrorUiState.indicatorDot(): StatusIndicatorState = when {
+internal fun MirrorUiState.indicatorDot(card: MirrorErrorCard?): StatusIndicatorState = when {
     frozen != null -> StatusIndicatorState.Frozen
     session is MirrorSession.Streaming -> StatusIndicatorState.Live
     session is MirrorSession.Lost -> StatusIndicatorState.Dropped
@@ -191,6 +181,10 @@ internal fun MirrorUiState.indicatorDot(): StatusIndicatorState = when {
     discovery is DiscoveryModel.ToolMissing -> StatusIndicatorState.Blocked
     discovery is DiscoveryModel.PollFailed -> StatusIndicatorState.Blocked
     discovery is DiscoveryModel.NoDeviceFound -> StatusIndicatorState.Blocked
-    errorCard(nowMs = 0L)?.kind == MirrorErrorKind.MultipleDevices -> StatusIndicatorState.Blocked
+    // The card is PASSED IN rather than recomputed. It used to call errorCard(nowMs = 0L),
+    // which both duplicated the work and quietly asked the projection a question with a
+    // fabricated clock — harmless for the kind, but the kind of shortcut that stops being
+    // harmless the moment the projection starts reading nowMs for something else.
+    card?.kind == MirrorErrorKind.MultipleDevices -> StatusIndicatorState.Blocked
     else -> StatusIndicatorState.Offline
 }

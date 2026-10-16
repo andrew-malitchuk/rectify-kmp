@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -99,7 +100,14 @@ public fun MirrorStageContent(
     // those are confirmed ACs - so NoSignal-only routing left AC-26, AC-53 and AC-28's cards
     // unreachable. The projection itself stands down for `Found`, where the picker is the real
     // affordance, so the picker still keeps the stage wherever it has something to show.
-    val card = state.errorCard(Clock.System.now().toEpochMilliseconds())
+    // ONE clock read and ONE projection per pass, shared downstream. It was being computed
+    // three times — here, again inside indicatorLabel(), and a third time inside
+    // indicatorDot() — with two different wall-clock reads for what is conceptually one
+    // decision about one frame. The projection does string joins and list filters, so that was
+    // unbounded duplicate work on every recomposition, and worse, the status line could
+    // disagree with the card beside it purely because it asked a moment later.
+    val nowMs = Clock.System.now().toEpochMilliseconds()
+    val card = remember(state, nowMs) { state.errorCard(nowMs) }
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (card != null) {
             MirrorErrorStage(card = card, onIntent = onIntent)
@@ -165,6 +173,13 @@ public fun MirrorStageContent(
  */
 @Composable
 public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier) {
+    // One clock read and one projection for this composable too. The dot and the label both
+    // need the card, and asking twice let them disagree about the same frame purely because
+    // one asked a moment later. `MirrorStageContent` has its own read: these are separate
+    // render scopes, and threading a parameter down from the window layer would widen a public
+    // API to save a list filter.
+    val nowMs = Clock.System.now().toEpochMilliseconds()
+    val card = remember(state, nowMs) { state.errorCard(nowMs) }
     val line = formatStatusLine(
         stats = state.stats,
         toolName = ADB,
@@ -176,7 +191,7 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS + Theme.spacing.spacingXS),
     ) {
-        StatusIndicator(state = state.indicatorState(), label = state.indicatorLabel())
+        StatusIndicator(state = state.indicatorState(card), label = state.indicatorLabel(card))
         if (line.isNotEmpty()) {
             Text(text = line, style = Theme.typography.monoMeta, color = Theme.color.ink2, maxLines = 1)
         }
@@ -190,10 +205,11 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
  * but the pixels on screen are pinned, and a LIVE dot over a still frame is a lie. This is the
  * first production caller of the shipped-but-unused [StatusIndicatorState.Frozen].
  */
-private fun MirrorUiState.indicatorState(): StatusIndicatorState = indicatorDot()
+private fun MirrorUiState.indicatorState(card: MirrorErrorCard?): StatusIndicatorState =
+    indicatorDot(card)
 
 @Composable
-private fun MirrorUiState.indicatorLabel(): String = when {
+private fun MirrorUiState.indicatorLabel(card: MirrorErrorCard?): String = when {
     // Machine state, not prose — uppercased from the enum exactly as the LIVE label is.
     frozen != null -> StatusIndicatorState.Frozen.name.uppercase()
     session is MirrorSession.Streaming -> StatusIndicatorState.Live.name.uppercase()
@@ -213,7 +229,7 @@ private fun MirrorUiState.indicatorLabel(): String = when {
             Res.string.mirror_status_no_device_attached,
             (discovery as DiscoveryModel.NoDeviceFound).attachedCount,
         )
-    errorCard(Clock.System.now().toEpochMilliseconds())?.kind == MirrorErrorKind.MultipleDevices ->
+    card?.kind == MirrorErrorKind.MultipleDevices ->
         stringResource(
             Res.string.mirror_status_awaiting_choice,
             rows.count { it.group == MirrorRowGroup.Physical && it.selectable },

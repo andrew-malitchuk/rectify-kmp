@@ -36,7 +36,10 @@ public fun MirrorHost(
     // platform for something the ViewModel cannot do itself - open a file dialog - and the
     // answer has to get back in as an intent. A handler that receives only the effect can
     // observe but never reply, which is how MirrorSideEffect.LocateAdb came to open nothing.
-    onSideEffect: (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> },
+    // `suspend`, because the whole point of a side effect is to ask the platform for
+    // something — and a file dialog has to be confined to the EDT, which needs a
+    // `withContext`. Orbit's `collectSideEffect` body is already a coroutine, so this is free.
+    onSideEffect: suspend (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> },
     content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit,
 ) {
     val state by viewModel.collectAsState()

@@ -37,6 +37,16 @@ private fun phone(): DeviceModel = DeviceModel(
 )
 
 /** One usable handset followed by one cold AVD — the shape every session test starts from. */
+/** Two usable handsets — the ambiguity AC-28's card exists for. */
+private fun twoHandsets(): FakeObserveDiscovery = FakeObserveDiscovery(
+    listOf(
+        DiscoveryModel.Found(
+            physical = listOf(phone(), phone().copy(id = "R5CX10ABCDE", serial = "R5CX10ABCDE", displayName = "Galaxy S24")),
+            emulators = emptyList(),
+        ),
+    ),
+)
+
 private fun oneOfEach(): FakeObserveDiscovery = FakeObserveDiscovery(
     listOf(
         DiscoveryModel.Found(
@@ -193,6 +203,51 @@ class MirrorViewModelSessionTest {
         viewModel.handleIntent(MirrorIntent.ClosePicker)
         advanceUntilIdle()
         assertEquals(MirrorStage.Mirror, viewModel.currentState.stage)
+    }
+
+
+    /**
+     * COR-2 — AC-28's card is reachable in AC-28's OWN scenario: a cold start with two
+     * attached handsets.
+     *
+     * The earlier projection test proved `errorCard()` returns a card when `isPickerOpen` is
+     * false, which is a different claim: it forced the flag directly. The reachability question
+     * is whether a user can GET there, and they could not — `closePicker()` was a hard no-op
+     * until `selectedDeviceId != null`, so the only way to dismiss the picker was to resolve
+     * the ambiguity the card exists to help with.
+     *
+     * The F-2 guard it narrows is still intact and still asserted next door by
+     * `theDeviceChipReopensThePickerAndEscapeDoesNothingBeforeTheFirstSelection`, which uses
+     * ONE selectable handset — no card, so Escape still does nothing and there is still no
+     * empty stage with no way back.
+     *
+     * MUTATION: restore `if (state.selectedDeviceId != null)` — the stageAfterEscape clause
+     * fails, and the card becomes unreachable again.
+     */
+    @Test
+    fun escapeRevealsTheAmbiguityCardWhenTwoHandsetsAreAttached() = runTest(mainDispatcher) {
+        val viewModel = mirrorViewModel(discovery = twoHandsets())
+        subscribe(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(
+            expected = listOf("stageBefore=Picker", "selected=null"),
+            actual = listOf(
+                "stageBefore=${viewModel.currentState.stage}",
+                "selected=${viewModel.currentState.selectedDeviceId}",
+            ),
+        )
+
+        viewModel.handleIntent(MirrorIntent.ClosePicker)
+        advanceUntilIdle()
+
+        assertEquals(
+            expected = listOf("stageAfterEscape=NoSignal", "stillNoSelection=true"),
+            actual = listOf(
+                "stageAfterEscape=${viewModel.currentState.stage}",
+                "stillNoSelection=${viewModel.currentState.selectedDeviceId == null}",
+            ),
+        )
     }
 
     @Test
