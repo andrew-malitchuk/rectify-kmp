@@ -141,6 +141,7 @@ private fun StatusIndicatorPreview() {
             StatusIndicator(state = StatusIndicatorState.Dumping)
             StatusIndicator(state = StatusIndicatorState.Sent)
             StatusIndicator(state = StatusIndicatorState.Dropped)
+            StatusIndicator(state = StatusIndicatorState.Blocked)
             StatusIndicator(state = StatusIndicatorState.Offline)
         }
     }

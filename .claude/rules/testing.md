@@ -31,9 +31,20 @@ The desktop target is the one that runs:
 Prefer this over `./gradlew check` or `./gradlew build`, which additionally build every module's
 Android and iOS targets. **But do run a cross-target build before declaring work done** — a
 `commonTest` file compiles for *every* target, and Kotlin/Native is stricter than the JVM. A
-backtick test name containing a comma, an apostrophe or `:` compiles fine on desktop and fails
-`compileTestKotlinIosArm64` with `Name contains illegal characters`. A green desktop suite does
-not prove the tests compile everywhere:
+backtick test name containing a **comma or a colon** compiles fine on desktop and fails
+`compileTestKotlinIosArm64` with `Name contains illegal characters: ","`. A green desktop suite
+does not prove the tests compile everywhere:
+
+**An apostrophe is fine.** This rule used to list one and it was wrong. Measured on this
+toolchain with a three-case probe compiled for `iosArm64`: the comma and the colon each failed,
+the apostrophe passed, and `` fun `labels are the design's tab strip copy` `` ships green today.
+Corrected by experiment rather than loosened on a hunch; the probe was deleted afterwards.
+
+Note also that `compileTestKotlinIosArm64` only COMPILES. `:<module>:build` additionally RUNS
+the `iosSimulatorArm64` suite, and that difference has hidden a real failure in this project
+before — two tests passed on desktop and failed on iOS because Orbit's dispatcher defaults are
+process-wide and a sibling test class had configured them. If you need to know the tests PASS
+everywhere, run `build`:
 
 ```shell
 ./gradlew :presentation-core-ui:build :presentation-core-styling:build
