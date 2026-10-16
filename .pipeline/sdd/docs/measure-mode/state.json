@@ -32,7 +32,13 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "doing",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1"
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",
