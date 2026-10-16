@@ -13,6 +13,7 @@ import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +66,7 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
  * @property bootEmulator Launches a cold AVD.
  * @property startMirroring Opens a capture session on a device.
  * @property observeMirrorStats Live transport statistics.
+ * @property refreshDiscovery Cuts the poll interval short so a Retry acts now.
  * @property restartAdbServer Kills and restarts the adb daemon — AC-27's primary action, and
  *   the only thing that clears a WEDGED daemon (`start-server` alone hangs against one).
  * @property setAdbPath Persists the `adb` the user pointed Rectify at (AC-26).
@@ -78,6 +80,7 @@ public class MirrorViewModel(
     private val startMirroring: StartMirroringUseCase,
     private val observeMirrorStats: ObserveMirrorStatsUseCase,
     private val restartAdbServer: RestartAdbServerUseCase,
+    private val refreshDiscovery: RefreshDiscoveryUseCase,
     private val setAdbPath: SetAdbPathUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
 ) : ContainerHost<MirrorUiState, MirrorSideEffect>, ViewModel() {
@@ -347,21 +350,20 @@ public class MirrorViewModel(
      * stopped, so the next frame from the still-running capture loop simply shows up.
      */
     /**
-     * AC-26's secondary and AC-53's primary.
+     * AC-26's secondary and AC-53's primary — FR-37.
      *
-     * KNOWN LIMITATION, recorded rather than hidden: this does NOT force an immediate re-poll.
-     * FR-37 asks for one, and the intended mechanism was a nonce multiplexed into the
-     * discovery gate — but it did not restart the collection reliably, and the gate it had to
-     * be threaded through is the one F-2 shipped and had confirmed, so a half-working restart
-     * there risked breaking proven behaviour to add an unproven convenience. See
-     * execution/GAP-fr37-immediate-repoll.md.
+     * Asks the repository's poll loop to skip the rest of its 2 s wait, so the Retry acts now
+     * instead of looking identical to a dead button for up to two seconds.
      *
-     * What the user gets instead: the repository's own 2 s loop re-polls, and the escalation
-     * ladder (FR-36) runs on that poll, so recovery does happen — up to two seconds later
-     * rather than at once. That is a latency shortfall, not a dead button: the state does move
-     * without further input, which is the distinction FR-37 actually exists to enforce.
+     * The trigger lives in the data layer rather than here on purpose. Restarting the
+     * collection from this end was tried three ways and withdrawn: it had to be threaded
+     * through the discovery gate F-2 shipped and confirmed, and it proved timing-dependent
+     * (see execution/GAP-fr37-immediate-repoll.md). Beside the delay it shortens, it is
+     * covered by virtual-time tests instead of Orbit's dispatcher scheduling.
      */
-    private fun retryDiscovery() = Unit
+    private fun retryDiscovery() = intent {
+        refreshDiscovery()
+    }
 
     /**
      * AC-27's primary. A real daemon restart, then an immediate re-poll.
@@ -371,11 +373,12 @@ public class MirrorViewModel(
      * makes it concrete — `start-server` alone cannot clear a wedged daemon, so re-polling
      * would be unable to fix the very state the user presses it in.
      *
-     * The next 2 s poll picks the restarted daemon up; see [retryDiscovery] for why there is
-     * no immediate re-poll.
+     * The re-poll is awaited after the restart, not before: polling into a daemon that is
+     * still coming up would spend the poll's budget and report the same failure again.
      */
     private fun restartAdb() = intent {
         restartAdbServer()
+        refreshDiscovery()
     }
 
     /**
@@ -399,6 +402,7 @@ public class MirrorViewModel(
      */
     private fun adbPathChosen(path: String) = intent {
         setAdbPath(path)
+        refreshDiscovery()
     }
 
     private fun resumeLive() = intent {

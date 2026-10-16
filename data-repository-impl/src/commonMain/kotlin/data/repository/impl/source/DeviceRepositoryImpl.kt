@@ -26,6 +26,8 @@ import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,6 +63,15 @@ internal class DeviceRepositoryImpl(
 
     /** Last version `adb` reported, for the status bar of an active session. */
     private val adbVersion = MutableStateFlow("")
+
+    /**
+     * Requests to cut the poll interval short.
+     *
+     * CONFLATED on purpose: a refresh that arrives mid-poll is kept rather than dropped, so
+     * the next interval returns immediately instead of the request vanishing — and two rapid
+     * requests collapse into one, because "poll now" is not a queue.
+     */
+    private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
 
     /**
      * Probes both platforms (AC-1).
@@ -105,7 +116,13 @@ internal class DeviceRepositoryImpl(
             // Emitted outside the try: catching around `emit` would also swallow a
             // downstream failure, which flow exception transparency forbids.
             emit(emission.model)
-            delay(MirrorTuning.DiscoveryPollMs)
+            // Waits the poll interval, OR returns at once if someone asked for a refresh.
+            // This is what makes a Retry button do work NOW rather than up to two seconds
+            // later. It lives here, beside the delay it shortens, because this loop is
+            // covered by virtual-time tests - an earlier attempt to do it in the presentation
+            // layer had to be withdrawn when it proved timing-dependent and unprovable
+            // (see execution/GAP-fr37-immediate-repoll.md).
+            withTimeoutOrNull(MirrorTuning.DiscoveryPollMs) { refreshRequests.receive() }
         }
     }
 
@@ -309,6 +326,17 @@ internal class DeviceRepositoryImpl(
      * passes through, so a bad path falls through to the ordered candidate list rather than
      * becoming an error the user has to clear.
      */
+    /**
+     * @see DeviceRepository.refreshDiscovery
+     *
+     * `trySend`, not `send`: this must never suspend its caller. A refresh is a best-effort
+     * nudge, and the conflated channel means a dropped one only ever costs the user the
+     * remainder of an interval they were already waiting out.
+     */
+    override suspend fun refreshDiscovery() {
+        refreshRequests.trySend(Unit)
+    }
+
     override suspend fun setAdbPath(path: String) {
         adbPathPreferenceSource.setData(AdbPathPreference(path))
     }

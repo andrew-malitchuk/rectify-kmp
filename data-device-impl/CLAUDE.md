@@ -27,7 +27,9 @@ grep -rln "ProcessBuilder" --include="*.kt" . | grep -v /build/   # must print e
 data.device.impl/
 ├── core/                              — internal only
 │   ├── process/ProcessRunner.kt       — THE ProcessBuilder site
-│   ├── tool/ToolResolver.kt           — probes the candidate list, caches successes only
+│   ├── tool/ToolResolver.kt           — probes the user's path FIRST, then the ordered
+│   │                                    candidate list; caches successes only, and bypasses
+│   │                                    the cache entirely while an override is set
 │   └── unsupported/UnsupportedDeviceSources.kt  — commonMain; the Android/iOS answer
 ├── di/DataDeviceImplModule.kt
 └── source/
@@ -71,9 +73,27 @@ dropped-frame arithmetic and the fps window are testable — wall clock cannot b
 time. For the same reason its Koin binding is `single<MirrorTransport> { … }` and **not**
 `singleOf`, which would try to resolve the clock from the graph instead of honouring the default.
 
+## ToolResolver's user-path seam
+
+`ToolResolver` takes a fourth seam, `userPath: suspend () -> String?`, read fresh on every
+probe so a path chosen mid-session takes effect without a restart. Three properties are
+load-bearing:
+
+- **The override goes through the SAME `isExecutable` predicate as every other candidate.**
+  It arrives from a file dialog, i.e. from outside the program, so this is a trust boundary —
+  but it is enforced by *reuse*, not by a second check. Two validators in two places is how
+  they drift apart. A path that is missing, a directory, or not executable therefore falls
+  through to the ordered candidates rather than erroring.
+- **It lands in `probedPaths`**, so the error card's diagnostic footer can report what was
+  actually tried — "why didn't it find mine" is the question that state exists to answer.
+- **The cache is bypassed in BOTH directions while an override is set.** The read guard alone
+  looks sufficient; it is not. Clear the override and a stale entry resurrects the path the
+  user just removed. That bug was found by a mutation that *passed*, which is what prompted
+  the extra test rather than another mutation.
+
 ## Testing
 
-10 `desktopTest` tests drive the transport through a fake `DeviceCommandExecutor` — IHDR size
+24 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
 read, warning-line trim, non-PNG and truncated stdout costing one frame rather than the session,
 the overdue-slot arithmetic, the fps window, per-session stat reset, and a vanished device ending
 the loop. All hardware-free.
@@ -81,6 +101,17 @@ the loop. All hardware-free.
 **Still unverified without a device:** `ProcessRunner`'s real timeout/orphan/drain behaviour, and
 any capture-rate or latency number. Those are code-review-only until someone attaches an
 authorised handset.
+
+The rest cover `AdbHostSourceImpl`'s daemon commands and `ToolResolver`'s user-path seam,
+including the three rejection cases above. All hardware-free.
+
+One of the daemon tests genuinely spawns a real child and pays both a ~3.2 s fork and a 3 s
+timeout, so it takes ~6.5 s. That is deliberate: a stubbed clock catches a wrong comparison but
+not a wrong constant, and a wrong constant is exactly what nearly shipped — `startServer()` was
+written with `HostCommandTimeoutMs` (3 s) while its own KDoc two lines above said
+`DaemonStartTimeoutMs`, i.e. the one function whose purpose is surviving a measured 3.03 s cold
+fork was given the one budget that cannot. See
+`.pipeline/sdd/docs/error-handling-and-recovery/execution/NEAR-MISS-t4-budget.md`.
 
 ```shell
 ./gradlew :data-device-impl:desktopTest

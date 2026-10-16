@@ -359,6 +359,73 @@ class DeviceDiscoveryPollingTest {
      * Starts collecting the discovery flow on the background scope and returns the list it
      * fills, each emission stamped with the virtual time it arrived at.
      */
+
+    /**
+     * FR-37 — `refreshDiscovery()` cuts the poll interval short so a Retry acts now.
+     *
+     * This is the test that justifies the trigger living in the data layer at all. Doing it in
+     * the presentation layer was tried three ways and withdrawn: it had to be threaded through
+     * the discovery gate F-2 shipped and confirmed, and it proved timing-dependent against
+     * Orbit's dispatchers — unprovable, so unshippable. Here the clock is virtual, the loop is
+     * the one that owns the delay, and the claim is exact rather than probabilistic.
+     *
+     * MUTATION: put `delay(DiscoveryPollMs)` back in place of the withTimeoutOrNull race — the
+     * early-poll assertion fails, because the poll lands at 2000 ms instead of 500 ms.
+     */
+    @Test
+    fun `a refresh request cuts the poll interval short`() = runTest {
+        val adb = FakeAdbHostSource()
+        val repository = repository(adb)
+        val received = mutableListOf<Pair<Long, DiscoveryModel>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+        }
+
+        // Detecting plus the first poll land at 0; the next would normally be at 2000.
+        advanceTimeBy(500)
+        repository.refreshDiscovery()
+        advanceTimeBy(1)
+
+        assertEquals(
+            // 500, not 501: the collector is unconfined, so the emission is observed at the
+            // instant the refresh releases the wait rather than on the next tick.
+            expected = listOf("pollAt=500", "waitedFullInterval=false"),
+            actual = listOf(
+                "pollAt=${received.last().first}",
+                "waitedFullInterval=${received.last().first >= MirrorTuning.DiscoveryPollMs}",
+            ),
+        )
+    }
+
+    /**
+     * A refresh that arrives while a poll is already in flight is KEPT, not dropped.
+     *
+     * The channel is CONFLATED for this: with no buffer the nudge would vanish and the user's
+     * Retry would silently do nothing, which is the whole defect FR-37 exists to forbid. Two
+     * rapid requests collapse into one, because "poll now" is not a queue.
+     *
+     * MUTATION: change the channel to `Channel<Unit>()` (rendezvous) — `trySend` then fails
+     * with no receiver parked and this test's early poll never happens.
+     */
+    @Test
+    fun `a refresh requested between polls is not lost`() = runTest {
+        val adb = FakeAdbHostSource()
+        val repository = repository(adb)
+        // Nudge BEFORE anything collects, so nothing is waiting on the channel yet.
+        repository.refreshDiscovery()
+
+        val received = mutableListOf<Pair<Long, DiscoveryModel>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+        }
+        advanceTimeBy(1)
+
+        assertEquals(
+            expected = "polledEarly=true",
+            actual = "polledEarly=${received.count { it.second is DiscoveryModel.Found } >= 2}",
+        )
+    }
+
     private fun TestScope.collectDiscovery(
         adb: AdbHostSource,
         emulators: EmulatorSource = FakeEmulatorSource(emptyList()),

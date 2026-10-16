@@ -18,6 +18,7 @@ import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
+import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import domain.usecase.impl.source.usecase.configuration.GetApplicationLanguageUseCaseImpl
@@ -38,6 +39,7 @@ import domain.usecase.impl.source.usecase.device.DetectToolsUseCaseImpl
 import domain.usecase.impl.source.usecase.device.ObserveDeviceDiscoveryUseCaseImpl
 import domain.usecase.impl.source.usecase.device.ObserveMirrorStatsUseCaseImpl
 import domain.usecase.impl.source.usecase.device.RestartAdbServerUseCaseImpl
+import domain.usecase.impl.source.usecase.device.RefreshDiscoveryUseCaseImpl
 import domain.usecase.impl.source.usecase.device.SetAdbPathUseCaseImpl
 import domain.usecase.impl.source.usecase.device.StartMirroringUseCaseImpl
 import org.koin.core.module.Module
@@ -67,6 +69,7 @@ public val domainUseCaseImplModule: Module = module {
     singleOf(::BootEmulatorUseCaseImpl) bind BootEmulatorUseCase::class
     singleOf(::StartMirroringUseCaseImpl) bind StartMirroringUseCase::class
     singleOf(::ObserveMirrorStatsUseCaseImpl) bind ObserveMirrorStatsUseCase::class
+    singleOf(::RefreshDiscoveryUseCaseImpl) bind RefreshDiscoveryUseCase::class
     singleOf(::SetAdbPathUseCaseImpl) bind SetAdbPathUseCase::class
     singleOf(::RestartAdbServerUseCaseImpl) bind RestartAdbServerUseCase::class
 }

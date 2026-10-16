@@ -48,7 +48,14 @@ class MirrorRecoveryActionsTest {
     private val mainDispatcher = StandardTestDispatcher()
 
     @BeforeTest
-    fun setUp() = Dispatchers.setMain(mainDispatcher)
+    fun setUp() {
+        Dispatchers.setMain(mainDispatcher)
+        // Required, not optional. Orbit's defaults are PROCESS-WIDE, so omitting this made
+        // these tests pass on desktop only because a sibling class had already configured
+        // them — and fail on iosSimulatorArm64, where the class order differs. A test that
+        // passes because of another test's side effect is not passing for its own reason.
+        useTestDispatcherForOrbit(mainDispatcher)
+    }
 
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
@@ -66,7 +73,12 @@ class MirrorRecoveryActionsTest {
     fun restartAdbReallyRestartsTheDaemonAndThenRepolls() = runTest(mainDispatcher) {
         val discovery = scriptedDiscovery()
         val restart = FakeRestartAdbServer()
-        val viewModel = mirrorViewModel(discovery = discovery, restartAdbServer = restart)
+        val refresh = FakeRefreshDiscovery()
+        val viewModel = mirrorViewModel(
+            discovery = discovery,
+            refreshDiscovery = refresh,
+            restartAdbServer = restart,
+        )
         subscribe(viewModel)
         advanceUntilIdle()
 
@@ -74,8 +86,8 @@ class MirrorRecoveryActionsTest {
         advanceUntilIdle()
 
         assertEquals(
-            expected = listOf("restarts=1"),
-            actual = listOf("restarts=${restart.restarts}"),
+            expected = listOf("restarts=1", "nudges=1"),
+            actual = listOf("restarts=${restart.restarts}", "nudges=${refresh.nudges}"),
         )
     }
 
@@ -92,7 +104,12 @@ class MirrorRecoveryActionsTest {
     fun aChosenAdbPathIsStoredAndTheProbeRunsAgain() = runTest(mainDispatcher) {
         val discovery = scriptedDiscovery()
         val stored = FakeSetAdbPath()
-        val viewModel = mirrorViewModel(discovery = discovery, setAdbPath = stored)
+        val refresh = FakeRefreshDiscovery()
+        val viewModel = mirrorViewModel(
+            discovery = discovery,
+            refreshDiscovery = refresh,
+            setAdbPath = stored,
+        )
         subscribe(viewModel)
         advanceUntilIdle()
 
@@ -100,8 +117,35 @@ class MirrorRecoveryActionsTest {
         advanceUntilIdle()
 
         assertEquals(
-            expected = listOf("stored=[/opt/homebrew/bin/adb]"),
-            actual = listOf("stored=${stored.paths}"),
+            expected = listOf("stored=[/opt/homebrew/bin/adb]", "nudges=1"),
+            actual = listOf("stored=${stored.paths}", "nudges=${refresh.nudges}"),
         )
+    }
+
+    /**
+     * AF-1, the audit's hardest finding: `RetryDiscovery` was `= Unit`.
+     *
+     * The dead-button exit check — `grep '\-> Unit' MirrorViewModel.kt` — printed nothing,
+     * because the no-op had moved out of the `when` branch and into a function body. The check
+     * I wrote was defeated by the shape of the thing it was meant to catch, and nothing else
+     * noticed: no test dispatched `RetryDiscovery` anywhere, so AC-26's secondary and AC-53's
+     * primary were both wired to nothing.
+     *
+     * This test is the real check, and it is behavioural rather than textual: it asserts the
+     * dispatch REACHES something. A grep can be sidestepped by moving code; a dispatch cannot.
+     *
+     * MUTATION: make `retryDiscovery()` a no-op again — the nudges assertion fails.
+     */
+    @Test
+    fun retryDiscoveryNudgesThePollLoop() = runTest(mainDispatcher) {
+        val refresh = FakeRefreshDiscovery()
+        val viewModel = mirrorViewModel(discovery = scriptedDiscovery(), refreshDiscovery = refresh)
+        subscribe(viewModel)
+        advanceUntilIdle()
+
+        viewModel.handleIntent(MirrorIntent.RetryDiscovery)
+        advanceUntilIdle()
+
+        assertEquals(expected = listOf("nudges=1"), actual = listOf("nudges=${refresh.nudges}"))
     }
 }

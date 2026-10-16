@@ -10,6 +10,7 @@ import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.usecase.api.source.monad.Optional
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
+import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
@@ -175,6 +176,17 @@ internal class FakeRestartAdbServer : RestartAdbServerUseCase {
     }
 }
 
+/** Counts poll-interval nudges, so a Retry that does nothing can be told from one that works. */
+internal class FakeRefreshDiscovery : RefreshDiscoveryUseCase {
+
+    var nudges: Int = 0
+
+    override suspend fun invoke(): Optional {
+        nudges += 1
+        return Result.success(Unit)
+    }
+}
+
 /** Records the paths AC-26's file dialog handed back. */
 internal class FakeSetAdbPath : SetAdbPathUseCase {
 
@@ -198,6 +210,7 @@ internal fun mirrorViewModel(
     boot: BootEmulatorUseCase = FakeBootEmulator(),
     mirroring: StartMirroringUseCase = FakeStartMirroring(),
     stats: ObserveMirrorStatsUseCase = FakeObserveMirrorStats(),
+    refreshDiscovery: RefreshDiscoveryUseCase = FakeRefreshDiscovery(),
     restartAdbServer: RestartAdbServerUseCase = FakeRestartAdbServer(),
     setAdbPath: SetAdbPathUseCase = FakeSetAdbPath(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
@@ -207,6 +220,7 @@ internal fun mirrorViewModel(
     bootEmulator = boot,
     startMirroring = mirroring,
     observeMirrorStats = stats,
+    refreshDiscovery = refreshDiscovery,
     restartAdbServer = restartAdbServer,
     setAdbPath = setAdbPath,
     decodeFrame = decodeFrame,
