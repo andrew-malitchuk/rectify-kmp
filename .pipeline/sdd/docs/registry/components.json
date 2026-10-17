@@ -579,5 +579,12 @@
     "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorNotesTab.kt",
     "props": "state: MirrorUiState, onIntent: (MirrorIntent) -> Unit, modifier = Modifier",
     "description": "Fills SidePanelFrame's Notes tab with AnnotationRows for the staged annotations; the only side-panel tab with real content."
+  },
+  {
+    "id": "mirror-payload-tab",
+    "name": "MirrorPayloadTab",
+    "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt",
+    "props": "state: MirrorUiState, hierarchy: HierarchySnapshotModel, onIntent: (MirrorIntent) -> Unit, modifier: Modifier = Modifier",
+    "description": "Side-panel Payload tab — previews exactly what Claude receives for the pinned frame; early-returns an empty state when nothing is staged, and renders the editable Prompt block with its token estimate."
   }
 ]
