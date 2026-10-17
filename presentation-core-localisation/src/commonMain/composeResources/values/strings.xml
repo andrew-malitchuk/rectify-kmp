@@ -159,4 +159,12 @@
     <!-- Machine state, like LIVE and FROZEN, but it has to be a string because the enum name is
          not what the design shows beside the spinner. -->
     <string name="mirror_status_dumping">DUMPING</string>
+    <!-- Mirror - Payload tab (FR-46 / AC-13 / AC-77 / AC-79). Only the tab's CHROME is localised.
+         The PROMPT label, the "≈ N tokens" estimate and the prompt body itself are machine text
+         built by core/payload: they are pasted into Claude and into bug reports, so they must read
+         identically on every machine. Same split as the measure panel above. -->
+    <string name="mirror_payload_empty">Nothing staged. Draw a box and the payload builds here, exactly as Claude will get it.</string>
+    <string name="mirror_payload_prompt_edit">Edit</string>
+    <!-- A11Y: the 4-letter label alone does not say what is edited. -->
+    <string name="mirror_payload_prompt_edit_description">Edit the prompt sent to Claude</string>
 </resources>
