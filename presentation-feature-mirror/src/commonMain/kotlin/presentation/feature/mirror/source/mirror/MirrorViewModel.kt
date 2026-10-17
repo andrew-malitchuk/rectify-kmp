@@ -4,9 +4,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.PlatformModel
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
+import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -35,6 +38,9 @@ import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.syntax.Syntax
 import org.orbitmvi.orbit.viewmodel.container
 import presentation.feature.mirror.core.discovery.applyDiscovery
+import presentation.feature.mirror.core.measure.measure
+import presentation.feature.mirror.core.measure.projectMeasureNodes
+import presentation.feature.mirror.core.measure.replaceNoteLine
 import presentation.feature.mirror.core.picker.nextSelectableIndex
 
 /**
@@ -72,6 +78,9 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
  * @property restartAdbServer Kills and restarts the adb daemon — AC-27's primary action, and
  *   the only thing that clears a WEDGED daemon (`start-server` alone hangs against one).
  * @property setAdbPath Persists the `adb` the user pointed Rectify at (AC-26).
+ * @property dumpHierarchy Captures the view hierarchy to measure against. Fired once per
+ *   freeze, never per keystroke: T-1 measured the dump at ~2.7 s, so asking for one when
+ *   Option goes down would make measure mode unusable (NFR-2).
  * @property decodeFrame Seam for PNG decoding — a parameter so tests need no real image.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,6 +93,7 @@ public class MirrorViewModel(
     private val restartAdbServer: RestartAdbServerUseCase,
     private val refreshDiscovery: RefreshDiscoveryUseCase,
     private val setAdbPath: SetAdbPathUseCase,
+    private val dumpHierarchy: DumpHierarchyUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
 ) : ContainerHost<MirrorUiState, MirrorSideEffect>, ViewModel() {
 
@@ -106,6 +116,25 @@ public class MirrorViewModel(
      * [MirrorUiState.frozen]. The annotation list is the opposite case and does live in state.
      */
     public val frozenFrame: StateFlow<ImageBitmap?> = currentFrozenFrame.asStateFlow()
+
+    private val currentFrozenHierarchy = MutableStateFlow(HierarchySnapshotModel.Empty)
+
+    /**
+     * The hierarchy captured for the pinned frame, or [HierarchySnapshotModel.Empty].
+     *
+     * A third `StateFlow` beside [frame] and [frozenFrame], for a different reason than theirs:
+     * a dump is a few hundred nodes read only by `core/measure`'s arithmetic and never rendered,
+     * so reducing it would copy a list nobody reads on every unrelated state change.
+     * [MirrorUiState.hierarchyStatus] is the part the UI does read, and that IS reduced.
+     *
+     * Never `null`: [HierarchySnapshotModel.Empty] already means "nothing usable", and
+     * `projectMeasureNodes` turns it into the `View (no match)` fallback that FR-41 asks for.
+     */
+    public val frozenHierarchy: StateFlow<HierarchySnapshotModel> =
+        currentFrozenHierarchy.asStateFlow()
+
+    /** The dump in flight, so a clear site can cancel it instead of reducing a stale verdict. */
+    private var dumpJob: Job? = null
 
     override val container: Container<MirrorUiState, MirrorSideEffect> =
         container(MirrorUiState()) {
@@ -132,6 +161,8 @@ public class MirrorViewModel(
             is MirrorIntent.SelectAnnotation -> selectAnnotation(intent.index)
             is MirrorIntent.CommentAnnotation -> commentAnnotation(intent.index, intent.comment)
             is MirrorIntent.DeleteAnnotation -> deleteAnnotation(intent.index)
+            is MirrorIntent.StartMeasure -> startMeasure(intent.index)
+            MirrorIntent.EndMeasure -> endMeasure()
             MirrorIntent.ClearStaged -> clearStaged()
             MirrorIntent.ResumeLive -> resumeLive()
             MirrorIntent.Reconnect -> reconnect()
@@ -206,7 +237,11 @@ public class MirrorViewModel(
         // running session rather than leave a frozen frame on the stage.
         sessionDeviceId.value = null
         currentFrozenFrame.value = null
-        reduce { state.copy(platform = platform, session = MirrorSession.Idle, frozen = null) }
+        releaseHierarchy()
+        reduce {
+            state.copy(platform = platform, session = MirrorSession.Idle, frozen = null)
+                .withoutMeasurements()
+        }
     }
 
     private fun setPickerOpen(open: Boolean) = intent {
@@ -281,7 +316,8 @@ public class MirrorViewModel(
     private fun stopSession() = intent {
         sessionDeviceId.value = null
         currentFrozenFrame.value = null
-        reduce { state.copy(session = MirrorSession.Idle, frozen = null) }
+        releaseHierarchy()
+        reduce { state.copy(session = MirrorSession.Idle, frozen = null).withoutMeasurements() }
     }
 
     /**
@@ -306,13 +342,111 @@ public class MirrorViewModel(
      */
     private fun stageAnnotation(rect: DeviceRect) = intent {
         val held = currentFrame.value ?: return@intent
-        if (currentFrozenFrame.value == null) currentFrozenFrame.value = held
+        val freezing = currentFrozenFrame.value == null
+        if (freezing) currentFrozenFrame.value = held
+        // Only a freeze starts a dump, and only when there is a device to ask: a second drag
+        // annotates the SAME pinned frame (FR-31), whose hierarchy is already captured.
+        val dumpTarget = state.selectedDeviceId?.takeIf { freezing }
         reduce {
             val frozen = state.frozen
                 ?: FrozenFrame(deviceSize = IntSize(width = held.width, height = held.height))
             val staged = frozen.annotations +
                 StagedAnnotation(index = frozen.annotations.size + 1, rect = rect)
-            state.copy(frozen = frozen.copy(annotations = staged, selectedIndex = staged.size))
+            state.copy(
+                frozen = frozen.copy(annotations = staged, selectedIndex = staged.size),
+                // Reduced in the SAME pass as the freeze, so the status line can never show a
+                // frozen frame with no dump accounted for (TAC-22).
+                hierarchyStatus =
+                    if (dumpTarget == null) state.hierarchyStatus else HierarchyStatus.Dumping,
+            )
+        }
+        if (dumpTarget != null) dumpHierarchyFor(dumpTarget)
+    }
+
+    /**
+     * Captures the hierarchy behind the just-pinned frame, **fire and forget**.
+     *
+     * Launched on [viewModelScope] rather than awaited inside the freeze's own intent: the dump
+     * costs ~2.7 s (measured, T-1) and the user's freeze has to be instant, so the result lands
+     * behind a frame that is already on screen. The outcome is never discarded — success
+     * reduces [HierarchyStatus.Ready], any failure reduces [HierarchyStatus.Unavailable], so the
+     * status cannot be left stuck at [HierarchyStatus.Dumping].
+     *
+     * A dump that is still in flight when the frame is released is cancelled by
+     * [releaseHierarchy] instead of being allowed to reduce a verdict about a frame that is gone.
+     */
+    private fun dumpHierarchyFor(deviceId: String) {
+        dumpJob?.cancel()
+        dumpJob = viewModelScope.launch {
+            val snapshot = dumpHierarchy(deviceId).getOrNull()
+            currentFrozenHierarchy.value = snapshot ?: HierarchySnapshotModel.Empty
+            val status =
+                if (snapshot == null) HierarchyStatus.Unavailable else HierarchyStatus.Ready
+            intent { reduce { state.copy(hierarchyStatus = status) } }
+        }
+    }
+
+    /** Drops the captured hierarchy and any dump still running for a frame being released. */
+    private fun releaseHierarchy() {
+        dumpJob?.cancel()
+        dumpJob = null
+        currentFrozenHierarchy.value = HierarchySnapshotModel.Empty
+    }
+
+    /** The reduced half of [releaseHierarchy] — no frame means nothing to measure against. */
+    private fun MirrorUiState.withoutMeasurements(): MirrorUiState =
+        copy(measure = null, hierarchyStatus = HierarchyStatus.Absent)
+
+    /**
+     * Measures one annotation against the captured hierarchy (FR-36).
+     *
+     * Delegates the whole computation to `core/measure`'s pure [measure]: every rule about
+     * snapping, neighbours, gaps, units, suppression and findings is decided there, where it is
+     * testable without a ViewModel, and this handler only stores the result.
+     *
+     * An index that is no longer staged measures nothing rather than failing — the annotation
+     * can be deleted between Option-down and Option-up.
+     */
+    private fun startMeasure(index: Int) = intent {
+        reduce {
+            val frozen = state.frozen ?: return@reduce state
+            val annotation = frozen.annotations.firstOrNull { it.index == index }
+                ?: return@reduce state
+            val snapshot = currentFrozenHierarchy.value
+            state.copy(
+                measure = measure(
+                    annotation = annotation.rect,
+                    index = index,
+                    nodes = projectMeasureNodes(snapshot, frozen.deviceSize),
+                    frameSize = frozen.deviceSize,
+                    densityDpi = snapshot.densityDpi,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Option released: the readout's `⌥` line goes into the annotation's note (FR-40).
+     *
+     * `replaceNoteLine` is what keeps re-measuring idempotent — exactly one glyph-prefixed line
+     * survives, and the user's own prose is untouched (TAC-21).
+     *
+     * No readout means nothing was measured, so this is a no-op rather than an empty write; a
+     * readout whose annotation has vanished leaves the state alone for the same reason.
+     */
+    private fun endMeasure() = intent {
+        reduce {
+            val readout = state.measure ?: return@reduce state
+            val frozen = state.frozen ?: return@reduce state
+            if (frozen.annotations.none { it.index == readout.annotationIndex }) return@reduce state
+            val staged = frozen.annotations.map { annotation ->
+                if (annotation.index != readout.annotationIndex) {
+                    annotation
+                } else {
+                    annotation.copy(comment = replaceNoteLine(annotation.comment, readout.noteLine))
+                }
+            }
+            state.copy(frozen = frozen.copy(annotations = staged), measure = null)
         }
     }
 
@@ -351,7 +485,14 @@ public class MirrorViewModel(
             val selected = frozen.selected
                 ?.takeIf { it.index != index }
                 ?.let { annotation -> kept.indexOf(annotation).takeIf { it >= 0 }?.plus(1) }
-            state.copy(frozen = frozen.copy(annotations = renumbered, selectedIndex = selected))
+            // The readout names its annotation by index and the survivors renumber, so the
+            // index it holds now points at a DIFFERENT annotation. Dropping it is what stops an
+            // EndMeasure that lost the race to a delete writing the note onto the survivor that
+            // inherited the number.
+            state.copy(
+                frozen = frozen.copy(annotations = renumbered, selectedIndex = selected),
+                measure = null,
+            )
         }
     }
 
@@ -359,7 +500,10 @@ public class MirrorViewModel(
     private fun clearStaged() = intent {
         reduce {
             val frozen = state.frozen ?: return@reduce state
-            state.copy(frozen = frozen.copy(annotations = emptyList(), selectedIndex = null))
+            state.copy(
+                frozen = frozen.copy(annotations = emptyList(), selectedIndex = null),
+                measure = null,
+            )
         }
     }
 
@@ -441,7 +585,8 @@ public class MirrorViewModel(
 
     private fun resumeLive() = intent {
         currentFrozenFrame.value = null
-        reduce { state.copy(frozen = null) }
+        releaseHierarchy()
+        reduce { state.copy(frozen = null).withoutMeasurements() }
     }
 
     /**
