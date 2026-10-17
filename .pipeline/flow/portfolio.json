@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:44:12Z",
+  "generatedAt": "2026-10-17T09:06:52Z",
   "producedBy": "sdd-flow-generate-portfolio",
   "sources": {
-    "prd": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs",
-    "uiux": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/uiux/docs",
-    "sdd": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/sdd/docs",
-    "qa": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/qa/docs"
+    "prd": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs",
+    "uiux": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/uiux/docs",
+    "sdd": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs",
+    "qa": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/qa/docs"
   },
   "deliverables": [
     {
@@ -25,17 +25,17 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/android-device-discovery-mirroring.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/android-device-discovery-mirroring.json"
         },
         "uiux": {
           "status": "n/a",
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/android-device-discovery-mirroring",
           "inputPrepared": false
         },
         "qa": {
@@ -46,7 +46,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -65,17 +65,17 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/app-shell-window-layout.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/app-shell-window-layout.json"
         },
         "uiux": {
           "status": "n/a",
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/sdd/docs/app-shell-window-layout",
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/app-shell-window-layout",
           "inputPrepared": true
         },
         "qa": {
@@ -86,7 +86,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "ready"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -111,17 +111,17 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/drag-annotate-frozen-frame.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/drag-annotate-frozen-frame.json"
         },
         "uiux": {
           "status": "n/a",
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/drag-annotate-frozen-frame",
           "inputPrepared": false
         },
         "qa": {
@@ -132,7 +132,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -157,17 +157,17 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/error-handling-and-recovery.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/error-handling-and-recovery.json"
         },
         "uiux": {
           "status": "n/a",
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
+          "status": "done",
+          "stage": "done",
           "verdict": null,
-          "spec": null,
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/error-handling-and-recovery",
           "inputPrepared": false
         },
         "qa": {
@@ -178,7 +178,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -201,7 +201,7 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/history-batch-tracking.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/history-batch-tracking.json"
         },
         "uiux": {
           "status": "n/a",
@@ -249,7 +249,7 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/ios-platform-support.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/ios-platform-support.json"
         },
         "uiux": {
           "status": "n/a",
@@ -293,17 +293,17 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/measure-mode.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/measure-mode.json"
         },
         "uiux": {
           "status": "n/a",
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/measure-mode",
           "inputPrepared": false
         },
         "qa": {
@@ -314,7 +314,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -339,7 +339,7 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/payload-preview.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/payload-preview.json"
         },
         "uiux": {
           "status": "n/a",
@@ -360,7 +360,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "ready"
       },
       "sync": {
         "status": "in-sync",
@@ -383,7 +383,7 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/resolve-and-send-mcp.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/resolve-and-send-mcp.json"
         },
         "uiux": {
           "status": "n/a",
@@ -429,7 +429,7 @@
       "readiness": {
         "prd": {
           "status": "done",
-          "bundle": "/Users/andrew-malitchuk/Documents/rectify/.pipeline/prd/docs/rectify/handoff/verify-and-rediff-loop.json"
+          "bundle": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs/rectify/handoff/verify-and-rediff-loop.json"
         },
         "uiux": {
           "status": "n/a",
