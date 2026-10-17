@@ -82,6 +82,18 @@
       "status": "done",
       "wave": 9,
       "worktreeBranch": "task/batch-b"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 10,
+      "worktreeBranch": "task/batch-c",
+      "needsHumanReview": true
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 11,
+      "worktreeBranch": "task/batch-c",
+      "needsHumanReview": true
     }
   },
   "effort": "fast",
