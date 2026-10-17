@@ -38,3 +38,5 @@
 {"stage": "execution", "step": "T-13", "event": "end", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}
 {"stage": "execution", "event": "end", "note": "all 13 tasks done; 547 tests 0 failures; 4 criteria blocked on a human", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}
 {"stage": "validation", "event": "end", "note": "complete-with-waivers; 732 test executions 0 failures incl iosSimulatorArm64; 4 criteria blocked on a human", "at": "2026-10-17T08:59:15Z", "spec": "measure-mode"}
+{"stage": "review", "event": "end", "note": "approve-with-nits; one major found fixed and red-proved during review", "at": "2026-10-17T09:06:45Z", "spec": "measure-mode"}
+{"stage": "reflection", "event": "skip", "note": "effort=fast: reflection deferred to manual", "at": "2026-10-17T09:06:45Z", "spec": "measure-mode"}

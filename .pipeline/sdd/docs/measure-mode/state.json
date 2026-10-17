@@ -1,6 +1,6 @@
 {
   "spec": "measure-mode",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -16,6 +16,13 @@
     },
     "validation": {
       "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped",
+      "reason": "effort=fast defers reflection to a manual batch run of /sdd-build-reflect-retrospective"
     }
   },
   "steps": {
