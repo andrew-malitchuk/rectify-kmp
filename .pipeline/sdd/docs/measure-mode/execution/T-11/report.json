@@ -6,10 +6,20 @@
   "status": "done",
   "producedBy": "sdd-build-frontend-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "163e450c91f62bf4f5e42ef11bd8dc4c7e9093cb5714d72f6d2d4fb4269f42cb",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8"
+      },
+      {
+        "artifact": "execution/T-10/report.json",
+        "hash": "6239b9a362ae8fbdc5e75515e0c06c41ec323bbfa33551d77cc1a2c8de59b3e7"
+      }
+    ]
   },
-  "createdAt": "2026-10-17T08:46:35Z",
-  "updatedAt": "2026-10-17T08:46:35Z",
+  "createdAt": "2026-10-17T08:46:48Z",
+  "updatedAt": "2026-10-17T08:46:48Z",
   "data": {
     "taskId": "T-11",
     "type": "ui",
@@ -28,7 +38,9 @@
       "summary": "Alt detection as the planned hybrid: a focus-independent pointerInput sampler reading event.keyboardModifiers.isAltPressed at PointerEventPass.Initial (which also supplies the hover position), plus a new overlay-root FocusRequester with an onPreviewKeyEvent isAltPressed branch, plus EndMeasure on KeyUp, on focus loss and on the next pointer-down. Hover offset, altHeld and the dispatch edge live in remember, never in Orbit state, so only StartMeasure/EndMeasure reduce. MeasureOverlay draws the target and up to four neighbour MeasureMarks, the dashed mid-axis guide Canvas, the alignment rail and the MeasureTag numerals; CommentPopover is suppressed while a readout exists. The gating decision was deliberately extracted into pure internal functions in core/measure/MeasureGate.kt so it could be tested at all."
     },
     "tdd": {
-      "testsWritten": 14,
+      "testsWritten": [
+        "MeasureGateTest — 14 cases over shouldMeasure, measureTarget and measureDispatch"
+      ],
       "testsFrozen": true,
       "cycle": "logic extracted from the composable, then tested"
     },
@@ -122,6 +134,6 @@
     "type": "auto",
     "approvedBy": "orchestrator-under-operator-delegation",
     "approved": true,
-    "at": "2026-10-17T08:46:35Z"
+    "at": "2026-10-17T08:46:48Z"
   }
 }

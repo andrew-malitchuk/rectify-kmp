@@ -6,10 +6,20 @@
   "status": "done",
   "producedBy": "sdd-build-frontend-implement",
   "provenance": {
-    "selfHash": ""
+    "selfHash": "c89f2efbb4cb8b4cd78347b842e72ee8ee685abe72b15ab3c749c36532b0ce0c",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8"
+      },
+      {
+        "artifact": "execution/T-10/report.json",
+        "hash": "6239b9a362ae8fbdc5e75515e0c06c41ec323bbfa33551d77cc1a2c8de59b3e7"
+      }
+    ]
   },
-  "createdAt": "2026-10-17T08:46:35Z",
-  "updatedAt": "2026-10-17T08:46:35Z",
+  "createdAt": "2026-10-17T08:46:48Z",
+  "updatedAt": "2026-10-17T08:46:48Z",
   "data": {
     "taskId": "T-12",
     "type": "ui",
@@ -46,10 +56,7 @@
     "registryUpdates": [
       {
         "registry": "components",
-        "entry": {
-          "id": "measure-card",
-          "note": "Gained an additive footer: String? = null parameter and its first production caller. KDoc corrected: it is floated as an overlay by measure mode, not a sidebar-only panel. Preview Top corrected 9dp -> 15dp to match the design's algorithm."
-        }
+        "entry": "measure-card — gained an additive footer: String? = null parameter and its first production caller. KDoc corrected: measure mode floats it as an overlay rather than a sidebar-only panel. Preview Top corrected 9dp -> 15dp to match the design's own algorithm."
       }
     ],
     "backlogUpdate": {
@@ -140,6 +147,6 @@
     "type": "auto",
     "approvedBy": "orchestrator-under-operator-delegation",
     "approved": true,
-    "at": "2026-10-17T08:46:35Z"
+    "at": "2026-10-17T08:46:48Z"
   }
 }
