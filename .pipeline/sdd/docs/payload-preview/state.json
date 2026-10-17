@@ -47,9 +47,13 @@
       ]
     },
     "T-2": {
-      "status": "todo",
+      "status": "done",
       "wave": 2,
-      "type": "business-logic"
+      "type": "business-logic",
+      "subSteps": {
+        "test": "done",
+        "implement": "done"
+      }
     },
     "T-3": {
       "status": "todo",
@@ -57,9 +61,13 @@
       "type": "business-logic"
     },
     "T-4": {
-      "status": "todo",
+      "status": "done",
       "wave": 2,
-      "type": "business-logic"
+      "type": "business-logic",
+      "subSteps": {
+        "test": "done",
+        "implement": "done"
+      }
     },
     "T-5": {
       "status": "done",
@@ -76,9 +84,12 @@
       ]
     },
     "T-6": {
-      "status": "todo",
+      "status": "done",
       "wave": 2,
-      "type": "ui"
+      "type": "ui",
+      "subSteps": {
+        "implement": "done"
+      }
     },
     "T-7": {
       "status": "todo",
@@ -135,6 +146,10 @@
     "wave-1": {
       "status": "done",
       "merged": "fe6f593"
+    },
+    "wave-2": {
+      "status": "done",
+      "merged": "25b6cd2"
     }
   }
 }

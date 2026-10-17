@@ -1,0 +1,9 @@
+[
+  {
+    "at": "2026-10-17T17:23:26Z",
+    "category": "merge-conflict",
+    "issue": "id-keyed upsert conflict on 'hierarchy-row' in store 'components' (last-write-wins)",
+    "resolution": "last-write-wins",
+    "severity": "warn"
+  }
+]

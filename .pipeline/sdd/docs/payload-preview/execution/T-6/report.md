@@ -1,0 +1,145 @@
+# payload-preview — T-6/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-6/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T17:22:52Z |
+| updatedAt | 2026-10-17T17:22:52Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+orchestrator-verified
+
+### approved
+
+true
+
+### at
+
+2026-10-17T17:22:52Z
+
+## Provenance
+
+### selfHash
+
+29ab7f87c5b318d2314edb512ae3093c272c4c73227ded81e57829d18b0b5f01
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23 |
+
+## Data
+
+### taskId
+
+T-6
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt
+
+### tdd
+
+#### cycle
+
+n/a
+
+#### testsFrozen
+
+true
+
+#### testsWritten
+
+- none by design — this repo has no Compose UI-test harness (no runComposeUiTest, no ui-test-junit4). The light/dark preview pair is T-6's evidence, per .claude/rules/testing.md.
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest --rerun  then  :presentation-feature-mirror:build :presentation-core-ui:build
+
+#### passed
+
+true
+
+#### output
+
+Verified independently by the orchestrator with --rerun: :presentation-feature-mirror:desktopTest 244 tests, 0 failures, 0 errors, 0 skipped (+26 this wave); :presentation-core-ui:desktopTest 29 tests, 0 failures. Cross-target :build green for BOTH modules (includes compileTestKotlinIosArm64 and runs iosSimulatorArm64Test). presentation-core-ui 29/29 green, unchanged by design.
+
+### implementation
+
+#### summary
+
+Added a defaulted `matched: Boolean = false` parameter to HierarchyRow (line 67, after `tag`) with KDoc. The node Text now reads `color = if (matched) Theme.color.ink else Theme.color.ink3` (line 125) instead of the previously hardcoded Theme.color.ink. The `tag` badge's Theme.color.annotate default is unchanged. NO existing call site was edited — orchestrator confirmed via git diff --stat that HierarchyRow.kt is the only file changed in presentation-core-ui. The single HierarchyRowPreview was replaced by HierarchyRowPreviewLight/Dark over a shared private content function showing two matched rows (with tags) and two unmatched, following the StageSurface/SidePanelFrame pattern already in this module.
+
+### validations
+
+| stage | passed | iterations | issues |
+| --- | --- | --- | --- |
+| desktopTest | true | 1 | [] |
+| cross-target-build | true | 2 | ["same iOS release-link flake, green on re-run"] |
+| additive-param-check | true | 1 | ["orchestrator verified the parameter is defaulted at line 67 and that no call site was touched, so every existing caller compiles unchanged"] |
+
+### troubleshooting
+
+| at | severity | issue | resolution |
+| --- | --- | --- | --- |
+| wave-2 cross-target build | warn | iosSimulatorArm64 linkReleaseFramework failed once with no diagnostic line under parallel release links. | Passed unchanged on re-run; orchestrator could not reproduce. Treated as a Kotlin/Native linker flake, not a code defect. Logged as a Stage 7 reflection candidate. |
+| preview naming | info | The convention is `<ComposableName>Preview`, but a light/dark pair needs two distinct function names. | Used the repo's own existing resolution (HierarchyRowPreviewLight/Dark, as StageSurface and SidePanelFrame already do) rather than inventing a new scheme. |
+
+### registryUpdates
+
+| registry | entry | change |
+| --- | --- | --- |
+| components.json | hierarchy-row | props += matched: Boolean = false (additive, defaulted; matched=true -> Theme.color.ink, false -> Theme.color.ink3). No other prop changed. |
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+Visual evidence is the light/dark preview pair; no UI-test harness exists in this repo to assert it automatically.
+
+### linkedAC
+
+- AC-15
+- AC-75
+
+### backlogUpdate
+
+#### taskId
+
+T-6
+
+#### status
+
+done
+
+### coverage
+
+skipped (no UI-test harness in this repo)

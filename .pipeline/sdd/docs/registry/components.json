@@ -374,8 +374,8 @@
     "id": "hierarchy-row",
     "name": "HierarchyRow",
     "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt",
-    "props": "nodeId: String, depth: Int, modifier = Modifier, last = false, tag: String? = null, onClick: () -> Unit = {}",
-    "description": "26dp view-tree row with Canvas-drawn indent guides; for a UI-hierarchy / payload tree."
+    "props": "nodeId: String, depth: Int, modifier = Modifier, last = false, tag: String? = null, matched: Boolean = false, onClick: () -> Unit = {}",
+    "description": "26dp view-tree row with Canvas-drawn indent guides; for a UI-hierarchy / payload tree. matched=true reads at full ink, false at ink3."
   },
   {
     "id": "history-row",
