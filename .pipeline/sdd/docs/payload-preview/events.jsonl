@@ -8,3 +8,11 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-17T10:09:49Z", "spec": "payload-preview"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 98301, "at": "2026-10-17T10:14:04Z", "spec": "payload-preview"}
 {"stage": "preparation", "event": "end", "at": "2026-10-17T10:27:22Z", "spec": "payload-preview"}
+{"stage": "plan", "event": "start", "effort": "fast", "at": "2026-10-17T10:27:41Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "drafts": 1, "at": "2026-10-17T10:28:15Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "status": "failed", "reason": "agent stalled: no progress for 600s (stream watchdog)", "retries": 1, "at": "2026-10-17T10:39:48Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 125003, "retries": 1, "at": "2026-10-17T10:55:56Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-17T10:56:24Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "status": "failed", "reason": "agent stalled: no progress for 600s (stream watchdog)", "retries": 1, "at": "2026-10-17T11:09:09Z", "spec": "payload-preview"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 78948, "retries": 1, "at": "2026-10-17T11:14:11Z", "spec": "payload-preview"}
+{"stage": "plan", "event": "end", "at": "2026-10-17T11:30:44Z", "spec": "payload-preview"}
