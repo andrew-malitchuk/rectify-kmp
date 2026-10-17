@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import domain.core.source.model.device.HierarchyNodeModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -46,12 +49,17 @@ import presentation.core.ui.source.kit.atom.button.AppButton
 import presentation.core.ui.source.kit.atom.button.AppButtonSize
 import presentation.core.ui.source.kit.atom.button.AppButtonVariant
 import presentation.core.ui.source.kit.atom.input.MultilineInput
+import presentation.core.ui.source.kit.molecule.row.HierarchyRow
 import presentation.feature.mirror.core.annotation.TIMES
 import presentation.feature.mirror.core.payload.CropWindow
+import presentation.feature.mirror.core.payload.PayloadNodeRow
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
+import presentation.feature.mirror.core.payload.hierarchySourceLabel
+import presentation.feature.mirror.core.payload.payloadHierarchyRows
 import presentation.feature.mirror.core.payload.tokenEstimate
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_hierarchy_unavailable
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_payload_empty
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_payload_prompt_edit
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_payload_prompt_edit_description
@@ -114,6 +122,27 @@ private val CropCellWidth: Dp = 84.dp
 /** Corner radius of a crop cell; smaller than `Theme.corner.xs` (8 dp), which has no token. */
 private val CropCellCorner: Dp = 6.dp
 
+/** Section label of the hierarchy outline. Machine text, for [PROMPT_LABEL]'s reason. */
+private const val HIERARCHY_LABEL = "HIERARCHY"
+
+/** Prefix of an outline row's annotation tag, i.e. the `#` of `#2`. Same shape as [CROP_BADGE_PREFIX]. */
+private const val HIERARCHY_TAG_PREFIX = "#"
+
+/**
+ * Tallest the hierarchy outline grows before it scrolls on its own.
+ *
+ * It exists because the outline is a [LazyColumn] inside a [verticalScroll]ed parent, which
+ * hands it an **unbounded** height to measure in and throws. Capping the incoming constraint is
+ * the same trick [PromptBodyMaxHeight] plays on the prompt body, and it is what keeps the lazy
+ * win real: a ~400-node dump still composes only the rows this height can show.
+ *
+ * 13 rows at `HierarchyRow`'s shipped 26 dp — the largest block in the panel without pushing the
+ * footer off an 820 dp window, and a whole number of rows so no row is clipped in half. That row
+ * height is private to `HierarchyRow`, so this is a figure, not a derivation: if it changes, a
+ * partly visible last row is the result, which reads as "there is more" anyway.
+ */
+private val HierarchyOutlineMaxHeight: Dp = 338.dp
+
 /**
  * The side panel's Payload tab: exactly what Claude receives for the pinned frame (FR-46).
  *
@@ -130,17 +159,22 @@ private val CropCellCorner: Dp = 6.dp
  * Scrolls rather than lazily composing, for [MirrorNotesTab]'s reason: a frozen frame carries a
  * handful of annotations, and the sections below the prompt are a fixed, small set.
  *
- * Still to land in this file: the hierarchy block and the payload footer.
+ * Still to land in this file: the payload footer.
  *
- * @param state Current mirror state; only [MirrorUiState.frozen] is read.
+ * The hierarchy outline is the one block that is **not** a plain [Column] of children: it is a
+ * [LazyColumn] with a capped height, because a dump runs to hundreds of nodes. See
+ * [HierarchyOutlineMaxHeight].
+ *
+ * @param state Current mirror state; only [MirrorUiState.frozen] and
+ *   [MirrorUiState.hierarchyStatus] are read.
  * @param frame The pinned frame's pixels, or `null` when none were decoded. Second parameter to
  *   match the order of the host's content lambda. Nullable because the bitmap lives on a
  *   `StateFlow` outside the reduced state (see the module's `CLAUDE.md`), so it can lag a freeze
  *   by a frame; a `null` renders empty crop cells rather than inventing pixels.
  * @param hierarchy The pinned frame's view hierarchy, or [HierarchySnapshotModel.Empty] when
- *   none was captured. **Not read yet** — it is here for the hierarchy block, which resolves the
- *   node each annotation snapped to; it is already keyed into the prompt's `remember` so that
- *   block's arrival does not need to re-derive the key set.
+ *   none was captured. Read **only** here — the hierarchy is dumped once at freeze and cached,
+ *   and nothing in this tab can start a dump (TAC-5). An empty snapshot costs the outline its
+ *   rows and nothing else: Prompt, Crops and the footer still render (AC-80).
  * @param onIntent Intent sink.
  * @param modifier Modifier applied to the root composable.
  */
@@ -164,6 +198,19 @@ public fun MirrorPayloadTab(
         return
     }
 
+    // Projected once per (hierarchy, annotation set) and shared by both blocks that need it:
+    // the outline renders these rows, and the prompt reads the same mapping back to name the
+    // node each annotation snapped to. `frozen.deviceSize` is not a key because it cannot
+    // change without the annotation list changing with it — a new freeze stages none, and an
+    // empty list never reaches here.
+    val rows = remember(hierarchy, frozen.annotations) {
+        payloadHierarchyRows(
+            snapshot = hierarchy,
+            frozenFrameSize = frozen.deviceSize,
+            annotations = frozen.annotations.map { it.rect },
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -171,8 +218,18 @@ public fun MirrorPayloadTab(
             .padding(Theme.spacing.spacingS),
         verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingL),
     ) {
-        PayloadPromptSection(frozen = frozen, hierarchy = hierarchy, onIntent = onIntent)
+        PayloadPromptSection(
+            frozen = frozen,
+            hierarchy = hierarchy,
+            rows = rows,
+            onIntent = onIntent,
+        )
         PayloadCropsSection(frozen = frozen, frame = frame)
+        PayloadHierarchySection(
+            rows = rows,
+            status = state.hierarchyStatus,
+            nodeCount = hierarchy.nodes.size,
+        )
     }
 }
 
@@ -181,8 +238,8 @@ public fun MirrorPayloadTab(
  *
  * The generated prompt is assembled inside a keyed [remember] and not per recomposition —
  * [buildPrompt] walks every annotation, and the panel recomposes on hover and on selection.
- * The keys are exactly what [buildPrompt] reads today plus [hierarchy], which it will read once
- * node ids resolve.
+ * The keys are exactly what [buildPrompt] reads: the frame's own fields plus [hierarchy], which
+ * is what [rows] — and therefore every node id in the prompt — is derived from.
  *
  * An override **persists until Edit is clicked again**: it is not cleared when the annotation
  * list changes (AC-79). A prompt the user typed is the one piece of this payload a machine did
@@ -194,13 +251,16 @@ public fun MirrorPayloadTab(
  * new freeze because it is keyed on [FrozenFrame.frameId].
  *
  * @param frozen The pinned frame; guaranteed to carry at least one annotation.
- * @param hierarchy The frame's view hierarchy; a `remember` key only, for now.
+ * @param hierarchy The frame's view hierarchy; a `remember` key — [rows] is its projection.
+ * @param rows The outline rows, carrying the annotation -> node mapping the prompt names nodes
+ *   from. Already computed by the caller, so the prompt does no snapping of its own.
  * @param onIntent Intent sink.
  */
 @Composable
 private fun PayloadPromptSection(
     frozen: FrozenFrame,
     hierarchy: HierarchySnapshotModel,
+    rows: List<PayloadNodeRow>,
     onIntent: (MirrorIntent) -> Unit,
 ) {
     var isEditing by remember(frozen.frameId) { mutableStateOf(false) }
@@ -211,10 +271,14 @@ private fun PayloadPromptSection(
         frozen.deviceSize,
         hierarchy,
     ) {
-        // ponytail: no node ids yet — buildPrompt prints nothing rather than a fake name, which
-        // is exactly what its `nodeIdFor` contract asks for. The hierarchy block supplies the
-        // real resolver.
-        buildPrompt(frozen) { null }
+        // The snap is already done: `PayloadNodeRow.badge` IS the annotation index that landed
+        // on that node, so the resolver is the inverse of the rows rather than a second
+        // projectMeasureNodes/snapTarget pass. `StagedAnnotation.index` is contiguous and
+        // renumbered on delete (see its KDoc), which is exactly how badges are numbered.
+        // Linear per annotation, and annotations are a handful.
+        buildPrompt(frozen) { annotation ->
+            rows.firstOrNull { row -> row.badge == annotation.index }?.nodeId
+        }
     }
     val effective = frozen.promptOverride ?: generated
 
@@ -461,6 +525,86 @@ private fun PayloadCropCell(
     }
 }
 
+/**
+ * The Hierarchy block: label, source readout, and the dumped tree with the annotation badges
+ * folded in (AC-15, AC-74, AC-75).
+ *
+ * Reads a snapshot that was already captured at freeze — it cannot dump, and it is handed
+ * [rows] rather than a snapshot precisely so no arithmetic lives here (TAC-5).
+ *
+ * The rows are a [LazyColumn] with **no vertical arrangement spacing**, which `HierarchyRow`
+ * requires: its tree guides are drawn, not typed, and they only meet when rows are adjacent.
+ * Its height is capped — see [HierarchyOutlineMaxHeight] — both to measure at all inside the
+ * tab's scroll and so a long dump composes only the visible window. The outline scrolls under
+ * the pointer and the tab takes over at either end, which is standard nested-scroll behaviour.
+ *
+ * No `key` is given to [items]: a duplicate key is a crash, the dump's ids are only documented
+ * unique, and the list never reorders in place — a new dump replaces it wholesale.
+ *
+ * **No rows is a supported state, not an error** (AC-80). [HierarchyStatus.Absent] and
+ * [HierarchyStatus.Unavailable] get an explicit line saying so, because an empty area under a
+ * label reads as a bug; [HierarchyStatus.Dumping] and a genuinely empty [HierarchyStatus.Ready]
+ * dump get nothing extra, since the readout beside the label already says which it is. Either
+ * way Prompt, Crops and the footer are untouched.
+ *
+ * @param rows The outline, projected by the caller; empty renders the no-hierarchy line.
+ * @param status Hierarchy verdict for the pinned frame; drives the readout only.
+ * @param nodeCount Size of the captured snapshot, for the readout.
+ */
+@Composable
+private fun PayloadHierarchySection(
+    rows: List<PayloadNodeRow>,
+    status: HierarchyStatus,
+    nodeCount: Int,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingXS),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS),
+        ) {
+            PayloadSectionLabel(text = HIERARCHY_LABEL)
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = hierarchySourceLabel(status, nodeCount),
+                style = Theme.typography.monoTag,
+                color = Theme.color.ink3,
+            )
+        }
+
+        when {
+            rows.isNotEmpty() -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = HierarchyOutlineMaxHeight),
+            ) {
+                items(rows) { row ->
+                    HierarchyRow(
+                        nodeId = row.nodeId,
+                        depth = row.depth,
+                        last = row.last,
+                        tag = row.badge?.let { badge -> HIERARCHY_TAG_PREFIX + badge },
+                        matched = row.matched,
+                    )
+                }
+            }
+
+            status == HierarchyStatus.Absent || status == HierarchyStatus.Unavailable -> Text(
+                // Borrowed from the Measure tab rather than invented: it is the same verdict,
+                // and the fallback it describes — measuring against the annotation box and the
+                // frame edges — is exactly what the prompt above prints without node ids.
+                text = stringResource(Res.string.mirror_measure_hierarchy_unavailable),
+                style = Theme.typography.secondary,
+                color = Theme.color.ink2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
 private val PreviewDeviceSize = IntSize(width = 1080, height = 2400)
 
 private fun previewState(): MirrorUiState = MirrorUiState(
@@ -479,7 +623,48 @@ private fun previewState(): MirrorUiState = MirrorUiState(
         frameId = 1,
         deviceLabel = "Android 15",
     ),
+    hierarchyStatus = HierarchyStatus.Ready,
 )
+
+/**
+ * A stand-in dump for the preview, with two nodes sitting exactly on the preview's annotation
+ * rects so the outline shows real badges rather than a flat unmatched tree.
+ */
+private fun previewHierarchy(): HierarchySnapshotModel {
+    fun node(id: String, left: Int, top: Int, right: Int, bottom: Int, depth: Int) =
+        HierarchyNodeModel(
+            id = id,
+            className = "android.widget.FrameLayout",
+            left = left,
+            top = top,
+            right = right,
+            bottom = bottom,
+            isTappable = false,
+            depth = depth,
+        )
+
+    return HierarchySnapshotModel(
+        nodes = listOf(
+            node("FrameLayout", 0, 0, 1080, 2400, depth = 0),
+            node("LinearLayout#content", 0, 120, 1080, 2400, depth = 1),
+            node("RecyclerView#list", 0, 300, 1080, 1900, depth = 2),
+            node("ViewGroup#row_0", 80, 360, 1000, 614, depth = 3),
+            // Matches annotation #1.
+            node("TextView#item_title", 120, 420, 960, 674, depth = 4),
+            node("ImageView#item_art", 120, 700, 360, 940, depth = 4),
+            node("ViewGroup#row_1", 80, 980, 1000, 1240, depth = 3),
+            node("TextView#row_1_label", 120, 1020, 960, 1080, depth = 4),
+            node("ViewGroup#footer", 0, 1440, 1080, 1700, depth = 2),
+            // Matches annotation #2.
+            node("Button#buy_now", 80, 1500, 298, 1577, depth = 3),
+            node("TextView#legal", 80, 1620, 1000, 1680, depth = 3),
+            node("NavigationBar", 0, 2200, 1080, 2400, depth = 1),
+        ),
+        frameWidthPx = PreviewDeviceSize.width,
+        frameHeightPx = PreviewDeviceSize.height,
+        densityDpi = 420,
+    )
+}
 
 /**
  * A stand-in frame for the preview: a flat field with a lighter block behind each annotation.
@@ -530,6 +715,22 @@ private fun MirrorPayloadTabPreview() {
         Column(modifier = Modifier.background(Theme.color.surface)) {
             MirrorPayloadTab(
                 state = previewState(),
+                frame = rememberPreviewFrame(),
+                hierarchy = previewHierarchy(),
+                onIntent = {},
+            )
+        }
+    }
+}
+
+/** The AC-80 degradation path: no dump, yet Prompt and Crops still render. */
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabNoHierarchyPreview() {
+    AppTheme {
+        Column(modifier = Modifier.background(Theme.color.surface)) {
+            MirrorPayloadTab(
+                state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
                 frame = rememberPreviewFrame(),
                 hierarchy = HierarchySnapshotModel.Empty,
                 onIntent = {},
