@@ -58,9 +58,15 @@ blindly.
 
 ## A correction: this host CAN render. It cannot be screenshotted.
 
-Earlier stages recorded, on an agent's report, that "this host cannot load
-Skiko". **That is wrong for the real application** and the claim is withdrawn.
-Measured instead:
+Earlier stages of this spec carried the claim, from a registry-scan agent, that
+"this host cannot load Skiko" — and scoped several criteria around it.
+
+**The precise claim is true; the loose restatement is not.** The
+drag-annotate-frozen-frame verdict's `W-1` says this host cannot load Skiko
+**in-process** (`ImageBitmap(2,3)` throws `LibraryLoadException`), which is a
+statement about *tests* and remains correct — it is why no Compose UI test can
+run here. What got dropped in restatement was "in-process", turning it into
+"cannot render at all", which is false. Measured:
 
 ```
 $ ./gradlew :desktop-application:run
@@ -70,10 +76,17 @@ $ screencapture -x app.png
   → "could not create image from display"
 ```
 
-So the app **boots and renders with the measure code in it**. What this session
-lacks is **Screen Recording permission**, so no image can be captured. The
-blocker is capture, not rendering — a human sitting at this machine can render
-and inspect everything in `MANUAL-CHECKS.md` with no extra setup.
+So the app **boots and renders with the measure code in it**, in its own
+process. Two separate limits, which the loose phrasing had merged into one:
+
+1. **In-process Skiko fails** → no Compose UI test can run here. `W-1` stands,
+   and it is why the 107-test measure suite is all pure logic.
+2. **Screen Recording is denied to this session** → `screencapture` cannot
+   capture the window that does exist.
+
+The blocker for the visual criteria is therefore capture plus the absent test
+harness, not the renderer. A human sitting at this machine can render and
+inspect everything in `MANUAL-CHECKS.md` with no extra setup.
 
 ### What the clean boot does verify
 
