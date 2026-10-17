@@ -56,9 +56,13 @@
       }
     },
     "T-3": {
-      "status": "todo",
+      "status": "done",
       "wave": 3,
-      "type": "business-logic"
+      "type": "business-logic",
+      "subSteps": {
+        "test": "done",
+        "implement": "done"
+      }
     },
     "T-4": {
       "status": "done",
@@ -150,6 +154,10 @@
     "wave-2": {
       "status": "done",
       "merged": "25b6cd2"
+    },
+    "wave-3": {
+      "status": "done",
+      "merged": "8973bca"
     }
   }
 }

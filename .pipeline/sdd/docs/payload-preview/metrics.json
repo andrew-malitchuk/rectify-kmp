@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "updatedAt": "2026-10-17T17:23:56Z",
+  "updatedAt": "2026-10-17T17:44:08Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -76,25 +76,25 @@
       "failures": 0
     },
     "sdd-build-business-test": {
-      "tokens": 394029,
+      "tokens": 468572,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 5,
+      "invocations": 6,
       "failures": 0
     },
     "sdd-build-business-implement": {
-      "tokens": 76376,
+      "tokens": 132206,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 1,
+      "invocations": 2,
       "failures": 0
     }
   },
   "totals": {
-    "tokens": 1290589,
+    "tokens": 1420962,
     "durationMs": 0,
-    "invocations": 17
+    "invocations": 19
   }
 }
