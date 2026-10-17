@@ -61,6 +61,7 @@ import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.MirrorHost
 import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorNotesTab
+import presentation.feature.mirror.source.mirror.MirrorPayloadTab
 import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorStageContent
 import presentation.feature.mirror.source.mirror.MirrorStatusLine
@@ -163,7 +164,7 @@ public fun ApplicationScope.RectifyWindow() {
                             else -> Unit
                         }
                     },
-                ) { mirror, frame, onMirrorIntent ->
+                ) { mirror, frame, hierarchy, onMirrorIntent ->
                     // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
                     // only the first — the key stays true from the second one on, so a user who
                     // has walked over to Payload is not yanked back on every drag.
@@ -178,15 +179,31 @@ public fun ApplicationScope.RectifyWindow() {
                         frame = frame,
                         onIntent = onMirrorIntent,
                         sidePanel = { tab ->
-                            // Notes is the only tab with content this deliverable; the other two
-                            // are empty rather than absent, because the tab strip is the thing
-                            // Cmd+1/2/3 drives and hiding a tab would make a shortcut dead.
-                            if (tab == ShellTab.Notes) {
-                                MirrorNotesTab(
+                            // Notes and Payload have content; Context is empty rather than
+                            // absent, because the tab strip is the thing Cmd+1/2/3 drives and
+                            // hiding a tab would make a shortcut dead.
+                            //
+                            // `weight(1f)` on both is load-bearing, not cosmetic: each tab pins
+                            // its own footer with an inner `weight(1f)`, which collapses to zero
+                            // under an unbounded height. The panel's bounded height is what makes
+                            // the bodies render at all.
+                            when (tab) {
+                                ShellTab.Notes -> MirrorNotesTab(
                                     state = mirror,
                                     onIntent = onMirrorIntent,
                                     modifier = Modifier.weight(1f),
                                 )
+                                // The bitmap and the hierarchy both arrive through MirrorHost's
+                                // content lambda — the crops need the pixels and the node labels
+                                // need the dump, and neither is in the reduced state.
+                                ShellTab.Payload -> MirrorPayloadTab(
+                                    state = mirror,
+                                    frame = frame,
+                                    hierarchy = hierarchy,
+                                    onIntent = onMirrorIntent,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                else -> Unit
                             }
                         },
                         onPanelWidthCommit = { width ->
@@ -306,8 +323,11 @@ internal fun RectifyShellContent(
         modifier = modifier,
         state = state,
         sidePanel = sidePanel,
-        // The Notes count and the toolbar badge read the same number by construction.
-        tabCounts = mapOf(ShellTab.Notes to mirror.stagedCount),
+        // The tab counts and the toolbar badge read the same number by construction.
+        tabCounts = mapOf(
+            ShellTab.Notes to mirror.stagedCount,
+            ShellTab.Payload to mirror.stagedCount,
+        ),
         onPanelWidthCommit = onPanelWidthCommit,
         stage = {
             MirrorStageContent(

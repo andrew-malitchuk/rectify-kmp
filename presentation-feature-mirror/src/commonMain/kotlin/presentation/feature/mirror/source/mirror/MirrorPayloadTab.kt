@@ -45,6 +45,7 @@ import domain.core.source.model.device.HierarchySnapshotModel
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import presentation.core.styling.core.Theme
+import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.button.AppButton
 import presentation.core.ui.source.kit.atom.button.AppButtonSize
@@ -673,6 +674,47 @@ private fun PayloadFooter(count: Int) {
     }
 }
 
+/*
+ * Token mapping, recorded once (AC-14). Design figure on the left, what this tab's code actually
+ * uses on the right. Reconciliation record only — nothing here re-skins the tab, and the rows
+ * that do NOT match are written down as mismatches rather than asserted away.
+ *
+ *  design element                     | design             | code                             | verdict
+ *  -----------------------------------+--------------------+----------------------------------+--------
+ *  Section labels PROMPT/CROPS/       | 10.5px mono,       | typography.overline (10.5sp      | match
+ *    HIERARCHY (PayloadSectionLabel)  | ls .08em, ink3     | mono, ls .08em) + color.ink3     |
+ *  Prompt body (read + edit)          | 10.5px mono,       | typography.monoData (11sp mono)  | SIZE
+ *                                     | codeBg bg,         | over color.codeBg, color.line    | DIFFERS
+ *                                     | line border        | border                           | 11/10.5
+ *  Crops caption (`#2 · 432x152`)     | 9.5px mono, ink3   | typography.monoTag (9.5sp) +     | match
+ *                                     |                    | color.ink3                       |
+ *  Crops `frame #N` tag               | ink2 (frame label) | typography.monoTag + color.ink3  | COLOUR
+ *                                     |                    |                                  | DIFFERS
+ *  Hierarchy row labels (HierarchyRow)| 10.5px mono,       | typography.monoData (11sp,       | NEAR:
+ *                                     | line-height 17px   | 16sp line height)                | 11/16
+ *  Hierarchy badges (MeasureTag)      | 9.5, white on red  | typography.monoTag (9.5sp),      | match
+ *                                     |                    | white on color.annotate          |
+ *  Footer, both halves                | 10.5px mono, ink3  | typography.monoMeta (10.5sp      | match
+ *                                     |                    | mono) + color.ink3               |
+ *  ink2 -> frame/agent labels         | ink2               | only the empty-state and the     | partial
+ *                                     |                    | no-hierarchy line use ink2, and  |
+ *                                     |                    | at typography.secondary (Roboto  |
+ *                                     |                    | 12sp) — the figure has no row    |
+ *                                     |                    | for either; `frame #N` is ink3   |
+ *  ink -> matched nodes                | ink               | HierarchyRow matched -> ink      | match
+ *  red -> crop outline, badges, WARN   | red               | outline and badges are           | match,
+ *                                     |                    | color.annotate (one value in     | no WARN
+ *                                     |                    | both palettes); this tab has no  | state
+ *                                     |                    | WARN — the hierarchy verdict is  | here
+ *                                     |                    | plain ink3 text, not a red badge |
+ *
+ * Two choices worth naming because they look like drift and are not: the footer keeps monoMeta
+ * at 10.5sp per the table while crop captions sit on the 9.5sp monoTag scale — the design asks
+ * for different scales in those two places. And the prompt body stays on monoData because that
+ * is the repo's code/data scale (tabular figures); there is no 10.5sp mono-with-tabular-nums
+ * token, and adding one to shave 0.5sp would be a re-skin, not this task.
+ */
+
 private val PreviewDeviceSize = IntSize(width = 1080, height = 2400)
 
 /**
@@ -692,7 +734,10 @@ private fun previewState(): MirrorUiState = MirrorUiState(
                 rect = DeviceRect(left = 120, top = 420, right = 960, bottom = 674),
                 comment = "Row title clips at this width",
             ),
-            StagedAnnotation(index = 2, rect = DeviceRect(left = 80, top = 1500, right = 298, bottom = 1577)),
+            // Edge-touching on purpose (TAC-1): `left = 0` and a `bottom` on the frame's last
+            // row, so `cropWindow`'s pad clamps on both axes and the preview shows crop
+            // placement where the clamp actually engages, not only in open space.
+            StagedAnnotation(index = 2, rect = DeviceRect(left = 0, top = 2248, right = 432, bottom = 2400)),
         ),
         selectedIndex = 2,
         frameId = 1,
@@ -730,10 +775,11 @@ private fun previewHierarchy(): HierarchySnapshotModel {
             node("ViewGroup#row_1", 80, 980, 1000, 1240, depth = 3),
             node("TextView#row_1_label", 120, 1020, 960, 1080, depth = 4),
             node("ViewGroup#footer", 0, 1440, 1080, 1700, depth = 2),
-            // Matches annotation #2.
             node("Button#buy_now", 80, 1500, 298, 1577, depth = 3),
             node("TextView#legal", 80, 1620, 1000, 1680, depth = 3),
             node("NavigationBar", 0, 2200, 1080, 2400, depth = 1),
+            // Matches annotation #2 exactly, so `snapTarget` takes it over `NavigationBar`.
+            node("Button#nav_back", 0, 2248, 432, 2400, depth = 2),
         ),
         frameWidthPx = PreviewDeviceSize.width,
         frameHeightPx = PreviewDeviceSize.height,
@@ -783,48 +829,117 @@ private fun rememberPreviewFrame(): ImageBitmap {
     }
 }
 
-@Preview(showBackground = true)
+/**
+ * Shared body for the six previews below, so each one differs only by theme mode and state.
+ *
+ * @param state The mirror state to render.
+ * @param hierarchy The dump to render; [HierarchySnapshotModel.Empty] for the degraded pair.
+ * @param frame The frame's pixels, or `null` for the empty pair.
+ * @param modifier Carries [PreviewPanelHeight] for every preview that reaches the pinned footer.
+ */
 @Composable
-private fun MirrorPayloadTabPreview() {
-    AppTheme {
-        Column(modifier = Modifier.background(Theme.color.surface).height(PreviewPanelHeight)) {
-            MirrorPayloadTab(
-                state = previewState(),
-                frame = rememberPreviewFrame(),
-                hierarchy = previewHierarchy(),
-                onIntent = {},
-            )
-        }
+private fun MirrorPayloadTabPreviewContent(
+    state: MirrorUiState,
+    hierarchy: HierarchySnapshotModel,
+    frame: ImageBitmap?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.background(Theme.color.surface)) {
+        MirrorPayloadTab(
+            state = state,
+            frame = frame,
+            hierarchy = hierarchy,
+            onIntent = {},
+        )
     }
 }
 
-/** The AC-80 degradation path: no dump, yet Prompt and Crops still render. */
+/**
+ * Populated: two staged annotations, the second edge-touching so crop placement is visible where
+ * the clamp engages (AC-14, AC-76), both captions carrying the unspaced glyph at a legible size
+ * on a non-degenerate rect (AC-72, TAC-4).
+ */
 @Preview(showBackground = true)
 @Composable
-private fun MirrorPayloadTabNoHierarchyPreview() {
-    AppTheme {
-        Column(modifier = Modifier.background(Theme.color.surface).height(PreviewPanelHeight)) {
-            MirrorPayloadTab(
-                state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
-                frame = rememberPreviewFrame(),
-                hierarchy = HierarchySnapshotModel.Empty,
-                onIntent = {},
-            )
-        }
+private fun MirrorPayloadTabPreviewLight() {
+    AppTheme(mode = ThemeMode.Light) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState(),
+            hierarchy = previewHierarchy(),
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun MirrorPayloadTabEmptyPreview() {
-    AppTheme {
-        Column(modifier = Modifier.background(Theme.color.surface)) {
-            MirrorPayloadTab(
-                state = MirrorUiState(isPickerOpen = false),
-                frame = null,
-                hierarchy = HierarchySnapshotModel.Empty,
-                onIntent = {},
-            )
-        }
+private fun MirrorPayloadTabPreviewDark() {
+    AppTheme(mode = ThemeMode.Dark) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState(),
+            hierarchy = previewHierarchy(),
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
+    }
+}
+
+/**
+ * The AC-80 degradation path, and the spec's **primary evidence** for it: no dump, yet Prompt,
+ * Crops and the footer still render and the Hierarchy block says so in words. Forcing a real
+ * device dump to fail on demand is not reproducible; this pair is.
+ */
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabNoHierarchyPreviewLight() {
+    AppTheme(mode = ThemeMode.Light) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
+            hierarchy = HierarchySnapshotModel.Empty,
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabNoHierarchyPreviewDark() {
+    AppTheme(mode = ThemeMode.Dark) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
+            hierarchy = HierarchySnapshotModel.Empty,
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
+    }
+}
+
+/**
+ * Nothing staged (AC-77). No [PreviewPanelHeight]: the tab early-returns before the weighted
+ * content area exists, so there is no `weight` child to collapse.
+ */
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabEmptyPreviewLight() {
+    AppTheme(mode = ThemeMode.Light) {
+        MirrorPayloadTabPreviewContent(
+            state = MirrorUiState(isPickerOpen = false),
+            hierarchy = HierarchySnapshotModel.Empty,
+            frame = null,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabEmptyPreviewDark() {
+    AppTheme(mode = ThemeMode.Dark) {
+        MirrorPayloadTabPreviewContent(
+            state = MirrorUiState(isPickerOpen = false),
+            hierarchy = HierarchySnapshotModel.Empty,
+            frame = null,
+        )
     }
 }
