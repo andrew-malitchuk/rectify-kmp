@@ -1,8 +1,25 @@
 {
   "spec": "payload-preview",
   "currentStage": "preparation",
-  "stages": {},
-  "steps": {},
+  "stages": {
+    "preparation": {
+      "status": "done"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    }
+  },
   "tasks": {},
   "effort": "fast",
   "stageEffort": {
@@ -13,5 +30,7 @@
     "validation": "fast",
     "review": "fast",
     "reflection": "fast"
-  }
+  },
+  "baseBranch": "sdd/measure-mode",
+  "integrationBranch": "sdd/payload-preview"
 }
