@@ -58,6 +58,7 @@ import presentation.feature.mirror.core.payload.PayloadNodeRow
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
 import presentation.feature.mirror.core.payload.footerLabel
+import presentation.feature.mirror.core.payload.hasPayload
 import presentation.feature.mirror.core.payload.hierarchySourceLabel
 import presentation.feature.mirror.core.payload.payloadHierarchyRows
 import presentation.feature.mirror.core.payload.payloadSizeLabel
@@ -199,7 +200,7 @@ public fun MirrorPayloadTab(
 ): Unit {
     val frozen = state.frozen
 
-    if (frozen == null || frozen.annotations.isEmpty()) {
+    if (!hasPayload(frozen)) {
         Text(
             text = stringResource(Res.string.mirror_payload_empty),
             style = Theme.typography.secondary,
