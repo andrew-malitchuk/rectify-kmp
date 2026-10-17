@@ -10,6 +10,9 @@
     },
     "backlog": {
       "status": "done"
+    },
+    "execution": {
+      "status": "done"
     }
   },
   "steps": {
@@ -145,9 +148,13 @@
       "needsHumanReview": true
     },
     "T-13": {
-      "status": "todo",
+      "status": "done",
       "wave": 9,
-      "type": "test"
+      "type": "test",
+      "subSteps": {
+        "implement": "done"
+      },
+      "needsHumanReview": true
     }
   },
   "effort": "fast",
@@ -191,6 +198,9 @@
       "status": "done"
     },
     "wave-8": {
+      "status": "done"
+    },
+    "wave-9": {
       "status": "done"
     }
   }
