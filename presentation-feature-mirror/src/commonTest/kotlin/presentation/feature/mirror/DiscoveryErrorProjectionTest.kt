@@ -13,6 +13,7 @@ import presentation.feature.mirror.core.discovery.indicatorDot
 import presentation.feature.mirror.core.discovery.errorCard
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
+import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MirrorDropBanner
 import presentation.feature.mirror.source.mirror.MirrorErrorKind
 import presentation.feature.mirror.source.mirror.MirrorSession
@@ -373,6 +374,14 @@ class DiscoveryErrorProjectionTest {
      * MUTATION B: drop the MultipleDevices clause — the twoPhones clause fails.
      * MUTATION C: move `frozen` below `discovery` — the frozenOverridesDiscovery clause fails.
      * No single mutation covers all three, so each clause is load-bearing.
+     *
+     * T-10 extends the table rather than replacing it: `dumpingOverridesFrozen` pins the one new
+     * branch the Dumping state adds. It is inserted ABOVE the existing `frozen != null` case, so
+     * the full ranking the table proves is `Dumping > Frozen > Live > Dropped > Blocked >
+     * Offline` — Dumping only ever happens with a frozen frame, so proving it beats Frozen
+     * (which the other rows already prove beats everything else) pins the whole chain.
+     *
+     * MUTATION D: move the Dumping branch below `frozen != null` — dumpingOverridesFrozen fails.
      */
     @Test
     fun theStatusDotMatchesTheCardItSitsBeside() {
@@ -391,6 +400,7 @@ class DiscoveryErrorProjectionTest {
                 "streaming" to StatusIndicatorState.Live,
                 "lost" to StatusIndicatorState.Dropped,
                 "frozenOverridesDiscovery" to StatusIndicatorState.Frozen,
+                "dumpingOverridesFrozen" to StatusIndicatorState.Dumping,
             ),
             actual = verdicts(
                 "toolMissing" to stateOf(toolMissing()).let { it.indicatorDot(it.errorCard(NOW)) },
@@ -406,6 +416,12 @@ class DiscoveryErrorProjectionTest {
                 // a LIVE or BLOCKED dot over a still frame misreports what is on screen.
                 "frozenOverridesDiscovery" to stateOf(toolMissing())
                     .copy(frozen = pinned).let { it.indicatorDot(it.errorCard(NOW)) },
+                // A dump in flight outranks even a frozen frame: the user is looking at the same
+                // still frame, but the panel is about to change under them, and a FROZEN dot
+                // would say "nothing is happening" during the one state that costs ~2.7 s.
+                "dumpingOverridesFrozen" to stateOf(toolMissing())
+                    .copy(frozen = pinned, hierarchyStatus = HierarchyStatus.Dumping)
+                    .let { it.indicatorDot(it.errorCard(NOW)) },
             ),
         )
     }

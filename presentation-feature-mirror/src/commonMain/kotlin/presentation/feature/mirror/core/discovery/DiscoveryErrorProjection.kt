@@ -2,6 +2,7 @@ package presentation.feature.mirror.core.discovery
 
 import domain.core.source.model.device.DeviceModel
 import domain.core.source.model.device.DiscoveryModel
+import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MirrorDropBanner
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.feature.mirror.source.mirror.MirrorErrorCard
@@ -173,6 +174,9 @@ private fun formatAge(ageMs: Long): String {
  * state, because what the user is looking at is more informative than what the poll last said.
  */
 internal fun MirrorUiState.indicatorDot(card: MirrorErrorCard?): StatusIndicatorState = when {
+    // Above the frozen case, and only there: a dump in flight is the one state that costs the
+    // user ~2.7 s of waiting, and a FROZEN dot over it says "nothing is happening".
+    hierarchyStatus == HierarchyStatus.Dumping -> StatusIndicatorState.Dumping
     frozen != null -> StatusIndicatorState.Frozen
     session is MirrorSession.Streaming -> StatusIndicatorState.Live
     session is MirrorSession.Lost -> StatusIndicatorState.Dropped

@@ -3,6 +3,9 @@ package presentation.feature.mirror
 import androidx.compose.ui.unit.IntSize
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
+import presentation.feature.mirror.source.mirror.HierarchyStatus
+import presentation.feature.mirror.source.mirror.MeasureReadout
+import presentation.feature.mirror.source.mirror.MeasureUnit
 import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.StagedAnnotation
@@ -42,5 +45,42 @@ class MirrorContractTest {
                 "noFrozenFrame=${streaming.copy(frozen = null).canResumeLive}",
             ),
         )
+    }
+
+    /** T-9 / TAC-18 — the two new fields default to "nothing measured yet". */
+    @Test
+    fun measureDefaultsToNullAndHierarchyStatusDefaultsToAbsent() {
+        val state = MirrorUiState()
+
+        assertEquals(
+            expected = listOf("measure=null", "hierarchyStatus=${HierarchyStatus.Absent}"),
+            actual = listOf(
+                "measure=${state.measure}",
+                "hierarchyStatus=${state.hierarchyStatus}",
+            ),
+        )
+    }
+
+    /**
+     * T-9 — a sanity check that [MeasureReadout]'s final shape (minted in T-8) is still a plain
+     * value-equal data class. Guards against a future field turning it into something `StartMeasure`
+     * could not safely cache and compare.
+     */
+    @Test
+    fun anUnchangedMeasureReadoutComparesEqual() {
+        val readout = MeasureReadout(
+            annotationIndex = 1,
+            nodeId = "item_price",
+            targetRect = DeviceRect(228, 198, 276, 215),
+            neighbourRects = listOf(DeviceRect(84, 192, 166, 209)),
+            values = emptyList(),
+            guides = emptyList(),
+            rail = null,
+            finding = null,
+            unit = MeasureUnit.Dp,
+            noteLine = "⌥ item_price 48×17dp",
+        )
+
+        assertEquals(readout, readout.copy())
     }
 }

@@ -5,6 +5,7 @@ import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
+import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
@@ -30,6 +31,7 @@ public val presentationFeatureMirrorModule: Module = module {
             refreshDiscovery = get<RefreshDiscoveryUseCase>(),
             restartAdbServer = get<RestartAdbServerUseCase>(),
             setAdbPath = get<SetAdbPathUseCase>(),
+            dumpHierarchy = get<DumpHierarchyUseCase>(),
         )
     }
 }
