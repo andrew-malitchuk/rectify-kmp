@@ -5,5 +5,12 @@
     "issue": "id-keyed upsert conflict on 'hierarchy-row' in store 'components' (last-write-wins)",
     "resolution": "last-write-wins",
     "severity": "warn"
+  },
+  {
+    "at": "2026-10-17T19:01:11Z",
+    "category": "merge-conflict",
+    "issue": "id-keyed upsert conflict on 'mirror-payload-tab' in store 'components' (last-write-wins)",
+    "resolution": "last-write-wins",
+    "severity": "warn"
   }
 ]

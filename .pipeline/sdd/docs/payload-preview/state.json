@@ -104,9 +104,12 @@
       }
     },
     "T-8": {
-      "status": "todo",
+      "status": "done",
       "wave": 5,
-      "type": "ui"
+      "type": "ui",
+      "subSteps": {
+        "implement": "done"
+      }
     },
     "T-9": {
       "status": "todo",
@@ -163,6 +166,9 @@
       "merged": "8973bca"
     },
     "wave-4": {
+      "status": "done"
+    },
+    "wave-5": {
       "status": "done"
     }
   }
