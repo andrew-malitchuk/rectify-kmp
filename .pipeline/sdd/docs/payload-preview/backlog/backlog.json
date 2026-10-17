@@ -1,0 +1,1092 @@
+{
+  "spec": "payload-preview",
+  "stage": "backlog",
+  "step": "backlog",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-backlog-validate",
+  "provenance": {
+    "selfHash": "a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "b9f978314208a4d444c4144e3df6d965d7a701e5d9e5eb9a049a669afe3d43a8"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T11:35:39Z",
+  "updatedAt": "2026-10-17T11:52:26Z",
+  "data": {
+    "epics": [
+      {
+        "id": "E-1",
+        "title": "State & contract — FrozenFrame/MirrorIntent payload fields",
+        "tasks": [
+          "T-1"
+        ]
+      },
+      {
+        "id": "E-2",
+        "title": "Payload core logic (core/payload/, Compose-free, internal)",
+        "tasks": [
+          "T-2",
+          "T-3",
+          "T-4",
+          "T-5"
+        ]
+      },
+      {
+        "id": "E-3",
+        "title": "HierarchyRow reuse — matched/unmatched split",
+        "tasks": [
+          "T-6"
+        ]
+      },
+      {
+        "id": "E-4",
+        "title": "MirrorPayloadTab — Prompt / Crops / Hierarchy / footer sections",
+        "tasks": [
+          "T-7",
+          "T-8",
+          "T-9",
+          "T-10"
+        ]
+      },
+      {
+        "id": "E-5",
+        "title": "Wiring — MirrorHost + RectifyWindow Payload branch",
+        "tasks": [
+          "T-11"
+        ]
+      },
+      {
+        "id": "E-6",
+        "title": "Previews and verification sweep",
+        "tasks": [
+          "T-12",
+          "T-13"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T-1",
+        "epic": "E-1",
+        "title": "Extend FrozenFrame and MirrorIntent; stamp frameId and deviceLabel at freeze",
+        "description": "Add frameId: Int = 0, deviceLabel: String = \"\", promptOverride: String? = null to FrozenFrame with KDoc admission rule 'captured at freeze, dies with the frame'. Add MirrorIntent.EditPrompt(text: String) plus a reducer handler for promptOverride. Add a private freezeCounter on MirrorViewModel incremented inside stageAnnotation's INTENT body (never inside reduce).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "frameId increments exactly once per freeze (not per annotation) and a second drag against the same pinned frame keeps the same frameId."
+          },
+          {
+            "id": "TAC-2",
+            "text": "deviceLabel is derived at freeze from the already-selected device row's existing detail text with the transport segment stripped; no new reduced field is introduced for it."
+          },
+          {
+            "id": "TAC-3",
+            "text": "promptOverride survives an annotation add and a delete, and is dropped exactly once, on ResumeLive."
+          },
+          {
+            "id": "TAC-4",
+            "text": "freezeCounter is incremented in stageAnnotation's intent body, never inside the reduce lambda."
+          }
+        ],
+        "linkedAC": [
+          "AC-14",
+          "AC-79"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt:525"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:345"
+          }
+        ],
+        "expectedOutput": "MirrorContract.kt's FrozenFrame gains 3 new fields + KDoc rule; MirrorIntent gains EditPrompt; MirrorViewModel gains the counter + handler; MirrorViewModelPayloadTest.kt (new) and MirrorFakes.kt updated with a defaulted fixture.",
+        "hypothesis": "Stamping frameId/deviceLabel/promptOverride directly onto FrozenFrame (rather than into MirrorUiState) is sufficient for every downstream Payload task and keeps the freeze-counter race-free by living outside reduce.",
+        "definitionOfReady": [
+          "MirrorContract.kt FrozenFrame (line ~525) and MirrorViewModel.kt stageAnnotation (line ~345) read and understood.",
+          "measure-mode shipped on main (HierarchySnapshotModel/HierarchyStatus/NodeSnap exist)."
+        ],
+        "definitionOfDone": [
+          "freezeCounter increment is physically inside stageAnnotation's intent body, beside `val freezing = currentFrozenFrame.value == null`, NOT inside the reduce{} lambda passed to it — verified by reading the diff, not just the tests passing.",
+          "FrozenFrame's KDoc states the three-field admission rule verbatim.",
+          "MirrorUiState gains no new field.",
+          "No new backtick test names; new test funs are camelCase.",
+          ":presentation-feature-mirror:desktopTest green for the new MirrorViewModelPayloadTest."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Prompt text assembly (T-3)",
+          "MirrorPayloadTab UI (T-7..T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelPayloadTest.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-2",
+        "epic": "E-2",
+        "title": "core/payload/PayloadEstimate.kt — token estimate, MB label, footer label, PAYLOAD_FORMAT_VERSION",
+        "description": "New internal file: tokenEstimate(count) = 360 + count*140 (FINAL, no tokenizer); payloadSizeLabel(count) = oneDecimal(1.6 + count*0.12) + ' MB'; footerLabel(count) = 'frame.png · N crops · hierarchy.xml'; a hand-rolled oneDecimal helper (String.format is JVM-only); internal const val PAYLOAD_FORMAT_VERSION = 1.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "tokenEstimate/payloadSizeLabel/footerLabel are exact for count 0/1/2/12, including the one-decimal rounding boundary."
+          },
+          {
+            "id": "TAC-2",
+            "text": "footerLabel's string matches 'frame.png · N crops · hierarchy.xml' exactly, middots included."
+          },
+          {
+            "id": "TAC-3",
+            "text": "PAYLOAD_FORMAT_VERSION == 1, internal, unrendered."
+          }
+        ],
+        "linkedAC": [
+          "AC-16",
+          "AC-78"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror core/stats formatFps (oneDecimal precedent)"
+          }
+        ],
+        "expectedOutput": "PayloadEstimate.kt (new, internal) + PayloadEstimateTest.kt (new) in commonTest.",
+        "hypothesis": "Both FINAL heuristics are pure O(1) arithmetic, so putting them in one internal file with a hand-rolled formatter is sufficient and avoids any JVM-only String.format reliance that would break iOS.",
+        "definitionOfReady": [
+          "FINAL decision on 360+count*140 and 1.6+count*0.12 confirmed in plan architecture/alternativesConsidered."
+        ],
+        "definitionOfDone": [
+          "No java.lang.String.format usage (breaks Kotlin/Native); oneDecimal uses roundToInt only.",
+          "All declarations are internal (core/ package rule).",
+          "No version-catalog entry added (no tokenizer dependency).",
+          "desktopTest green; test fun names camelCase, no backticks."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Prompt assembly (T-3)",
+          "Footer composable placement (T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PayloadEstimate.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PayloadEstimateTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-3",
+        "epic": "E-2",
+        "title": "core/payload/PromptAssembly.kt — buildPrompt",
+        "description": "Assembles the full prompt string: singular/plural headline, real device line from frozen.deviceLabel + frozen.deviceSize, one '#{i+1} {nodeId} · {w}×{h}' + quoted comment (or 'no comment') block per annotation with NO 'measured:' branch, then 'Attached: frame.png, N crops, hierarchy.xml' trailer. Uses core/annotation's existing TIMES constant directly.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "One and two annotation cases assemble the documented block shape exactly."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Empty comment renders 'no comment'; a comment already carrying a ⌥ measurement line passes through byte-identical, with no separate 'measured:' branch."
+          },
+          {
+            "id": "TAC-3",
+            "text": "The dimension pair uses U+00D7 unspaced, built by interpolating TIMES directly — never AnnotationFormat.sizeLabel (which space-pads)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "No node match omits the node id segment without breaking the line."
+          }
+        ],
+        "linkedAC": [
+          "AC-13",
+          "AC-72",
+          "AC-73"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "core/annotation AnnotationFormat.kt (TIMES constant; do NOT use sizeLabel)"
+          }
+        ],
+        "expectedOutput": "PromptAssembly.kt (new, internal) + PromptAssemblyTest.kt (new).",
+        "hypothesis": "StagedAnnotation.rect/comment already carry everything the spec's prompt line needs (comment already embeds any ⌥ measurement line from measure-mode), so no separate measurement branch is required.",
+        "definitionOfReady": [
+          "T-1 merged (frozen.deviceLabel/frameId exist)."
+        ],
+        "definitionOfDone": [
+          "Does NOT call AnnotationFormat.sizeLabel anywhere — grep for it in the diff returns nothing.",
+          "× is U+00D7, unspaced, via direct TIMES interpolation.",
+          "desktopTest green; camelCase test names only."
+        ],
+        "dependsOn": [
+          "T-1"
+        ],
+        "outOfScope": [
+          "Prompt UI rendering / Edit toggle (T-7)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PromptAssembly.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PromptAssemblyTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 3,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-4",
+        "epic": "E-2",
+        "title": "core/payload/CropWindow.kt — design-space crop transform",
+        "description": "cropWindow(rect, frameSize, boxW=84, boxH=72, designPad=14, designWidth=296) returning CropWindow(srcOffset, srcSize, dstSize, scale, outlineRect). pad is DESIGN space scaled by frameSize.width/designWidth; window clamped to frame bounds on all 4 sides; scale = min(boxW/cw, boxH/ch); outlineRect in container coordinates. The design's `fixed` flag is dropped (false at this call site).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A centred rect on a 1080-wide frame produces the hand-computed CropWindow."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Each of the four edge clamps (x-pad<0, y-pad<0, right overflow, bottom overflow) is covered."
+          },
+          {
+            "id": "TAC-3",
+            "text": "pad scaling is verified on two frame widths (296 → 14, 1080 → ~51)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "A rect larger than the box scales down only, never up; outlineRect stays inside dstSize for every case."
+          }
+        ],
+        "linkedAC": [
+          "AC-76",
+          "AC-14"
+        ],
+        "references": [],
+        "expectedOutput": "CropWindow.kt (new, internal) + CropWindowTest.kt (new).",
+        "hypothesis": "cropWindow's outlineRect, returned once and reused verbatim by the Canvas caller for both the drawImage and the outline stroke, is sufficient to make the outline structurally unable to drift from the crop (AC-76) without any composable-side arithmetic.",
+        "definitionOfReady": [],
+        "definitionOfDone": [
+          "pad is computed as designPad * frameSize.width / designWidth, never a literal 14 device px.",
+          "All math lives in this file (internal); the composable in T-8 does zero of its own arithmetic.",
+          "desktopTest green; camelCase test names only."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Canvas drawImage call / crop grid rendering (T-8)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/CropWindow.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/CropWindowTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-5",
+        "epic": "E-2",
+        "title": "core/payload/HierarchyOutline.kt + PayloadLabels.kt — node-row projection and status labels",
+        "description": "payloadHierarchyRows runs the EXISTING projectMeasureNodes + NodeSnap.snapTarget once per annotation, builds a node→lowest-annotation-index map, then maps snapshot.nodes in a single pass to PayloadNodeRow(nodeId, depth, last, badge, matched); duplicate snap target resolved by lowest annotation index wins. hierarchySourceLabel maps the four shipped HierarchyStatus values only (Dumping/Ready/Absent/Unavailable) with no new status and no new dump.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Badge lands on the snapTarget node and nowhere else; an annotation with no match produces no badge (SC-21)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Two annotations snapping to one node yield one badge, with the lower index."
+          },
+          {
+            "id": "TAC-3",
+            "text": "depth/last pass through from the existing HierarchySnapshotModel rows unchanged."
+          },
+          {
+            "id": "TAC-4",
+            "text": "hierarchySourceLabel returns 'uiautomator · {n} nodes' for Ready (incl n=0), 'dumping…' for Dumping, and the explicit no-hierarchy label for Absent and Unavailable."
+          },
+          {
+            "id": "TAC-5",
+            "text": "payloadHierarchyRows never calls dumpHierarchy — it only reads the already-cached snapshot it is given."
+          }
+        ],
+        "linkedAC": [
+          "AC-15",
+          "AC-74",
+          "AC-75",
+          "AC-80"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "measure-mode MeasureProjection.projectMeasureNodes / NodeSnap.snapTarget (reused verbatim)"
+          }
+        ],
+        "expectedOutput": "HierarchyOutline.kt + PayloadLabels.kt (both new, internal) + HierarchyOutlineTest.kt + PayloadLabelsTest.kt.",
+        "hypothesis": "Reusing measure-mode's existing snapTarget/projectMeasureNodes functions verbatim (rather than a second containment rule) is both sufficient for AC-75 and the only way its wording is literally satisfied.",
+        "definitionOfReady": [
+          "Duplicate-snap rule ratified (lowest index wins) per plan DoR."
+        ],
+        "definitionOfDone": [
+          "No new HierarchyStatus value, no new dump trigger anywhere in this file.",
+          "Single pass over snapshot.nodes (no per-row recomputation).",
+          "desktopTest green; camelCase test names only."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "LazyColumn rendering / HierarchyRow calls (T-9)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/HierarchyOutline.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PayloadLabels.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/HierarchyOutlineTest.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PayloadLabelsTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-6",
+        "epic": "E-3",
+        "title": "HierarchyRow — one additive `matched: Boolean = false` parameter",
+        "description": "HierarchyRow currently hardcodes Theme.color.ink for its label. Add a defaulted `matched: Boolean = false` parameter: matched=true → Theme.color.ink, matched=false → Theme.color.ink3. The `tag` badge already defaults to Theme.color.annotate and needs no change. Update the existing preview to show both states, light and dark.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "matched=true renders the label in Theme.color.ink; matched=false renders it in Theme.color.ink3."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Every existing call site compiles unchanged because of the default value."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Preview shows both matched and unmatched rows in light and dark."
+          }
+        ],
+        "linkedAC": [
+          "AC-15",
+          "AC-75"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../kit/molecule/row/HierarchyRow.kt:121"
+          }
+        ],
+        "expectedOutput": "HierarchyRow.kt with the new additive parameter and an updated @Preview; registry delta recorded for execution time: components.json#hierarchy-row props += matched: Boolean = false.",
+        "hypothesis": "A single additive, defaulted boolean parameter is sufficient to split ink/ink3 without touching any existing call site.",
+        "definitionOfReady": [
+          "hierarchy-row registry entry (components.json#hierarchy-row) read for current prop shape."
+        ],
+        "definitionOfDone": [
+          "Parameter is additive and defaulted; no existing call site edited.",
+          "Preview updated with both states, light+dark.",
+          "Registry delta noted in expectedOutput for the orchestrator (components.json#hierarchy-row props)."
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Any PayloadNodeRow / payloadHierarchyRows logic (T-5)",
+          "LazyColumn tree section (T-9)"
+        ],
+        "predictedScope": [
+          "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-7",
+        "epic": "E-4",
+        "title": "MirrorPayloadTab.kt — file skeleton, empty-state gate, Prompt section with Edit toggle",
+        "description": "New public composable MirrorPayloadTab(state, hierarchy, onIntent, modifier), sibling of MirrorNotesTab. FIRST statement is the empty-state gate: if annotations is null/empty, render only the literal empty-state copy and return — no Prompt/Crops/Hierarchy/footer composed at all. Prompt section: 'PROMPT' header, right-aligned '≈ N tokens' (tokenEstimate), clickable 'Edit' affordance (>=24dp target, content description). Body is read-only selectable mono Text on Theme.color.codeBg, OR — when a local remember toggle is on — the shipped MultilineInput seeded with the effective prompt, dispatching MirrorIntent.EditPrompt(text) per change. Effective prompt = frozen.promptOverride ?: remember(...) { buildPrompt(...) }.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Zero staged annotations renders ONLY the literal empty-state copy; none of Prompt/Crops/Hierarchy/footer render (AC-77)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "With annotations, the Prompt section shows the generated prompt, its token estimate, and the Edit affordance (AC-13)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Clicking Edit toggles the prompt block into MultilineInput; edited text dispatches EditPrompt and becomes the effective prompt, persisting across a later annotation add (no auto-clear) (AC-79)."
+          }
+        ],
+        "linkedAC": [
+          "AC-13",
+          "AC-77",
+          "AC-79"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../source/mirror/MirrorNotesTab.kt (sibling shape to mirror)"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../kit/atom/input/MultilineInput.kt (reuse as-is)"
+          }
+        ],
+        "expectedOutput": "MirrorPayloadTab.kt (new, public) with the empty-state gate and Prompt section; new string resources added to presentation-core-localisation's i18n.strings for the chrome copy. Registry delta: new entry components.json#mirror-payload-tab (this task creates the public composable); crop/section composables stay private and unregistered.",
+        "hypothesis": "An early-return empty-state gate as the first statement is the only shape that satisfies AC-77's 'none of Prompt, Crops, Hierarchy or footer render' without a hidden always-composed branch.",
+        "definitionOfReady": [
+          "T-1, T-2, T-3 merged (frozen fields, tokenEstimate, buildPrompt available)."
+        ],
+        "definitionOfDone": [
+          "Public signature is explicit (explicitApi(): public fun MirrorPayloadTab(...): Unit) per package-layout.md.",
+          "Empty-state branch is a literal early return, not a conditionally-rendered sibling.",
+          "No MirrorUiState field added.",
+          "Section composables (PayloadPromptSection etc.) stay private, unregistered.",
+          "Registry delta: new entry components.json#mirror-payload-tab (this task creates the public composable); crop/section composables stay private and unregistered."
+        ],
+        "dependsOn": [
+          "T-1",
+          "T-2",
+          "T-3"
+        ],
+        "outOfScope": [
+          "Crops section (T-8)",
+          "Hierarchy section (T-9)",
+          "Footer (T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt",
+          "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+        ],
+        "parallelizable": false,
+        "executionGroup": 4,
+        "estimate": "L",
+        "subtasks": []
+      },
+      {
+        "id": "T-8",
+        "epic": "E-4",
+        "title": "MirrorPayloadTab.kt — Crops section (3-column grid, drawImage crop, baked outline, captions)",
+        "description": "Header: 'CROPS' + right-aligned 'from frame {frameId}' (bare counter). Grid: chunked(3) weighted Rows, 8dp gaps, short-last-row fillers. Each cell: 72dp Box on Theme.color.stage, 6dp radius, ONE Canvas calling drawImage(frozenBitmap, cw.srcOffset, cw.srcSize, IntOffset.Zero, cw.dstSize) then stroking a 1px Theme.color.annotate rect at cw.outlineRect — the SAME CropWindow value for both. Crop windows computed once in remember(annotations, frozen.deviceSize). Caption '#{i+1} · {w}×{h}' interpolates TIMES directly, never sizeLabel().",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A 3-column grid renders each staged annotation's cropped image with its red outline baked in and caption 'from frame <id>' header (AC-14)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "The outline rect drawn is exactly cw.outlineRect from CropWindow — the same value used for drawImage's placement, never a second computation (AC-76)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Captions use unspaced U+00D7 via direct TIMES interpolation, never AnnotationFormat.sizeLabel (AC-72)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "The composable performs no crop/scale/clamp arithmetic of its own — all of it comes from cropWindow()."
+          }
+        ],
+        "linkedAC": [
+          "AC-14",
+          "AC-72",
+          "AC-76"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "core/payload/CropWindow.kt (T-4)"
+          }
+        ],
+        "expectedOutput": "Crops section added to MirrorPayloadTab.kt (PayloadCropsSection + CropThumb, private, unregistered).",
+        "hypothesis": "One Canvas.drawImage call plus one stroke of the same returned outlineRect per cell is sufficient for the outline to be structurally unable to drift from the crop (replaces the design's negative-margin CSS).",
+        "definitionOfReady": [
+          "T-4 merged (CropWindow.kt); T-7 merged (file skeleton/gate exist to add this section into)."
+        ],
+        "definitionOfDone": [
+          "Caption does not call AnnotationFormat.sizeLabel anywhere (grep-verified).",
+          "Crop windows computed once in remember, not per recomposition or per row.",
+          "PayloadCropsSection/CropThumb remain private, not added to any registry."
+        ],
+        "dependsOn": [
+          "T-4",
+          "T-7"
+        ],
+        "outOfScope": [
+          "Prompt section (T-7)",
+          "Hierarchy section (T-9)",
+          "Footer (T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 5,
+        "estimate": "L",
+        "subtasks": []
+      },
+      {
+        "id": "T-9",
+        "epic": "E-4",
+        "title": "MirrorPayloadTab.kt — Hierarchy section (LazyColumn tree, badges, no-hierarchy state)",
+        "description": "Header: 'HIERARCHY' + right-aligned hierarchySourceLabel(state.hierarchyStatus, hierarchy.nodes.size). Rows: LazyColumn (no vertical spacing) over payloadHierarchyRows computed once in remember(hierarchy, annotations). Each row: HierarchyRow(nodeId, depth, last=row.last, tag=row.badge, matched=row.matched). Absent/Unavailable: zero rows + explicit no-hierarchy line; Prompt/Crops/footer still render normally. Never calls dumpHierarchy.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A monospace indented tree displays with matched/flagged nodes visually marked via HierarchyRow's matched parameter (AC-15)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Header source label reads 'uiautomator · {n} nodes' from the already-cached snapshot; no new dump is triggered (AC-74)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "A node carries the red badge if and only if it is HierarchyOutline's snapTarget result for that annotation; all others are ink3, unbadged (AC-75)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Absent/Unavailable status renders zero rows plus an explicit no-hierarchy line, while Prompt/Crops/footer render normally (AC-80)."
+          }
+        ],
+        "linkedAC": [
+          "AC-15",
+          "AC-74",
+          "AC-75",
+          "AC-80"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "core/payload/HierarchyOutline.kt, PayloadLabels.kt (T-5)"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-ui HierarchyRow.kt matched param (T-6)"
+          }
+        ],
+        "expectedOutput": "Hierarchy section added to MirrorPayloadTab.kt (PayloadHierarchySection, private, unregistered).",
+        "hypothesis": "payloadHierarchyRows computed once per remember key (not per row) scales to a ~400-node dump without dropping frames, since each row then does zero additional work.",
+        "definitionOfReady": [
+          "T-5 merged (HierarchyOutline/PayloadLabels); T-6 merged (HierarchyRow matched param); T-7 merged (skeleton to extend)."
+        ],
+        "definitionOfDone": [
+          "No dumpHierarchy call anywhere in this section.",
+          "payloadHierarchyRows is computed once via remember(hierarchy, annotations), not inside the LazyColumn's item scope.",
+          "Opening the tab on a ~400-node dump does not visibly drop a frame (manual check per plan successMetrics)."
+        ],
+        "dependsOn": [
+          "T-5",
+          "T-6",
+          "T-7"
+        ],
+        "outOfScope": [
+          "Prompt section (T-7)",
+          "Crops section (T-8)",
+          "Footer (T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 6,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-10",
+        "epic": "E-4",
+        "title": "MirrorPayloadTab.kt — Payload footer (Payload tab only)",
+        "description": "A bottom row inside the Payload tab (not SidePanelFrame, which has no shared footer slot): footerLabel(count) left, single line + ellipsis, payloadSizeLabel(count) right, both mono ink3, separated by a Theme.color.line hairline above. Payload tab ONLY — MirrorNotesTab stays byte-unchanged.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Footer reads 'frame.png · N crops · hierarchy.xml' plus a total size label, both sourced from PayloadEstimate, matching the actual annotation count (AC-16)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "The footer renders inside MirrorPayloadTab only — MirrorNotesTab.kt is byte-unchanged (confirmed via git diff --stat)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Both labels recompute synchronously as annotations are added/removed/edited, with no measurable lag (AC-78)."
+          }
+        ],
+        "linkedAC": [
+          "AC-16",
+          "AC-78"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "core/payload/PayloadEstimate.kt (T-2)"
+          }
+        ],
+        "expectedOutput": "Footer row added to MirrorPayloadTab.kt (PayloadFooter, private, unregistered); MirrorNotesTab.kt untouched.",
+        "hypothesis": "Both displayed labels pulling from the same PayloadEstimate functions the Prompt section's token count uses is sufficient to guarantee no displayed-vs-real drift.",
+        "definitionOfReady": [
+          "T-2 merged (PayloadEstimate.kt); T-7 merged (skeleton to extend)."
+        ],
+        "definitionOfDone": [
+          "git diff --stat shows MirrorNotesTab.kt with zero changes.",
+          "Footer strings come directly from footerLabel/payloadSizeLabel, no local recomputation.",
+          "SidePanelFrame.kt, SidebarTabs.kt untouched."
+        ],
+        "dependsOn": [
+          "T-2",
+          "T-7"
+        ],
+        "outOfScope": [
+          "Any change to MirrorNotesTab.kt or SidePanelFrame.kt"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 7,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-11",
+        "epic": "E-5",
+        "title": "Wiring — widen MirrorHost's content lambda and add the one Payload branch in RectifyWindow.kt",
+        "description": "MirrorHost's content lambda widens to (MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit) -> Unit, collecting viewModel.frozenHierarchy as state. RectifyWindow.kt's diff is exactly one `if (tab == ShellTab.Payload) MirrorPayloadTab(state, hierarchy, onIntent)` branch plus ShellTab.Payload → state.stagedCount in tabCounts. SidePanelFrame, SidebarTabs, ShellTab, shortcutToTab must come out byte-unchanged.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "MirrorHost's content lambda is the 4-arg form with exactly one call site; frozenHierarchy is collected as state, never re-reduced into MirrorUiState (AC-13..16, AC-80)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "RectifyWindow.kt's diff is exactly one ShellTab.Payload branch + one tabCounts entry."
+          },
+          {
+            "id": "TAC-3",
+            "text": "SidePanelFrame.kt, SidebarTabs.kt, ShellTab, shortcutToTab are byte-unchanged."
+          }
+        ],
+        "linkedAC": [
+          "AC-13",
+          "AC-14",
+          "AC-15",
+          "AC-16",
+          "AC-80"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../source/mirror/MirrorHost.kt"
+          },
+          {
+            "type": "code",
+            "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+          }
+        ],
+        "expectedOutput": "MirrorHost.kt widened signature; RectifyWindow.kt with the single branch + tabCounts entry; MirrorFakes.kt updated for the new lambda arity. Registry delta recorded for execution: components.json#mirror-host props widen to the 4-arg content lambda.",
+        "hypothesis": "Passing the already-cached frozenHierarchy StateFlow straight through MirrorHost's content lambda (never re-resolving a second ViewModel, never reducing it into MirrorUiState) is sufficient and is the only option that doesn't depend on two call sites implicitly sharing one ViewModelStoreOwner.",
+        "definitionOfReady": [
+          "T-7, T-8, T-9, T-10 merged (MirrorPayloadTab's 4-arg public signature exists and is stable)."
+        ],
+        "definitionOfDone": [
+          "git diff on RectifyWindow.kt shows exactly one new if-branch and one tabCounts map entry.",
+          "SidePanelFrame.kt/SidebarTabs.kt/ShellTab/shortcutToTab show zero diff.",
+          "No new Koin binding, no second MirrorViewModel resolution.",
+          ":presentation-feature-mirror:desktopTest green including the MirrorFakes arity update."
+        ],
+        "dependsOn": [
+          "T-7",
+          "T-8",
+          "T-9",
+          "T-10"
+        ],
+        "outOfScope": [
+          "MirrorPayloadTab section internals (covered in T-7..T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt",
+          "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 8,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-12",
+        "epic": "E-6",
+        "title": "Previews and one-pass token mapping — populated / empty / no-hierarchy, light and dark",
+        "description": "Map every design typography/colour element to an existing Theme token ONCE, at the top of this task, recorded in a comment. Ship light/dark @Preview pairs for: the populated tab with two annotations (one edge-touching, for the crop-placement check), the empty state, and the Unavailable no-hierarchy state. No new UI-test harness.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Light+dark preview pair exists for the populated tab with two annotations, one edge-touching, giving a human check of crop placement (AC-14, AC-76)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Light+dark preview pair exists for the empty state (AC-77)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Light+dark preview pair exists for the Unavailable/no-hierarchy state — this is AC-80's primary evidence, not a forced real-device dump failure."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Captions/dimensions in every preview use the unspaced × (AC-72)."
+          }
+        ],
+        "linkedAC": [
+          "AC-14",
+          "AC-16",
+          "AC-72",
+          "AC-80"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "MirrorPayloadTab.kt (T-7/T-8/T-9/T-10)"
+          }
+        ],
+        "expectedOutput": "Preview block in MirrorPayloadTab.kt with the token-mapping comment and 3 light/dark preview pairs (6 previews total).",
+        "hypothesis": "Three preview pairs (populated/edge-touching, empty, no-hierarchy) are sufficient as AC-80's demo evidence given no Compose UI-test harness exists in this repo.",
+        "definitionOfReady": [
+          "T-8, T-9, T-10 merged (Crops/Hierarchy/footer sections exist to preview)."
+        ],
+        "definitionOfDone": [
+          "Token-mapping comment present at the top of the preview block.",
+          "6 previews total (3 states x light/dark) compile and render.",
+          "No ui-test-junit4 or runComposeUiTest dependency added."
+        ],
+        "dependsOn": [
+          "T-8",
+          "T-9",
+          "T-10"
+        ],
+        "outOfScope": [
+          "Any new UI-test harness"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 8,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-13",
+        "epic": "E-6",
+        "title": "Verification pass — desktopTest, cross-target build, registry deltas, DoD sweep",
+        "description": "Run :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest, then :presentation-feature-mirror:build :presentation-core-ui:build (commonTest compiles for every target; build additionally runs the iosSimulatorArm64 suite). Confirm no new test fun name contains a comma or colon (camelCase only). Sweep the full plan Definition of Done and hand the three registry deltas to the orchestrator.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Every AC-13..AC-16 and AC-72..AC-80 traces to at least one task and one test or named demo step."
+          },
+          {
+            "id": "TAC-2",
+            "text": ":presentation-feature-mirror:desktopTest and :presentation-core-ui:desktopTest are green."
+          },
+          {
+            "id": "TAC-3",
+            "text": ":presentation-feature-mirror:build and :presentation-core-ui:build pass (cross-target compile + iosSimulatorArm64 run)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "No new commonTest fun name contains a comma or a colon; all are camelCase with no backticks."
+          },
+          {
+            "id": "TAC-5",
+            "text": "RectifyWindow.kt diff is exactly one branch + one tabCounts entry; MirrorNotesTab.kt/SidePanelFrame.kt/SidebarTabs.kt/ShellTab/shortcutToTab are byte-unchanged."
+          },
+          {
+            "id": "TAC-6",
+            "text": "No new Gradle module, version-catalog entry, Koin binding, MirrorUiState field, or colour token exists anywhere in the diff."
+          }
+        ],
+        "linkedAC": [
+          "AC-13",
+          "AC-14",
+          "AC-15",
+          "AC-16",
+          "AC-72",
+          "AC-73",
+          "AC-74",
+          "AC-75",
+          "AC-76",
+          "AC-77",
+          "AC-78",
+          "AC-79",
+          "AC-80"
+        ],
+        "references": [
+          {
+            "type": "url",
+            "ref": ".pipeline/sdd/docs/payload-preview/plan/plan.json#data.definitionOfDone"
+          }
+        ],
+        "expectedOutput": "Green desktopTest + build logs; a DoD checklist result; the 3 registry deltas handed to the orchestrator: components.json#hierarchy-row props += matched: Boolean = false, components.json#mirror-host props widen to the 4-arg content lambda, new components.json#mirror-payload-tab entry.",
+        "hypothesis": "Running desktopTest then the full cross-target build (not just desktopTest alone) is necessary and sufficient to catch the Kotlin/Native-only compile failures and the Orbit dispatcher cross-test leakage this module has hit before.",
+        "definitionOfReady": [
+          "T-1..T-12 all merged."
+        ],
+        "definitionOfDone": [
+          "Both test commands and both build commands pass, in that order, with evidence captured.",
+          "Full plan DoD list swept line by line with a pass/fail per line.",
+          "Registry deltas for hierarchy-row, mirror-host, and mirror-payload-tab are written out for the orchestrator (not edited directly by this task)."
+        ],
+        "dependsOn": [
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-4",
+          "T-5",
+          "T-6",
+          "T-7",
+          "T-8",
+          "T-9",
+          "T-10",
+          "T-11",
+          "T-12"
+        ],
+        "outOfScope": [
+          "Any production code change — verification only"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonTest/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 9,
+        "estimate": "S",
+        "subtasks": []
+      }
+    ],
+    "executionPlan": {
+      "waves": [
+        {
+          "wave": 1,
+          "parallel": [
+            "T-1",
+            "T-5"
+          ]
+        },
+        {
+          "wave": 2,
+          "parallel": [
+            "T-2",
+            "T-4",
+            "T-6"
+          ]
+        },
+        {
+          "wave": 3,
+          "parallel": [
+            "T-3"
+          ]
+        },
+        {
+          "wave": 4,
+          "parallel": [
+            "T-7"
+          ]
+        },
+        {
+          "wave": 5,
+          "parallel": [
+            "T-8"
+          ]
+        },
+        {
+          "wave": 6,
+          "parallel": [
+            "T-9"
+          ]
+        },
+        {
+          "wave": 7,
+          "parallel": [
+            "T-10"
+          ]
+        },
+        {
+          "wave": 8,
+          "parallel": [
+            "T-11",
+            "T-12"
+          ]
+        },
+        {
+          "wave": 9,
+          "parallel": [
+            "T-13"
+          ]
+        }
+      ],
+      "graph": [
+        {
+          "task": "T-3",
+          "dependsOn": [
+            "T-1"
+          ]
+        },
+        {
+          "task": "T-7",
+          "dependsOn": [
+            "T-1",
+            "T-2",
+            "T-3"
+          ]
+        },
+        {
+          "task": "T-8",
+          "dependsOn": [
+            "T-4",
+            "T-7"
+          ]
+        },
+        {
+          "task": "T-9",
+          "dependsOn": [
+            "T-5",
+            "T-6",
+            "T-7"
+          ]
+        },
+        {
+          "task": "T-10",
+          "dependsOn": [
+            "T-2",
+            "T-7"
+          ]
+        },
+        {
+          "task": "T-11",
+          "dependsOn": [
+            "T-7",
+            "T-8",
+            "T-9",
+            "T-10"
+          ]
+        },
+        {
+          "task": "T-12",
+          "dependsOn": [
+            "T-8",
+            "T-9",
+            "T-10"
+          ]
+        },
+        {
+          "task": "T-13",
+          "dependsOn": [
+            "T-1",
+            "T-2",
+            "T-3",
+            "T-4",
+            "T-5",
+            "T-6",
+            "T-7",
+            "T-8",
+            "T-9",
+            "T-10",
+            "T-11",
+            "T-12"
+          ]
+        }
+      ]
+    },
+    "readyForExecution": true,
+    "sequenceNotes": {
+      "cyclesFound": [],
+      "serializedForScopeOverlap": [
+        "T-7/T-8/T-9/T-10/T-12 all edit presentation-feature-mirror/.../source/mirror/MirrorPayloadTab.kt. The dependency graph alone would let T-8/T-9/T-10 share wave 4 (each depends only on T-7 plus core/payload inputs already satisfied in wave 1), but same-file edits cannot be split across a shared implement-agent worktree without collision, so each is forced into its own wave (4, 5, 6). T-12 (adds the preview block to the same file) is likewise kept out of any wave containing T-7/T-8/T-9/T-10, serialized after wave 6.",
+        "This is a file-contention hardstop, not a dependency hardstop — do not re-merge T-8/T-9/T-10/T-12 into one wave even though the graph permits it; the Stage 4 dispatcher partitions a wave's parallel set by predictedScope and these five tasks' scopes collide on one file."
+      ],
+      "terminalWaveTasks": [
+        "T-13"
+      ],
+      "waveOneSplit": "Wave 1 split at the engineer's Stage 3 gate decision: the original single wave bundled T-1, T-2, T-4, T-5, T-6 into one implement agent (implementBatch=wave at fast tier), where a failure on the logic-dense T-5 would have discarded four unrelated, independently-correct tasks. Now wave 1 = T-1 + T-5 and wave 2 = T-2 + T-4 + T-6; both sets remain scope-disjoint and every dependency still lands in an earlier wave. Costs one extra wave and worktree, buys per-group rollback. Total waves 8 -> 9."
+    },
+    "humanVerificationRequirements": [
+      {
+        "id": "HV-1",
+        "owner": "Stage 5 human gate",
+        "criteria": [
+          "SC-6",
+          "SC-20",
+          "SC-21",
+          "SC-22",
+          "SC-23",
+          "SC-24"
+        ],
+        "requirement": "Manual demo pass over SC-6/20/21/22/23/24 on a real Android device, required by plan.json#testStrategy.ui before sign-off.",
+        "rationale": "Decided at the Stage 3 gate: Stage 4 executors cannot drive a real device, and Stage 5 is where the verdict needs this evidence. T-12's previews cover only the deterministic half; T-13 is automated verification only. Not assigned to any Stage 4 task by design."
+      }
+    ],
+    "survey": [
+      {
+        "question": "Wave 1 bundles T-1, T-2, T-4, T-5, T-6 into ONE implement agent (implementBatch=wave); rollback granularity is the whole wave.",
+        "options": [
+          "Split wave 1 (Recommended)",
+          "Accept the batch",
+          "One task per wave"
+        ],
+        "answer": "Split wave 1 (Recommended)",
+        "source": "user-edited"
+      },
+      {
+        "question": "plan.json testStrategy requires a manual demo pass over SC-6/20/21/22/23/24 on a real Android device; no backlog task carries it. Where should it live?",
+        "options": [
+          "Stage 5 human gate (Recommended)",
+          "Explicit T-13 sub-item",
+          "Defer to QA pipeline"
+        ],
+        "answer": "Stage 5 human gate (Recommended)",
+        "source": "user-edited"
+      },
+      {
+        "question": "Stage 3 backlog gate [MANDATORY] — approve the backlog and open Stage 4 (execution)?",
+        "options": [
+          "Approve (Recommended)",
+          "Send back with remarks",
+          "Reject and re-decompose"
+        ],
+        "answer": "Approve (Recommended)",
+        "source": "user-edited"
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "user",
+    "approved": true,
+    "at": "2026-10-17T11:52:26Z"
+  }
+}

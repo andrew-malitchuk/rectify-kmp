@@ -16,3 +16,11 @@
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "status": "failed", "reason": "agent stalled: no progress for 600s (stream watchdog)", "retries": 1, "at": "2026-10-17T11:09:09Z", "spec": "payload-preview"}
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 78948, "retries": 1, "at": "2026-10-17T11:14:11Z", "spec": "payload-preview"}
 {"stage": "plan", "event": "end", "at": "2026-10-17T11:30:44Z", "spec": "payload-preview"}
+{"stage": "backlog", "event": "start", "effort": "fast", "at": "2026-10-17T11:31:03Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-17T11:31:54Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 61418, "at": "2026-10-17T11:35:39Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-17T11:35:39Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 60127, "at": "2026-10-17T11:39:56Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "cap": 1, "at": "2026-10-17T11:40:18Z", "spec": "payload-preview"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 63396, "corrections": 4, "at": "2026-10-17T11:43:34Z", "spec": "payload-preview"}
+{"stage": "backlog", "event": "end", "at": "2026-10-17T11:52:26Z", "spec": "payload-preview"}

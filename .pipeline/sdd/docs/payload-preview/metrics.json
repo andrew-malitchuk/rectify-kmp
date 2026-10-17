@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "updatedAt": "2026-10-17T11:30:44Z",
+  "updatedAt": "2026-10-17T11:52:27Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -50,11 +50,35 @@
       "durationMs": 0,
       "invocations": 2,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 61418,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 60127,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 63396,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 635243,
+    "tokens": 820184,
     "durationMs": 0,
-    "invocations": 8
+    "invocations": 11
   }
 }

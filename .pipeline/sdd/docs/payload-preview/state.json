@@ -1,11 +1,14 @@
 {
   "spec": "payload-preview",
-  "currentStage": "plan",
+  "currentStage": "backlog",
   "stages": {
     "preparation": {
       "status": "done"
     },
     "plan": {
+      "status": "done"
+    },
+    "backlog": {
       "status": "done"
     }
   },
@@ -24,6 +27,9 @@
     },
     "plan": {
       "status": "done"
+    },
+    "backlog": {
+      "status": "done"
     }
   },
   "tasks": {},
@@ -38,5 +44,8 @@
     "reflection": "fast"
   },
   "baseBranch": "sdd/measure-mode",
-  "integrationBranch": "sdd/payload-preview"
+  "integrationBranch": "sdd/payload-preview",
+  "humanVerificationRequirements": [
+    "HV-1: manual demo over SC-6/20/21/22/23/24 on a real Android device, owed at the Stage 5 human gate"
+  ]
 }
