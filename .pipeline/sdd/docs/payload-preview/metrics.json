@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "updatedAt": "2026-10-17T19:01:34Z",
+  "updatedAt": "2026-10-17T19:14:27Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -92,17 +92,17 @@
       "failures": 0
     },
     "sdd-build-frontend-implement": {
-      "tokens": 152243,
+      "tokens": 210682,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 2,
+      "invocations": 3,
       "failures": 0
     }
   },
   "totals": {
-    "tokens": 1573205,
+    "tokens": 1631644,
     "durationMs": 0,
-    "invocations": 21
+    "invocations": 22
   }
 }
