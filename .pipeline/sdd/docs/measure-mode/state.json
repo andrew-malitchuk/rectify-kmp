@@ -1,6 +1,6 @@
 {
   "spec": "measure-mode",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -9,6 +9,9 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -93,6 +96,11 @@
       "status": "done",
       "wave": 11,
       "worktreeBranch": "task/batch-c",
+      "needsHumanReview": true
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 12,
       "needsHumanReview": true
     }
   },

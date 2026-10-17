@@ -35,3 +35,5 @@
 {"stage": "execution", "step": "batch-a", "event": "end", "tokens": 663680, "at": "2026-10-16T23:03:29Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "batch-b", "event": "end", "tokens": 124902, "at": "2026-10-17T07:40:08Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "batch-c", "event": "end", "note": "T-11/T-12 code complete and verified by the orchestrator; visual clauses BLOCKED pending MANUAL-CHECKS.md", "at": "2026-10-17T08:46:37Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-13", "event": "end", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}
+{"stage": "execution", "event": "end", "note": "all 13 tasks done; 547 tests 0 failures; 4 criteria blocked on a human", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}

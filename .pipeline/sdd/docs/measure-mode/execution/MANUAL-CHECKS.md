@@ -11,7 +11,11 @@ What remains cannot be machine-checked **in this project, on this host**:
 - there is **no Compose UI-test harness** anywhere in the repo (no
   `runComposeUiTest`, no `ui-test-junit4`), and introducing one is a real
   infrastructure decision, not a casual addition;
-- **this host cannot load Skiko**, so no composable can be rendered headlessly;
+- this session **cannot screenshot** — `./gradlew :desktop-application:run` does
+  load Skiko and open a working window (measured: runs clean for >30 s with no
+  exceptions), but `screencapture` fails with *"could not create image from
+  display"* because this terminal lacks Screen Recording permission. **A human
+  sitting at this machine needs no extra setup** — the app renders fine;
 - the Option-hold interaction needs a live window, a pointer and a keyboard.
 
 So the five checks below are recorded **BLOCKED, not waived**. That distinction
