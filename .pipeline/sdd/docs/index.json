@@ -28,5 +28,11 @@
     "currentStage": "done",
     "verdict": "complete-with-waivers",
     "updatedAt": "2026-10-17T09:06:45Z"
+  },
+  {
+    "spec": "payload-preview",
+    "currentStage": "preparation",
+    "verdict": "",
+    "updatedAt": "2026-10-17T09:23:23Z"
   }
 ]
