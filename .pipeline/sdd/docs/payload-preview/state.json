@@ -120,9 +120,12 @@
       }
     },
     "T-10": {
-      "status": "todo",
+      "status": "done",
       "wave": 7,
-      "type": "ui"
+      "type": "ui",
+      "subSteps": {
+        "implement": "done"
+      }
     },
     "T-11": {
       "status": "todo",
@@ -175,6 +178,9 @@
       "status": "done"
     },
     "wave-6": {
+      "status": "done"
+    },
+    "wave-7": {
       "status": "done"
     }
   }
