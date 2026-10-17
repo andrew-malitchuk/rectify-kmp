@@ -191,6 +191,13 @@ public data class MirrorDropBanner(
  *   pixels either, for the same reason this class carries no frame: the bitmap itself lives on
  *   [MirrorViewModel.frozenFrame]. Annotations, unlike pixels, DO belong here — they are small,
  *   value-equal and change only when the user acts.
+ * @property measure The measuring readout in flight, or `null` while nothing is being measured.
+ *   Fully computed and value-equal (see [MeasureReadout]), so it costs a state copy no more than
+ *   an annotation does — the same reason the staged list lives here and the pixels do not.
+ * @property hierarchyStatus Whether a view hierarchy is available for [frozen]. The snapshot
+ *   itself is **not** here: it is a few hundred nodes per dump, read only by the measuring
+ *   arithmetic and never rendered directly, so it lives on [MirrorViewModel.frozenHierarchy]
+ *   beside the bitmaps. Only this four-state verdict is reduced.
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -206,6 +213,8 @@ public data class MirrorUiState(
     val avds: List<String> = emptyList(),
     val selectedAvd: String? = null,
     val frozen: FrozenFrame? = null,
+    val measure: MeasureReadout? = null,
+    val hierarchyStatus: HierarchyStatus = HierarchyStatus.Absent,
 ) {
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
@@ -362,6 +371,23 @@ public sealed interface MirrorIntent {
      * keeps the frozen frame and its annotations.
      */
     public data object Reconnect : MirrorIntent
+
+    /**
+     * Measure one annotation against the captured hierarchy — Option held down (FR-36).
+     *
+     * @property index 1-based annotation index. An index that is no longer staged measures
+     *   nothing rather than failing: the annotation can be deleted between the two intents.
+     */
+    public data class StartMeasure(val index: Int) : MirrorIntent
+
+    /**
+     * Option released — write the readout's `⌥` line into the annotation's note and drop it.
+     *
+     * Carries no index: [MirrorUiState.measure] already names the annotation it was computed
+     * for, and taking the index from the readout rather than from the key event is what stops
+     * the note landing on a different annotation after a delete renumbered the list.
+     */
+    public data object EndMeasure : MirrorIntent
 
     /** Restart the discovery collection — the error card's "Retry" (AC-26, AC-53). */
     public data object RetryDiscovery : MirrorIntent
