@@ -141,6 +141,7 @@ public fun MirrorStageContent(
                     frozen = state.frozen,
                     canResumeLive = state.canResumeLive,
                     banner = state.dropBanner(),
+                    measure = state.measure,
                     onIntent = onIntent,
                 )
             }
