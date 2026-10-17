@@ -136,6 +136,15 @@ public class MirrorViewModel(
     /** The dump in flight, so a clear site can cancel it instead of reducing a stale verdict. */
     private var dumpJob: Job? = null
 
+    /**
+     * Freezes so far this session, stamped onto [FrozenFrame.frameId].
+     *
+     * Incremented in [stageAnnotation]'s **intent body**, never inside its `reduce` — Orbit
+     * reduces through a CAS loop that re-runs the lambda on a lost race, which would advance
+     * this twice for one freeze and mis-stamp the frame.
+     */
+    private var freezeCounter: Int = 0
+
     override val container: Container<MirrorUiState, MirrorSideEffect> =
         container(MirrorUiState()) {
             detectInstalledTools()
@@ -164,6 +173,7 @@ public class MirrorViewModel(
             is MirrorIntent.StartMeasure -> startMeasure(intent.index)
             MirrorIntent.EndMeasure -> endMeasure()
             MirrorIntent.ClearStaged -> clearStaged()
+            is MirrorIntent.EditPrompt -> editPrompt(intent.text)
             MirrorIntent.ResumeLive -> resumeLive()
             MirrorIntent.Reconnect -> reconnect()
             MirrorIntent.RetryDiscovery -> retryDiscovery()
@@ -344,12 +354,21 @@ public class MirrorViewModel(
         val held = currentFrame.value ?: return@intent
         val freezing = currentFrozenFrame.value == null
         if (freezing) currentFrozenFrame.value = held
+        // Stamped HERE, in the intent body, and never inside `reduce`: the reducer's CAS loop
+        // re-runs its lambda on a lost race, so an increment in there would burn two ids on one
+        // freeze (T-1 / TAC-4).
+        val stampedFrameId = if (freezing) ++freezeCounter else freezeCounter
+        val stampedDeviceLabel = state.selectedRowDetailWithoutTransport()
         // Only a freeze starts a dump, and only when there is a device to ask: a second drag
         // annotates the SAME pinned frame (FR-31), whose hierarchy is already captured.
         val dumpTarget = state.selectedDeviceId?.takeIf { freezing }
         reduce {
             val frozen = state.frozen
-                ?: FrozenFrame(deviceSize = IntSize(width = held.width, height = held.height))
+                ?: FrozenFrame(
+                    deviceSize = IntSize(width = held.width, height = held.height),
+                    frameId = stampedFrameId,
+                    deviceLabel = stampedDeviceLabel,
+                )
             val staged = frozen.annotations +
                 StagedAnnotation(index = frozen.annotations.size + 1, rect = rect)
             state.copy(
@@ -599,6 +618,34 @@ public class MirrorViewModel(
             .onSuccess { refreshDiscovery() }
             .onFailure { postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.SaveAdbPath)) }
     }
+
+    /**
+     * Stores the prompt the user typed for the pinned frame (AC-79).
+     *
+     * Dropped only by [resumeLive], which drops the whole frame — every annotation handler
+     * copies [FrozenFrame] and so carries the override through an add, a delete and a
+     * reconnection untouched.
+     */
+    private fun editPrompt(text: String) = intent {
+        reduce {
+            val frozen = state.frozen ?: return@reduce state
+            state.copy(frozen = frozen.copy(promptOverride = text))
+        }
+    }
+
+    /**
+     * The selected picker row's machine detail without its transport segment
+     * (`"Android 15 · USB"` → `"Android 15"`).
+     *
+     * Read off the row that is already in state rather than reduced into a field of its own:
+     * the detail string is the one place the Android release is already formatted, and the
+     * stamp is taken once per freeze.
+     */
+    private fun MirrorUiState.selectedRowDetailWithoutTransport(): String =
+        rows.firstOrNull { it.id == selectedDeviceId }
+            ?.detail
+            ?.substringBefore(" · ")
+            .orEmpty()
 
     private fun resumeLive() = intent {
         currentFrozenFrame.value = null
