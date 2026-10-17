@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import presentation.core.styling.core.Theme
+import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.tag.MeasureTag
 
@@ -52,6 +53,8 @@ private val IndentWidth: Dp = 16.dp
  *   under it is *not* `last`, because its children's guide runs down the same column and the
  *   line has to reach them.
  * @param tag Optional annotation tag, e.g. `#1`, marking a node an annotation matched.
+ * @param matched Whether an annotation matched this node. Matched nodes read at full ink; the
+ *   rest of the dump recedes to [Theme.color.ink3] so the matches stand out in a long tree.
  * @param onClick Called when the node is picked.
  */
 @Composable
@@ -61,6 +64,7 @@ public fun HierarchyRow(
     modifier: Modifier = Modifier,
     last: Boolean = false,
     tag: String? = null,
+    matched: Boolean = false,
     onClick: () -> Unit = {},
 ) {
     val guideColor = Theme.color.ink3
@@ -118,7 +122,7 @@ public fun HierarchyRow(
         Text(
             text = nodeId,
             style = Theme.typography.monoData,
-            color = Theme.color.ink,
+            color = if (matched) Theme.color.ink else Theme.color.ink3,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -131,19 +135,29 @@ public fun HierarchyRow(
 
 @Preview(showBackground = true)
 @Composable
-private fun HierarchyRowPreview() {
-    AppTheme {
-        // No arrangement spacing — see the KDoc.
-        Column(
-            modifier = Modifier
-                .background(Theme.color.surface)
-                .padding(vertical = Theme.spacing.spacingS),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            // Not `last`: its children are listed below and share this column's guide.
-            HierarchyRow(nodeId = "CartItemView[1]", depth = 0)
-            HierarchyRow(nodeId = "TextView#item_price", depth = 1, tag = "#1")
-            HierarchyRow(nodeId = "QtyStepper#qty", depth = 1, last = true, tag = "#2")
-        }
+private fun HierarchyRowPreviewLight() {
+    AppTheme(mode = ThemeMode.Light) { HierarchyRowPreviewContent() }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HierarchyRowPreviewDark() {
+    AppTheme(mode = ThemeMode.Dark) { HierarchyRowPreviewContent() }
+}
+
+@Composable
+private fun HierarchyRowPreviewContent() {
+    // No arrangement spacing — see the KDoc.
+    Column(
+        modifier = Modifier
+            .background(Theme.color.surface)
+            .padding(vertical = Theme.spacing.spacingS),
+        verticalArrangement = Arrangement.Top,
+    ) {
+        // Not `last`: its children are listed below and share this column's guide.
+        HierarchyRow(nodeId = "CartItemView[1]", depth = 0)
+        HierarchyRow(nodeId = "TextView#item_price", depth = 1, tag = "#1", matched = true)
+        HierarchyRow(nodeId = "ImageView#item_icon", depth = 1)
+        HierarchyRow(nodeId = "QtyStepper#qty", depth = 1, last = true, tag = "#2", matched = true)
     }
 }
