@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.width
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import presentation.core.styling.core.Theme
+import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.annotation.AnnotationState
 import presentation.core.ui.source.kit.atom.annotation.MeasureMark
@@ -71,6 +72,8 @@ import presentation.core.ui.source.kit.molecule.annotation.AnnotationPopover
 import presentation.core.ui.source.kit.molecule.annotation.Ruler
 import presentation.core.ui.source.kit.molecule.mirror.MirrorFrameView
 import presentation.core.ui.source.kit.organism.annotation.CommentPopover
+import presentation.core.ui.source.kit.organism.annotation.MeasureCard
+import presentation.core.ui.source.kit.organism.annotation.MeasureSpec
 import presentation.feature.mirror.core.annotation.NOMINAL_POPOVER_HEIGHT_DP
 import presentation.feature.mirror.core.annotation.NOMINAL_POPOVER_WIDTH_DP
 import presentation.feature.mirror.core.annotation.POPOVER_TAIL_GAP_DP
@@ -92,6 +95,15 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_ann
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_annotation_empty_comment
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_annotation_placeholder
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_annotation_save_hint
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_footer
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_hierarchy_dumping
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_hierarchy_unavailable
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_row_bottom
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_row_left
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_row_right
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_row_size
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_row_top
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_title
 
 /**
  * Rotation applied to the horizontal [Ruler] to produce the vertical guide.
@@ -137,6 +149,16 @@ private val GutterRowHeight: Dp = 54.dp
 private val BannerTopInset: Dp = 14.dp
 
 /**
+ * Width the floating Measuring panel is laid out at — the design's own 228 px.
+ *
+ * Named, and the only raw dp this spec adds at a call site: the `ErrorCardWidth` /
+ * [BannerTopInset] precedent in this package. `MeasureCard` itself owns every other figure
+ * (padding, gap, radius, border) as theme tokens, and clamps to its own 360 dp maximum, so the
+ * caller supplies nothing but this width.
+ */
+private val MeasureCardWidth: Dp = 228.dp
+
+/**
  * Dash pattern of a gap guide, in pixels — the same 4-on/3-off hairline `MeasureMark` outlines a
  * neighbour with, so the guide between two marks reads as part of the same drawing.
  *
@@ -178,6 +200,7 @@ internal fun MirrorLiveStage(
         // Measuring needs a pinned frame and a hierarchy dump of it; neither exists while the
         // stream is live, which is also why `shouldMeasure` gates on `frozen`.
         measure = null,
+        hierarchyStatus = HierarchyStatus.Absent,
         onIntent = onIntent,
         modifier = modifier,
     )
@@ -194,6 +217,7 @@ internal fun MirrorLiveStage(
  * @param deviceName Device the frame came from.
  * @param frozen Annotations and selection for this frame.
  * @param measure The measuring readout in flight, or `null`.
+ * @param hierarchyStatus Whether a hierarchy is available for this frame — the panel's footer.
  * @param onIntent Intent sink.
  * @param modifier Modifier applied to the root composable.
  */
@@ -205,6 +229,7 @@ internal fun MirrorFrozenStage(
     canResumeLive: Boolean,
     banner: MirrorDropBanner?,
     measure: MeasureReadout?,
+    hierarchyStatus: HierarchyStatus,
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -215,6 +240,7 @@ internal fun MirrorFrozenStage(
         canResumeLive = canResumeLive,
         banner = banner,
         measure = measure,
+        hierarchyStatus = hierarchyStatus,
         onIntent = onIntent,
         modifier = modifier,
     )
@@ -261,6 +287,7 @@ private fun MirrorAnnotationStage(
     canResumeLive: Boolean,
     banner: MirrorDropBanner?,
     measure: MeasureReadout?,
+    hierarchyStatus: HierarchyStatus,
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier,
 ) {
@@ -481,8 +508,71 @@ private fun MirrorAnnotationStage(
                         .padding(top = BannerTopInset),
                 )
             }
+
+            // FR-42 / AC-67. Fixed at TopStart with one inset, in the same frame-sized box the
+            // banner and Resume Live float in. It is NOT flipped to TopEnd when the measured
+            // node is underneath it: occlusion is accepted (step-2 gate ruling 3), because a
+            // panel that jumps sides as the pointer moves is harder to read than one that
+            // occasionally covers a corner of the frame.
+            measure?.let { readout ->
+                MeasureFloatingCard(readout = readout, hierarchyStatus = hierarchyStatus)
+            }
         }
     }
+}
+
+/**
+ * The floating Measuring panel (FR-42 / AC-67).
+ *
+ * Every figure, the node id and the finding arrive already formatted on [MeasureReadout] — this
+ * supplies only the localised chrome (title, the five row labels, the footer sentence) and the
+ * one width. Padding, gap, radius and border are the organism's own theme tokens.
+ */
+@Composable
+private fun BoxScope.MeasureFloatingCard(
+    readout: MeasureReadout,
+    hierarchyStatus: HierarchyStatus,
+) {
+    MeasureCard(
+        nodeId = readout.nodeId,
+        specs = readout.values.map { value ->
+            MeasureSpec(label = measureRowLabel(value.side), value = value.value)
+        },
+        title = stringResource(Res.string.mirror_measure_title),
+        index = readout.annotationIndex,
+        finding = readout.finding,
+        footer = measureFooter(hierarchyStatus),
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(Theme.spacing.spacingL)
+            .width(MeasureCardWidth),
+    )
+}
+
+/** The panel's row labels. Localised chrome, unlike the figures beside them. */
+@Composable
+private fun measureRowLabel(side: MeasureSide): String = when (side) {
+    MeasureSide.Size -> stringResource(Res.string.mirror_measure_row_size)
+    MeasureSide.Top -> stringResource(Res.string.mirror_measure_row_top)
+    MeasureSide.Right -> stringResource(Res.string.mirror_measure_row_right)
+    MeasureSide.Bottom -> stringResource(Res.string.mirror_measure_row_bottom)
+    MeasureSide.Left -> stringResource(Res.string.mirror_measure_row_left)
+}
+
+/**
+ * The footer sentence — what becomes of these numbers, or why the hierarchy is not behind them.
+ *
+ * The pendency case (AC-72) and the no-hierarchy case (AC-69) are reported HERE rather than by
+ * withholding the panel: every figure is still a real measurement in both, taken against the
+ * annotation box and the frame edges (FR-41), so the honest UI is the same panel with a footer
+ * that says what it was measured against.
+ */
+@Composable
+private fun measureFooter(hierarchyStatus: HierarchyStatus): String = when (hierarchyStatus) {
+    HierarchyStatus.Ready -> stringResource(Res.string.mirror_measure_footer)
+    HierarchyStatus.Dumping -> stringResource(Res.string.mirror_measure_hierarchy_dumping)
+    HierarchyStatus.Absent, HierarchyStatus.Unavailable ->
+        stringResource(Res.string.mirror_measure_hierarchy_unavailable)
 }
 
 /**
@@ -893,6 +983,56 @@ private fun previewCrowded(): FrozenFrame = FrozenFrame(
     ),
 )
 
+/**
+ * A frozen stage mid-measurement — the only rendering check this repo has for AC-67 and NFR-9.
+ *
+ * The five figures, the finding and the node id are the design's own `item_price` readout
+ * verbatim, including the `15dp` Top the design's `measure()` actually produces (the step-2 gate
+ * addendum; the shipped `MeasureCard` preview had `9dp`, which that algorithm cannot produce).
+ * The rects are preview placements on the 1080x2400 stand-in frame, not a re-derivation of the
+ * design's 296x640 fixture — this is the panel and overlay being LOOKED at, not arithmetic being
+ * checked. `core/measure`'s own tests are where the numbers are proved.
+ */
+private fun previewMeasure(): MeasureReadout = MeasureReadout(
+    annotationIndex = 2,
+    nodeId = "TextView#item_price",
+    targetRect = DeviceRect(left = 80, top = 1500, right = 298, bottom = 1577),
+    neighbourRects = listOf(
+        DeviceRect(left = 0, top = 1500, right = 28, bottom = 1577),
+        DeviceRect(left = 60, top = 1400, right = 320, bottom = 1460),
+    ),
+    values = listOf(
+        MeasureValue(MeasureSide.Size, "48\u00d717dp"),
+        MeasureValue(MeasureSide.Top, "15dp"),
+        MeasureValue(MeasureSide.Right, "20dp"),
+        MeasureValue(MeasureSide.Bottom, "49dp"),
+        MeasureValue(MeasureSide.Left, "62dp"),
+    ),
+    guides = listOf(
+        MeasureGuide(
+            side = MeasureSide.Top,
+            label = "15dp",
+            from = IntOffset(189, 1460),
+            to = IntOffset(189, 1500),
+        ),
+        MeasureGuide(
+            side = MeasureSide.Left,
+            label = "20dp",
+            from = IntOffset(28, 1538),
+            to = IntOffset(80, 1538),
+        ),
+    ),
+    rail = MeasureGuide(
+        side = MeasureSide.Top,
+        label = "\u03946dp",
+        from = IntOffset(60, 1400),
+        to = IntOffset(298, 1400),
+    ),
+    finding = "top \u03946dp vs item_title \u00b7 expected 0",
+    unit = MeasureUnit.Dp,
+    noteLine = "\u2325 TextView#item_price 48\u00d717dp \u00b7 top 15dp",
+)
+
 @Preview
 @Composable
 private fun MirrorLiveStagePreview() {
@@ -915,6 +1055,7 @@ private fun MirrorFrozenStagePreview() {
                 canResumeLive = true,
                 banner = null,
                 measure = null,
+                hierarchyStatus = HierarchyStatus.Absent,
                 onIntent = {},
             )
         }
@@ -935,6 +1076,52 @@ private fun MirrorFrozenStageCrowdedPreview() {
                 canResumeLive = false,
                 banner = MirrorDropBanner(deviceId = "37281FDH2000AB", annotationCount = 2),
                 measure = null,
+                hierarchyStatus = HierarchyStatus.Absent,
+                onIntent = {},
+            )
+        }
+    }
+}
+
+/**
+ * The measuring stage, light and dark (AC-67 / NFR-9).
+ *
+ * A pair and not one preview with a toggle: the finding block is `annotate` at 10% over
+ * `surface` and the node id is the `measure` signal colour, and those are exactly the two
+ * composites that can go unreadable in one palette while looking right in the other.
+ */
+@Preview
+@Composable
+private fun MirrorFrozenStageMeasuringLightPreview() {
+    AppTheme(mode = ThemeMode.Light) {
+        Box(modifier = Modifier.background(Theme.color.stage)) {
+            MirrorFrozenStage(
+                frame = previewFrame(),
+                deviceName = "Pixel 8 Pro",
+                frozen = previewFrozen(),
+                canResumeLive = true,
+                banner = null,
+                measure = previewMeasure(),
+                hierarchyStatus = HierarchyStatus.Ready,
+                onIntent = {},
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun MirrorFrozenStageMeasuringDarkPreview() {
+    AppTheme(mode = ThemeMode.Dark) {
+        Box(modifier = Modifier.background(Theme.color.stage)) {
+            MirrorFrozenStage(
+                frame = previewFrame(),
+                deviceName = "Pixel 8 Pro",
+                frozen = previewFrozen(),
+                canResumeLive = true,
+                banner = null,
+                measure = previewMeasure(),
+                hierarchyStatus = HierarchyStatus.Ready,
                 onIntent = {},
             )
         }
