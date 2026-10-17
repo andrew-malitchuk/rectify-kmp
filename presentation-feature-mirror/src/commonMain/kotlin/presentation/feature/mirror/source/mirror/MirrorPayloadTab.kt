@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -55,8 +56,10 @@ import presentation.feature.mirror.core.payload.CropWindow
 import presentation.feature.mirror.core.payload.PayloadNodeRow
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
+import presentation.feature.mirror.core.payload.footerLabel
 import presentation.feature.mirror.core.payload.hierarchySourceLabel
 import presentation.feature.mirror.core.payload.payloadHierarchyRows
+import presentation.feature.mirror.core.payload.payloadSizeLabel
 import presentation.feature.mirror.core.payload.tokenEstimate
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_hierarchy_unavailable
@@ -159,7 +162,14 @@ private val HierarchyOutlineMaxHeight: Dp = 338.dp
  * Scrolls rather than lazily composing, for [MirrorNotesTab]'s reason: a frozen frame carries a
  * handful of annotations, and the sections below the prompt are a fixed, small set.
  *
- * Still to land in this file: the payload footer.
+ * The footer is **pinned**, not appended to the scrolling content: the sections live in an inner
+ * `weight(1f)` [Column] that owns the scroll, and [PayloadFooter] sits below it. That is the
+ * design's shape (a `flex:none` last child of a column whose content area scrolls) and the only
+ * one that keeps the payload's size readable while the user is reading the prompt. It costs this
+ * composable **one host contract**: the caller must give it a bounded height — a `weight` child
+ * measured under an infinite height constraint collapses to zero. `SidePanelFrame` satisfies
+ * that (its content slot is a child of a `fillMaxHeight` column), which is why the previews
+ * below pin an explicit [PreviewPanelHeight] instead of wrapping the content.
  *
  * The hierarchy outline is the one block that is **not** a plain [Column] of children: it is a
  * [LazyColumn] with a capped height, because a dump runs to hundreds of nodes. See
@@ -211,25 +221,29 @@ public fun MirrorPayloadTab(
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(Theme.spacing.spacingS),
-        verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingL),
-    ) {
-        PayloadPromptSection(
-            frozen = frozen,
-            hierarchy = hierarchy,
-            rows = rows,
-            onIntent = onIntent,
-        )
-        PayloadCropsSection(frozen = frozen, frame = frame)
-        PayloadHierarchySection(
-            rows = rows,
-            status = state.hierarchyStatus,
-            nodeCount = hierarchy.nodes.size,
-        )
+    Column(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(Theme.spacing.spacingS),
+            verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingL),
+        ) {
+            PayloadPromptSection(
+                frozen = frozen,
+                hierarchy = hierarchy,
+                rows = rows,
+                onIntent = onIntent,
+            )
+            PayloadCropsSection(frozen = frozen, frame = frame)
+            PayloadHierarchySection(
+                rows = rows,
+                status = state.hierarchyStatus,
+                nodeCount = hierarchy.nodes.size,
+            )
+        }
+        PayloadFooter(count = frozen.annotations.size)
     }
 }
 
@@ -605,7 +619,68 @@ private fun PayloadHierarchySection(
     }
 }
 
+/**
+ * The payload footer: what ships on the left, what it weighs on the right (AC-16).
+ *
+ * Both strings come straight from `core/payload/PayloadEstimate.kt` — [footerLabel] and
+ * [payloadSizeLabel] — and nothing here re-derives either one. That is the whole point of the
+ * block: the readout and the exported payload share one source, so a displayed size that
+ * disagrees with the real one is not expressible. It also makes AC-78 free — [count] is read
+ * from state, so adding, removing or editing an annotation recomposes both labels in the same
+ * frame as the crop grid, with no cache to invalidate.
+ *
+ * The left label is capped to one line with an ellipsis: it is machine text that grows with the
+ * crop count, and a panel dragged narrow must not reflow the footer into two rows and shove the
+ * size label off the bottom. The size label is unweighted, so it is measured first and keeps its
+ * full width — the file list is what gives way.
+ *
+ * @param count Staged annotations on the pinned frame, i.e. the crop count. Not `frame.png` plus
+ *   the hierarchy — [footerLabel] names those itself.
+ */
+@Composable
+private fun PayloadFooter(count: Int) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Same hairline as `ShellStatusBar`'s: a `line`-filled Box, not a `border`, so it spans
+        // the full panel width while the row below it keeps its own inset.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Theme.stroke.thin)
+                .background(Theme.color.line),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Theme.spacing.spacingS),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = footerLabel(count),
+                style = Theme.typography.monoMeta,
+                color = Theme.color.ink3,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                // `fill = false` so a short label leaves slack for SpaceBetween to distribute,
+                // rather than swallowing the gap and pinning itself to the size label.
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text(
+                text = payloadSizeLabel(count),
+                style = Theme.typography.monoMeta,
+                color = Theme.color.ink3,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
 private val PreviewDeviceSize = IntSize(width = 1080, height = 2400)
+
+/**
+ * Height the previews give the tab, standing in for the panel's content area off the canonical
+ * 820 dp window. Needed, not cosmetic: the pinned footer rides a `weight(1f)` content area, so a
+ * height-wrapping preview would render the footer alone over a collapsed body.
+ */
+private val PreviewPanelHeight: Dp = 640.dp
 
 private fun previewState(): MirrorUiState = MirrorUiState(
     isPickerOpen = false,
@@ -712,7 +787,7 @@ private fun rememberPreviewFrame(): ImageBitmap {
 @Composable
 private fun MirrorPayloadTabPreview() {
     AppTheme {
-        Column(modifier = Modifier.background(Theme.color.surface)) {
+        Column(modifier = Modifier.background(Theme.color.surface).height(PreviewPanelHeight)) {
             MirrorPayloadTab(
                 state = previewState(),
                 frame = rememberPreviewFrame(),
@@ -728,7 +803,7 @@ private fun MirrorPayloadTabPreview() {
 @Composable
 private fun MirrorPayloadTabNoHierarchyPreview() {
     AppTheme {
-        Column(modifier = Modifier.background(Theme.color.surface)) {
+        Column(modifier = Modifier.background(Theme.color.surface).height(PreviewPanelHeight)) {
             MirrorPayloadTab(
                 state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
                 frame = rememberPreviewFrame(),
