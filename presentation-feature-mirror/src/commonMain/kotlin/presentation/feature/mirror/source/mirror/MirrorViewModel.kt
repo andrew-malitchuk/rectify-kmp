@@ -374,15 +374,32 @@ public class MirrorViewModel(
      *
      * A dump that is still in flight when the frame is released is cancelled by
      * [releaseHierarchy] instead of being allowed to reduce a verdict about a frame that is gone.
+     *
+     * A dump whose own frame size disagrees with the frozen frame also reduces
+     * [HierarchyStatus.Unavailable], even though the command itself succeeded.
+     * [projectMeasureNodes] discards such a snapshot wholesale — the T-1 spike measured a 9.76 %
+     * gap between what `uiautomator` reports and the physical screen, so numbers taken from a
+     * mismatched hierarchy would be confidently wrong rather than absent. Reducing `Ready` here
+     * would then leave the status claiming a usable hierarchy while every measure silently fell
+     * back to `View (no match)` — the status contradicting its own behaviour, which is the defect
+     * AC-72 and the `Dumping` label both exist to prevent.
      */
     private fun dumpHierarchyFor(deviceId: String) {
         dumpJob?.cancel()
         dumpJob = viewModelScope.launch {
             val snapshot = dumpHierarchy(deviceId).getOrNull()
             currentFrozenHierarchy.value = snapshot ?: HierarchySnapshotModel.Empty
-            val status =
-                if (snapshot == null) HierarchyStatus.Unavailable else HierarchyStatus.Ready
-            intent { reduce { state.copy(hierarchyStatus = status) } }
+            intent {
+                reduce {
+                    val usable = snapshot != null &&
+                        projectMeasureNodes(snapshot, state.frozen?.deviceSize ?: IntSize.Zero)
+                            .isNotEmpty()
+                    state.copy(
+                        hierarchyStatus =
+                            if (usable) HierarchyStatus.Ready else HierarchyStatus.Unavailable,
+                    )
+                }
+            }
         }
     }
 

@@ -210,6 +210,31 @@ class MirrorViewModelMeasureTest {
         assertEquals(frozenBefore, viewModel.currentState.frozen)
     }
 
+    /**
+     * Stage 6 review finding — a dump that SUCCEEDS but whose own frame size disagrees with the
+     * frozen frame must still reduce `Unavailable`.
+     *
+     * `projectMeasureNodes` discards a mismatched snapshot wholesale, because the T-1 spike
+     * measured a 9.76 % gap between what `uiautomator` reports and the physical screen and
+     * numbers taken from the wrong geometry would be confidently wrong. Reducing `Ready` on the
+     * command's success alone left the status claiming a usable hierarchy while every measure
+     * silently fell back to `View (no match)` — the status contradicting its own behaviour, the
+     * same defect class as the dot that said one thing while the label beside it said FROZEN.
+     */
+    @Test
+    fun aDumpWhoseFrameDisagreesWithTheFrozenFrameReducesUnavailableNotReady() =
+        runTest(mainDispatcher) {
+            val (viewModel, dumpHierarchy) = freezeWithManualDump()
+            val frozenBefore = viewModel.currentState.frozen
+            val mismatched = snapshotFor().copy(frameWidthPx = 1080, frameHeightPx = 2400)
+
+            dumpHierarchy.resolve(Result.success(mismatched))
+            advanceUntilIdle()
+
+            assertEquals(HierarchyStatus.Unavailable, viewModel.currentState.hierarchyStatus)
+            assertEquals(frozenBefore, viewModel.currentState.frozen)
+        }
+
     /** T-10 / TAC-22 — a failed dump reduces `Unavailable` without delaying or altering the freeze. */
     @Test
     fun dumpFailureReducesUnavailableWithoutAlteringTheFreeze() = runTest(mainDispatcher) {
