@@ -563,8 +563,8 @@
     "id": "mirror-host",
     "name": "MirrorHost",
     "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt",
-    "props": "viewModel: MirrorViewModel = koinViewModel(), onSideEffect: suspend (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> }, content: @Composable (MirrorUiState, ImageBitmap?, (MirrorIntent) -> Unit) -> Unit",
-    "description": "Koin/Orbit boundary for the mirror feature: injects MirrorViewModel, pumps side effects (with an intent sink so a platform answer such as a file-dialog path can come back in) and hands state+frame+intent to a plain content lambda. This is how RectifyWindow mounts the feature into the shell slots."
+    "props": "viewModel: MirrorViewModel = koinViewModel(), onSideEffect: suspend (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> }, content: @Composable (MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit) -> Unit",
+    "description": "Koin/Orbit boundary for the mirror feature. Content lambda is 4-arg: the non-null cached HierarchySnapshotModel is handed in third from MirrorViewModel.frozenHierarchy, so it reaches the panel without entering reduced state. Exactly one call site."
   },
   {
     "id": "mirror-stage-content",
