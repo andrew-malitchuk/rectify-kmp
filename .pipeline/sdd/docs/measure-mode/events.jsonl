@@ -33,3 +33,4 @@
 {"stage": "execution", "event": "note", "note": "operator delegated all remaining decisions to the orchestrator and left the session", "at": "2026-10-16T22:07:08Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "wave-4", "event": "end", "tokens": 496586, "at": "2026-10-16T22:19:21Z", "spec": "measure-mode"}
 {"stage": "execution", "step": "batch-a", "event": "end", "tokens": 663680, "at": "2026-10-16T23:03:29Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "batch-b", "event": "end", "tokens": 124902, "at": "2026-10-17T07:40:08Z", "spec": "measure-mode"}

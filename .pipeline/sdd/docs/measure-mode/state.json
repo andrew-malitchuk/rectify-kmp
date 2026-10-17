@@ -72,6 +72,16 @@
       "status": "done",
       "wave": 7,
       "worktreeBranch": "task/batch-a"
+    },
+    "T-9": {
+      "status": "done",
+      "wave": 8,
+      "worktreeBranch": "task/batch-b"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 9,
+      "worktreeBranch": "task/batch-b"
     }
   },
   "effort": "fast",
