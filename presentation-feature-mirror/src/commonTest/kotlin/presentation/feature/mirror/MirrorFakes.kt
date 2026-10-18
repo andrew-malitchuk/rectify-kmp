@@ -4,6 +4,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.colorspace.ColorSpace
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import data.handoff.api.source.envelope.AnnotationEnvelope
+import data.handoff.api.source.envelope.HandoffImage
+import data.handoff.api.source.handoff.AnnotationHandoff
 import domain.core.source.model.device.DeviceModel
 import domain.core.source.model.device.DeviceStateModel
 import domain.core.source.model.device.DiscoveryModel
@@ -36,8 +39,13 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import org.orbitmvi.orbit.Orbit
+import presentation.feature.mirror.source.mirror.CropEncoder
+import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.MirrorViewModel
+import kotlin.time.Duration
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * A selectable physical device carrying both an Android release and a transport — the shape
@@ -252,6 +260,65 @@ internal class FakeDumpHierarchy(
 }
 
 /**
+ * Records every publish, and can be made to throw instead (T-9's failure path).
+ *
+ * [manual] mirrors [FakeDumpHierarchy]'s gate: a test proving "a second ResolveAndSend while one
+ * is already in flight is dropped" (TAC-1) needs [publish] to still be suspended when the second
+ * dispatch happens, rather than racing a real suspension against `advanceUntilIdle()`.
+ */
+internal class FakeAnnotationHandoff(
+    private val failure: Throwable? = null,
+    private val manual: Boolean = false,
+) : AnnotationHandoff {
+
+    val published: MutableList<AnnotationEnvelope> = mutableListOf()
+    val publishedImages: MutableList<List<HandoffImage>> = mutableListOf()
+
+    private var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun publish(envelope: AnnotationEnvelope, images: List<HandoffImage>) {
+        if (manual) {
+            val deferred = CompletableDeferred<Unit>()
+            gate = deferred
+            deferred.await()
+        }
+        failure?.let { throw it }
+        published += envelope
+        publishedImages += images
+    }
+
+    override suspend fun latest(): AnnotationEnvelope? = published.lastOrNull()
+
+    override fun resolve(envelope: AnnotationEnvelope, name: String): String = "file:///fake/$name"
+
+    /** Releases a [publish] call parked behind [manual]. */
+    fun release() {
+        gate?.complete(Unit)
+    }
+}
+
+/** Records every crop region it was asked to encode; returns [bytes] for every call. */
+internal class FakeCropEncoder(private val bytes: ByteArray? = ByteArray(1)) : CropEncoder {
+
+    val encodedRects: MutableList<DeviceRect> = mutableListOf()
+
+    override suspend fun encode(frame: ImageBitmap, rect: DeviceRect): ByteArray? {
+        encodedRects += rect
+        return bytes
+    }
+}
+
+/**
+ * A [TimeSource] whose every mark reports a FIXED [elapsedNow] — T-9's determinism seam so a test
+ * never has to assert against how long the test process actually took to run.
+ */
+internal class FakeTimeSource(private val elapsedPerMark: Duration) : TimeSource {
+    override fun markNow(): TimeMark = object : TimeMark {
+        override fun elapsedNow(): Duration = elapsedPerMark
+    }
+}
+
+/**
  * Builds a ViewModel with every seam faked.
  *
  * The decode seam returns `null` by default: most tests assert the state machine and need no
@@ -268,6 +335,10 @@ internal fun mirrorViewModel(
     setAdbPath: SetAdbPathUseCase = FakeSetAdbPath(),
     dumpHierarchy: DumpHierarchyUseCase = FakeDumpHierarchy(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
+    handoff: AnnotationHandoff = FakeAnnotationHandoff(),
+    encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
+    nowMs: () -> Long = { 0L },
+    elapsed: TimeSource = FakeTimeSource(Duration.ZERO),
 ): MirrorViewModel = MirrorViewModel(
     detectTools = detectTools,
     observeDiscovery = discovery,
@@ -279,6 +350,10 @@ internal fun mirrorViewModel(
     setAdbPath = setAdbPath,
     dumpHierarchy = dumpHierarchy,
     decodeFrame = decodeFrame,
+    handoff = handoff,
+    encodeCrop = encodeCrop,
+    nowMs = nowMs,
+    elapsed = elapsed,
 )
 
 /**
