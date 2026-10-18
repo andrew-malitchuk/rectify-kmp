@@ -1,0 +1,418 @@
+{
+  "iteration": 1,
+  "findings": [
+    {
+      "id": "AF-1",
+      "severity": "error",
+      "about": "task",
+      "ref": "T-11",
+      "issue": "McpDispatcher.render() calls handoff.resolve() OUTSIDE the runCatching that guards handoff.latest(). FileSlotAnnotationHandoff.resolve() throws IllegalArgumentException (asBareName) for any framePath/cropPath that is not a bare file name. The exception escapes handle(), escapes main()'s generateSequence{...}.forEach, and KILLS THE SERVER PROCESS with exit 1 and ZERO stdout — the client is left hanging on an unanswered request id. This directly contradicts three shipped claims: McpDispatcher's own KDoc ('a handoff that throws while answering a tool call is caught the same way rather than escaping (TAC-8)'), TAC-4 ('the loop keeps reading'), and plan NFR-4's 'resolve() path-traversal rejection' — the guard exists but converts a traversal attempt into a denial of service instead of a rejection. The existing test aThrowingHandoffYieldsAToolErrorAndTheDispatcherKeepsRunning cannot catch this because mcp-application's FakeAnnotationHandoff.resolve() never throws (TestFixtures.kt:83).",
+      "evidence": "REPRODUCED against the real installDist launcher. latest.json framePath set to '../../../../etc/passwd', then: printf '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"get_latest_annotation\"}}\\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\\n' | JAVA_OPTS=-Duser.home=<tmp> ./mcp-application/build/install/rectify-mcp/bin/rectify-mcp  ->  EXIT=1, stdout 0 lines, stderr: 'Exception in thread \"main\" java.lang.IllegalArgumentException: handoff image name must be a bare file name, got: ../../../../etc/passwd / at FileSlotAnnotationHandoffKt.asBareName(FileSlotAnnotationHandoff.kt:104) / at FileSlotAnnotationHandoff.resolve(FileSlotAnnotationHandoff.kt:81) / at McpDispatcher.render$lambda$0$2(McpDispatcher.kt:145) / at McpDispatcher.render(McpDispatcher.kt:144)'. The id=2 tools/list that followed on stdin was never processed.",
+      "recommendedTarget": "T-11"
+    },
+    {
+      "id": "AF-2",
+      "severity": "error",
+      "about": "task",
+      "ref": "T-13",
+      "issue": "T-13 is BLOCKED and the spec is NOT fully done. Its own acceptance IS the recorded manual end-to-end demo (TAC-3/TAC-4: a real Claude Code session calling get_latest_annotation, the AC-81 repeat-call, the NFR-3 2s timing measurement, and the inline byte-size check). That demo was never performed — no device was attached at any point ('adb devices' empty all session) and no real Claude Code MCP config was exercised. The cross-target build gate half of T-13 IS satisfied (re-verified below); the demo half is not. Marking this spec 'done' would be false.",
+      "evidence": "state.json tasks.T-13 = {status: blocked, blockedReason: 'manual end-to-end demo requires a real device and a real Claude Code session'}; execution/T-13/report.json data.outcome = 'partial', needsHumanReview.required = true. No demo artefact exists anywhere under .pipeline/sdd/docs/resolve-and-send-mcp/.",
+      "recommendedTarget": "T-13"
+    },
+    {
+      "id": "AF-3",
+      "severity": "warn",
+      "about": "ac",
+      "ref": "AC-32",
+      "issue": "The plan's traceability row for AC-32 and for AS-28 both state the new version tests 'replaces the tautological bugs.json#PP-TD-4 assertion'. They do not. The tautology is still in the tree, unmodified. New behavioural assertions were ADDED; nothing was replaced or deleted. The AC-32 behaviour itself IS satisfied (see traceability) — this finding is about the unmet replacement commitment and the surviving PP-TD-4 defect.",
+      "evidence": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PayloadEstimateTest.kt:160 still reads `assertEquals(1, PAYLOAD_FORMAT_VERSION)`. `git diff development...sdd/resolve-and-send-mcp --name-status` does not list PayloadEstimateTest.kt at all.",
+      "recommendedTarget": "T-6"
+    },
+    {
+      "id": "AF-4",
+      "severity": "warn",
+      "about": "diff",
+      "ref": "T-6",
+      "issue": "The buildPrompt contradiction T-6 flagged IS shipping, and is worse than flagged. buildPrompt's trailer is unconditional: `\"Attached: frame.png, $count crops, hierarchy.xml\"`. Three independent lies are reachable: (a) a hierarchy-less send ships an envelope with hierarchyAvailable=false / hierarchyXml=\"\" whose own prompt tells the agent hierarchy.xml is attached; (b) there is NEVER a file named hierarchy.xml in the send directory on ANY path — the hierarchy only ever rides inline in the envelope's hierarchyXml field, so the named attachment does not exist even on the happy path; (c) `$count crops` is the staged count, but EnvelopeAssembly emits cropPath=null (and no HandoffImage) for every annotation whose encode returned null, so the prompt can promise N crops when fewer or zero were attached. The same unconditional claim is duplicated in the completion toast: toastLabel() hardcodes '· frame + hierarchy ·' with no hierarchyAvailable parameter at all.",
+      "evidence": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PromptAssembly.kt:84 `return (header + blocks + \"Attached: frame.png, $count crops, hierarchy.xml\").joinToString(\"\\n\")`; core/send/EnvelopeAssembly.kt:95-105 (null bytes -> cropPath=null, no image appended) and :119 `hierarchyAvailable = hierarchyXml.isNotEmpty()`; core/send/SendLabels.kt:33 `return \"Sent $count $noun to Claude Code · frame + hierarchy · $elapsed\"`. Live probe confirms the agent-visible text: the tool result for a real slot returned both `\"hierarchy\": {\"available\": ...}` and a prompt string ending `Attached: frame.png, 1 crops, hierarchy.xml`.",
+      "recommendedTarget": "T-6"
+    },
+    {
+      "id": "AF-5",
+      "severity": "warn",
+      "about": "task",
+      "ref": "T-10",
+      "issue": "T-10's deliberate 'do not reset send to Idle on success' is NOT defensible as shipped, for a reason distinct from the one disclosed. The success branch sets frozen=null and calls withoutMeasurements() (which sets hierarchyStatus=Absent) while leaving send=SendPhase.Sent. SendStatusOverlay is visible whenever send != Idle, so the line that lingers over the resumed LIVE stage renders sendSteps(Sent, Streaming, Absent) = 'Streaming(Done) · Frozen(Frozen) · Dumping hierarchy(PENDING) · Sent(Done)' — a step-2 'Frozen' dot over a stage with nothing frozen, and a step-3 'Dumping hierarchy' back in Pending next to a completed step 4. It also breaks sendSteps' own documented invariant, which states verbatim: 'Every call to this function happens after MirrorUiState.frozen is already non-null'. That is now false on exactly the happy path. AC-19's 'Sent dot stays observable' is achievable without regressing steps 2 and 3.",
+      "evidence": "MirrorViewModel.kt:839-846 (success branch: `releaseFrozenFrame(); releaseHierarchy(); reduce { state.copy(frozen = null, send = SendPhase.Sent).withoutMeasurements() }` — note it does NOT call resumeLive(), which would have set Idle); MirrorViewModel.kt:525 `withoutMeasurements() = copy(measure = null, hierarchyStatus = HierarchyStatus.Absent)`; MirrorContent.kt SendStatusOverlay `visible = state.send != SendPhase.Idle`; core/send/SendProjection.kt KDoc lines 'Every call to this function happens after ... frozen is already non-null'.",
+      "recommendedTarget": "T-10"
+    },
+    {
+      "id": "AF-6",
+      "severity": "warn",
+      "about": "diff",
+      "ref": "data-handoff-api",
+      "issue": "The T-12 installDist fix is consumer-side only — :data-handoff-api itself still carries exactly the dependencies the spec's prose says it does not. The module is genuinely Koin-free (decision honoured: no di convention plugin, UnsupportedAnnotationHandoff deliberately exiled to presentation-feature-mirror), but LibraryConventionPlugin still wires lifecycle-viewmodel + lifecycle-runtime-compose (and transitively Compose runtime) into its commonMain, and they are on its real resolved desktopRuntimeClasspath. :mcp-application only escapes because it excludes two groups at its own dependency site. Any FUTURE consumer of :data-handoff-api inherits the baggage, and the duplicate lifecycle-common-jvm jar collision in a flat lib/ dir returns. Root cause is the convention plugin, which is outside this spec's scope and correctly left open by T-12 — recording it so the gate sees the fix is a patch, not a resolution.",
+      "evidence": "`./gradlew :data-handoff-api:dependencies --configuration desktopRuntimeClasspath` lists `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0` and `org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.11.0` as direct entries. build-logic/.../LibraryConventionPlugin.kt:105-106. mcp-application/build.gradle.kts exclude(group=\"androidx.lifecycle\") / exclude(group=\"org.jetbrains.androidx.lifecycle\"). The exclude DOES work: mcp-application/build/install/rectify-mcp/lib/ holds exactly 7 jars (kotlin-stdlib, coroutines-core-jvm, serialization-core/json-jvm, annotations, data-handoff-api-desktop, mcp-application) with zero lifecycle/Compose jars.",
+      "recommendedTarget": "T-12"
+    },
+    {
+      "id": "AF-7",
+      "severity": "warn",
+      "about": "diff",
+      "ref": "MirrorViewModel.frozenHeld",
+      "issue": "CONTRADICTS the briefed expectation: T-1's `internal val frozenHeld` still has NO production consumer after T-6 and T-9. The send handler reads the PRIVATE backing field `currentFrozenHeld.value` directly, never the exposed StateFlow. Every remaining reference to `frozenHeld` is either a test or a KDoc link. It is test-only API surface — dead production code by the definition T-1 itself used.",
+      "evidence": "`grep -rn frozenHeld --include *.kt` outside build/: declaration at MirrorViewModel.kt:177; consumers are MirrorViewModelResolveAndSendDesktopTest.kt:177, MirrorViewModelResolveAndSendTest.kt:276,291, MirrorViewModelHeldFramePairingTest.kt:50,110 — all tests — plus KDoc-only mentions in EnvelopeAssembly.kt:33,51 and MirrorViewModel.kt:72. The production read is MirrorViewModel.kt:793 `val held = currentFrozenHeld.value`.",
+      "recommendedTarget": "T-9"
+    },
+    {
+      "id": "AF-8",
+      "severity": "warn",
+      "about": "registry",
+      "ref": "registry/features.json",
+      "issue": "CONFIRMED as briefed, and the inconsistency is two-sided. registry/features.json holds 16 entries and has NO entry for measure-mode (F-5), payload-preview (F-6) or resolve-and-send-mcp (F-7) — all three merged or merging. Meanwhile docs/index.json DOES list all three, so the two registries actively disagree about what exists. registry/components.json likewise gained nothing for this spec (no handoff / mcp / send-status-overlay entry). registry/bugs.json still carries PP-TD-2 unqualified even though T-7 fixed it this spec, and PP-TD-4 (which is genuinely still broken, see AF-3). bugs.json entries have no status/resolution field at all, so a fixed bug and a live one are indistinguishable. This spec's diff touches docs/index.json and nothing else under registry/.",
+      "evidence": "`jq '.[].id' .pipeline/sdd/docs/registry/features.json` -> app-shell-window-layout, android-device-discovery-mirroring, drag-annotate-frozen-frame, error-handling-and-recovery, splash, onboarding, home, settings, about, styleguide-showcase, navigation, localisation, preferences, database, theming, error-propagation (16, none of F-5/F-6/F-7). `git diff development...sdd/resolve-and-send-mcp --name-only -- .pipeline/sdd/docs/registry` -> empty. index.json diff adds {\"spec\":\"resolve-and-send-mcp\",\"currentStage\":\"execution\"} while state.json says currentStage=validation.",
+      "recommendedTarget": "T-12"
+    },
+    {
+      "id": "AF-9",
+      "severity": "warn",
+      "about": "ac",
+      "ref": "AC-19",
+      "issue": "AC-19's ordered sequence is not what the code can produce, independently of the missing demo. AC-19 asks for 'Streaming -> Frozen -> Dumping hierarchy -> Sent displays IN ORDER'. sendSteps drives step 3 off state.hierarchyStatus, and the hierarchy dump happens at FREEZE time, not during the send — so by the moment a send starts, step 3 is already Done (or already Absent/Pending and will never move). Only step 4 animates. The ordered four-step progression the AC describes is therefore unobservable: steps 1-3 are static from the first frame the overlay appears. This is documented honestly in sendSteps' KDoc ('the dump happens at freeze time, not during the send') — it is a declared behaviour divergence from the AC text, not a hidden bug, but AC-19 is verificationMethod=demo and the demo that would have surfaced it was not run.",
+      "evidence": "core/send/SendProjection.kt sendSteps(): step 3's state is `when (hierarchy) { Dumping -> Busy; Ready -> Done; Absent, Unavailable -> Pending }` with no dependence on `phase`; @param hierarchy KDoc: 'which drives step 3 independently of phase: the dump happens at freeze time, not during the send'. Only the step-4 `when (phase)` branch moves during a send.",
+      "recommendedTarget": "T-13"
+    },
+    {
+      "id": "AF-10",
+      "severity": "info",
+      "about": "task",
+      "ref": "T-2",
+      "issue": "T-2's frozen-test-collision resolution verified, and the blast radius is slightly wider than the disclosure states. DeviceRepositoryImpl collapses to HierarchySnapshotModel.Empty (rawDump=\"\") whenever `nodes.isEmpty() && densityDpi == 0` — BOTH conditions. So rawDump is dropped not only for a completely unparseable dump, but also for a structurally valid but node-less dump (e.g. `<hierarchy rotation=\"0\"></hierarchy>`) on a device whose `wm density` also failed. Conversely a garbage dump on a device whose density DID parse keeps its rawDump and could forward an adb error message to the agent as a hierarchy. The consequence is acceptable in both directions (EnvelopeAssembly only reads rawDump when hierarchyStatus == Ready, and an Empty snapshot degrades to hierarchyAvailable=false for free), but the disclosed framing understates it.",
+      "evidence": "data-repository-impl/src/commonMain/.../DeviceRepositoryImpl.kt:347-352 `return if (snapshot.nodes.isEmpty() && snapshot.densityDpi == 0) HierarchySnapshotModel.Empty else snapshot`; EnvelopeAssembly.kt:80-86 hierarchy branch gated on `hierarchyStatus == HierarchyStatus.Ready`.",
+      "recommendedTarget": "T-2"
+    },
+    {
+      "id": "AF-11",
+      "severity": "info",
+      "about": "diff",
+      "ref": "test-file edits",
+      "issue": "NO UNDISCLOSED TEST MODIFICATIONS. Adversarially checked: across the entire cumulative diff, exactly ONE pre-existing test file is modified and ZERO are deleted. That one file is presentation-feature-mirror/src/commonTest/.../MirrorFakes.kt, modified purely additively by T-9 (three imports, three new fakes FakeAnnotationHandoff/FakeCropEncoder/FakeTimeSource, four new defaulted parameters on the mirrorViewModel() builder). No existing assertion was weakened, renamed or removed. The AwtCropEncoderTest import fix T-5 disclosed is invisible here because AwtCropEncoderTest is a file this spec ADDED — it was never a frozen file in the cumulative diff's terms.",
+      "evidence": "`git diff development...sdd/resolve-and-send-mcp --name-status -- . ':(exclude).pipeline/*' | grep -iE 'test'` -> 30 'A' lines, exactly 1 'M' line (MirrorFakes.kt), 0 'D' lines. Full MirrorFakes.kt diff is +72/-0.",
+      "recommendedTarget": ""
+    },
+    {
+      "id": "AF-12",
+      "severity": "info",
+      "about": "task",
+      "ref": "T-11",
+      "issue": "INDEPENDENTLY RE-VERIFIED the server half of AC-18/AC-81/FR-56/AS-32/SC-26/SC-28/SC-29, not taken from the orchestrator's report. I rebuilt installDist and drove the real launcher over stdio against a hand-written latest.json in an isolated -Duser.home. All of the following are real observed behaviour: initialize echoes protocolVersion 2024-11-05; notifications/initialized produces no output line; tools/list returns exactly one tool (get_latest_annotation) with an empty-object inputSchema; two identical tools/call requests return byte-identical results modulo the id; an unparseable line returns -32700 with id null AND THE LOOP CONTINUES; an unknown method returns -32601 AND THE LOOP CONTINUES; exactly 6 stdout lines for 7 stdin lines; the pretty-printed inner document never leaks a real newline onto stdout; every diagnostic went to stderr; exit 0 on EOF. Note the sharp contrast with AF-1: the loop survives malformed INPUT but not a malformed SLOT.",
+      "evidence": "7 stdin lines -> `wc -l` = 6 stdout lines, EXIT=0. Line 1: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"rectify\",\"version\":\"0.4\"}}}. Line 5: {\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error: Unexpected JSON token at offset 6...\"}}. Line 6: {\"jsonrpc\":\"2.0\",\"id\":6,\"error\":{\"code\":-32601,\"message\":\"Method not found: bogus/method\"}}. Lines 3 and 4 compared with id normalised: identical. stderr: 'rectify-mcp: reading the handoff slot under <tmp>/.rectify/handoff'.",
+      "recommendedTarget": ""
+    },
+    {
+      "id": "AF-13",
+      "severity": "info",
+      "about": "diff",
+      "ref": "MirrorViewModelResolveAndSendDesktopTest.kt:72",
+      "issue": "New test reaches into MirrorViewModel by java.lang.reflect to null out the PRIVATE field `currentFrozenHeld`, with @Suppress(\"UNCHECKED_CAST\"). It is the only @Suppress added by this spec. A rename of that private field will not fail compilation — it will fail at runtime with NoSuchFieldException, and only on desktopTest. Justified in its KDoc and precedented by MirrorUiStateSendFieldTest, so recorded as a brittleness nit rather than a defect.",
+      "evidence": "presentation-feature-mirror/src/desktopTest/.../MirrorViewModelResolveAndSendDesktopTest.kt:72-78 `@Suppress(\"UNCHECKED_CAST\") private fun forceFrozenHeldToNull(...) { val field = MirrorViewModel::class.java.getDeclaredField(\"currentFrozenHeld\") ... }`.",
+      "recommendedTarget": ""
+    },
+    {
+      "id": "AF-14",
+      "severity": "info",
+      "about": "diff",
+      "ref": "NFR-4 / NFR-15 inspections",
+      "issue": "Two inspection-method clauses pass cleanly and are recorded as positively verified rather than assumed. (1) NFR-4 stdio-only: grepping every added line of production code for ServerSocket / java.net.Socket / io.ktor / HttpClient / URLConnection / bind( / localhost: / 127.0.0.1 returns ZERO hits, and the shipped installDist classpath contains no network library. (2) NFR-15's dependency clause: gradle/libs.versions.toml is untouched by the entire cumulative diff — zero new catalog entries, exactly as the plan required. NFR-15's no-bespoke-Gradle clause is knowingly deviated from for :mcp-application and that deviation is recorded in the requirement text, constraints, and the module's own build file header.",
+      "evidence": "`git diff development...sdd/resolve-and-send-mcp -- . ':(exclude).pipeline/*' | grep -inE '^\\+.*(ServerSocket|java\\.net\\.Socket|io\\.ktor|HttpClient|URLConnection|\\bbind\\(|localhost:|127\\.0\\.0\\.1)'` -> no output. `git diff development...sdd/resolve-and-send-mcp --stat -- gradle/libs.versions.toml` -> no output.",
+      "recommendedTarget": ""
+    },
+    {
+      "id": "AF-15",
+      "severity": "info",
+      "about": "diff",
+      "ref": "nine settled decisions",
+      "issue": "All nine preparation-gate decisions checked against shipped code. HONOURED: tool is named exactly `get_latest_annotation` (single internal const, single tools/list entry, verified live); stdio only, no socket ever opened (AF-14); images by file:// reference, never inlined (render() emits frame.ref / annotations[].cropRef URIs, bytes live on disk under <root>/<sentAtMs>/); `version` is the first declared and first serialized property of AnnotationEnvelope, with a dedicated first-key test; ~/.rectify/handoff/latest.json written via latest.json.tmp + Files.move(ATOMIC_MOVE, REPLACE_EXISTING) after the images, with owner-only rwx------ dirs where POSIX is supported; :data-handoff-api applies no di convention plugin and contains zero Koin references. PARTIAL: ':data-handoff-api is a minimal contract module' holds for Koin only — see AF-6.",
+      "evidence": "McpDispatcher.kt:33 GET_LATEST_ANNOTATION_TOOL; AnnotationEnvelope.kt:16 `public val version: Int` declared first + FileSlotAnnotationHandoffVersionFieldTest.versionIsTheFirstKeyInTheSerializedLatestJson; FileSlotAnnotationHandoff.kt:55-62 tmp-write then ATOMIC_MOVE; :91-96 createOwnerOnlyDirectories/OWNER_ONLY='rwx------'; data-handoff-api/build.gradle.kts applies only the library convention plugin + kotlin-serialization with a comment explaining the deliberate di-plugin omission.",
+      "recommendedTarget": ""
+    },
+    {
+      "id": "AF-16",
+      "severity": "info",
+      "about": "sc",
+      "ref": "SC-7",
+      "issue": "SC-7 (Resolve & Send happy path), SC-25, SC-27 and SC-30 are covered by real ViewModel tests, but SC-7's end-to-end form — a real frame, a real device, a real agent read-back — is the same thing T-13's demo would have proven and did not. The in-process half is genuinely green; the cross-process half is proven only by my synthetic slot probe (AF-12), which used a hand-written latest.json rather than one Rectify actually wrote. Nothing in CI has ever observed Rectify's own publish() output being read by the server.",
+      "evidence": "MirrorViewModelResolveAndSendTest.kt (300 lines), MirrorViewModelResolveAndSendDesktopTest.kt (227 lines), ClearStagedPromptOverrideTest.kt (147 lines) all pass. No test anywhere composes MirrorViewModel's real publish path with McpDispatcher — they sit in different modules with different fakes (two separate FakeAnnotationHandoff classes exist, one per module).",
+      "recommendedTarget": "T-13"
+    }
+  ],
+  "gaps": {
+    "unsatisfiedAC": ["AC-18", "AC-19", "AC-81", "NFR-3"],
+    "unsatisfiedSC": [],
+    "incompleteTasks": ["T-13"]
+  },
+  "unresolvedFlags": [
+    {
+      "task": "T-13",
+      "flag": "blocked",
+      "reason": "Mandatory manual end-to-end demo (TAC-3/TAC-4) not performed — needs a real device and a real Claude Code MCP config. The task's own acceptance IS the recorded demo, so T-13 cannot be closed by anything CI can do. Confirmed against state.json and the real tree, not just the report."
+    },
+    {
+      "task": "T-2",
+      "flag": "needsHumanReview",
+      "reason": "DeviceRepositoryImpl collapses a no-nodes/no-density snapshot to Empty, dropping rawDump. Verified real; blast radius slightly wider than disclosed (see AF-10). Judged acceptable — EnvelopeAssembly only reads rawDump when hierarchyStatus == Ready."
+    },
+    {
+      "task": "T-4",
+      "flag": "needsHumanReview",
+      "reason": "Two T-8-owned stand-in types (SendPhase, local MirrorUiState) were to be deleted and repointed by T-8. VERIFIED RESOLVED: SendPhase exists exactly once, in MirrorContract.kt, and MirrorUiState has one definition. No duplicate survives in the merged tree."
+    },
+    {
+      "task": "T-5",
+      "flag": "needsHumanReview",
+      "reason": "Claimed a frozen test file beyond the two sanctioned ones had its imports corrected. VERIFIED NON-ISSUE in the cumulative diff: AwtCropEncoderTest is a file this spec ADDED, and the only pre-existing test file modified anywhere in the diff is MirrorFakes.kt (additive, T-9-sanctioned). See AF-11."
+    },
+    {
+      "task": "T-6",
+      "flag": "needsHumanReview",
+      "reason": "buildPrompt's 'Attached: ... hierarchy.xml' trailer contradicting hierarchyAvailable=false. CONFIRMED SHIPPING and broader than flagged — the named hierarchy.xml file does not exist on ANY path, the crop count can over-promise, and toastLabel repeats the same unconditional 'frame + hierarchy' claim. See AF-4."
+    },
+    {
+      "task": "T-8",
+      "flag": "needsHumanReview",
+      "reason": "A backlog sequencing defect was patched with a placeholder branch T-9 was to replace. VERIFIED RESOLVED: the MirrorViewModel send handler is fully implemented with all four constructor seams (handoff, encodeCrop, nowMs, elapsed); no placeholder branch remains."
+    },
+    {
+      "task": "T-9",
+      "flag": "needsHumanReview",
+      "reason": "A latent Koin wiring gap (missing provideHandoffSources) would have crashed at runtime despite green tests; reviewer asked whether other provide* hooks are similarly unverified. VERIFIED FIXED for this spec: presentationFeatureMirrorModule calls provideHandoffSources() and expect/actual exist for desktop, android and ios. The general 'green tests do not prove the Koin graph resolves' concern is real and remains open repo-wide."
+    },
+    {
+      "task": "T-10",
+      "flag": "needsHumanReview",
+      "reason": "Lingering completed status line over the live stage. JUDGED NOT DEFENSIBLE AS SHIPPED — the lingering line also shows a 'Frozen' dot with nothing frozen and a 'Dumping hierarchy' dot back in Pending, and it falsifies sendSteps' own documented invariant. See AF-5."
+    },
+    {
+      "task": "T-12",
+      "flag": "needsHumanReview",
+      "reason": "installDist duplicate-jar defect fixed at the module level; the underlying LibraryConventionPlugin contradiction remains open. CONFIRMED: the exclude works (7-jar classpath, zero lifecycle jars) but :data-handoff-api itself still resolves lifecycle-viewmodel + lifecycle-runtime-compose. See AF-6."
+    }
+  ],
+  "regressionRun": {
+    "command": "./gradlew :presentation-feature-mirror:build :data-handoff-api:build :mcp-application:build --max-workers=1  &&  ./gradlew :presentation-feature-mirror:desktopTest :data-handoff-api:desktopTest :mcp-application:test :domain-core:desktopTest :data-repository-impl:desktopTest :presentation-core-ui:desktopTest :presentation-core-styling:desktopTest :data-preference-impl:desktopTest --rerun-tasks --max-workers=1",
+    "passed": true,
+    "output": "RUN 1 — cross-target build gate (Android + iosArm64 + iosSimulatorArm64 debug AND release frameworks + desktop), executed by this audit, not quoted from T-13:\n\n> Task :presentation-feature-mirror:linkReleaseFrameworkIosArm64\nw: Cannot infer a bundle ID from packages of source files and exported dependencies, use the bundle name instead: presentation_feature_mirror. Please specify the bundle ID explicitly using the -Xbinary=bundleId=<id> compiler flag.\n> Task :data-handoff-api:linkReleaseFrameworkIosSimulatorArm64\n> Task :mcp-application:check UP-TO-DATE\n> Task :mcp-application:build\n[Incubating] Problems report is available at: file:///Users/andrew-malitchuk/StudioProjects/rectify-kmp/build/reports/problems/problems-report.html\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 10.\nBUILD SUCCESSFUL in 4m 2s\n355 actionable tasks: 229 executed, 49 from cache, 77 up-to-date\nBUILD_EXIT=0\n\nOnly warnings emitted were the pre-existing 'Cannot infer a bundle ID' Kotlin/Native notices, present on development too. --max-workers=1 used per bugs.json#PP-TD-8; no linker OOM.\n\nRUN 2 — full test suite with --rerun-tasks (nothing served from cache, every test task re-executed):\n\n> Task :presentation-feature-mirror:desktopTest\n> Task :data-handoff-api:desktopTest\n> Task :mcp-application:test\n> Task :domain-core:desktopTest\n> Task :data-repository-impl:desktopTest\n> Task :presentation-core-ui:desktopTest\n> Task :presentation-core-styling:desktopTest\n> Task :data-preference-impl:desktopTest\nBUILD SUCCESSFUL in 17s\n106 actionable tasks: 106 executed\n\nJUnit XML tallied directly off */build/test-results/**/*.xml rather than trusting the BUILD SUCCESSFUL line:\n  tests=916  skipped=0  failures=0  errors=0\nPer module:\n  data-device-api        desktopTest  tests=61   failures=0 errors=0\n  data-device-impl       desktopTest  tests=26   failures=0 errors=0\n  data-handoff-api       desktopTest  tests=14   failures=0 errors=0\n  data-preference-impl   desktopTest  tests=9    failures=0 errors=0\n  data-repository-impl   desktopTest  tests=52   failures=0 errors=0\n  domain-core            desktopTest  tests=1    failures=0 errors=0\n  domain-usecase-impl    desktopTest  tests=1    failures=0 errors=0\n  presentation-core-styling desktopTest tests=6  failures=0 errors=0\n  presentation-core-ui   desktopTest  tests=29   failures=0 errors=0\n  presentation-feature-mirror desktopTest tests=353 failures=0 errors=0\n  mcp-application        test         tests=19   failures=0 errors=0\n(data-device-api/impl and domain-usecase-impl results are carried from the RUN 1 build, which also executed them green; the eight modules named in the RUN 2 command were all force-re-executed.)\n\nRUN 3 — adversarial live probe of the real installDist server over stdio (this is NOT part of any gradle task; see findings AF-12 and AF-1):\n  3a happy path, 7 stdin lines -> 6 one-line stdout responses, EXIT=0, repeat tools/call byte-identical.\n  3b corrupt-slot path, framePath='../../../../etc/passwd' -> EXIT=1, stdout 0 lines, 'Exception in thread \"main\" java.lang.IllegalArgumentException: handoff image name must be a bare file name' at McpDispatcher.render(McpDispatcher.kt:144). SERVER PROCESS DIED. Not a gradle-suite failure — no test covers it — which is exactly why it survived 916 green tests.\n\nVERDICT: the gradle regression gate is GREEN with zero new failures. It is green over a hole that AF-1 falls through.",
+    "newFailures": []
+  },
+  "aggregateDiffFindings": [
+    {
+      "id": "AD-1",
+      "category": "security",
+      "location": "mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt:144-145 (render) + data-handoff-api/src/desktopMain/.../FileSlotAnnotationHandoff.kt:81,104 (resolve/asBareName)",
+      "issue": "Path-traversal guard is a crash, not a rejection, and it is on the unguarded side of the tool-call try/catch. A corrupt or tampered ~/.rectify/handoff/latest.json whose framePath or cropPath is not a bare file name terminates the whole MCP server with exit 1 and no response. Denial of service against the agent integration, reproduced live. Fix is one line: move render(envelope) inside the existing runCatching, or have resolve() return null / a sentinel instead of throwing. See AF-1."
+    },
+    {
+      "id": "AD-2",
+      "category": "inconsistent-pattern",
+      "location": "presentation-feature-mirror/src/commonMain/.../core/payload/PromptAssembly.kt:84 and core/send/SendLabels.kt:33",
+      "issue": "Two separate unconditional attachment claims ('Attached: frame.png, N crops, hierarchy.xml' in the prompt, '· frame + hierarchy ·' in the toast) that no code path ever makes conditional on hierarchyAvailable or on how many crops actually encoded. The envelope is already honest (hierarchyAvailable, cropPath=null); only the human/agent-facing prose lies. Inherited from F-6 but newly consequential now that the prompt crosses a process boundary to an agent. See AF-4."
+    },
+    {
+      "id": "AD-3",
+      "category": "dead-code",
+      "location": "presentation-feature-mirror/src/commonMain/.../source/mirror/MirrorViewModel.kt:177",
+      "issue": "`internal val frozenHeld: StateFlow<HeldFrame?>` has zero production consumers — the send handler reads the private `currentFrozenHeld` directly. Test-only surface, contrary to the brief's expectation that T-6/T-9 would give it a consumer. Either route the send handler through it or drop it and let the tests use the same reflection seam they already use for the negative case. See AF-7."
+    },
+    {
+      "id": "AD-4",
+      "category": "inconsistent-pattern",
+      "location": "presentation-feature-mirror/src/commonMain/.../source/mirror/MirrorViewModel.kt:839-846 vs resumeLive() at :867-871",
+      "issue": "The send-success branch hand-inlines resumeLive()'s three statements but substitutes send=SendPhase.Sent for send=SendPhase.Idle, so the two 'resume live' paths diverge by one field and a reader has to diff them to notice. The resulting state (frozen=null, send=Sent, hierarchyStatus=Absent) renders a self-contradictory status line and falsifies sendSteps' documented invariant. See AF-5."
+    },
+    {
+      "id": "AD-5",
+      "category": "performance",
+      "location": "data-handoff-api/build.gradle.kts (via build-logic/.../LibraryConventionPlugin.kt:105-106)",
+      "issue": "The cross-process contract module drags lifecycle-viewmodel + lifecycle-runtime-compose (and transitively Compose runtime) onto its runtime classpath. For :mcp-application, whose whole design rationale is a minimal spawn-time classpath that Claude Code pays on every session, this is only neutralised by a consumer-side exclude. Root cause lives in the convention plugin, outside this spec. See AF-6."
+    },
+    {
+      "id": "AD-6",
+      "category": "performance",
+      "location": "whole diff — NFR-3",
+      "issue": "NFR-3's 'under 2 seconds' budget is nowhere asserted and nowhere measured. The design is plausibly fast (frame bytes reused verbatim rather than re-encoded; crops on Dispatchers.IO; assembly and the slot write both behind withContext(Dispatchers.Default)) and AS-30's off-main-thread requirement IS satisfiable by inspection — but no number has ever been observed, because the only place it would have been is T-13's unperformed demo. toastLabel renders an elapsed figure, so the measurement instrument exists; it has just never been read."
+    }
+  ],
+  "registryConsistency": {
+    "consistent": false,
+    "phantomEntries": [
+      "registry/bugs.json#PP-TD-2 — fixed by T-7 this spec (MirrorViewModel.withoutStagedBatch now nulls promptOverride, covered by ClearStagedPromptOverrideTest) but still listed unqualified; bugs.json has no status field, so fixed and live bugs are indistinguishable",
+      "docs/index.json entry for resolve-and-send-mcp says currentStage='execution' while state.json says 'validation'"
+    ],
+    "missingEntries": [
+      "registry/features.json — no entry for measure-mode (F-5), merged",
+      "registry/features.json — no entry for payload-preview (F-6), merged",
+      "registry/features.json — no entry for resolve-and-send-mcp (F-7), this spec",
+      "registry/components.json — no entry for the SendStatusOverlay / StatusLine send-pipeline surface added by T-10",
+      "registry/components.json — no entry for the :data-handoff-api contract module or the :mcp-application server added by T-3/T-11",
+      "registry/bugs.json#PP-TD-4 — still open and still genuinely broken (PayloadEstimateTest.kt:160 tautology survives) despite the plan claiming AC-32/AS-28 would replace it"
+    ]
+  },
+  "traceability": [
+    {
+      "ref": "AC-17",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "canSend(state) = frozen != null && stagedCount > 0 && !send.isInFlight in core/send/SendGate.kt, read by all three consumers (AppButton enabled=mirror.canSend in RectifyWindow.kt, the reducer's own `if (!canSend(state)) return@intent` guard at MirrorViewModel.kt:790, and the hoisted sendAction holder). Clear wired to canClear. Covered by SendGateTest (106 lines), ClearGateTest (79), SendGateOperatesOnRealContractStateTest (42) — all green in the re-run."
+    },
+    {
+      "ref": "AC-18",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "PARTIAL. Server half independently re-verified live (AF-12): a real installDist process answers tools/call with prompt, hierarchy XML and file:// refs to frame.png and crop-1.png. Producer half proven only in-process (EnvelopeAssemblyTest 396 lines, MirrorViewModelResolveAndSendTest 300 lines, FileSlotAnnotationHandoff round-trip desktopTests). The plan's own traceability row ends 'MANUAL DEMO (required — not provable in CI)' and that demo was not performed (T-13 blocked). No test or run anywhere has ever observed a slot Rectify itself wrote being read by the server. Marked unsatisfied on the AC's own terms."
+    },
+    {
+      "ref": "AC-19",
+      "verificationMethod": "demo",
+      "satisfied": false,
+      "evidence": "REQUIRES HUMAN CONFIRMATION and is not merely unconfirmed — AF-9 shows the ordered four-step animation the AC describes is not producible, because step 3 resolves at freeze time and only step 4 moves during a send. AF-5 additionally shows the line that lingers after success is internally contradictory. The projection is unit-tested (SendProjectionTest 245 lines, SendLabelsTest 99) and @Preview pairs exist, but no UI-test harness exists in this repo and the demo was not run."
+    },
+    {
+      "ref": "AC-20",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "In-flight guard: SendPhase.isInFlight covers Preparing|Publishing only, so the button is disabled (and shows busyText 'Sending…') for exactly that window and re-enables on Sent or Failed. Failure branch is `reduce { state.copy(send = SendPhase.Failed) }` and touches nothing else — frozen frame, HeldFrame bytes and the staged list all survive. Proven by MirrorViewModelResolveAndSendTest's in-flight-guard and failure-preserves-state cases (green)."
+    },
+    {
+      "ref": "AC-21",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "Success branch sets frozen=null (so stagedCount derives to 0) and releases the pinned bitmap, which resumes the live mirror; the toast count is read off `frozen.annotations.size` BEFORE the reset, so it is pre-reset by construction. Lost-session branch correctly skips the resume and only clears the batch. Green in MirrorViewModelResolveAndSendTest. Caveat: send is left at Sent rather than Idle — see AF-5, which does not break AC-21 itself."
+    },
+    {
+      "ref": "AC-32",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "INSPECTED DIRECTLY. AnnotationEnvelope declares `public val version: Int` first (AnnotationEnvelope.kt:16) with a KDoc stating reordering is a wire-format break. Verified on real bytes, not just by reading: the live probe's latest.json round-tripped and McpDispatcher's rendered document emits \"version\" as its first key. FileSlotAnnotationHandoffVersionFieldTest asserts the first serialized key explicitly. Newer-version refusal names both numbers (SUPPORTED_ENVELOPE_VERSION=1) and is tested. The one unmet part is the plan's 'replaces the tautological PP-TD-4 assertion' clause — see AF-3."
+    },
+    {
+      "ref": "AC-81",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "PARTIAL, same split as AC-18. Idempotence is real and I verified it on the live server: two consecutive tools/call requests with no publish in between produced byte-identical results modulo the JSON-RPC id. FileSlotAnnotationHandoff.latest() re-reads from disk every call with no cache, and latestCalledTwiceWithNoPublishInBetweenIsIdempotent passes. The AC's end-to-end form ('the in-repo MCP server stub is running and a payload has been sent') was never exercised with a payload Rectify actually sent — the plan row says 'MANUAL DEMO for the end-to-end form' and T-13 is blocked."
+    },
+    {
+      "ref": "FR-16",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "ShellToolbar's stagedCounter / clearAction / primaryAction slots are all live in RectifyShellContent: the send button is no longer `onClick = {}, enabled = false` but a real ResolveAndSend dispatch gated on mirror.canSend with busy state, and Clear moved from `stagedCount > 0` to mirror.canClear. Covered by the canSend/canClear test set."
+    },
+    {
+      "ref": "FR-17",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "The full chain exists and is tested end to end within the desktop process: HierarchySnapshotModel.rawDump -> HierarchySnapshotMapper (verbatim, trailer included, HierarchySnapshotMapperTest) -> assembleEnvelope -> AnnotationEnvelope -> FileSlotAnnotationHandoff.publish -> latest.json + <sentAtMs>/ images. Crop geometry correctly reads only cropWindow().srcOffset/srcSize, never dstSize/scale (bugs.json#PP-TD-1 avoided). Caveat AF-10 on rawDump dropping for a doubly-degenerate dump."
+    },
+    {
+      "ref": "FR-18",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "SendProjection + SendLabels are pure and fully unit-tested; StatusLine is mounted as SendStatusOverlay in MirrorStageContent; StackedSnackbarHost is newly mounted at the desktop root (it had nowhere to land before) with an EXPLICIT finite duration (StackedSnackbarDuration.Long) rather than the Indefinite default. AS-30's off-main-thread requirement holds by inspection. Qualified by AF-4 (toast text's unconditional 'frame + hierarchy') and AF-5 (what the lingering line renders)."
+    },
+    {
+      "ref": "FR-19",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "Success resumes live and resets the counter; the count is captured off the sent frame before the reset. See AC-21."
+    },
+    {
+      "ref": "FR-56",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "Verified live, not from the report (AF-12): Main.kt's generateSequence(::readlnOrNull) stdio loop, writeFrame as the single stdout write site, all diagnostics to stderr, tools/list carrying exactly one tool, -32700 / -32601 errors that do not break the loop, exit 0 on EOF. 19 mcp-application tests green. IMPORTANT QUALIFIER: AF-1 shows one input class the loop does NOT survive — a corrupt slot, as opposed to a corrupt stdin line."
+    },
+    {
+      "ref": "FR-57",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "Version stamped by assembleEnvelope from the call site's PAYLOAD_FORMAT_VERSION (constant stays internal to core/payload, never moved or re-exported); survives the slot round-trip; EnvelopeAssemblyTest proves the function echoes its argument by passing a literal different from the constant rather than the constant itself."
+    },
+    {
+      "ref": "FR-58",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "mintSessionId produces <deviceId>-f<frameId>-<sentAtMs> with blank/null degrading to 'unknown', covered by SessionIdTest (67 lines). The clipboard write is wired (SystemClipboard.copyToClipboard, runCatching + warn, never throws) and reached from the toast's 'Open session' action. The plan itself states the clipboard write is demo-only and not assertable in this harness — that honesty is preserved, and the demo did not run."
+    },
+    {
+      "ref": "NFR-3",
+      "verificationMethod": "demo",
+      "satisfied": false,
+      "evidence": "NOT SUBSTANTIATED. No measurement of the 2s budget exists anywhere. The plan row says 'MANUAL MEASUREMENT in the demo — not asserted in CI', and the demo was not performed. The enabling design is present and inspectable (frame bytes reused verbatim rather than re-encoded, AwtCropEncoder on Dispatchers.IO, assembly and publish each behind withContext(Dispatchers.Default)), and toastLabel already renders the elapsed figure — so the instrument exists and has simply never been read."
+    },
+    {
+      "ref": "NFR-4",
+      "verificationMethod": "inspection",
+      "satisfied": false,
+      "evidence": "SPLIT VERDICT. The stdio-only clause PASSES inspection cleanly: zero socket/http/ktor hits across every added production line, and no network library on the shipped classpath (AF-14). Owner-only permissions are implemented (rwx------ where POSIX is supported). But the third clause — 'AnnotationHandoff.resolve path guard' — fails its own purpose: the guard throws, the throw is on the unguarded side of the tool-call catch, and a traversal attempt therefore kills the server rather than being rejected (AF-1, reproduced live). Marked unsatisfied on the guard clause."
+    },
+    {
+      "ref": "NFR-12",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "version is the first field of the envelope and the dispatcher gates on it before rendering: `envelope.version > SUPPORTED_ENVELOPE_VERSION` yields a tool error naming both numbers and the rebuild command, rather than a guess. Covered by aNewerEnvelopeVersionYieldsIsErrorNamingBothVersions."
+    },
+    {
+      "ref": "NFR-15",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "Dependency clause satisfied exactly: gradle/libs.versions.toml is untouched by the whole cumulative diff — zero new catalog entries. :data-handoff-api uses the library convention plugin as required. The no-bespoke-Gradle clause is knowingly deviated from for :mcp-application and that deviation is recorded in the requirement text, in constraints, in definitionOfReady and in the module's own build-file header — i.e. declared, not discovered. Separately noted: the convention plugin the module DOES use is what forced T-12's exclude (AF-6)."
+    },
+    {
+      "ref": "AS-28",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "PAYLOAD_FORMAT_VERSION is unmoved, still `internal const val` in core/payload/PayloadEstimate.kt, never re-exported; EnvelopeAssembly takes it as a parameter at the one real call site in MirrorViewModel.kt:821. Behaviour satisfied. The 'replaces PP-TD-4's tautology' sub-clause is not — AF-3."
+    },
+    {
+      "ref": "AS-29",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "assembleEnvelope gates the hierarchy on `platform == Android && hierarchyStatus == Ready`, and an Empty snapshot carries rawDump=\"\" so a stale Ready verdict degrades without a second branch; hierarchyAvailable is derived from the XML being non-empty rather than asserted. iOS and Android get UnsupportedAnnotationHandoff (reads answer null, writes throw loudly) plus a null-returning CropEncoder via provideHandoffSources actuals, so the Koin graph resolves on every target. Empty-hierarchy assembly cases are in EnvelopeAssemblyTest. Undercut only by AF-4: the PROSE still claims hierarchy.xml is attached when it is not."
+    },
+    {
+      "ref": "AS-30",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "INSPECTED: no assembly, encode or file write runs on the main dispatcher. assembleEnvelope is inside withContext(Dispatchers.Default); handoff.publish is inside a second withContext(Dispatchers.Default) AND FileSlotAnnotationHandoff.publish itself wraps everything in withContext(Dispatchers.IO); AwtCropEncoder.encode wraps in withContext(Dispatchers.IO). Only reduce/postSideEffect stay on the intent context. The responsiveness half of the claim is the demo's job and the demo did not run."
+    },
+    {
+      "ref": "AS-31",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "The failure branch reduces SendPhase.Failed and nothing else, so the frozen frame, its HeldFrame bytes and the staged batch all survive and the retry is over the same batch; Failed is not isInFlight so the button re-enables. clearStaged is the documented route out of Failed. Covered by the failure-preserves-frame-and-batch case."
+    },
+    {
+      "ref": "AS-32",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "VERIFIED LIVE, not by reading: a real tools/list response from the real launcher contained exactly one tool object. No auth, no discovery, no multi-client machinery, no session state — the dispatcher is a pure String -> String? function over the handoff and the whole module is 2 source files. Bounded stub as specified."
+    },
+    {
+      "ref": "SC-25",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "Send fails mid-flight and the user retries: SendPhase.Failed, frame and batch preserved, AppButton re-enabled, failure-then-retry ViewModel test green."
+    },
+    {
+      "ref": "SC-27 / features.json#error-handling-and-recovery AC-29 clause",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "canSend deliberately takes no session parameter at all, so a dropped stream does not disable sending — the documented closure of the deferred AC-29 clause. sendSteps swaps step 1 to 'Stream dropped'/Error while steps 2-4 keep completing; sendTrailing's one asymmetry (Sent wins over a Lost session) is deliberate and documented; the success branch skips resumeLive when Lost and only clears the batch. All three covered by canSend-true-while-lost, lost-session-skips-resume and the sendSteps Lost-branch tests. NOTE: the registry entry for error-handling-and-recovery that this clause belongs to cannot be updated — features.json is stale (AF-8)."
+    },
+    {
+      "ref": "bugs.json#PP-TD-2",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "FIXED AND VERIFIED IN THE REAL TREE. withoutStagedBatch() now nulls promptOverride alongside annotations and selectedIndex (MirrorViewModel.kt:538-548), and clearStaged routes through it. This matters precisely because EnvelopeAssembly reads `frozen.promptOverride ?: buildPrompt(...)` — an override that outlived its annotations would have been shipped to the agent as the payload prompt. Covered by ClearStagedPromptOverrideTest (147 lines), green. The registry entry was not retired — see AF-8."
+    }
+  ]
+}

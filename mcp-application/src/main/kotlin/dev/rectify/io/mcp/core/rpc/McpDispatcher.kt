@@ -119,7 +119,14 @@ internal class McpDispatcher(
                 isError = true,
             )
 
-            else -> toolResult(document.encodeToString(JsonObject.serializer(), render(envelope)), isError = false)
+            // render() resolves image names through the handoff, which REJECTS a name that is
+            // not bare (path traversal, NFR-4) by throwing — that rejection is a tool error
+            // like any other, never an exception out of the caller's read loop (TAC-8).
+            else -> runCatching {
+                toolResult(document.encodeToString(JsonObject.serializer(), render(envelope)), isError = false)
+            }.getOrElse {
+                toolResult("Could not read the handoff slot: ${it.message}", isError = true)
+            }
         }
     }
 

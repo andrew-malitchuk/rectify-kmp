@@ -81,6 +81,15 @@ internal class FakeAnnotationHandoff(
 
     override suspend fun latest(): AnnotationEnvelope? = envelopeProvider()
 
-    override fun resolve(envelope: AnnotationEnvelope, name: String): String =
-        "file:///fake-handoff/${envelope.sentAtMs}/$name"
+    /**
+     * Mirrors `FileSlotAnnotationHandoff.resolve`'s real contract: a name that is not bare is
+     * REJECTED by throwing (NFR-4). This double used to accept anything, which is exactly why a
+     * traversal-shaped `framePath` escaped the dispatcher as a crash instead of a tool error.
+     */
+    override fun resolve(envelope: AnnotationEnvelope, name: String): String {
+        require(name.isNotBlank() && !name.contains('/') && !name.contains('\\') && !name.contains("..")) {
+            "handoff image name must be a bare file name, got: $name"
+        }
+        return "file:///fake-handoff/${envelope.sentAtMs}/$name"
+    }
 }

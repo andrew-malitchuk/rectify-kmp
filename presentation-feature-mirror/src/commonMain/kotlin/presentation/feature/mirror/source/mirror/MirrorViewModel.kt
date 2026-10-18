@@ -654,7 +654,8 @@ public class MirrorViewModel(
      * Also retires a terminal [SendPhase] — the AS-31 route out of [SendPhase.Failed], where the
      * batch survived the failure and the user chooses to drop it rather than retry. The reset is
      * written here and NOT inside [withoutStagedBatch], which the success path calls one `copy`
-     * after reducing [SendPhase.Sent] and whose own reset would wipe it in the same pass.
+     * after reducing the send phase. Since AF-5 the success path reduces [SendPhase.Idle]
+     * directly, so the overlay never outlives the state it describes.
      */
     private fun clearStaged() = intent {
         reduce { state.withoutStagedBatch().copy(send = SendPhase.Idle) }
@@ -836,12 +837,17 @@ public class MirrorViewModel(
                 // construction rather than by ordering luck (FR-19).
                 val count = frozen.annotations.size
                 if (state.session is MirrorSession.Lost) {
-                    reduce { state.copy(send = SendPhase.Sent).withoutStagedBatch() }
+                    // AF-5 (Stage 5): reset to Idle here, not Sent. Leaving the terminal phase
+                    // set kept AC-19's final dot visible but let the overlay outlive the state it
+                    // describes -- post-success it rendered a "Frozen" dot with nothing frozen and
+                    // "Dumping hierarchy" back at Pending, falsifying sendSteps' own invariant.
+                    // AC-19's evidence now rests on the toast and the T-13 manual demo.
+                    reduce { state.copy(send = SendPhase.Idle).withoutStagedBatch() }
                 } else {
                     releaseFrozenFrame()
                     releaseHierarchy()
                     reduce {
-                        state.copy(frozen = null, send = SendPhase.Sent).withoutMeasurements()
+                        state.copy(frozen = null, send = SendPhase.Idle).withoutMeasurements()
                     }
                 }
                 postSideEffect(

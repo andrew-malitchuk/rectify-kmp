@@ -133,6 +133,25 @@ class GetLatestAnnotationToolTest {
     }
 
     @Test
+    fun aTraversalShapedImagePathYieldsAOneLineToolErrorRatherThanThrowingOutOfTheLoop() {
+        val envelope = sampleEnvelope().copy(framePath = "../escape.png")
+        val dispatcher = McpDispatcher(FakeAnnotationHandoff { envelope })
+
+        val response = runSuspendBlocking { dispatcher.handle(toolCallRequest(id = 8)) }
+
+        val line = requireNotNull(response)
+        assertFalse(line.contains('\n') || line.contains('\r'), "response must stay on one line: $line")
+        val result = resultOf(line)
+        assertEquals(true, result["isError"]!!.jsonPrimitive.boolean)
+        val text = result["content"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("../escape.png"), "expected the rejected path named in: $text")
+
+        // the read loop survives: the next request on the same dispatcher still answers
+        val next = runSuspendBlocking { dispatcher.handle(request(id = 9, method = "tools/list")) }
+        assertTrue(requireNotNull(next).contains(GET_LATEST_ANNOTATION_TOOL))
+    }
+
+    @Test
     fun aSecondCallWithNoPublishInBetweenYieldsAByteIdenticalResult() {
         val tempRoot = Files.createTempDirectory("mcp-application-integration-test")
         try {
