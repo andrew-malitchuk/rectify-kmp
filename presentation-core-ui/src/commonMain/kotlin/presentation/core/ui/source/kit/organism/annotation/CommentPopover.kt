@@ -18,6 +18,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -146,6 +150,7 @@ public fun CommentPopover(
                 CommentField(
                     value = value,
                     onValueChange = onValueChange,
+                    resetKey = index,
                     placeholder = placeholder,
                     focused = isFocused,
                     interactionSource = interactionSource,
@@ -237,6 +242,7 @@ private fun IndexBadge(index: Int) {
 private fun CommentField(
     value: String,
     onValueChange: (String) -> Unit,
+    resetKey: Any?,
     placeholder: String,
     focused: Boolean,
     interactionSource: MutableInteractionSource,
@@ -245,9 +251,35 @@ private fun CommentField(
 ) {
     val shape = RoundedCornerShape(FieldRadius)
     val style = Theme.typography.body
+
+    // The caret lives HERE, not in the hoisted String.
+    //
+    // The owner round-trips every keystroke through Orbit (`intent { reduce { … } }`), which is
+    // asynchronous: the field is recomposed with a value one or more keystrokes stale, and the
+    // String overload of BasicTextField then re-derives a selection from it and drops the caret
+    // backwards. Typing "123123123123" quickly came out as "12312323123123".
+    //
+    // Holding a TextFieldValue locally makes the field authoritative over its own selection
+    // while it is being edited; the owner still receives every change. `resetKey` is what
+    // re-seeds it when the popover is pointed at a DIFFERENT annotation — keying on the text
+    // would fight the user instead.
+    var field by remember(resetKey) {
+        mutableStateOf(TextFieldValue(text = value, selection = TextRange(value.length)))
+    }
+    // Deliberately NO "re-seed when value != field.text" guard. It looks like the safe thing to
+    // add and it reinstates the bug: mid-typing the hoisted value is a STALE echo of an earlier
+    // keystroke, so that comparison fires and overwrites what the user just typed. While this
+    // field is mounted for one annotation it owns its text outright; `remember(resetKey)` is the
+    // only re-seed, and it carries the stored comment in when the popover moves to another
+    // annotation. Safe because the owning reducer stores the comment verbatim and never
+    // transforms it, so local and stored cannot drift apart.
+
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = field,
+        onValueChange = {
+            field = it
+            onValueChange(it.text)
+        },
         textStyle = style.copy(color = PopoverInk),
         cursorBrush = SolidColor(Theme.color.annotate),
         singleLine = true,
@@ -268,7 +300,7 @@ private fun CommentField(
             .padding(horizontal = Theme.spacing.spacingS),
         decorationBox = { innerTextField ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) {
+                if (field.text.isEmpty()) {
                     Text(
                         text = placeholder,
                         style = style,

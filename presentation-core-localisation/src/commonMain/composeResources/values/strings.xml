@@ -47,7 +47,7 @@
 
     <!-- Error -->
     <string name="error_title">Oops, something went wrong</string>
-    <string name="error_description">We\'re already working on a fix. Please try again later.</string>
+    <string name="error_description">We're already working on a fix. Please try again later.</string>
 
     <!-- Home -->
     <string name="home_action_styleguide">STYLEGUIDE</string>
@@ -103,7 +103,7 @@
     <string name="mirror_emulator_none">No AVDs installed</string>
 
     <!-- Mirror - Annotations on a frozen frame (comps 04/05) -->
-    <string name="mirror_annotation_placeholder">What\'s wrong here?</string>
+    <string name="mirror_annotation_placeholder">What's wrong here?</string>
     <string name="mirror_annotation_save_hint">⏎ save</string>
     <string name="mirror_annotation_empty_comment">No comment yet</string>
     <string name="mirror_annotation_notes_empty">Drag on the frame to stage an annotation.</string>
@@ -117,7 +117,7 @@
          the design promises "Rectify remembers it until you quit", which is false against
          sessionDeviceId (nulled by onSessionLost, selectPlatform and stopSession), so the
          shipped sentence claims only the session. Same rule as mirror_waiting_subtitle. -->
-    <string name="mirror_error_tool_missing_title">adb isn\'t on your PATH</string>
+    <string name="mirror_error_tool_missing_title">adb isn't on your PATH</string>
     <string name="mirror_error_tool_missing_body">Rectify uses Android platform-tools to find devices. Install them, or point Rectify at an adb you already have.</string>
     <string name="mirror_error_no_device_title">No Android device detected</string>
     <string name="mirror_error_no_device_body">adb is running but sees nothing. On the phone, turn on USB debugging and tap Allow on the prompt.</string>
