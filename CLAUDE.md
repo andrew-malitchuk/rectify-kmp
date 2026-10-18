@@ -36,8 +36,10 @@ iOS app is built via Xcode from the `ios-application/` directory.
 - **compose-application** — Shared KMP module containing app entry points (common, Android, iOS, desktop source sets)
 - **aos-application** — Android-specific Application/Activity entry point
 - **desktop-application** — Plain-JVM module hosting the desktop `main()` entry point
+- **mcp-application** — Plain-JVM module hosting the MCP (Model Context Protocol) server Claude Code spawns over stdio; reads back the latest annotation batch Rectify published (see `mcp-application/CLAUDE.md`)
 - **build-logic/convention** — Gradle convention plugins for standardized module configuration
 - **ios-application** — Xcode project wrapping the Compose UI in SwiftUI via `ComposeUIViewController`
+- **data-handoff-api** — Koin-free library module defining the cross-process handoff contract (`AnnotationHandoff`) and wire envelope shared between the desktop app and `:mcp-application` (see `data-handoff-api/CLAUDE.md`)
 
 ### Convention Plugins (build-logic)
 
