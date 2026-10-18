@@ -7,13 +7,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * The MCP (Model Context Protocol) wire version this server speaks, echoed verbatim in every
@@ -66,12 +66,37 @@ internal class McpDispatcher(
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) {
 
+    /**
+     * Answers one JSON-RPC line. NOTHING thrown below here reaches the caller's read loop —
+     * not a malformed shape, not a handoff fault, not a path added later: every throwable
+     * becomes a response (TAC-4/TAC-8). Only cancellation propagates, because a cancelled
+     * server is not a server that owes an answer.
+     */
     suspend fun handle(line: String): String? {
-        val request = runCatching { wire.parseToJsonElement(line).jsonObject }.getOrElse {
+        val parsed = runCatching { wire.parseToJsonElement(line) }.getOrElse {
             return errorResponse(JsonNull, code = -32700, message = "Parse error: ${it.message}")
         }
+        // Well-formed JSON of the wrong SHAPE is -32600, not -32700: it parsed fine.
+        val request = parsed as? JsonObject
+            ?: return invalidRequest(JsonNull, "a request must be a JSON object")
         val id = request["id"] ?: JsonNull
-        val method = request["method"]?.jsonPrimitive?.content.orEmpty()
+        return try {
+            dispatch(request, id)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Throwable) {
+            errorResponse(id, code = -32603, message = "Internal error: ${failure.message}")
+        }
+    }
+
+    /**
+     * The method table. Every field is read with a NON-throwing accessor ([stringOrNull]) —
+     * `jsonPrimitive`/`jsonObject` are casts, and a cast on untrusted input is how a single bad
+     * frame used to kill the session.
+     */
+    private suspend fun dispatch(request: JsonObject, id: JsonElement): String? {
+        val method = request["method"].stringOrNull()
+            ?: return invalidRequest(id, "\"method\" must be a string")
 
         // Notifications carry no id and expect no reply at all, per the JSON-RPC spec.
         if (method.startsWith("notifications/")) return null
@@ -89,11 +114,12 @@ internal class McpDispatcher(
             "tools/list" -> result(id) { putJsonArray("tools") { add(toolDescriptor()) } }
 
             "tools/call" -> {
-                val tool = request["params"]?.jsonObject?.get("name")?.jsonPrimitive?.content
-                if (tool == GET_LATEST_ANNOTATION_TOOL) {
-                    wrap(id, getLatestAnnotation())
-                } else {
-                    errorResponse(id, code = -32601, message = "Tool not found: $tool")
+                val params = request["params"] as? JsonObject
+                    ?: return invalidRequest(id, "\"params\" must be an object")
+                when (val tool = params["name"].stringOrNull()) {
+                    GET_LATEST_ANNOTATION_TOOL -> wrap(id, getLatestAnnotation())
+                    null -> invalidRequest(id, "\"params.name\" must be a string")
+                    else -> errorResponse(id, code = -32601, message = "Tool not found: $tool")
                 }
             }
 
@@ -222,6 +248,14 @@ private fun wrap(id: JsonElement, result: JsonObject): String = wire.encodeToStr
         put("result", result)
     },
 )
+
+/** A shape the server understood as JSON but cannot act on — well-formed, wrong structure. */
+private fun invalidRequest(id: JsonElement, detail: String): String =
+    errorResponse(id, code = -32600, message = "Invalid request: $detail")
+
+/** The string behind [this], or `null` for a missing key, a non-string primitive, or any
+ * composite — the non-throwing counterpart of `jsonPrimitive.content`. */
+private fun JsonElement?.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
 /** `{"jsonrpc":"2.0","id":…,"error":{"code":…,"message":…}}` — the loop keeps reading (TAC-4). */
 private fun errorResponse(id: JsonElement, code: Int, message: String): String = wire.encodeToString(

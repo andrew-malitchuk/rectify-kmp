@@ -420,6 +420,12 @@ public class MirrorViewModel(
      * lambda against the winning value whenever it loses the race.
      */
     private fun stageAnnotation(rect: DeviceRect) = intent {
+        // A send in flight OWNS the batch it is publishing (AC-20). Staging into it would
+        // re-enable Resolve & Send and Clear mid-publish, and the new annotation would then be
+        // wiped unseen by the success path's batch clear (AC-21) or silently join a retry of a
+        // batch it was never part of. The drag is dropped instead -- the in-flight window is
+        // the one the status overlay is on screen for.
+        if (state.send.isInFlight) return@intent
         val held = currentHeld.value ?: return@intent
         val freezing = currentFrozenFrame.value == null
         if (freezing) {
@@ -459,7 +465,12 @@ public class MirrorViewModel(
                 // put it back. This is also the ONLY one of the three that the SC-27 path
                 // reaches, where a successful send keeps the frame pinned instead of resuming
                 // live, so without it that path would leave the overlay on screen.
-                send = SendPhase.Idle,
+                //
+                // Only out of a TERMINAL phase, never out of an in-flight one: the guard at the
+                // top of this intent already drops the whole stage mid-send, and this is the
+                // same rule restated where the reducer's CAS loop can see the winning value --
+                // a send that starts between that read and this one still cannot be reset.
+                send = if (state.send.isInFlight) state.send else SendPhase.Idle,
             )
         }
         if (dumpTarget != null) dumpHierarchyFor(dumpTarget)

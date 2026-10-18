@@ -23,6 +23,10 @@ public interface AnnotationHandoff {
      * Re-reads from storage on every call — AC-81 — rather than caching, so a server process
      * started before Rectify ever published anything still answers correctly once a publish
      * happens, with no restart.
+     *
+     * `null` means EMPTY, nothing else. A slot that exists but cannot be read or parsed throws
+     * instead, so a reader can report the fault rather than passing a corrupt slot off as a
+     * slot that was never written.
      */
     public suspend fun latest(): AnnotationEnvelope?
 

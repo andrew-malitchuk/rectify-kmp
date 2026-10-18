@@ -63,17 +63,17 @@ internal class FileSlotAnnotationHandoff(private val root: Path) : AnnotationHan
     }
 
     /**
-     * Re-reads the slot every call, and answers `null` for anything it cannot turn into an
-     * envelope — an absent slot, an unreadable one, or a corrupt one.
+     * Re-reads the slot every call. An ABSENT slot is `null` — the genuinely-empty case. A slot
+     * that is present but unreadable or unparseable THROWS, carrying the parse message.
      *
-     * The interface has no second error channel, so there is nowhere for a parse failure to go
-     * that would not widen the contract; a reader's only useful move is "no handoff yet"
-     * either way.
+     * The distinction is the whole point: collapsing both onto `null` told the agent "nothing
+     * has been sent yet" right after a send the user watched succeed, which is a lie about the
+     * one fact the reader is asking for. A corrupt slot is a fault; only an empty one is empty.
      */
     override suspend fun latest(): AnnotationEnvelope? = withContext(Dispatchers.IO) {
-        runCatching {
-            json.decodeFromString<AnnotationEnvelope>(Files.readString(root.resolve(SLOT_NAME)))
-        }.getOrNull()
+        val slot = root.resolve(SLOT_NAME)
+        if (!Files.exists(slot)) return@withContext null
+        json.decodeFromString<AnnotationEnvelope>(Files.readString(slot))
     }
 
     override fun resolve(envelope: AnnotationEnvelope, name: String): String =

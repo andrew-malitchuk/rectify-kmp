@@ -1,6 +1,6 @@
 {
   "spec": "resolve-and-send-mcp",
-  "currentStage": "validation",
+  "currentStage": "review",
   "stages": {
     "preparation": {
       "status": "done"

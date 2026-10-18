@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import org.orbitmvi.orbit.Orbit
+import presentation.feature.mirror.core.send.canClear
 import presentation.feature.mirror.core.send.canSend
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.MirrorIntent
@@ -296,5 +297,60 @@ class MirrorViewModelResolveAndSendTest {
                 "a failed send must re-enable the button over the SAME untouched batch (AC-20)",
             )
             assertFalse(viewModel.currentState.send.isInFlight)
+        }
+
+    // -- Stage 6 F-2: staging mid-send must not re-enable the buttons (AC-20/AC-21) -------------
+
+    @Test
+    fun stagingAnAnnotationWhileASendIsInFlightNeitherReEnablesTheButtonsNorJoinsTheBatch() =
+        runTest(mainDispatcher) {
+            val mirroring = FakeStartMirroring()
+            val handoff = FakeAnnotationHandoff(manual = true)
+            val viewModel = mirrorViewModel(
+                discovery = scriptedPhoneDiscovery(),
+                mirroring = mirroring,
+                decodeFrame = sizedFrameDecoder(),
+                handoff = handoff,
+            )
+            freezeAndStage(viewModel, mirroring, listOf(RECT_1))
+
+            viewModel.handleIntent(MirrorIntent.ResolveAndSend)
+            settle()
+            assertTrue(
+                viewModel.currentState.send.isInFlight,
+                "setup did not reach an in-flight phase -- the rest of this test would be vacuous",
+            )
+
+            // The drag the user starts while the publish is parked.
+            viewModel.handleIntent(MirrorIntent.StageAnnotation(RECT_2))
+            settle()
+
+            assertTrue(
+                viewModel.currentState.send.isInFlight,
+                "staging mid-send reset the phase and took the status overlay down (AC-20)",
+            )
+            assertFalse(
+                canSend(viewModel.currentState),
+                "staging mid-send re-enabled Resolve & Send while a send was running (AC-20)",
+            )
+            assertFalse(
+                canClear(viewModel.currentState),
+                "staging mid-send re-enabled Clear while a send was running (AC-20)",
+            )
+            assertEquals(
+                1,
+                viewModel.currentState.stagedCount,
+                "the batch being published must not grow under the send",
+            )
+
+            handoff.release()
+            settle()
+
+            assertEquals(1, handoff.published.size)
+            assertEquals(
+                1,
+                handoff.published.single().annotations.size,
+                "the published batch must be exactly the one the send started with",
+            )
         }
 }

@@ -6,13 +6,19 @@ import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertFails
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
- * TAC-9 — a garbage `latest.json` must never throw out of [data.handoff.api.source.handoff.AnnotationHandoff.latest].
+ * TAC-9 — a garbage `latest.json` is a FAULT, not an empty slot.
  *
- * The interface returns `AnnotationEnvelope?`, with no secondary error channel, so "null-or-error"
- * resolves to `null` here: there is nowhere else for an error to go without widening the contract.
+ * Rewritten at Stage 6 (F-3). This test used to assert `null` for a corrupt slot, matching T-3's
+ * abbreviated task wording; the plan's errorState is authoritative and requires a tool error
+ * carrying the parse message, and answering "No annotation has been sent yet." right after a send
+ * the user watched succeed is actively misleading. ABSENT still means `null` — that case is
+ * covered by `FileSlotAnnotationHandoffTest.anAbsentSlotReturnsNullNeverThrows`, untouched — and
+ * the thrown message is what `McpDispatcher` renders into `isError: true`.
  */
 class FileSlotAnnotationHandoffCorruptTest {
 
@@ -24,22 +30,36 @@ class FileSlotAnnotationHandoffCorruptTest {
     }
 
     @Test
-    fun aGarbageLatestJsonYieldsNullNeverAnEscapingException() = runBlocking {
+    fun aGarbageLatestJsonFailsWithAParseMessageRatherThanReadingAsEmpty() = runBlocking {
         File(root, "latest.json").writeText("{ this is not valid json at all")
         val handoff = fileSlotAnnotationHandoff(root.toPath())
 
-        val result = handoff.latest()
+        val failure = assertFails { handoff.latest() }
 
-        assertNull(result)
+        assertTrue(
+            !failure.message.isNullOrBlank(),
+            "the failure must carry a parse message for the tool error to show",
+        )
     }
 
     @Test
-    fun aTruncatedLatestJsonYieldsNullNeverAnEscapingException() = runBlocking {
+    fun aTruncatedLatestJsonFailsWithAParseMessageRatherThanReadingAsEmpty() = runBlocking {
         File(root, "latest.json").writeText("{\"version\":1,\"sessionId\":\"x")
         val handoff = fileSlotAnnotationHandoff(root.toPath())
 
-        val result = handoff.latest()
+        val failure = assertFails { handoff.latest() }
 
-        assertNull(result)
+        assertTrue(
+            !failure.message.isNullOrBlank(),
+            "the failure must carry a parse message for the tool error to show",
+        )
+    }
+
+    /** The other half of the distinction — an absent slot is still the quiet, empty case. */
+    @Test
+    fun anAbsentLatestJsonIsStillNullRatherThanAFailure() = runBlocking {
+        val handoff = fileSlotAnnotationHandoff(root.toPath())
+
+        assertNull(handoff.latest())
     }
 }
