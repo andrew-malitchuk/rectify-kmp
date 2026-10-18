@@ -37,6 +37,21 @@
       "status": "done",
       "wave": 1,
       "updatedAt": "2026-10-18T19:31:36Z"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T19:35:48Z"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T19:35:48Z"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T19:35:48Z"
     }
   },
   "effort": "fast",

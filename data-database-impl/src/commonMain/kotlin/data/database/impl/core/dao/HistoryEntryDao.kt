@@ -14,11 +14,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 internal interface HistoryEntryDao {
 
-    /** Writes a batch and its annotations as one unit — never a half-written batch. */
+    /**
+     * Writes a batch and its annotations as one unit — never a half-written batch.
+     *
+     * @return the parent row's implicit SQLite rowid.
+     */
     @Transaction
-    suspend fun insert(entry: HistoryEntryEntity, annotations: List<HistoryAnnotationEntity>) {
-        insertEntry(entry)
+    suspend fun insert(entry: HistoryEntryEntity, annotations: List<HistoryAnnotationEntity>): Long {
+        val rowId = insertEntry(entry)
         insertAnnotations(annotations)
+        return rowId
     }
 
     /** Newest batch first. */
@@ -31,7 +36,7 @@ internal interface HistoryEntryDao {
     suspend fun updateStatus(id: String, status: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEntry(entry: HistoryEntryEntity)
+    suspend fun insertEntry(entry: HistoryEntryEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAnnotations(annotations: List<HistoryAnnotationEntity>)
