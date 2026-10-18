@@ -451,6 +451,15 @@ public class MirrorViewModel(
                 // frozen frame with no dump accounted for (TAC-22).
                 hierarchyStatus =
                     if (dumpTarget == null) state.hierarchyStatus else HierarchyStatus.Dumping,
+                // A new annotation starts a new batch, so the previous attempt's TERMINAL
+                // phase is retired here and the status overlay goes away. [SendPhase] has no
+                // self-clearing transition out of [SendPhase.Sent]/[SendPhase.Failed] and
+                // deliberately gets no timer and no extra intent: the three natural triggers
+                // the user already has — this one, [clearStaged] and [resumeLive] — are what
+                // put it back. This is also the ONLY one of the three that the SC-27 path
+                // reaches, where a successful send keeps the frame pinned instead of resuming
+                // live, so without it that path would leave the overlay on screen.
+                send = SendPhase.Idle,
             )
         }
         if (dumpTarget != null) dumpHierarchyFor(dumpTarget)
@@ -641,9 +650,14 @@ public class MirrorViewModel(
      * Empties the staged list. The frame stays pinned — only Resume Live unpins it (AC-48).
      *
      * See [withoutStagedBatch] for what "empties" covers and why `promptOverride` goes with it.
+     *
+     * Also retires a terminal [SendPhase] — the AS-31 route out of [SendPhase.Failed], where the
+     * batch survived the failure and the user chooses to drop it rather than retry. The reset is
+     * written here and NOT inside [withoutStagedBatch], which the success path calls one `copy`
+     * after reducing [SendPhase.Sent] and whose own reset would wipe it in the same pass.
      */
     private fun clearStaged() = intent {
-        reduce { state.withoutStagedBatch() }
+        reduce { state.withoutStagedBatch().copy(send = SendPhase.Idle) }
     }
 
     /**
@@ -845,11 +859,15 @@ public class MirrorViewModel(
      *
      * Releases the pinned bitmap and the staged list and nothing else: the session was never
      * stopped, so the next frame from the still-running capture loop simply shows up.
+     *
+     * Retires a terminal [SendPhase] with them: this is the trigger the happy path itself goes
+     * through (the send resumes live on success), which is what takes the status overlay off a
+     * live stage after the toast has already carried the confirmation (FR-18).
      */
     private fun resumeLive() = intent {
         releaseFrozenFrame()
         releaseHierarchy()
-        reduce { state.copy(frozen = null).withoutMeasurements() }
+        reduce { state.copy(frozen = null, send = SendPhase.Idle).withoutMeasurements() }
     }
 
     /**

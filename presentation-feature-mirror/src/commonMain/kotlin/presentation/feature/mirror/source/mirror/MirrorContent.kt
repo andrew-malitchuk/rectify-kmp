@@ -1,5 +1,9 @@
 package presentation.feature.mirror.source.mirror
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,17 +26,22 @@ import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import presentation.core.styling.core.Theme
+import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicator
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
 import presentation.core.ui.source.kit.molecule.card.PlatformToolState
+import presentation.core.ui.source.kit.molecule.status.StatusLine
 import presentation.core.ui.source.kit.organism.picker.DevicePickerPanel
 import presentation.core.ui.source.kit.organism.picker.PickerDevice
 import presentation.core.ui.source.kit.organism.picker.PickerDeviceGroup
 import presentation.core.ui.source.kit.organism.picker.PickerDeviceTrailing
 import presentation.core.ui.source.kit.organism.picker.PickerPlatform
 import presentation.core.ui.source.kit.organism.stage.NoSignalStage
+import presentation.feature.mirror.core.send.sendSteps
+import presentation.feature.mirror.core.send.sendTrailing
 import presentation.feature.mirror.core.stats.formatStatusLine
 import kotlin.time.Clock
 import presentation.feature.mirror.core.discovery.errorCard
@@ -162,6 +171,48 @@ public fun MirrorStageContent(
                 footer = stringResource(Res.string.mirror_waiting_footer),
             )
         }
+        SendStatusOverlay(state = state, modifier = Modifier.align(Alignment.TopCenter))
+    }
+}
+
+/**
+ * The send pipeline over the top of the stage (AC-19), or nothing while no send has run.
+ *
+ * The shipped [StatusLine] molecule verbatim — the whole of this composable is the projection
+ * `core/send/sendSteps` + `sendTrailing` already compute and the alignment the design asks for.
+ * Nothing new is drawn, which is why there is no new kit component.
+ *
+ * Visible whenever the phase is not [SendPhase.Idle], which includes the two TERMINAL phases:
+ * the line stays up after a send so its last step reads `Sent` (green) or `Sent` (red) rather
+ * than vanishing the instant the result is known. `MirrorViewModel` retires the phase back to
+ * [SendPhase.Idle] at the next natural user action — a new annotation, Clear or Resume Live —
+ * so this never becomes permanent, and no timer or extra intent exists to do it.
+ *
+ * The fade reads its duration from `Theme.motion.durations`, which `attributeMotion` has
+ * already resolved to 0 ms under `Theme.motion.reducedMotion` (A11Y-6) — the branch is the
+ * theme's, never a parameter of this composable's own.
+ *
+ * @param state Current mirror state.
+ * @param modifier Modifier applied to the root composable.
+ */
+@Composable
+private fun SendStatusOverlay(state: MirrorUiState, modifier: Modifier = Modifier) {
+    val fade = tween<Float>(durationMillis = Theme.motion.durations.fastMs)
+    AnimatedVisibility(
+        visible = state.send != SendPhase.Idle,
+        enter = fadeIn(animationSpec = fade),
+        exit = fadeOut(animationSpec = fade),
+        modifier = modifier,
+    ) {
+        StatusLine(
+            steps = sendSteps(
+                phase = state.send,
+                session = state.session,
+                hierarchy = state.hierarchyStatus,
+            ),
+            trailing = sendTrailing(phase = state.send, session = state.session),
+            modifier = Modifier.padding(Theme.spacing.spacingL),
+        )
     }
 }
 
@@ -392,4 +443,38 @@ private fun MirrorStatusLinePreview() {
             )
         }
     }
+}
+
+@Composable
+private fun SendStatusOverlayPreviewContent() {
+    Box(modifier = Modifier.background(Theme.color.stage)) {
+        MirrorStageContent(
+            state = MirrorUiState(
+                isPickerOpen = false,
+                session = MirrorSession.Streaming("37281FDH2000AB"),
+                hierarchyStatus = HierarchyStatus.Ready,
+                frozen = FrozenFrame(
+                    deviceSize = IntSize(width = 1080, height = 2400),
+                    annotations = listOf(
+                        StagedAnnotation(index = 1, rect = DeviceRect(120, 420, 960, 674)),
+                    ),
+                ),
+                send = SendPhase.Publishing,
+            ),
+            frame = null,
+            onIntent = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun SendStatusOverlayPreview() {
+    AppTheme { SendStatusOverlayPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun SendStatusOverlayDarkPreview() {
+    AppTheme(mode = ThemeMode.Dark) { SendStatusOverlayPreviewContent() }
 }
