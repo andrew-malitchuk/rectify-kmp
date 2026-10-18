@@ -60,6 +60,8 @@ import presentation.feature.mirror.core.payload.cropWindow
 import presentation.feature.mirror.core.payload.footerLabel
 import presentation.feature.mirror.core.payload.hasPayload
 import presentation.feature.mirror.core.payload.hierarchySourceLabel
+import presentation.feature.mirror.core.payload.HierarchyOutlineDisplay
+import presentation.feature.mirror.core.payload.hierarchyOutlineDisplay
 import presentation.feature.mirror.core.payload.payloadHierarchyRows
 import presentation.feature.mirror.core.payload.payloadSizeLabel
 import presentation.feature.mirror.core.payload.tokenEstimate
@@ -557,14 +559,16 @@ private fun PayloadCropCell(
  * No `key` is given to [items]: a duplicate key is a crash, the dump's ids are only documented
  * unique, and the list never reorders in place — a new dump replaces it wholesale.
  *
- * **No rows is a supported state, not an error** (AC-80). [HierarchyStatus.Absent] and
- * [HierarchyStatus.Unavailable] get an explicit line saying so, because an empty area under a
- * label reads as a bug; [HierarchyStatus.Dumping] and a genuinely empty [HierarchyStatus.Ready]
- * dump get nothing extra, since the readout beside the label already says which it is. Either
- * way Prompt, Crops and the footer are untouched.
+ * **No rows is a supported state, not an error** (AC-80), and which of the three bodies composes
+ * is decided by [hierarchyOutlineDisplay], not here — including the case a `rows`-first `when`
+ * got wrong: a snapshot held while the status is [HierarchyStatus.Unavailable] projects rows that
+ * must not render. [HierarchyStatus.Dumping] and a genuinely empty [HierarchyStatus.Ready] dump
+ * get nothing extra, since the readout beside the label already says which it is. Either way
+ * Prompt, Crops and the footer are untouched.
  *
- * @param rows The outline, projected by the caller; empty renders the no-hierarchy line.
- * @param status Hierarchy verdict for the pinned frame; drives the readout only.
+ * @param rows The outline, projected by the caller; rendered only when the status says it is
+ *   usable.
+ * @param status Hierarchy verdict for the pinned frame; drives the readout and the body choice.
  * @param nodeCount Size of the captured snapshot, for the readout.
  */
 @Composable
@@ -591,8 +595,8 @@ private fun PayloadHierarchySection(
             )
         }
 
-        when {
-            rows.isNotEmpty() -> LazyColumn(
+        when (hierarchyOutlineDisplay(status, rows.size)) {
+            HierarchyOutlineDisplay.Rows -> LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = HierarchyOutlineMaxHeight),
@@ -608,7 +612,7 @@ private fun PayloadHierarchySection(
                 }
             }
 
-            status == HierarchyStatus.Absent || status == HierarchyStatus.Unavailable -> Text(
+            HierarchyOutlineDisplay.NoHierarchyLine -> Text(
                 // Borrowed from the Measure tab rather than invented: it is the same verdict,
                 // and the fallback it describes — measuring against the annotation box and the
                 // frame edges — is exactly what the prompt above prints without node ids.
@@ -617,6 +621,8 @@ private fun PayloadHierarchySection(
                 color = Theme.color.ink2,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            HierarchyOutlineDisplay.Nothing -> Unit
         }
     }
 }
@@ -911,6 +917,40 @@ private fun MirrorPayloadTabNoHierarchyPreviewDark() {
         MirrorPayloadTabPreviewContent(
             state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
             hierarchy = HierarchySnapshotModel.Empty,
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
+    }
+}
+
+/**
+ * The AC-80 state the pair above cannot reach: a **held snapshot** with an `Unavailable` verdict,
+ * i.e. the frame-size mismatch. The pair above pins `HierarchySnapshotModel.Empty`, so the rows
+ * are empty for the wrong reason and a `rows`-first branch order looks correct in it. Here the
+ * snapshot is full, every row is unbadged, and the block must still show one line of copy and no
+ * tree. [hierarchyOutlineDisplay] is what decides that, and `PayloadHierarchyDisplayTest` is what
+ * holds it; this pair is the eye-check.
+ */
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabMismatchedHierarchyPreviewLight() {
+    AppTheme(mode = ThemeMode.Light) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
+            hierarchy = previewHierarchy(),
+            frame = rememberPreviewFrame(),
+            modifier = Modifier.height(PreviewPanelHeight),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MirrorPayloadTabMismatchedHierarchyPreviewDark() {
+    AppTheme(mode = ThemeMode.Dark) {
+        MirrorPayloadTabPreviewContent(
+            state = previewState().copy(hierarchyStatus = HierarchyStatus.Unavailable),
+            hierarchy = previewHierarchy(),
             frame = rememberPreviewFrame(),
             modifier = Modifier.height(PreviewPanelHeight),
         )

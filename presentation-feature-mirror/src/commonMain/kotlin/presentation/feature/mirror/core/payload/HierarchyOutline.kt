@@ -11,9 +11,11 @@ import presentation.feature.mirror.source.mirror.DeviceRect
  *
  * @property nodeId The node's display label, already resolved by the data layer.
  * @property depth Indent level, passed through from the snapshot unchanged.
- * @property last Whether the guide in this node's own column ends here — see `HierarchyRow`'s
- *   KDoc: it is about the guide, not about sibling order, so a node with children is never
- *   `last` even when it is the last of its siblings.
+ * @property last Whether the guide in this node's **own column** ends here — see `HierarchyRow`'s
+ *   KDoc. The column has to keep running whenever anything below still draws in it: a child
+ *   (which draws this column as one of its ancestor guides) or a following sibling (which draws
+ *   its own branch there). Only a following node that is *shallower* truly ends the column, so
+ *   `last` is `next == null || next.depth < depth` — not `<=`.
  * @property badge 1-based annotation index marking this node, or `null` when no annotation
  *   snapped to it.
  * @property matched Whether an annotation snapped here — `badge != null`, named for the
@@ -72,7 +74,7 @@ internal fun payloadHierarchyRows(
         PayloadNodeRow(
             nodeId = node.id,
             depth = node.depth,
-            last = next == null || next.depth <= node.depth,
+            last = next == null || next.depth < node.depth,
             badge = badge,
             matched = badge != null,
         )

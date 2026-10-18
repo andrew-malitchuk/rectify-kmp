@@ -3,6 +3,7 @@ package presentation.feature.mirror.core.payload
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import presentation.feature.mirror.source.mirror.FrozenFrame
+import presentation.feature.mirror.source.mirror.HierarchyStatus
 
 /**
  * Whether the pinned frame has anything to preview as a payload.
@@ -32,4 +33,50 @@ import presentation.feature.mirror.source.mirror.FrozenFrame
 internal fun hasPayload(frozen: FrozenFrame?): Boolean {
     contract { returns(true) implies (frozen != null) }
     return frozen != null && frozen.annotations.isNotEmpty()
+}
+
+/** What the Payload tab's Hierarchy block puts under its label. */
+internal enum class HierarchyOutlineDisplay {
+    /** The dumped tree. */
+    Rows,
+
+    /** One line of copy saying there is no hierarchy to show. */
+    NoHierarchyLine,
+
+    /** Label and readout only — the readout already says which state this is. */
+    Nothing,
+}
+
+/**
+ * Whether the Hierarchy block draws the tree, the no-hierarchy line, or nothing (AC-80).
+ *
+ * **The status is tested before the row count, and that order is the whole point.** A held
+ * snapshot does not mean a usable one: `MirrorViewModel.dumpHierarchyFor` publishes the dump
+ * before it reduces the verdict, so a frame-size mismatch — the measured 9.76 % `uiautomator`
+ * display-override gap documented on [domain.core.source.model.device.HierarchySnapshotModel],
+ * a real device condition — leaves several hundred rows projected from a snapshot whose status
+ * is [HierarchyStatus.Unavailable]. Rows first printed that whole unbadged tree *underneath* a
+ * readout saying "no hierarchy": a verdict contradicted by the thing rendered below it, and
+ * zero-rows is exactly what AC-80 asks for.
+ *
+ * Lifted out of the composable for the same reason as [hasPayload]: this project has no Compose
+ * UI-test harness (`.claude/rules/testing.md`), so branch order expressed only as a `when` in a
+ * `@Composable` is provable by nothing but eye — and the AC-80 preview pair pins an empty
+ * snapshot, so it steers around the only combination that was wrong.
+ *
+ * A row count rather than the list: nothing here reads a row, and the count is all the decision
+ * turns on.
+ *
+ * @param status Hierarchy verdict reduced for the pinned frame.
+ * @param rowCount Rows projected from the held snapshot; `0` when nothing was dumped.
+ * @return Which of the three bodies the block should compose.
+ */
+internal fun hierarchyOutlineDisplay(
+    status: HierarchyStatus,
+    rowCount: Int,
+): HierarchyOutlineDisplay = when {
+    status == HierarchyStatus.Absent || status == HierarchyStatus.Unavailable ->
+        HierarchyOutlineDisplay.NoHierarchyLine
+    rowCount > 0 -> HierarchyOutlineDisplay.Rows
+    else -> HierarchyOutlineDisplay.Nothing
 }
