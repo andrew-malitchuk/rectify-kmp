@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "PP-TD-1",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "presentation-feature-mirror/source/mirror/MirrorPayloadTab.kt",
+    "title": "Crop cell fitted to a constant 84dp but drawn in weight(1f), clipping the red outline at narrow panel widths",
+    "detail": "Real cell is ~76dp at PanelMinWidth (outline right edge clipped, worked: 79.7 of 84) and ~149dp at PanelMaxWidth. cropWindow KDoc claiming the pad changes only on a different display is inaccurate. Clean fix is a measured cell width handed to cropWindow, since doing the arithmetic in the composable is what TAC-4 forbids."
+  },
+  {
+    "id": "PP-TD-2",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "presentation-feature-mirror/source/mirror/MirrorViewModel.kt",
+    "title": "ClearStaged keeps promptOverride, resurfacing a prompt for deleted annotations",
+    "detail": "Same defect class as F-1. ClearStaged empties the annotation list which flips hasPayload false, so the Prompt block leaves composition and RCR-1 staleness effect never runs. EditPrompt(String?) now provides the clearing mechanism, so the fix is a one-line reducer change."
+  },
+  {
+    "id": "PP-TD-3",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "presentation-core-ui/kit/molecule/row/HierarchyRow.kt",
+    "title": "matched is exactly tag != null at every call site and defaults false, dimming the tree for forgetful consumers",
+    "detail": "Collapse to a derived value or default it from tag."
+  },
+  {
+    "id": "PP-TD-4",
+    "spec": "payload-preview",
+    "severity": "nit",
+    "area": "presentation-feature-mirror/commonTest/PayloadEstimateTest.kt",
+    "title": "Tautological test: assertEquals(1, PAYLOAD_FORMAT_VERSION)",
+    "detail": "Asserts a literal against itself and would pass under any edit. The constant itself is planned scope (plan says rendered nowhere); the test is the defect. Assert something behavioural or drop it."
+  },
+  {
+    "id": "PP-TD-5",
+    "spec": "payload-preview",
+    "severity": "nit",
+    "area": "presentation-feature-mirror/commonTest/HierarchyOutlineTest.kt",
+    "title": "Test name and comment claim a structural property the body does not assert",
+    "detail": "Body asserts Empty -> empty twice. Same self-referential failure mode that produced two of this specs three defects."
+  },
+  {
+    "id": "PP-TD-6",
+    "spec": "payload-preview",
+    "severity": "nit",
+    "area": "presentation-feature-mirror/core/payload/",
+    "title": "core/payload file names do not partition their contents",
+    "detail": "One label function in PayloadLabels.kt while two live in PayloadEstimate.kt; PayloadGate.kt now holds three unrelated predicates (hasPayload, hierarchyOutlineDisplay, promptSeedIsStale)."
+  },
+  {
+    "id": "PP-TD-7",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "presentation-feature-mirror/source/mirror/MirrorContract.kt",
+    "title": "ROOT CAUSE: promptOverride carries no record of the payload it was authored against",
+    "detail": "Nothing can distinguish a stale override from a deliberate one, so F-1 and F-4 fixes are both heuristics for that missing field. A PromptOverride(text, seededAgainst) contract would close both and delete promptSeedIsStale. Contract change, needs its own task and gate."
+  },
+  {
+    "id": "PP-TD-8",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "gradle.properties",
+    "title": "Kotlin/Native release linker OOMs under ~4 parallel linkReleaseFramework tasks",
+    "detail": "Java heap space against a 4 GiB daemon heap; --max-workers=1 is the workaround and was used for every cross-target gate on this spec. Fix is kotlin.native.linkerThreads or a higher daemon -Xmx. Pre-existing, not introduced by this spec, and affects every future cross-target gate in this repo."
+  },
+  {
+    "id": "PP-TD-9",
+    "spec": "payload-preview",
+    "severity": "minor",
+    "area": "presentation-feature-mirror/core/discovery/DiscoveryProjection.kt",
+    "title": "EmulatorModel.toRow sets no detail, unlike DeviceModel.toRow",
+    "detail": "Information gap in the device picker as well as the prompt; AVD name and API level are known. Cross-spec: belongs to android-device-discovery-mirroring and its own gate. Does NOT replace RCR-2s formatting-boundary guard, which must stay because MirrorRow.detail defaults empty, selectedRowDetailWithoutTransport ends in orEmpty, and transport-stripping can legitimately empty a detail."
+  }
+]

@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "updatedAt": "2026-10-18T09:01:55Z",
+  "updatedAt": "2026-10-18T09:43:25Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -84,19 +84,19 @@
       "failures": 0
     },
     "sdd-build-business-implement": {
-      "tokens": 182831,
+      "tokens": 232166,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 3,
+      "invocations": 4,
       "failures": 0
     },
     "sdd-build-frontend-implement": {
-      "tokens": 476449,
+      "tokens": 544415,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 7,
+      "invocations": 8,
       "failures": 0
     },
     "sdd-build-test-audit": {
@@ -114,11 +114,19 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 149969,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 2167490,
+    "tokens": 2434760,
     "durationMs": 0,
-    "invocations": 29
+    "invocations": 32
   }
 }

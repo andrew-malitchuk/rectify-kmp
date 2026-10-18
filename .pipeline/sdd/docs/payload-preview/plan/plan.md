@@ -10,7 +10,7 @@
 | producedBy | sdd-build-plan-refine |
 | schemaVersion | 1 |
 | createdAt | 2026-10-17T11:14:11Z |
-| updatedAt | 2026-10-17T11:30:44Z |
+| updatedAt | 2026-10-18T09:39:46Z |
 
 ## Gate
 
@@ -30,7 +30,7 @@ user
 
 ### selfHash
 
-b9f978314208a4d444c4144e3df6d965d7a701e5d9e5eb9a049a669afe3d43a8
+61cd0cb9b9d3b59d7fa2f8fd58da6c1a407f274d94af4d3d84a734b17eaa32bf
 
 ### inputs
 
@@ -188,32 +188,32 @@ Payload Preview is PRD F-6 and the consumer of two already-shipped specs: drag-a
 
 ### acceptanceCriteria
 
-| id | text | priority | verificationMethod |
-| --- | --- | --- | --- |
-| AC-13 | Given at least one staged annotation exists, when the user opens the Payload tab, then a generated text prompt with token-count estimate and an Edit affordance is shown. | must | test |
-| AC-14 | Given staged annotations exist, when viewing Payload > Crops, then a 3-column grid shows each annotation's cropped image with its red outline baked in and caption 'from frame <id>'. | must | test |
-| AC-15 | Given staged annotations exist, when viewing Payload > Hierarchy, then a monospace indented tree displays with matched/flagged nodes visually marked. | must | test |
-| AC-16 | Given the Payload tab is open, then its footer summarizes 'frame.png · N crops · hierarchy.xml' plus a total size that matches the actual payload. | must | inspection |
-| AC-72 | Crop captions and any pixel dimensions in the Payload tab render with the unspaced × (U+00D7) multiplication sign, reusing AnnotationFormat.kt's metaLine pattern — never a letter x and never a new formatter. | must | test |
-| AC-73 | The per-annotation prompt line is built from StagedAnnotation.rect and StagedAnnotation.comment verbatim (which already carries any ⌥-prefixed measurement line from measure-mode's noteLine/replaceNoteLine) with no separate 'measured:' branch, regardless of whether the user ever held Option on that annotation. | must | test |
-| AC-74 | The Hierarchy section's source label reads 'uiautomator · {nodes.size} nodes' from the already-cached HierarchySnapshotModel (MirrorViewModel.frozenHierarchy); it never triggers a new dump. | must | test |
-| AC-75 | A hierarchy node is marked (red '#{annotationIndex}' badge, ink color) if and only if it is the result of NodeSnap.snapTarget for that annotation's rect; every other node renders in ink3 with no badge. | must | test |
-| AC-76 | The crop red outline is positioned using exactly crop(annotationRect, 84, 72, 14, fixed=false, withRect=true)'s returned rect — never a differently-padded or unscaled rect. | must | test |
-| AC-77 | Given zero staged annotations, the Payload tab renders only the literal empty-state copy ('Nothing staged. Draw a box and the payload builds here, exactly as Claude will get it.') — none of Prompt, Crops, Hierarchy or the footer render. | must | test |
-| AC-78 | Token estimate (360 + count*140) and payload size ((1.6 + count*0.12) MB, one decimal) recompute synchronously as annotations are added/removed/edited, with no measurable lag (satisfies NFR-11's ~200ms budget trivially since both are O(1) arithmetic). | must | test |
-| AC-79 | Clicking the Edit affordance toggles the prompt block into an editable text area (reusing the existing MultilineInput atom); the edited text, once changed, is what gets attached as the prompt instead of the auto-generated text. | should | test |
-| AC-80 | When HierarchyStatus is Unavailable or Absent for the frozen frame, the Hierarchy section shows zero nodes and an explicit 'no hierarchy' state rather than an empty tree that looks like a bug, and the rest of the Payload tab (Prompt, Crops, footer) still renders normally. | must | demo |
+| id | text | priority | verificationMethod | amendedBy | amendmentNote |
+| --- | --- | --- | --- | --- | --- |
+| AC-13 | Given at least one staged annotation exists, when the user opens the Payload tab, then a generated text prompt with token-count estimate and an Edit affordance is shown. | must | test |  |  |
+| AC-14 | Given staged annotations exist, when viewing Payload > Crops, then a 3-column grid shows each annotation's cropped image with its red outline baked in and caption 'from frame <id>'. | must | test |  |  |
+| AC-15 | Given staged annotations exist, when viewing Payload > Hierarchy, then a monospace indented tree displays with matched/flagged nodes visually marked. | must | test |  |  |
+| AC-16 | Given the Payload tab is open, then its footer summarizes 'frame.png · N crops · hierarchy.xml' plus a total size that matches the actual payload. | must | inspection |  |  |
+| AC-72 | Crop captions and any pixel dimensions in the Payload tab render with the unspaced × (U+00D7) multiplication sign, reusing AnnotationFormat.kt's metaLine pattern — never a letter x and never a new formatter. | must | test |  |  |
+| AC-73 | The per-annotation prompt line is built from StagedAnnotation.rect and StagedAnnotation.comment verbatim (which already carries any ⌥-prefixed measurement line from measure-mode's noteLine/replaceNoteLine) with no separate 'measured:' branch, regardless of whether the user ever held Option on that annotation. | must | test |  |  |
+| AC-74 | The Hierarchy section's source label reads 'uiautomator · {nodes.size} nodes' from the already-cached HierarchySnapshotModel (MirrorViewModel.frozenHierarchy); it never triggers a new dump. | must | test |  |  |
+| AC-75 | A hierarchy node is marked (red '#{annotationIndex}' badge, ink color) if and only if it is the result of NodeSnap.snapTarget for that annotation's rect; every other node renders in ink3 with no badge. | must | test |  |  |
+| AC-76 | The crop red outline is positioned using exactly crop(annotationRect, 84, 72, 14, fixed=false, withRect=true)'s returned rect — never a differently-padded or unscaled rect. | must | test |  |  |
+| AC-77 | Given zero staged annotations, the Payload tab renders only the literal empty-state copy ('Nothing staged. Draw a box and the payload builds here, exactly as Claude will get it.') — none of Prompt, Crops, Hierarchy or the footer render. | must | test |  |  |
+| AC-78 | Token estimate (360 + count*140) and payload size ((1.6 + count*0.12) MB, one decimal) recompute synchronously as annotations are added/removed/edited, with no measurable lag (satisfies NFR-11's ~200ms budget trivially since both are O(1) arithmetic). | must | test |  |  |
+| AC-79 | Clicking the Edit affordance toggles the prompt block into an editable text area (reusing the existing MultilineInput atom); the edited text, once changed, is what gets attached as the prompt instead of the auto-generated text. | should | test | AM-1 | AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate. |
+| AC-80 | When HierarchyStatus is Unavailable or Absent for the frozen frame, the Hierarchy section shows zero nodes and an explicit 'no hierarchy' state rather than an empty tree that looks like a bug, and the rest of the Payload tab (Prompt, Crops, footer) still renders normally. | must | demo |  |  |
 
 ### scenarios
 
-| id | title | type | steps |
-| --- | --- | --- | --- |
-| SC-6 | Review payload before sending | happy | ["Open Payload tab", "Review generated prompt and token estimate", "Review crops grid", "Review hierarchy tree", "Check footer summary"] |
-| SC-20 | Payload with zero staged annotations | edge | ["Freeze a frame with no annotations drawn", "Open the Payload tab", "Only the empty-state copy renders", "No Prompt/Crops/Hierarchy section or footer appears"] |
-| SC-21 | Annotation with no matched hierarchy node | edge | ["Stage an annotation whose rect contains no hierarchy node within NodeSnap's slack", "Open Payload > Hierarchy", "No node carries that annotation's badge", "Open Payload > Crops: the crop still renders using the annotation's own rect for the outline"] |
-| SC-22 | Prompt assembles correctly without any measurement | happy | ["Stage annotations without ever holding Option over any of them", "Open Payload > Prompt", "Each annotation line shows its comment (or 'no comment') with no finding text, and the prompt is otherwise well-formed"] |
-| SC-23 | Freeze-time hierarchy dump was unavailable | error | ["Freeze a frame whose uiautomator dump failed or returned empty (HierarchyStatus.Unavailable)", "Open Payload > Hierarchy", "Section shows zero nodes with an explicit 'no hierarchy' state, not a silent empty tree", "Prompt, Crops and the footer still render normally"] |
-| SC-24 | Edit the prompt before sending | happy | ["Open Payload tab with staged annotations", "Click the Edit affordance", "Prompt block becomes an editable text area", "Edited text becomes the prompt that would be attached to the send", "Add another annotation — the edited text is still there (no auto-clear)"] |
+| id | title | type | steps | amendedBy | amendmentNote |
+| --- | --- | --- | --- | --- | --- |
+| SC-6 | Review payload before sending | happy | ["Open Payload tab", "Review generated prompt and token estimate", "Review crops grid", "Review hierarchy tree", "Check footer summary"] |  |  |
+| SC-20 | Payload with zero staged annotations | edge | ["Freeze a frame with no annotations drawn", "Open the Payload tab", "Only the empty-state copy renders", "No Prompt/Crops/Hierarchy section or footer appears"] |  |  |
+| SC-21 | Annotation with no matched hierarchy node | edge | ["Stage an annotation whose rect contains no hierarchy node within NodeSnap's slack", "Open Payload > Hierarchy", "No node carries that annotation's badge", "Open Payload > Crops: the crop still renders using the annotation's own rect for the outline"] |  |  |
+| SC-22 | Prompt assembles correctly without any measurement | happy | ["Stage annotations without ever holding Option over any of them", "Open Payload > Prompt", "Each annotation line shows its comment (or 'no comment') with no finding text, and the prompt is otherwise well-formed"] |  |  |
+| SC-23 | Freeze-time hierarchy dump was unavailable | error | ["Freeze a frame whose uiautomator dump failed or returned empty (HierarchyStatus.Unavailable)", "Open Payload > Hierarchy", "Section shows zero nodes with an explicit 'no hierarchy' state, not a silent empty tree", "Prompt, Crops and the footer still render normally"] |  |  |
+| SC-24 | Edit the prompt before sending | happy | ["Open Payload tab with staged annotations", "Click the Edit affordance", "Prompt block becomes an editable text area", "Edited text becomes the prompt that would be attached to the send", "Add another annotation — the edited text is still there (no auto-clear)"] | AM-1 | AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate. |
 
 ### definitionOfReady
 
@@ -613,3 +613,9 @@ true
 | question | options | answer | source |
 | --- | --- | --- | --- |
 | Stage 2 plan gate [MANDATORY] — approve this plan and open Stage 3 (backlog)? | ["Approve (Recommended)", "Send back with remarks", "Reject and re-plan"] | Approve (Recommended) | user-edited |
+
+### amendments
+
+| id | at | affects | decidedBy | detail |
+| --- | --- | --- | --- | --- |
+| AM-1 | stage-6-gate | ["AC-79", "SC-24", "FR-53", "stage-1-decision-2"] | human | AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate. |

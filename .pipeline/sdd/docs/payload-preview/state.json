@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "currentStage": "validation",
+  "currentStage": "review",
   "stages": {
     "preparation": {
       "status": "done"
@@ -15,6 +15,9 @@
       "status": "done"
     },
     "validation": {
+      "status": "done"
+    },
+    "review": {
       "status": "done"
     }
   },
@@ -68,7 +71,10 @@
       "subSteps": {
         "test": "done",
         "implement": "done"
-      }
+      },
+      "crResolved": [
+        "RCR-2"
+      ]
     },
     "T-4": {
       "status": "done",
@@ -111,7 +117,10 @@
       "type": "ui",
       "subSteps": {
         "implement": "done"
-      }
+      },
+      "crResolved": [
+        "RCR-1"
+      ]
     },
     "T-8": {
       "status": "done",
@@ -215,5 +224,7 @@
       "status": "done"
     }
   },
-  "verdict": "complete-with-waivers"
+  "verdict": "complete-with-waivers",
+  "reviewIteration": 1,
+  "reviewVerdict": "approve-with-nits"
 }

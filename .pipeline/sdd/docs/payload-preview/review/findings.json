@@ -1,0 +1,103 @@
+{
+  "spec": "payload-preview",
+  "stage": "review",
+  "step": "findings",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-correctness-review",
+  "provenance": {
+    "selfHash": "b0cfd4685c8ab0a7d02f152bdac5c26e977502106e56967d7e409c4d656f8ce1",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "61cd0cb9b9d3b59d7fa2f8fd58da6c1a407f274d94af4d3d84a734b17eaa32bf"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T09:18:54Z",
+  "updatedAt": "2026-10-18T09:42:13Z",
+  "data": {
+    "findings": [
+      {
+        "id": "F-1",
+        "dimension": "correctness",
+        "severity": "major",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt",
+        "line": 334,
+        "ruleOrACRef": "AC-79",
+        "detail": "Stale prompt seed while Edit is open. `val seed = remember(isEditing) { effective }` is keyed only on `isEditing`, so once the editor is open the seed (and `MultilineInput`'s own `remember(initialText)` at MultilineInput.kt:94) is frozen for the whole editing session. The frame is still pinned and draggable while the Payload tab is open (FR-31 / a second drag annotates the same frame), so this sequence is reachable: open Edit with no override -> drag a new box on the stage -> `generated` recomputes and the read-only view, token estimate and footer all move to 2 annotations, but the open text area still shows the 1-annotation prompt (\"Fix 1 UI issue.\"). The first keystroke then commits that stale text as `promptOverride`, permanently, with no indication. The exported prompt describes 1 of 2 annotations, which directly contradicts the tab's stated contract (\"exactly what Claude receives\", MirrorPayloadTab KDoc / FR-46). AC-79's documented rule is that a *user-typed* override survives annotation edits; a not-yet-typed generated seed is not an override and should re-seed. Suggested key: re-seed while `frozen.promptOverride == null`, e.g. `remember(isEditing, frozen.promptOverride?.let { null } ?: generated) { effective }`. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-2",
+        "dimension": "correctness",
+        "severity": "major",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PromptAssembly.kt",
+        "line": 47,
+        "ruleOrACRef": "AC-13",
+        "detail": "The prompt's device line is malformed for every emulator session. `buildPrompt` interpolates `\"${frozen.deviceLabel} · ${w}×${h}\"` unconditionally, while the annotation head three lines below correctly uses `listOfNotNull(...).joinToString(\" · \")` to drop a missing segment. `deviceLabel` is stamped by `MirrorViewModel.selectedRowDetailWithoutTransport()` (MirrorViewModel.kt:644) from `MirrorRow.detail`, and `EmulatorModel.toRow()` (core/discovery/DiscoveryProjection.kt:97-106) never sets `detail`, so it is `\"\"` — while `DeviceRepositoryImpl` excludes emulators from `physical` (DeviceRepositoryImpl.kt:202), so a running emulator exists ONLY as that Emulator-group row, and `commit()` (MirrorViewModel.kt:298-308) selects it by `row.id`. Result for the entire emulator workflow: line 2 of the prompt pasted into Claude reads \" · 1080×2400\" with a dangling leading separator and no platform segment at all. `FrozenFrame.deviceLabel`'s KDoc (MirrorContract.kt) claims it is \"Empty when there was no selected row to read\", which under-describes this. Every `PromptAssemblyTest` fixture sets a non-empty `deviceLabel` and `MirrorFakes.physicalDevice()` only models a physical device, so nothing covers it. Fix is local: drop the empty segment the same way the annotation head does. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-3",
+        "dimension": "correctness",
+        "severity": "minor",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt",
+        "line": 416,
+        "ruleOrACRef": "AC-76",
+        "detail": "AF-4 assessed — real, but NOT worth promoting to blocking. The crop is fitted to a constant `CropCellWidth` (84 dp, converted at line 413) while the cell is drawn at `Modifier.weight(1f)` (line 454) inside a clipping Box (line 507). Measured against the shipped geometry: content inset is `spacingS` (8 dp) each side and two 8 dp gaps, so the real cell is (260-16-16)/3 ≈ 76 dp at `ShellWindowDefaults.PanelMinWidth` and ≈ 149 dp at `PanelMaxWidth`, vs 89 dp at the 300 dp default. Below ~284 dp of panel width the `dstSize` fitted to 84 dp overflows the clip and the rightmost ~8 dp of both the blit and the red `outlineRect` are cut — and for a wide annotation the outline's right edge genuinely lands inside that strip (worked example: rect 900 px wide on a 1080 px frame gives outline right ≈ 79.7 of 84). The red outline is what a reporter reads, so this is a visible defect, not just slack; above 84 dp it is only unused space on the right. `CropCellWidth`'s KDoc (line 123-126) documents only the benign wider case and should name the clipping one too. Cosmetic in effect and only at a dragged-narrow panel, hence minor: no wrong numbers are exported (the caption and the prompt both use the real rect). `BoxWithConstraints` (or passing the measured width into the `remember` key) is the fix. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-4",
+        "dimension": "correctness",
+        "severity": "minor",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+        "line": 536,
+        "ruleOrACRef": "AC-79",
+        "detail": "`ClearStaged` keeps `promptOverride`. `clearStaged` copies `frozen.copy(annotations = emptyList(), selectedIndex = null)` and leaves the override in place; `hasPayload` then hides the whole tab behind the empty-state copy. Draw a new box on the same still-pinned frame and the Payload tab comes back showing the prompt the user typed for the annotations they just deleted — `isEditing` is keyed on `frameId`, which has not changed, so they are not even in edit mode and have no cue the text is stale. This is consistent with the letter of the stated rule (\"only `ResumeLive` drops it\", editPrompt KDoc at line 625) but `ClearStaged` is the \"start over on this frame\" action (AC-48) and the override describes nothing that still exists. No test or AC covers the ClearStaged-then-reannotate path. Either drop the override in `clearStaged` or record the choice in its KDoc. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-5",
+        "dimension": "architecture",
+        "severity": "minor",
+        "file": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt",
+        "line": 67,
+        "ruleOrACRef": "AC-75",
+        "detail": "`HierarchyRow`'s new `matched: Boolean = false` is fully derivable from the `tag` parameter it sits beside, and its default degrades the component. Every call site in the repo sets the two from one source — MirrorPayloadTab.kt:609-610 passes `tag = row.badge?.let { ... }` and `matched = row.matched` where `PayloadNodeRow.matched` is defined as `badge != null` (HierarchyOutline.kt:79), and StyleguideScreen.kt:744-745 matches that pairing — so `matched` is exactly `tag != null` everywhere, and the pair can be set inconsistently (`tag = \"#1\", matched = false` renders a tagged row in dim ink3). On a public molecule in the shared kit the default is also the wrong way round: a future consumer rendering a plain tree with no annotation concept gets `matched = false` and therefore an all-ink3 dimmed tree. Deriving the ink split from `tag != null` inside the component removes the parameter, removes `PayloadNodeRow.matched`, and makes the degraded state unreachable. Noted as craft, not conformance — the parameter is sanctioned by plan.json's architecture section. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-6",
+        "dimension": "maintainability",
+        "severity": "nit",
+        "file": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PayloadEstimateTest.kt",
+        "line": 159,
+        "ruleOrACRef": ".claude/rules/testing.md",
+        "detail": "AF-6 assessed — the constant is fine, the test is not. plan.json explicitly scopes `PAYLOAD_FORMAT_VERSION` as \"declared in core/payload (rendered nowhere) so NFR-12 has a real artifact the future send spec reads\", so shipping it unread is planned and is NOT a finding. `payloadFormatVersionIsPinnedAtOne`'s `assertEquals(1, PAYLOAD_FORMAT_VERSION)` is, though: it restates the declaration, so the only thing that can turn it red is the deliberate reviewed bump it claims to guard, and it will then be edited in the same commit. Zero contract value, one more line to maintain. Delete it and keep the constant's KDoc, or keep the test only once something actually emits the version (at which point assert the emitted payload, not the literal). No promotion to blocking. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-7",
+        "dimension": "maintainability",
+        "severity": "nit",
+        "file": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/HierarchyOutlineTest.kt",
+        "line": 171,
+        "ruleOrACRef": ".claude/rules/testing.md",
+        "detail": "`theFunctionTakesNothingDumpCapableOnlyAnAlreadyCachedSnapshot` (TAC-5) does not test what its name and comment claim. The claimed property — that `payloadHierarchyRows` has no dump-capable parameter — is a compile-time fact the comment itself concedes (\"covered structurally\"); the body only asserts `HierarchySnapshotModel.Empty` yields no rows, and its two assertions (`rows.isEmpty()` and `assertNull(rows.firstOrNull())`) are the same assertion written twice. A reader scanning for TAC-5 coverage will believe more is pinned than is. Either delete it and leave TAC-5 to the signature (as the comment argues) or rename it to what it checks (empty snapshot -> no rows). Flagged because this spec's own history shows name-vs-body drift in tests is what hid CR-1. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      },
+      {
+        "id": "F-8",
+        "dimension": "conventions",
+        "severity": "nit",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PayloadLabels.kt",
+        "line": 23,
+        "ruleOrACRef": ".claude/rules/package-layout.md",
+        "detail": "The two label files in `core/payload/` do not partition by their own names: `PayloadLabels.kt` holds exactly one label (`hierarchySourceLabel`), while `PayloadEstimate.kt` holds two more (`payloadSizeLabel`, `footerLabel`) plus the estimate and the format-version constant. Someone looking for \"the footer label\" opens Labels and does not find it. Both files are machine-text builders with identical no-localisation rationale (the KDoc of each cross-references the other for it), so one `PayloadLabels.kt` with the estimate kept in `PayloadEstimate.kt` — or simply renaming the one-function file to `HierarchyLabel.kt` — removes the ambiguity. Cosmetic; the folder is otherwise consistent with `core/measure/`'s style. verified:false — no adversarial verify pass at this tier (findingVerify: none).",
+        "verified": false
+      }
+    ]
+  }
+}

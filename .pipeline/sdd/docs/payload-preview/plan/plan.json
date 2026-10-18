@@ -6,7 +6,7 @@
   "status": "done",
   "producedBy": "sdd-build-plan-refine",
   "provenance": {
-    "selfHash": "b9f978314208a4d444c4144e3df6d965d7a701e5d9e5eb9a049a669afe3d43a8",
+    "selfHash": "61cd0cb9b9d3b59d7fa2f8fd58da6c1a407f274d94af4d3d84a734b17eaa32bf",
     "inputs": [
       {
         "artifact": "preparation/preparation.json",
@@ -19,7 +19,7 @@
     ]
   },
   "createdAt": "2026-10-17T11:14:11Z",
-  "updatedAt": "2026-10-17T11:30:44Z",
+  "updatedAt": "2026-10-18T09:39:46Z",
   "data": {
     "meta": {
       "title": "Payload Preview — Prompt / Crops / Hierarchy",
@@ -355,7 +355,9 @@
         "id": "AC-79",
         "text": "Clicking the Edit affordance toggles the prompt block into an editable text area (reusing the existing MultilineInput atom); the edited text, once changed, is what gets attached as the prompt instead of the auto-generated text.",
         "priority": "should",
-        "verificationMethod": "test"
+        "verificationMethod": "test",
+        "amendedBy": "AM-1",
+        "amendmentNote": "AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate."
       },
       {
         "id": "AC-80",
@@ -430,7 +432,9 @@
           "Prompt block becomes an editable text area",
           "Edited text becomes the prompt that would be attached to the send",
           "Add another annotation — the edited text is still there (no auto-clear)"
-        ]
+        ],
+        "amendedBy": "AM-1",
+        "amendmentNote": "AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate."
       }
     ],
     "definitionOfReady": [
@@ -1523,6 +1527,20 @@
         ],
         "answer": "Approve (Recommended)",
         "source": "user-edited"
+      }
+    ],
+    "amendments": [
+      {
+        "id": "AM-1",
+        "at": "stage-6-gate",
+        "affects": [
+          "AC-79",
+          "SC-24",
+          "FR-53",
+          "stage-1-decision-2"
+        ],
+        "decidedBy": "human",
+        "detail": "AMENDED AT THE STAGE 6 GATE (engineer decision, finding F-1 / RCR-1): the no-auto-clear guarantee is narrowed to the CLOSED-editor case. An override still survives annotation adds, deletes and comment edits whenever the editor is closed — the common path, and SC-24's walk as written. But while the editor is OPEN and the payload underneath it changes, the override is discarded and the editor closes, because the alternative is exporting a prompt that describes annotations which no longer exist — the exact failure this feature exists to prevent. The loss of in-progress typing is visible (the editor snaps shut and the regenerated prompt reappears), not silent. Enforced by core/payload/promptSeedIsStale with 6 unit tests. Root cause noted for a future task: promptOverride carries no record of the payload it was authored against, so this predicate is a heuristic for that missing field; a PromptOverride(text, seededAgainst) contract would close F-1 and F-4 together and delete the predicate."
       }
     ]
   },
