@@ -1,6 +1,6 @@
 {
   "spec": "history-batch-tracking",
-  "updatedAt": "2026-10-18T19:11:17Z",
+  "updatedAt": "2026-10-18T19:27:40Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -50,11 +50,35 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 103719,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 103119,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 130739,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 609999,
+    "tokens": 947576,
     "durationMs": 0,
-    "invocations": 6
+    "invocations": 9
   }
 }

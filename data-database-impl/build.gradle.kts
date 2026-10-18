@@ -13,6 +13,9 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.koin.core)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
+        }
         androidMain.dependencies {
             implementation(libs.koin.android)
         }

@@ -22,3 +22,5 @@
 {"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-18T19:21:37Z", "spec": "history-batch-tracking"}
 {"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 130739, "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}
 {"stage": "backlog", "event": "end", "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "event": "start", "at": "2026-10-18T19:28:22Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:28:22Z", "spec": "history-batch-tracking"}
