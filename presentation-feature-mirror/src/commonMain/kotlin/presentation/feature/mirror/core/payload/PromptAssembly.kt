@@ -20,7 +20,13 @@ private const val NO_COMMENT = "no comment"
  *
  * 1. **The device line is real.** The design hardcodes `"Android 15 · 1344×2992"`; here it is
  *    [FrozenFrame.deviceLabel] and [FrozenFrame.deviceSize], both stamped at freeze, so the
- *    prompt describes the frame that was actually captured.
+ *    prompt describes the frame that was actually captured. The label is **optional**: an
+ *    emulator row carries no detail (`EmulatorModel.toRow` never sets `MirrorRow.detail`, which
+ *    defaults to `""`), so [FrozenFrame.deviceLabel] is blank on a first-class path. It is then
+ *    dropped together with its separator — the same `listOfNotNull` idiom the annotation head
+ *    line uses for an unmatched node id — leaving the bare resolution rather than a
+ *    leading-space dangling-dot `" · 1080×2400"`. No placeholder: a blank label is nothing
+ *    to say, and inventing a device name would be divergence 3's mistake.
  * 2. **No `measured:` branch.** `core/measure`'s `noteLine` already folds a measurement into the
  *    user's comment as a `⌥`-prefixed line, so the comment is emitted **verbatim** — appending a
  *    second measurement segment here would duplicate it.
@@ -44,7 +50,10 @@ internal fun buildPrompt(frozen: FrozenFrame, nodeIdFor: (StagedAnnotation) -> S
     val count = frozen.annotations.size
     val header = listOf(
         "Fix $count UI ${if (count == 1) "issue" else "issues"}.",
-        "${frozen.deviceLabel} · ${frozen.deviceSize.width}$TIMES${frozen.deviceSize.height}",
+        listOfNotNull(
+            frozen.deviceLabel.ifBlank { null },
+            "${frozen.deviceSize.width}$TIMES${frozen.deviceSize.height}",
+        ).joinToString(" · "),
         "",
     )
     val blocks = frozen.annotations.flatMap { annotation ->

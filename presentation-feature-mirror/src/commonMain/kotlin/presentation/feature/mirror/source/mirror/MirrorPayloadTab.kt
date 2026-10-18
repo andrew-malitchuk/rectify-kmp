@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +65,7 @@ import presentation.feature.mirror.core.payload.HierarchyOutlineDisplay
 import presentation.feature.mirror.core.payload.hierarchyOutlineDisplay
 import presentation.feature.mirror.core.payload.payloadHierarchyRows
 import presentation.feature.mirror.core.payload.payloadSizeLabel
+import presentation.feature.mirror.core.payload.promptSeedIsStale
 import presentation.feature.mirror.core.payload.tokenEstimate
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_measure_hierarchy_unavailable
@@ -264,6 +266,11 @@ public fun MirrorPayloadTab(
  * not write, and silently regenerating it on the next drag would throw it away at the exact
  * moment the user was still working. [MirrorIntent.ResumeLive] drops it, by dropping the frame.
  *
+ * The one exception is an **open** editor whose seed went stale under it — see [promptSeedIsStale].
+ * There the override would not be a prompt the user wrote but the machine's own previous text
+ * echoed back by the first keystroke, describing annotations that are gone; truth about what
+ * Claude receives outranks an edit the user had not finished.
+ *
  * The Edit toggle is a local [remember] rather than a [MirrorUiState] field — which panel body
  * is showing is view state, invisible to the reducer and to the exported payload. It resets on a
  * new freeze because it is keyed on [FrozenFrame.frameId].
@@ -332,6 +339,21 @@ private fun PayloadPromptSection(
             // Seeded once per editing session, not from `effective`: re-seeding on every
             // keystroke would re-key the input's internal state as the override flows back.
             val seed = remember(isEditing) { effective }
+            // The machine truth this session was seeded against. `generated` and not `effective`
+            // precisely so a keystroke cannot register as a change — see promptSeedIsStale.
+            val seededAgainst = remember(isEditing) { generated }
+            if (promptSeedIsStale(seededAgainst = seededAgainst, generated = generated)) {
+                // An annotation was staged, deleted or commented — or a hierarchy dump landed —
+                // under the open editor, so `seed` now describes a payload that is gone and the
+                // next keystroke would commit it as a permanent override (F-1). Drop the
+                // override so the regenerated prompt wins, and close the editor: typing in
+                // progress is lost either way, and closing is what makes that visible instead
+                // of silently swapping the text out from under the caret.
+                LaunchedEffect(generated) {
+                    onIntent(MirrorIntent.EditPrompt(null))
+                    isEditing = false
+                }
+            }
             MultilineInput(
                 modifier = Modifier.fillMaxWidth(),
                 initialText = seed,

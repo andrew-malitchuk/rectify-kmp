@@ -624,9 +624,10 @@ public class MirrorViewModel(
      *
      * Dropped only by [resumeLive], which drops the whole frame — every annotation handler
      * copies [FrozenFrame] and so carries the override through an add, a delete and a
-     * reconnection untouched.
+     * reconnection untouched. A `null` [text] clears it, which the Payload tab sends when it
+     * discards an editing session whose seed went stale; no reducer clears it on its own.
      */
-    private fun editPrompt(text: String) = intent {
+    private fun editPrompt(text: String?) = intent {
         reduce {
             val frozen = state.frozen ?: return@reduce state
             state.copy(frozen = frozen.copy(promptOverride = text))
