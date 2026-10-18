@@ -1,0 +1,1514 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "stage": "backlog",
+  "step": "backlog",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-backlog-validate",
+  "provenance": {
+    "selfHash": "bdc42d0542417163c43c47fef822b6ae648680b7b0e8fd68c8fcce4acf14e28f",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "1309a704111a300b5006cd5a46115cd4a23b10ab2dfa305f195ef9f0816f07dd"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T22:33:02Z",
+  "updatedAt": "2026-10-18T22:33:02Z",
+  "data": {
+    "epics": [
+      {
+        "id": "E-1",
+        "title": "Read path: sent-batch data + off-disk bytes",
+        "tasks": [
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-4"
+        ]
+      },
+      {
+        "id": "E-2",
+        "title": "Pure verify core (commonMain diff engine)",
+        "tasks": [
+          "T-5",
+          "T-6"
+        ]
+      },
+      {
+        "id": "E-3",
+        "title": "Verify stage contract & ViewModel wiring",
+        "tasks": [
+          "T-7",
+          "T-8",
+          "T-9",
+          "T-10"
+        ]
+      },
+      {
+        "id": "E-4",
+        "title": "Verify stage UI",
+        "tasks": [
+          "T-11"
+        ]
+      },
+      {
+        "id": "E-5",
+        "title": "History tab gate removal",
+        "tasks": [
+          "T-12"
+        ]
+      },
+      {
+        "id": "E-6",
+        "title": "Follow-up re-send, mark-all override & disconnect hardening",
+        "tasks": [
+          "T-13",
+          "T-14",
+          "T-15"
+        ]
+      },
+      {
+        "id": "E-7",
+        "title": "Hygiene, docs & release gates",
+        "tasks": [
+          "T-16",
+          "T-17"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T-1",
+        "epic": "E-1",
+        "title": "HistoryEntryDao.findById + HistoryDataSource.getBatch",
+        "description": "Add @Transaction @Query(\"SELECT * FROM history_entry WHERE id = :id\") suspend fun findById(id: String): HistoryEntryWithAnnotations? to HistoryEntryDao (the @Relation already carries annotations; only the query is missing). Add a bespoke String-keyed suspend fun getBatch(id: String) to HistoryDataSource + HistoryDataSourceImpl delegating to the DAO. Do NOT reuse ReadableDataSource.getById (Int-keyed) and do NOT copy observeAll's missing-LIMIT pattern (bugs.json#PP-TD debt, out of scope) — this reads exactly one row by primary key.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "findById returns a fully populated HistoryEntryWithAnnotations (children in index order) for a present batch id."
+          },
+          {
+            "id": "TAC-2",
+            "text": "findById returns null for an absent id."
+          },
+          {
+            "id": "TAC-3",
+            "text": "findById returns a row with an empty annotation list for a batch with zero annotations."
+          },
+          {
+            "id": "TAC-4",
+            "text": "No LIMIT clause or other observeAll-pattern debt is copied into the new query."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-45"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-database-impl/src/commonMain/kotlin/data/database/impl/core/dao/HistoryEntryDao.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-database-impl/src/commonMain/kotlin/data/database/impl/source/datasource/HistoryDataSource.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-database-impl/src/commonMain/kotlin/data/database/impl/core/datasource/HistoryDataSourceImpl.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/components.json#HistoryEntryDao"
+          }
+        ],
+        "expectedOutput": "HistoryEntryDao.findById + HistoryDataSource.getBatch compiled and covered by a desktopTest fixture (present/absent/with-children).",
+        "hypothesis": "The Room @Relation already models the data F-9 needs to read; only a single-row-by-id query is missing, so this is additive and carries zero schema risk.",
+        "definitionOfReady": [
+          "plan.json step 1 read",
+          "HistoryEntryWithAnnotations @Relation confirmed to already carry annotation children"
+        ],
+        "definitionOfDone": [
+          "HistoryEntryDaoFindByIdTest.kt green on :data-database-impl:desktopTest",
+          "No @Database version bump, no Migration file added",
+          "findById never copies observeAll's missing-LIMIT pattern"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Fixing F-8's observeAll missing-LIMIT debt"
+        ],
+        "predictedScope": [
+          "data-database-impl/src/commonMain/kotlin/data/database/impl/core/dao/HistoryEntryDao.kt",
+          "data-database-impl/src/commonMain/kotlin/data/database/impl/source/datasource/HistoryDataSource.kt",
+          "data-database-impl/src/commonMain/kotlin/data/database/impl/core/datasource/HistoryDataSourceImpl.kt",
+          "data-database-impl/src/desktopTest/kotlin/data/database/impl/core/dao/HistoryEntryDaoFindByIdTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-2",
+        "epic": "E-1",
+        "title": "BatchFileReader seam + FileSystemBatchFileReader + android/ios stand-ins",
+        "description": "Add `fun interface BatchFileReader { suspend fun read(path: String): ByteArray? }` to data-repository-impl beside BatchFileStore (one abstract method so SAM conversion survives). Add FileSystemBatchFileReader (desktopMain, java.io under Dispatchers.IO, never throws — missing/unreadable/permission-denied/truncated all return null) plus null-returning android/ios stand-ins, wired through the existing BatchStoreProvider expect/actual trio. Append one Koin binding inside the existing group in DataRepositoryImplModule.kt — never reorder.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Bytes written by FileSystemBatchFileStore are read back byte-identical by FileSystemBatchFileReader."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A missing path, a directory path, and an unreadable path each return null without throwing."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Android/iOS stand-ins compile and return null, keeping the cross-target build green with zero adb/file-IO on those platforms."
+          }
+        ],
+        "linkedAC": [
+          "AC-45"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/store/BatchFileStore.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/desktopMain/kotlin/data/repository/impl/core/store/FileSystemBatchFileStore.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/di/BatchStoreProvider.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/components.json#BatchFileStore"
+          }
+        ],
+        "expectedOutput": "New BatchFileReader fun interface, FileSystemBatchFileReader desktop impl, android/ios stand-ins, and a Koin binding, all desktopTest-covered.",
+        "hypothesis": "BatchFileStore is write-only and cannot be extended without destroying its fun-interface shape, so a sibling one-method interface is the only genuinely new seam F-9 needs.",
+        "definitionOfReady": [
+          "BatchFileStore's write-only shape confirmed from source",
+          "BatchStoreProvider expect/actual trio identified as the existing DI shape to extend"
+        ],
+        "definitionOfDone": [
+          "FileSystemBatchFileReaderTest.kt green on :data-repository-impl:desktopTest",
+          "koin-di.md load order respected — binding appended, not reordered",
+          "No new Gradle dependency, no okio/kotlinx-io added"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Adding a read() method to BatchFileStore itself",
+          "Any network or non-local file access"
+        ],
+        "predictedScope": [
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/store/BatchFileReader.kt",
+          "data-repository-impl/src/desktopMain/kotlin/data/repository/impl/core/store/FileSystemBatchFileReader.kt",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/di/BatchStoreProvider.kt",
+          "data-repository-impl/src/androidMain/kotlin/data/repository/impl/di/BatchStoreProvider.android.kt",
+          "data-repository-impl/src/iosMain/kotlin/data/repository/impl/di/BatchStoreProvider.ios.kt",
+          "data-repository-impl/src/desktopMain/kotlin/data/repository/impl/di/BatchStoreProvider.desktop.kt",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/di/DataRepositoryImplModule.kt",
+          "data-repository-impl/src/desktopTest/kotlin/data/repository/impl/FileSystemBatchFileReaderTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-3",
+        "epic": "E-1",
+        "title": "HistoryRepository.get(batchId): SentBatchModel?",
+        "description": "Add suspend fun get(batchId: String): SentBatchModel? to HistoryRepository (api) and HistoryRepositoryImpl, assembling the EXISTING SentBatchModel from the @Relation children (via getBatch) plus BatchFileReader bytes (frameBytes from framePath, hierarchyXml from hierarchyPath, cropBytes left empty — nothing consumes crops on this path). Re-parse the stored hierarchy.xml through the existing HierarchySnapshotMapper.toModel(HierarchyDumpStdout(storedXml, \"\")) — this returns densityDpi 0, which is exactly the gap the AFTER-dump fallback exists for. Returns null when the row is absent or files are unreadable; never throws. Its KDoc is the single place the density gap and its migration upgrade path are recorded.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A present row with readable files yields a fully populated SentBatchModel whose hierarchyXml round-trips through HierarchySnapshotMapper."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A missing row, a null framePath, and a null-returning reader each yield null rather than throwing."
+          },
+          {
+            "id": "TAC-3",
+            "text": "The returned BEFORE snapshot's densityDpi is 0 (the documented gap), never fabricated."
+          },
+          {
+            "id": "TAC-4",
+            "text": "KDoc on get() documents the density gap and the (not-built) migration upgrade path."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-45"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/HistoryRepository.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/repository/HistoryRepositoryImpl.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/HierarchySnapshotMapper.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/components.json#HistoryRepository"
+          }
+        ],
+        "expectedOutput": "HistoryRepository.get(batchId) implemented and commonTest-covered against fakes.",
+        "hypothesis": "SentBatchModel (the write-path model) is a complete and sufficient read model — no new type is needed, matching observe()'s bare-nullable precedent.",
+        "definitionOfReady": [
+          "T-1 and T-2 merged (getBatch + BatchFileReader available)"
+        ],
+        "definitionOfDone": [
+          "HistoryRepositoryGetTest.kt green on :data-repository-impl:desktopTest (commonTest source set)",
+          "Mapper never throws — null-on-failure universal",
+          "No schema change, no @Database version bump"
+        ],
+        "dependsOn": [
+          "T-1",
+          "T-2"
+        ],
+        "outOfScope": [
+          "Reading crop-N.png or the thumbnail BLOB on this path",
+          "A densityDpi column or Room migration"
+        ],
+        "predictedScope": [
+          "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/HistoryRepository.kt",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/repository/HistoryRepositoryImpl.kt",
+          "data-repository-impl/src/commonTest/kotlin/data/repository/impl/HistoryRepositoryGetTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 2,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-4",
+        "epic": "E-1",
+        "title": "GetSentBatchUseCase + UpdateBatchStatusUseCase",
+        "description": "Add GetSentBatchUseCase/+Impl (thin resultLauncher(errorMapper = Failure.Technical::Database) wrapper returning Result<SentBatchModel>, Failure.Logic.NotFound when the repository returns null) and UpdateBatchStatusUseCase/+Impl (thin wrapper over HistoryRepository.updateStatus, F-8's zero-caller hook, writing only Verified/FollowUpSent). Append both Koin bindings within the existing history layer group in DomainUseCaseImplModule.kt — never reorder.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "GetSentBatchUseCaseImpl maps a null repository result to Failure.Logic.NotFound and a thrown exception to Failure.Technical.Database."
+          },
+          {
+            "id": "TAC-2",
+            "text": "UpdateBatchStatusUseCaseImpl is a bare resultLauncher wrapper with no test of its own (testing.md: no per-use-case test by rote)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Both bindings are appended within the existing history Koin group without reordering siblings."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-43"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/history/ObserveHistoryUseCase.kt"
+          },
+          {
+            "type": "code",
+            "ref": "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/history/ObserveHistoryUseCaseImpl.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules (domain-layer.md, error-handling.md, koin-di.md)"
+          }
+        ],
+        "expectedOutput": "GetSentBatchUseCase/UpdateBatchStatusUseCase + impls + Koin bindings.",
+        "hypothesis": "Both use cases are thin wrappers with no branching beyond the null-check, matching ObserveHistoryUseCase's existing shape in this module.",
+        "definitionOfReady": [
+          "T-3 merged (HistoryRepository.get available)"
+        ],
+        "definitionOfDone": [
+          "One NotFound-mapping assertion green on :domain-usecase-impl:desktopTest",
+          "Every *UseCaseImpl body runs inside resultLauncher, never raw runCatching"
+        ],
+        "dependsOn": [
+          "T-3"
+        ],
+        "outOfScope": [
+          "A test per use case by rote"
+        ],
+        "predictedScope": [
+          "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/history/GetSentBatchUseCase.kt",
+          "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/history/UpdateBatchStatusUseCase.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/history/GetSentBatchUseCaseImpl.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/history/UpdateBatchStatusUseCaseImpl.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/di/DomainUseCaseImplModule.kt",
+          "domain-usecase-impl/src/commonTest/kotlin/domain/usecase/impl/GetSentBatchUseCaseImplTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-5",
+        "epic": "E-2",
+        "title": "core/verify pure core: RegionDiff, VerifyThresholds, VerifyVerdict, BeforeAfterFormat + SEPARATOR widening",
+        "description": "Add four one-concern files to presentation-feature-mirror/core/verify/ (bugs.json#PP-TD-6 counter-example: never let a file's name stop partitioning its contents): RegionDiff.kt (internal fun changedRatio(before: IntArray, after: IntArray): Float — Chebyshev RGB distance, CHANNEL_NOISE_FLOOR-gated, alpha ignored, integer-only, one pass); VerifyThresholds.kt (CHANNEL_NOISE_FLOOR=10, REGION_CHANGE_RATIO=0.02f, MIN_REGION_PIXELS=64, each KDoc'd with its ceiling and NFR-17 tuning method); VerifyVerdict.kt (internal fun verdictOf(matched: Boolean, afterFinding: String?, changedRatio: Float, regionPx: Int): VerificationOutcome — the AND-rule in exactly one expression: matched && afterFinding == null && (regionPx < MIN_REGION_PIXELS || changedRatio > REGION_CHANGE_RATIO)); BeforeAfterFormat.kt (the one before→after formatter missing from F-5's toolkit, built on deltaLabel/plainValueLabel/displayDelta/unitOf/SEPARATOR). Widen SEPARATOR from `private const val` to `internal const val` in core/measure/MeasureFormat.kt (one word; DELTA stays private) — the prerequisite BeforeAfterFormat needs.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "changedRatio: identical arrays give 0f; a channel delta of exactly CHANNEL_NOISE_FLOOR is NOT counted while floor+1 IS (both sides asserted); alpha-only differences are ignored; empty input gives 0f."
+          },
+          {
+            "id": "TAC-2",
+            "text": "verdictOf covers all combinations: matched+no-finding+ratio-above→Fixed; matched+no-finding+ratio-below→StillOff; matched+finding-present→StillOff regardless of ratio; unmatched→StillOff regardless of everything; region<MIN_REGION_PIXELS with no finding and zero ratio→Fixed (hierarchy decides alone); region<MIN_REGION_PIXELS WITH a finding→StillOff (the short-circuit bypasses only the pixel conjunct). This is the pair the amended AC-24 lives or dies on — verdictOf encodes change-evidence semantics, never the rejected literal 'no material difference → resolved' wording."
+          },
+          {
+            "id": "TAC-3",
+            "text": "BeforeAfterFormat renders 'top Δ6dp → 0dp' and 'height 24dp → 32dp · want 48dp' (U+00B7 via the now-internal SEPARATOR) and degrades to raw px when densityDpi <= 0."
+          },
+          {
+            "id": "TAC-4",
+            "text": "grep over commonTest shows CHANNEL_NOISE_FLOOR/REGION_CHANGE_RATIO/MIN_REGION_PIXELS used only to BUILD inputs, never as an expected value in an assert (C-1, bugs.json#PP-TD-4)."
+          }
+        ],
+        "linkedAC": [
+          "AC-24",
+          "AC-41"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/MeasureFormat.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MeasureFormatTest.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#architecture.alternativesConsidered (MIN_REGION_PIXELS branch rationale)"
+          }
+        ],
+        "expectedOutput": "Five files (RegionDiff.kt, VerifyThresholds.kt, VerifyVerdict.kt, BeforeAfterFormat.kt, MeasureFormat.kt edit) with full commonTest coverage, zero bitmap/Compose types. VerifyVerdictTest is the primary proof of amended AC-24 (SC-8/SC-9's verdict logic).",
+        "hypothesis": "The entire AND-rule and both halves of the diff can be pure IntArray/String/primitive functions in commonMain, proving the no-PixelDiffer-seam decision and making the Skiko-less desktopTest fully exercise the verdict logic.",
+        "definitionOfReady": [
+          "Correction C-1 (behavioural threshold tests only) read and applied",
+          "F-5's measure()/deltaLabel/plainValueLabel/displayDelta/unitOf confirmed internal and reusable in place"
+        ],
+        "definitionOfDone": [
+          "RegionDiffTest.kt, VerifyVerdictTest.kt, BeforeAfterFormatTest.kt green on :presentation-feature-mirror:desktopTest",
+          "No test asserts a threshold literal (C-1 grep)",
+          "SEPARATOR is the only visibility change in MeasureFormat.kt; DELTA stays private"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Any PixelDiffer seam (expect/actual or fun interface)",
+          "Calling snapTarget/findingOf directly (measure() already does both)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/verify/RegionDiff.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/verify/VerifyThresholds.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/verify/VerifyVerdict.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/verify/BeforeAfterFormat.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/measure/MeasureFormat.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/RegionDiffTest.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/VerifyVerdictTest.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/BeforeAfterFormatTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "M",
+        "subtasks": [
+          {
+            "id": "T-5a",
+            "title": "RegionDiff.kt + RegionDiffTest.kt"
+          },
+          {
+            "id": "T-5b",
+            "title": "VerifyThresholds.kt (three KDoc'd consts)"
+          },
+          {
+            "id": "T-5c",
+            "title": "VerifyVerdict.kt + VerifyVerdictTest.kt"
+          },
+          {
+            "id": "T-5d",
+            "title": "BeforeAfterFormat.kt + BeforeAfterFormatTest.kt + SEPARATOR widening"
+          }
+        ]
+      },
+      {
+        "id": "T-6",
+        "epic": "E-2",
+        "title": "core/verify/RegionPixels.kt — the one ImageBitmap-touching file",
+        "description": "Add internal fun ImageBitmap.regionPixels(rect: DeviceRect, frameSize: IntSize): IntArray? — clamps the annotation rect into the frame (a drag can overhang), allocates w*h, calls the commonMain ImageBitmap.readPixels(buffer, startX, startY, w, h, 0, w) member, returns null for a degenerate (zero-area) rect. ~10 lines. This is the ONLY file in the diff path that may name ImageBitmap, and only as the extension receiver — KDoc must say so explicitly and explain why it is deliberately untested (Skiko is absent from this module's desktopTest).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "regionPixels is the only new file naming ImageBitmap for diffing purposes."
+          },
+          {
+            "id": "TAC-2",
+            "text": "No pure function in the file takes or returns anything other than primitives/IntArray plus the ImageBitmap receiver."
+          },
+          {
+            "id": "TAC-3",
+            "text": "KDoc states the file is deliberately untested and why."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-45"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#constraints (Skiko trap, architectural)"
+          }
+        ],
+        "expectedOutput": "RegionPixels.kt, ~10 lines, no test file.",
+        "hypothesis": "A single tiny, deliberately-untested receiver function is cheaper and safer than a PixelDiffer seam, and keeps every other diff function Skiko-free and testable.",
+        "definitionOfReady": [
+          "DeviceRect and the commonMain ImageBitmap.readPixels seven-arg signature confirmed to already exist"
+        ],
+        "definitionOfDone": [
+          "grep confirms no other file in presentation-feature-mirror mentions ImageBitmap for diffing purposes",
+          "File compiles on every target including iosArm64/iosSimulatorArm64"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Any test construction of an ImageBitmap"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/verify/RegionPixels.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-7",
+        "epic": "E-3",
+        "title": "MirrorContract additions: MirrorStage.Verify, VerifyUiState family, new intents",
+        "description": "Add MirrorStage.Verify (enum case ~:90-99); the stage-derivation condition in MirrorUiState.stage placed AFTER the isPickerOpen/Ios guards and BEFORE the frozen!=null->Frozen case (Verify outranks Frozen); VerifyUiState(batchId, deviceLabel, sentAtMs, recapturedAtMs, phase, rows, error) with rows always empty when error != null; VerifyRow(index, comment, beforeRect, afterRect, resultLine, outcome) with NO default for outcome (bugs.json#PP-TD-3 — a forgetful caller must be a compile error, never a silently optimistic default); VerifyPhase{Loading,Recapturing,Diffing,Ready}; VerifyError{NoLiveSession,NotOnDisk,SizeMismatch,HierarchyUnusable,Disconnected}; public VerifyFrames(before: ImageBitmap, after: ImageBitmap); and the three new intents SendFollowUp/MarkAllVerified/ExitVerify as bare declarations only — this task declares the types, it does not implement handlers. Handler bodies land in their owning tasks: the verifyBatch run AND ExitVerify's cancel-and-clear-all-four-fields handler in T-9, SendFollowUp's re-stage handler in T-13, MarkAllVerified's override handler in T-14. DELETE the stale VerifyBatch KDoc at MirrorContract.kt:490-500.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "MirrorUiState.stage yields Verify when VerifyUiState is present, ahead of Frozen and Streaming but not ahead of Picker or IosDeferred."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Clearing VerifyUiState while frozen is set yields Frozen; clearing both returns to the live stage."
+          },
+          {
+            "id": "TAC-3",
+            "text": "VerifyRow.outcome has no default value."
+          },
+          {
+            "id": "TAC-4",
+            "text": "The stale VerifyBatch gate KDoc at :490-500 is gone."
+          },
+          {
+            "id": "TAC-5",
+            "text": "SendFollowUp/MarkAllVerified/ExitVerify are declared as MirrorIntent cases with no handler logic in this task — intentionally inert until T-9/T-13/T-14 wire them, so handleIntent's when is exhaustive but a no-op for each until then."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-40",
+          "AC-44"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorContractTest.kt"
+          }
+        ],
+        "expectedOutput": "MirrorContract.kt additions + VerifyStageDerivationTest.kt.",
+        "hypothesis": "A new stage case inside the existing single MirrorHost composition, rather than a second call site or a new Destination, is sufficient (presentation-feature-mirror/CLAUDE.md Deviation 1).",
+        "definitionOfReady": [
+          "T-5 merged (VerificationOutcome's reuse and the verdictOf signature confirmed)"
+        ],
+        "definitionOfDone": [
+          "VerifyStageDerivationTest.kt green on :presentation-feature-mirror:desktopTest",
+          "explicitApi(): VerifyFrames is public (shell reads it); VerifyUiState/VerifyRow/VerifyPhase/VerifyError stay internal to the module boundary they belong to"
+        ],
+        "dependsOn": [
+          "T-5"
+        ],
+        "outOfScope": [
+          "A second MirrorHost call site",
+          "A navigation Destination for this surface",
+          "Implementing SendFollowUp/MarkAllVerified/ExitVerify handler bodies (owned by T-9/T-13/T-14)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/VerifyStageDerivationTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 2,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-8",
+        "epic": "E-3",
+        "title": "Fix FakeFrameBitmap.readPixels (prerequisite for any pixel-behaviour assertion)",
+        "description": "FakeFrameBitmap.readPixels (MirrorFakes.kt:183-191) is currently a no-op (= Unit), so it never fills the caller buffer (bugs.json#PP-TD-10) — every ViewModel-level region read would return an all-zero IntArray and every pixel conjunct would be vacuously false, letting a whole class of verify tests pass or fail for reasons unrelated to the code under test. Give it a `pixel: (x: Int, y: Int) -> Int` constructor parameter (defaulted to a stable deterministic gradient) and fill the buffer honouring startX/startY/width/height/bufferOffset/stride. Stays a plain ImageBitmap interface implementation — no Skiko, no bitmap construction, no build.gradle.kts edit.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "FakeFrameBitmap.readPixels fills the caller-supplied buffer according to the supplied pixel function and the requested region/stride/offset."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A BEFORE/AFTER FakeFrameBitmap pair can be constructed to be identical or deliberately different, on purpose, by the caller."
+          },
+          {
+            "id": "TAC-3",
+            "text": "No Skiko dependency and no real ImageBitmap construction is introduced."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-24"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#risks (FakeFrameBitmap.readPixels no-op risk)"
+          }
+        ],
+        "expectedOutput": "MirrorFakes.kt edit: buffer-filling FakeFrameBitmap, no other behavioural change to existing fakes/tests.",
+        "hypothesis": "This is a prerequisite, not an afterthought: any later test asserting pixel behaviour (T-9's MirrorViewModelVerifyTest) is meaningless until this fake actually fills its buffer.",
+        "definitionOfReady": [
+          "MirrorFakes.kt:183-191 confirmed as a no-op by direct source read"
+        ],
+        "definitionOfDone": [
+          "Existing MirrorFakes consumers (all current tests using FakeFrameBitmap) remain green after the change",
+          "No existing test's behaviour silently changes due to the new default pixel function"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Adding Skiko to desktopTest",
+          "Constructing a real ImageBitmap anywhere in tests"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-9",
+        "epic": "E-3",
+        "title": "MirrorViewModel.verifyBatch — the seven-step cancellable run + ExitVerify teardown",
+        "description": "Replace the log.i stub at MirrorViewModel.kt:388 with the seven-step run on a cancellable verifyJob: Job?: (1) atomically snapshot sessionDeviceId + currentHeld.value — null held ⇒ NoLiveSession, abort with zero rows; (2) GetSentBatchUseCase(batchId) — null/failure ⇒ NotOnDisk; (3) decode the stored frameBytes and compare IntSize to the live HeldFrame's — disagree ⇒ SizeMismatch, abort before any per-annotation work; (4) DumpHierarchyUseCase(deviceId) for the AFTER hierarchy, phase=Recapturing; (5) projectMeasureNodes both snapshots against the shared IntSize — non-empty-but-zero-candidates on either side ⇒ HierarchyUnusable, abort with zero rows (log.w both frame sizes); an empty-to-begin-with snapshot degrades per-annotation to NO_MATCH; (6) per annotation (history's 0-based order): measure() both sides, regionPixels+changedRatio, verdictOf, beforeAfterLabel, publish VerifyFrames, reduce rows; (7) rows non-empty and all Fixed ⇒ UpdateBatchStatusUseCase(Verified), otherwise write nothing. Retain the AFTER HeldFrame in a private verifyAfterHeld field. Device identity re-checked at every suspension point — a change or null ⇒ Disconnected, no status write. Every step under withContext(Dispatchers.Default). Add two new constructor use-case params; wire into PresentationFeatureMirrorModule.kt's existing explicit `viewModel { MirrorViewModel(...) }` resolution. ALSO implement the ExitVerify intent handler in this task (it shares the same private fields and file as verifyBatch): cancel verifyJob and clear all four verify-related fields — VerifyUiState, verifyFrames, verifyAfterHeld, and pendingFollowUpBatchId — then route back to the live stage with the History tab selected (bugs.json#PP-TD-2 lifecycle-hole guard: no field may survive an exit to pin the user on a stale Verify view or write a status on a later unrelated send).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "No held frame ⇒ NoLiveSession, rows EMPTY, GetSentBatchUseCase never called, UpdateBatchStatusUseCase called zero times."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A null batch ⇒ NotOnDisk."
+          },
+          {
+            "id": "TAC-3",
+            "text": "A live-frame/stored-frame size disagreement ⇒ SizeMismatch, rows EMPTY, no per-annotation work ran."
+          },
+          {
+            "id": "TAC-4",
+            "text": "A non-empty hierarchy projecting to zero candidates ⇒ HierarchyUnusable, rows EMPTY, zero status writes; an empty-to-begin-with snapshot instead produces N rows all StillOff (the two cases kept provably distinct)."
+          },
+          {
+            "id": "TAC-5",
+            "text": "A run where every row is Fixed calls UpdateBatchStatusUseCase exactly once with Verified; a mixed run and a zero-row run each call it zero times."
+          },
+          {
+            "id": "TAC-6",
+            "text": "Phases advance Loading → Recapturing → Diffing → Ready in order; a second VerifyBatch cancels the first so only one terminal reduction lands."
+          },
+          {
+            "id": "TAC-7",
+            "text": "ExitVerify cancels an in-flight verifyJob and clears all four fields (VerifyUiState, verifyFrames, verifyAfterHeld, pendingFollowUpBatchId) in the same handling, then the stage falls back to live with History selected; a plain send issued afterward writes no stray status."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-24",
+          "AC-40",
+          "AC-41",
+          "AC-43",
+          "AC-44"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#architecture.approach (the seven-step run)"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#knownRisksFromQA (bugs.json#PP-TD-2, ExitVerify must clear all four fields)"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#scenarios (SC-8, SC-9 happy/edge path; SC-22/SC-23/SC-24 abort paths)"
+          }
+        ],
+        "expectedOutput": "verifyBatch implementation + ExitVerify handler + MirrorViewModelVerifyTest.kt covering every abort/success path plus ExitVerify's field-clearing teardown.",
+        "hypothesis": "Reusing measure()'s existing snap+finding behaviour twice per annotation, instead of re-running snapTarget/findingOf, avoids a second divergent oracle and halves the per-annotation cost. ExitVerify belongs beside verifyBatch because both own verifyJob/verifyAfterHeld/pendingFollowUpBatchId and the same file — splitting them would risk the two editing MirrorViewModel.kt out of step.",
+        "definitionOfReady": [
+          "T-4 (use cases), T-6 (regionPixels), T-7 (contract types), T-8 (buffer-filling fake) all merged"
+        ],
+        "definitionOfDone": [
+          "MirrorViewModelVerifyTest.kt green on :presentation-feature-mirror:desktopTest",
+          "C-2 check: HierarchyUnusable and NoLiveSession tests each assert the error value AND empty rows AND zero UpdateBatchStatusUseCase calls together",
+          "Every abort leaves rows EMPTY — never mistaken for a verdict",
+          "ExitVerify test asserts all four fields are cleared and no status write follows"
+        ],
+        "dependsOn": [
+          "T-4",
+          "T-6",
+          "T-7",
+          "T-8"
+        ],
+        "outOfScope": [
+          "Writing BatchStatusModel.InProgress or .Fixed from any code path",
+          "A one-shot/cold-start capture use case",
+          "SendFollowUp/MarkAllVerified handler bodies (owned by T-13/T-14)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/di/PresentationFeatureMirrorModule.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelVerifyTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 4,
+        "estimate": "L",
+        "subtasks": [
+          {
+            "id": "T-9a",
+            "title": "Steps 1-3: held-frame snapshot, GetSentBatchUseCase call, size check"
+          },
+          {
+            "id": "T-9b",
+            "title": "Steps 4-6: AFTER dump, projectMeasureNodes, per-annotation measure+diff+verdict loop"
+          },
+          {
+            "id": "T-9c",
+            "title": "Step 7: terminal status write + verifyAfterHeld retention + cancellation wiring"
+          },
+          {
+            "id": "T-9d",
+            "title": "ExitVerify handler: cancel verifyJob, clear all four verify fields, route to live stage + History tab"
+          }
+        ]
+      },
+      {
+        "id": "T-10",
+        "epic": "E-3",
+        "title": "VerifyFrames StateFlow + 5th MirrorHost content-lambda arg + RectifyWindow.kt edit",
+        "description": "Add MirrorViewModel.verifyFrames: MutableStateFlow<VerifyFrames?> (plain StateFlow, never reduced state — Deviation 2: pixels never enter reduced state). Widen MirrorHost's content lambda from 4 to 5 args (the same precedent as its earlier 3→4 widening for frozenHierarchy): content(state, frozenFrame ?: frame, frozenHierarchy, verifyFrames, ::handleIntent). Make the ~2-line edit at the one call site, RectifyWindow.kt, to forward the new StateFlow into MirrorStageContent. Nothing testable goes into :compose-application (no test wiring there).",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "verifyFrames is a plain public StateFlow<VerifyFrames?>, not reduced MirrorUiState."
+          },
+          {
+            "id": "TAC-2",
+            "text": "MirrorHost's content lambda widens to exactly 5 args with one call site (RectifyWindow.kt) updated."
+          },
+          {
+            "id": "TAC-3",
+            "text": "RectifyWindow.kt diff is ~2 lines."
+          }
+        ],
+        "linkedAC": [
+          "AC-23"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt"
+          },
+          {
+            "type": "code",
+            "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+          }
+        ],
+        "expectedOutput": "MirrorHost.kt + RectifyWindow.kt widened content-lambda call site.",
+        "hypothesis": "Widening the existing content lambda by one argument, exactly as it was widened once before for frozenHierarchy, is cheaper and safer than bundling frame/frozenFrame/verifyFrames into a new holder type.",
+        "definitionOfReady": [
+          "T-9 merged (verifyBatch populates the StateFlow)"
+        ],
+        "definitionOfDone": [
+          "No new type enters MirrorUiState",
+          "compose-application compiles (no test wiring expected there)"
+        ],
+        "dependsOn": [
+          "T-9"
+        ],
+        "outOfScope": [
+          "Bundling frame/frozenFrame/verifyFrames into one holder type"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt",
+          "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 5,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-11",
+        "epic": "E-4",
+        "title": "MirrorVerifyStage.kt composable + MirrorStageContent branch + mirror_verify_* strings",
+        "description": "Build the stateless MirrorVerifyStage.kt per design-verify-view.md: two aspect-correct frame columns letterboxed WITHIN 296×640 boxes (never stretched — PP-TD-1 class bug), BEFORE rects neutral and AFTER rects verdict-coloured, overlay rects derived from the MEASURED frame box via FrameGeometry's render leg (never the nominal constant); the 300px 'Verification' panel of VerificationRows with its 'n of N fixed' header; StatusLine's four-step strip (Sent → Agent fixed [static, countless] → Recaptured → Verified n/N); footer AppButtons ('Send follow-up · N' hard-disabled at N=0, 'Mark all as verified'); the '← Back to live' Chip as the single exit (wired to the ExitVerify intent T-9 implements); ErrorState for the five VerifyError cases. Add one new branch to MirrorStageContent's when (~:124, behind the existing error-card short-circuit) and the extra lambda parameter. Add every mirror_verify_* key to the one English strings.xml. Ship a light/dark @Preview pair per compose-preview-convention.md.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Frames render aspect-correct and letterboxed within 296×640 — never stretched."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Annotation overlay rects are derived from the measured frame box, not the nominal 296×640 constant."
+          },
+          {
+            "id": "TAC-3",
+            "text": "'Send follow-up · N' is hard-disabled (not merely dimmed) at N=0."
+          },
+          {
+            "id": "TAC-4",
+            "text": "All five VerifyError cases render through ErrorState with a title and a description."
+          },
+          {
+            "id": "TAC-5",
+            "text": "Every new string is a Res.string.mirror_verify_* key with no AAPT-style apostrophe escapes."
+          },
+          {
+            "id": "TAC-6",
+            "text": "MirrorVerifyStage ships a light/dark @Preview pair."
+          },
+          {
+            "id": "TAC-7",
+            "text": "No literal Color(0x…), raw .dp, or hardcoded TextStyle at any call site — only Theme.color.sentFixed/warnStillOff and existing tokens."
+          },
+          {
+            "id": "TAC-8",
+            "text": "The '← Back to live' chip dispatches MirrorIntent.ExitVerify (no separate reset logic duplicated in the composable)."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-24",
+          "AC-40",
+          "AC-42",
+          "AC-43"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/inputs/design-verify-view.md"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/components.json#verification-row"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/components.json#status-line"
+          }
+        ],
+        "expectedOutput": "MirrorVerifyStage.kt (new) + MirrorContent.kt branch + strings.xml additions + light/dark @Preview pair.",
+        "hypothesis": "Every visual element the design needs already exists as a reusable kit component (VerificationRow, StatusLine, MirrorFrameView, ErrorState, AppButton, Chip) — zero new kit components are required.",
+        "definitionOfReady": [
+          "T-10 merged (verifyFrames reaches the composition)",
+          "design-verify-view.md's AGENT CHANGES panel confirmed cut"
+        ],
+        "definitionOfDone": [
+          "Light/dark @Preview pair compiles and renders",
+          "No new colour token, no new kit component",
+          "AC-39-adjacent: button/chip reachability by keyboard (A11Y-3/A11Y-6) verified by inspection"
+        ],
+        "dependsOn": [
+          "T-10"
+        ],
+        "outOfScope": [
+          "The AGENT CHANGES file-diff panel",
+          "mirror_verify_retry and mirror_verify_empty keys (cut in refinement)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorVerifyStage.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt",
+          "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+        ],
+        "parallelizable": false,
+        "executionGroup": 6,
+        "estimate": "L",
+        "subtasks": [
+          {
+            "id": "T-11a",
+            "title": "Frame columns + overlay (letterbox, measured-box derivation)"
+          },
+          {
+            "id": "T-11b",
+            "title": "Verification panel + StatusLine strip + footer actions"
+          },
+          {
+            "id": "T-11c",
+            "title": "ErrorState wiring for the five VerifyError cases + strings + @Preview pair"
+          }
+        ]
+      },
+      {
+        "id": "T-12",
+        "epic": "E-5",
+        "title": "Delete the BatchStatusModel.Fixed gate on the History Verify button",
+        "description": "Delete the two-line comment at MirrorHistoryTab.kt:177-178 and the `if (entry.status == BatchStatusModel.Fixed)` wrapper at :179-185 so AppButton(verifyLabel) renders for every sent batch (FR-37/AC-39, superseding F-8's AC-36). Add `enabled = entry.framePath != null` (HistoryEntryModel already carries framePath into reduced state; AppButton already has `enabled`). Fix the preview KDoc at :239-243 that still advertises the Fixed-only button, and delete the stale comment at strings.xml:182 documenting the old gate.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "The Verify button renders for a row whose status is Sent (not Fixed) and is clickable."
+          },
+          {
+            "id": "TAC-2",
+            "text": "The button is disabled only when entry.framePath == null — status never gates it again."
+          },
+          {
+            "id": "TAC-3",
+            "text": "grep for 'BatchStatusModel.Fixed' in presentation code returns no gate — only the labelKey() branch and preview fixtures remain."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Preview KDoc at :239-243 and the strings.xml:182 comment no longer describe a Fixed-only gate."
+          }
+        ],
+        "linkedAC": [
+          "AC-39"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHistoryTab.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+          }
+        ],
+        "expectedOutput": "MirrorHistoryTab.kt gate deletion + enabled wiring + collateral doc cleanup.",
+        "hypothesis": "Disabling on a data precondition (framePath != null) rather than hiding on a status keeps the control discoverable and costs zero plumbing, since HistoryEntryModel already carries framePath.",
+        "definitionOfReady": [
+          "T-7 merged (MirrorStage.Verify + VerifyBatch intent target exist)"
+        ],
+        "definitionOfDone": [
+          "AC-39 verified by inspection — the gate is gone and the button is disabled only on framePath == null",
+          "SC-19 scenario passes manually/by inspection"
+        ],
+        "dependsOn": [
+          "T-7"
+        ],
+        "outOfScope": [
+          "Hiding the button when framePath is null",
+          "Device serial matching"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHistoryTab.kt",
+          "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-13",
+        "epic": "E-6",
+        "title": "Follow-up re-stage: SendFollowUp handler + pendingFollowUpBatchId",
+        "description": "Implement the SendFollowUp handler in this exact order: cancel verifyJob; capture the still-off rows; set currentFrozenHeld = verifyAfterHeld (this alone makes CropEncoder crop the AFTER pixels — AC-42's 'from the AFTER frame' with zero new crop code); build a fresh FrozenFrame with the still-off annotations renumbered via mapIndexed to StagedAnnotation(index = i + 1) (FR-47's only conversion point) and promptOverride explicitly null (bugs.json#PP-TD-7 guard — comments re-sent verbatim); reduce state.copy(frozen = …, verify = null) and clear verifyFrames so the stage falls back to Frozen and F-7's existing send UI (including failure) owns the screen; set pendingFollowUpBatchId; call resolveAndSend() UNCHANGED. Consume the nullable pendingFollowUpBatchId in resolveAndSend's existing success path (~:886) to write FollowUpSent on the ORIGINAL batch, null-checked and cleared in a finally so a plain send never writes a status.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A 2-of-3 still-off selection re-stages exactly those two, renumbered 1 and 2 (not 0 and 2, not 1 and 3), with original comments and AFTER rects, promptOverride null."
+          },
+          {
+            "id": "TAC-2",
+            "text": "SendFollowUp leaves MirrorStage.Verify (falls back to Frozen) so F-7's existing send UI is reachable."
+          },
+          {
+            "id": "TAC-3",
+            "text": "On resolveAndSend success, FollowUpSent is written exactly once on the ORIGINAL batch id; the follow-up itself records its own new Sent row."
+          },
+          {
+            "id": "TAC-4",
+            "text": "A failing publish writes no status at all."
+          },
+          {
+            "id": "TAC-5",
+            "text": "A plain (non-follow-up) ResolveAndSend with no pending follow-up writes no status (PP-TD-7/PP-TD-2 regression guard)."
+          }
+        ],
+        "linkedAC": [
+          "AC-42"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelResolveAndSendTest.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/ClearStagedPromptOverrideTest.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/bugs.json#PP-TD-7"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/bugs.json#PP-TD-2"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#scenarios (SC-9)"
+          }
+        ],
+        "expectedOutput": "SendFollowUp handler + FollowUpRenumberTest.kt + MirrorViewModelVerifyTest.kt follow-up assertions.",
+        "hypothesis": "Installing the AFTER HeldFrame as the frozen held frame before calling resolveAndSend() unchanged is sufficient to crop from the AFTER pixels, needing zero new crop code.",
+        "definitionOfReady": [
+          "T-9 (verifyBatch, verifyAfterHeld) and T-11 (stage exists so teardown is observable) merged"
+        ],
+        "definitionOfDone": [
+          "FollowUpRenumberTest.kt green",
+          "MirrorViewModelVerifyTest.kt follow-up cases green",
+          "pendingFollowUpBatchId cleared in a finally on every path"
+        ],
+        "dependsOn": [
+          "T-9",
+          "T-11"
+        ],
+        "outOfScope": [
+          "Reframing the comment via promptOverride (v1 answer: verbatim)",
+          "Any change to resolveAndSend/assembleEnvelope/CropEncoder themselves"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/FollowUpRenumberTest.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelVerifyTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 7,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-14",
+        "epic": "E-6",
+        "title": "Mark-all-as-verified override + all-Fixed terminal write",
+        "description": "Implement MarkAllVerified: cancel verifyJob first (so a late completion cannot overwrite the override), force-set every row's verdict to Fixed without further diffing, and write BatchStatusModel.Verified via UpdateBatchStatusUseCase. Confirm the automatic all-Fixed terminal write from T-9's step 7 is correctly guarded on a non-empty rows list (a mixed run and a zero-row abort each write NOTHING).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "MarkAllVerified during an in-flight run cancels verifyJob first, forces every row Fixed, and writes Verified exactly once; a late completion of the cancelled job cannot overwrite it."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A mixed (not-all-Fixed) run and a zero-row run each call UpdateBatchStatusUseCase zero times."
+          }
+        ],
+        "linkedAC": [
+          "AC-43"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#scenarios (SC-20)"
+          }
+        ],
+        "expectedOutput": "MarkAllVerified handler + MirrorViewModelVerifyTest.kt assertions for SC-20 and the all/mixed/zero write cases.",
+        "hypothesis": "Cancelling verifyJob before forcing the override is sufficient to prevent a race with a late diff completion overwriting the human override.",
+        "definitionOfReady": [
+          "T-9 (verifyBatch + verifyJob) and T-11 (footer action target) merged"
+        ],
+        "definitionOfDone": [
+          "SC-20 assertions green in MirrorViewModelVerifyTest.kt",
+          "No status write race between MarkAllVerified and a cancelled in-flight run"
+        ],
+        "dependsOn": [
+          "T-9",
+          "T-11"
+        ],
+        "outOfScope": [
+          "Any per-row manual override UI (binary mark-all only)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelVerifyTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 7,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-15",
+        "epic": "E-6",
+        "title": "Disconnect/cancellation hardening",
+        "description": "Re-check sessionDeviceId at every suspension point in verifyBatch; verify the existing flatMapLatest(sessionDeviceId) teardown cancels verifyJob on a device change; assert no status write happens on any abort and that Verify is retryable after reconnect. This is primarily a test-hardening pass over T-9's run, not new production logic — if a suspension point is found missing a re-check, add it.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A device change or null mid-run reduces VerifyError.Disconnected, calls UpdateBatchStatusUseCase zero times, and leaves the state retryable."
+          },
+          {
+            "id": "TAC-2",
+            "text": "The original batch status is left unchanged after a disconnect abort."
+          },
+          {
+            "id": "TAC-3",
+            "text": "The existing flatMapLatest(sessionDeviceId) teardown is confirmed to cancel an in-flight verifyJob."
+          }
+        ],
+        "linkedAC": [
+          "AC-44"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelSessionTest.kt"
+          }
+        ],
+        "expectedOutput": "MirrorViewModelVerifyTest.kt disconnect-path assertions (SC-21/AC-44/NFR-16).",
+        "hypothesis": "The existing flatMapLatest(sessionDeviceId) teardown (the dumpJob precedent) already cancels in-flight jobs on a device change, so this is verification plus any missing re-check point rather than new machinery.",
+        "definitionOfReady": [
+          "T-9 merged (verifyBatch's suspension points exist to be checked)"
+        ],
+        "definitionOfDone": [
+          "SC-21 assertions green",
+          "No partial status write is observed on any disconnect path"
+        ],
+        "dependsOn": [
+          "T-9"
+        ],
+        "outOfScope": [
+          "Device re-targeting / serial matching"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelVerifyTest.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 5,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-16",
+        "epic": "E-7",
+        "title": "Docs + hygiene grep sweep",
+        "description": "Record core/verify/ and the one-file ImageBitmap rule in presentation-feature-mirror/CLAUDE.md's Deviation 2 neighbourhood. Confirm @Database is still version 1 and no Migration file was added. Grep sweeps: no new Color(0x…)/raw .dp/hardcoded TextStyle literal at any call site; no new version-catalog entry; no test asserting a threshold literal (C-1); ImageBitmap appears in exactly the expected files (RegionPixels.kt plus the pre-existing transport-shaped mentions) and nowhere else for diffing purposes.",
+        "type": "documentation",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "presentation-feature-mirror/CLAUDE.md documents core/verify/ and the one-file ImageBitmap rule."
+          },
+          {
+            "id": "TAC-2",
+            "text": "grep confirms @Database stays version 1 and no Migration file exists."
+          },
+          {
+            "id": "TAC-3",
+            "text": "grep confirms no new Color/dp/TextStyle literal, no new catalog entry, and no threshold-literal assertion crept in."
+          },
+          {
+            "id": "TAC-4",
+            "text": "grep confirms ImageBitmap appears only in RegionPixels.kt and the pre-existing transport-shaped mentions (MirrorViewModel.frame/frozenFrame, HeldFrame, VerifyFrames)."
+          }
+        ],
+        "linkedAC": [
+          "AC-45"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/CLAUDE.md"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#definitionOfDone (grep checks)"
+          }
+        ],
+        "expectedOutput": "CLAUDE.md doc edit + a clean grep sweep with no findings.",
+        "hypothesis": "All hygiene guarantees the plan requires (Skiko isolation, no schema drift, no design-token drift, no threshold-literal pinning) are mechanically grep-checkable, so this task is verification plus one doc edit, not new production code.",
+        "definitionOfReady": [
+          "T-11, T-12, T-13, T-14 all merged (the full diff surface exists to sweep)"
+        ],
+        "definitionOfDone": [
+          "All plan.json definitionOfDone grep lines pass with zero findings",
+          "CLAUDE.md edit merged"
+        ],
+        "dependsOn": [
+          "T-11",
+          "T-12",
+          "T-13",
+          "T-14"
+        ],
+        "outOfScope": [
+          "Any other doc file edit (plan explicitly limits this to presentation-feature-mirror/CLAUDE.md)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/CLAUDE.md"
+        ],
+        "parallelizable": false,
+        "executionGroup": 8,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-17",
+        "epic": "E-7",
+        "title": "Release gates: desktopTest suites, cross-target build, manual end-to-end demo",
+        "description": "Run ./gradlew :presentation-feature-mirror:desktopTest :data-repository-impl:desktopTest :data-database-impl:desktopTest :domain-usecase-impl:desktopTest (must be green). Then the cross-target compile+run gate: ./gradlew :presentation-feature-mirror:build :data-repository-impl:build --max-workers=1 (bugs.json#PP-TD-8's Kotlin/Native linker OOM workaround — do not weaken the gate to work around a heap failure). Then the manual end-to-end demo against a real device: send a batch, change the UI (agent or hand edit), Verify, confirm verdicts, send a follow-up, confirm both status writes. If no device/GUI is available, record an explicit waiver rather than a silent pass (F-8 left nine such steps unexecuted — do not repeat that silently).",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "All four desktopTest targets are green."
+          },
+          {
+            "id": "TAC-2",
+            "text": "The cross-target build gate is green with --max-workers=1, with no gate weakened to dodge the known linker OOM."
+          },
+          {
+            "id": "TAC-3",
+            "text": "The manual demo is either completed and recorded, or explicitly waived (never silently skipped)."
+          }
+        ],
+        "linkedAC": [
+          "AC-23",
+          "AC-24",
+          "AC-39",
+          "AC-42",
+          "AC-43"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/bugs.json#PP-TD-8"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/verify-and-rediff-loop/plan/plan.json#definitionOfDone"
+          }
+        ],
+        "expectedOutput": "Green desktopTest + cross-target build logs, plus a recorded manual-demo result or an explicit waiver note.",
+        "hypothesis": "A green desktop suite does not prove cross-target correctness (comma/colon test-name failures and Orbit's process-wide dispatcher defaults have both hidden real failures in this repo before), so both gates are required, not just the faster one.",
+        "definitionOfReady": [
+          "T-15 and T-16 merged (full implementation + hygiene sweep complete)"
+        ],
+        "definitionOfDone": [
+          "Every plan.json definitionOfDone line is satisfied or explicitly waived with a reason",
+          "No test name contains a comma or colon (iosArm64 compile trap)"
+        ],
+        "dependsOn": [
+          "T-15",
+          "T-16"
+        ],
+        "outOfScope": [
+          "Building a Compose UI-test harness",
+          "A golden before/after corpus"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/**",
+          "data-repository-impl/**",
+          "data-database-impl/**",
+          "domain-usecase-impl/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 9,
+        "estimate": "M",
+        "subtasks": []
+      }
+    ],
+    "executionPlan": {
+      "waves": [
+        {
+          "wave": 1,
+          "parallel": [
+            "T-1",
+            "T-2",
+            "T-5",
+            "T-6",
+            "T-8"
+          ]
+        },
+        {
+          "wave": 2,
+          "parallel": [
+            "T-3",
+            "T-7"
+          ]
+        },
+        {
+          "wave": 3,
+          "parallel": [
+            "T-4",
+            "T-12"
+          ]
+        },
+        {
+          "wave": 4,
+          "parallel": [
+            "T-9"
+          ]
+        },
+        {
+          "wave": 5,
+          "parallel": [
+            "T-10",
+            "T-15"
+          ]
+        },
+        {
+          "wave": 6,
+          "parallel": [
+            "T-11"
+          ]
+        },
+        {
+          "wave": 7,
+          "parallel": [
+            "T-13",
+            "T-14"
+          ]
+        },
+        {
+          "wave": 8,
+          "parallel": [
+            "T-16"
+          ]
+        },
+        {
+          "wave": 9,
+          "parallel": [
+            "T-17"
+          ]
+        }
+      ],
+      "graph": [
+        {
+          "task": "T-1",
+          "dependsOn": []
+        },
+        {
+          "task": "T-2",
+          "dependsOn": []
+        },
+        {
+          "task": "T-5",
+          "dependsOn": []
+        },
+        {
+          "task": "T-6",
+          "dependsOn": []
+        },
+        {
+          "task": "T-8",
+          "dependsOn": []
+        },
+        {
+          "task": "T-3",
+          "dependsOn": [
+            "T-1",
+            "T-2"
+          ]
+        },
+        {
+          "task": "T-7",
+          "dependsOn": [
+            "T-5"
+          ]
+        },
+        {
+          "task": "T-4",
+          "dependsOn": [
+            "T-3"
+          ]
+        },
+        {
+          "task": "T-12",
+          "dependsOn": [
+            "T-7"
+          ]
+        },
+        {
+          "task": "T-9",
+          "dependsOn": [
+            "T-4",
+            "T-6",
+            "T-7",
+            "T-8"
+          ]
+        },
+        {
+          "task": "T-10",
+          "dependsOn": [
+            "T-9"
+          ]
+        },
+        {
+          "task": "T-15",
+          "dependsOn": [
+            "T-9"
+          ]
+        },
+        {
+          "task": "T-11",
+          "dependsOn": [
+            "T-10"
+          ]
+        },
+        {
+          "task": "T-13",
+          "dependsOn": [
+            "T-9",
+            "T-11"
+          ]
+        },
+        {
+          "task": "T-14",
+          "dependsOn": [
+            "T-9",
+            "T-11"
+          ]
+        },
+        {
+          "task": "T-16",
+          "dependsOn": [
+            "T-11",
+            "T-12",
+            "T-13",
+            "T-14"
+          ]
+        },
+        {
+          "task": "T-17",
+          "dependsOn": [
+            "T-15",
+            "T-16"
+          ]
+        }
+      ]
+    },
+    "readyForExecution": true,
+    "sequenceNotes": {
+      "cyclesFound": [],
+      "serializedForScopeOverlap": [
+        "T-13/T-14 (wave 7) both edit MirrorViewModel.kt (SendFollowUp vs MarkAllVerified handlers) and both edit MirrorViewModelVerifyTest.kt — set parallelizable:false for both, keeping emitted order T-13 then T-14 so the single wave-7 implement pass writes them sequentially onto the same files rather than racing two independent diffs against each other."
+      ],
+      "terminalWaveTasks": [
+        "T-16",
+        "T-17"
+      ],
+      "validatorCorrections": [
+        "ITERATION 1 (validator): T-7 declared the MirrorIntent.ExitVerify type but no task implemented its handler body — bugs.json#PP-TD-2's lifecycle-hole guard (cancel verifyJob, clear all four verify fields: VerifyUiState, verifyFrames, verifyAfterHeld, pendingFollowUpBatchId) was unowned. Fixed in place: T-7's description/outOfScope now explicitly state it declares types only; T-9 (which already owns verifyJob/verifyAfterHeld/pendingFollowUpBatchId in the same file) gained TAC-7, a T-9d subtask, an expanded DoD line, and an explicit ExitVerify reference. No wave/dependency change was needed — T-9's existing position (wave 4, after T-7) already satisfies ExitVerify's dependency on the contract types."
+      ]
+    },
+    "survey": [
+      {
+        "question": "Should ExitVerify's handler live in T-9 (same-file cohesion) or be split into its own task?",
+        "options": [
+          "Keep it in T-9",
+          "Split into its own task"
+        ],
+        "answer": "Keep it in T-9",
+        "source": "ai-proposed",
+        "rationale": "It shares verifyJob/verifyAfterHeld/pendingFollowUpBatchId and the same file; a separate task adds a wave-4-adjacent dependency for ~10 lines with no independent testability benefit."
+      },
+      {
+        "question": "Do the added SC references on T-9/T-13 also need to appear as literal strings in linkedAC/DoD for downstream tooling?",
+        "options": [
+          "No - functional coverage already exists via the TAC text",
+          "Yes - force SC-id literals everywhere"
+        ],
+        "answer": "No - functional coverage already exists via the TAC text",
+        "source": "ai-proposed",
+        "rationale": "Forcing SC-id literals into every task that touches a scenario risks labels substituting for proof."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-autonomous",
+    "approved": true,
+    "at": "2026-10-18T22:33:02Z"
+  }
+}
