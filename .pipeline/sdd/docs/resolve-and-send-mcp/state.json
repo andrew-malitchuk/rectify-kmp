@@ -52,6 +52,26 @@
       "status": "done",
       "wave": 1,
       "worktreeBranch": "task/wave-1"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
     }
   },
   "effort": "fast",
