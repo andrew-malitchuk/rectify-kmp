@@ -2,36 +2,170 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "44c060cbdf6016497d2d4b45c36364c1",
+    "identityHash": "58620b376036edc427659c17e5361faa",
     "entities": [
       {
-        "tableName": "example",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `value` TEXT NOT NULL)",
+        "tableName": "history_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sentAtMs` INTEGER NOT NULL, `status` TEXT NOT NULL, `title` TEXT NOT NULL, `annotationCount` INTEGER NOT NULL, `deviceLabel` TEXT NOT NULL, `prompt` TEXT NOT NULL, `dirPath` TEXT, `framePath` TEXT, `hierarchyPath` TEXT, `thumbPng` BLOB, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAtMs",
+            "columnName": "sentAtMs",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "value",
-            "columnName": "value",
+            "fieldPath": "status",
+            "columnName": "status",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "annotationCount",
+            "columnName": "annotationCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceLabel",
+            "columnName": "deviceLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prompt",
+            "columnName": "prompt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dirPath",
+            "columnName": "dirPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "framePath",
+            "columnName": "framePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hierarchyPath",
+            "columnName": "hierarchyPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "thumbPng",
+            "columnName": "thumbPng",
+            "affinity": "BLOB"
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
         }
+      },
+      {
+        "tableName": "history_annotation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`batchId` TEXT NOT NULL, `index` INTEGER NOT NULL, `left` INTEGER NOT NULL, `top` INTEGER NOT NULL, `right` INTEGER NOT NULL, `bottom` INTEGER NOT NULL, `comment` TEXT NOT NULL, `cropPath` TEXT, PRIMARY KEY(`batchId`, `index`), FOREIGN KEY(`batchId`) REFERENCES `history_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "batchId",
+            "columnName": "batchId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "left",
+            "columnName": "left",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "top",
+            "columnName": "top",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "right",
+            "columnName": "right",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bottom",
+            "columnName": "bottom",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comment",
+            "columnName": "comment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cropPath",
+            "columnName": "cropPath",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "batchId",
+            "index"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_history_annotation_batchId",
+            "unique": false,
+            "columnNames": [
+              "batchId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_history_annotation_batchId` ON `${TABLE_NAME}` (`batchId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "history_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "batchId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '44c060cbdf6016497d2d4b45c36364c1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '58620b376036edc427659c17e5361faa')"
     ]
   }
 }

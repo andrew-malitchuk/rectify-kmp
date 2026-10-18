@@ -74,6 +74,7 @@ import dev.rectify.io.core.clipboard.copyToClipboard
 import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.MirrorHost
 import presentation.feature.mirror.source.mirror.MirrorIntent
+import presentation.feature.mirror.source.mirror.MirrorHistoryTab
 import presentation.feature.mirror.source.mirror.MirrorNotesTab
 import presentation.feature.mirror.source.mirror.MirrorPayloadTab
 import presentation.feature.mirror.source.mirror.MirrorSession
@@ -232,11 +233,11 @@ public fun ApplicationScope.RectifyWindow() {
                             frame = frame,
                             onIntent = onMirrorIntent,
                             sidePanel = { tab ->
-                                // Notes and Payload have content; Context is empty rather than
-                                // absent, because the tab strip is the thing Cmd+1/2/3 drives and
-                                // hiding a tab would make a shortcut dead.
+                                // Exhaustive by design (no `else`): the tab strip is what
+                                // Cmd+1/2/3 drives, so a future ShellTab entry must fail to
+                                // compile here rather than silently render nothing.
                                 //
-                                // `weight(1f)` on both is load-bearing, not cosmetic: each tab pins
+                                // `weight(1f)` on each is load-bearing, not cosmetic: each tab pins
                                 // its own footer with an inner `weight(1f)`, which collapses to zero
                                 // under an unbounded height. The panel's bounded height is what makes
                                 // the bodies render at all.
@@ -256,7 +257,11 @@ public fun ApplicationScope.RectifyWindow() {
                                         onIntent = onMirrorIntent,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    else -> Unit
+                                    ShellTab.History -> MirrorHistoryTab(
+                                        state = mirror,
+                                        onIntent = onMirrorIntent,
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             },
                             onPanelWidthCommit = { width ->
@@ -424,10 +429,13 @@ internal fun RectifyShellContent(
         state = state,
         sidePanel = sidePanel,
         // The tab counts and the toolbar badge read the same number by construction.
-        tabCounts = mapOf(
-            ShellTab.Notes to mirror.stagedCount,
-            ShellTab.Payload to mirror.stagedCount,
-        ),
+        // AC-34's omit-at-zero rule lives in `core/history`'s historyBadgeCount, which is
+        // testable; this module has no test wiring, so it only put-or-omits what it is given.
+        tabCounts = buildMap {
+            put(ShellTab.Notes, mirror.stagedCount)
+            put(ShellTab.Payload, mirror.stagedCount)
+            mirror.historyBadgeCount?.let { put(ShellTab.History, it) }
+        },
         onPanelWidthCommit = onPanelWidthCommit,
         stage = {
             MirrorStageContent(

@@ -586,5 +586,104 @@
     "path": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt",
     "props": "state: MirrorUiState, frame: ImageBitmap?, hierarchy: HierarchySnapshotModel, onIntent: (MirrorIntent) -> Unit, modifier: Modifier = Modifier",
     "description": "Side-panel Payload tab — previews exactly what Claude receives for the pinned frame; early-returns an empty state when nothing is staged, then renders the editable Prompt block with its token estimate and the 3-column crop grid."
+  },
+  {
+    "id": "HistoryEntryEntity",
+    "name": "HistoryEntryEntity",
+    "kind": "entity",
+    "module": "data-database-impl",
+    "path": "src/commonMain/kotlin/data/database/impl/source/entity/HistoryEntryEntity.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Room @Entity for table history_entry: one sent batch (id, sentAtMs, deviceLabel, prompt, status, thumbPng BLOB, dirPath/framePath/hierarchyPath). Public in source/entity/ because the public HistoryDataSource names it."
+  },
+  {
+    "id": "HistoryAnnotationEntity",
+    "name": "HistoryAnnotationEntity",
+    "kind": "entity",
+    "module": "data-database-impl",
+    "path": "src/commonMain/kotlin/data/database/impl/source/entity/HistoryAnnotationEntity.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Room @Entity for table history_annotation: one annotation of a batch. FK to history_entry with CASCADE delete, indexed on batchId."
+  },
+  {
+    "id": "HistoryEntryWithAnnotations",
+    "name": "HistoryEntryWithAnnotations",
+    "kind": "entity",
+    "module": "data-database-impl",
+    "path": "src/commonMain/kotlin/data/database/impl/source/entity/HistoryEntryWithAnnotations.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Room @Relation projection pairing a history_entry row with its history_annotation children."
+  },
+  {
+    "id": "HistoryEntryDao",
+    "name": "HistoryEntryDao",
+    "kind": "dao",
+    "module": "data-database-impl",
+    "path": "src/commonMain/kotlin/data/database/impl/core/dao/HistoryEntryDao.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Internal @Dao: @Transaction parent+children insert returning the rowid, observeAll() ordered sentAtMs DESC, targeted status UPDATE. 7 desktopTest cases incl. cascade delete and re-open-same-file survival."
+  },
+  {
+    "id": "HistoryDataSource",
+    "name": "HistoryDataSource",
+    "kind": "datasource",
+    "module": "data-database-impl",
+    "path": "src/commonMain/kotlin/data/database/impl/source/datasource/HistoryDataSource.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Public datasource over HistoryEntryDao, composed from the generic data-database-api base interfaces (no UpsertableDataSource - upsert has no caller)."
+  },
+  {
+    "id": "BatchFileStore",
+    "name": "BatchFileStore",
+    "kind": "seam",
+    "module": "data-repository-impl",
+    "path": "src/commonMain/kotlin/data/repository/impl/source/store/BatchFileStore.kt",
+    "specRef": "history-batch-tracking",
+    "description": "fun interface disk-write seam (no okio/kotlinx-io in the catalog). java.io desktop impl writes frame.png + crop-N.png under ~/.rectify/history/<batchId>/; Android/iOS stand-ins return null. Never throws. ponytail: unbounded growth, prune-by-age/count is the upgrade path."
+  },
+  {
+    "id": "HistoryEntryMapper",
+    "name": "HistoryEntryMapper",
+    "kind": "mapper",
+    "module": "data-repository-impl",
+    "path": "src/commonMain/kotlin/data/repository/impl/core/mapper/HistoryEntryMapper.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Named internal object (deliberately NOT ModelResourceMapper - the write path starts from SentBatchModel and needs the store dirPath, so a toResource inverse would be a never-called fabrication). Never throws; an unknown stored status falls back to Sent."
+  },
+  {
+    "id": "HistoryRepository",
+    "name": "HistoryRepository",
+    "kind": "repository-api",
+    "module": "domain-repository-api",
+    "path": "src/commonMain/kotlin/domain/repository/api/source/repository/HistoryRepository.kt",
+    "specRef": "history-batch-tracking",
+    "description": "observe(): bare Flow<List<HistoryEntryModel>>; record(): Unit, throws by contract (the use case wraps it); updateStatus(): the hook F-9 calls and F-8 never does."
+  },
+  {
+    "id": "HistoryFormatting",
+    "name": "HistoryFormatting",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/history/HistoryFormatting.kt",
+    "specRef": "history-batch-tracking",
+    "description": "Pure, unit-tested: calendar-day bucketing (Today/Yesterday/Older), meta line, shortBatchId = (id.hashCode() and 0xFFFF).toString(16) (FR-30s literal last-4-hex-chars is unsatisfiable against mintSessionIds decimal format), unionRect/thumbnailRect, inProgressCount, statusTone."
+  },
+  {
+    "id": "ThumbnailBitmap",
+    "name": "ThumbnailBitmap",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/history/ThumbnailBitmap.kt",
+    "specRef": "history-batch-tracking",
+    "description": "cropAndScale to <=128px longest edge in commonMain (ImageBitmap + Canvas + drawImageRect, FilterQuality.Medium) BEFORE the unchanged CropEncoder - AwtCropEncoder only crops and never scales, so the naive path stored a ~250 KB PNG per row in Orbit state. Gated by a <=128px / <=8 KB test."
+  },
+  {
+    "id": "MirrorHistoryTab",
+    "name": "MirrorHistoryTab",
+    "kind": "composable",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHistoryTab.kt",
+    "specRef": "history-batch-tracking",
+    "description": "The History side-panel tab: grouped LazyColumn(key = id) over the shipped HistoryRow molecule, thumbnail decoded behind remember(entry.id), Verify affordance on Fixed rows only, hairline footer, empty state. Zero new design-system components. Known issue A11Y-8: HistoryRow.onClick is non-nullable so the v1 no-op row still announces Role.Button."
   }
 ]

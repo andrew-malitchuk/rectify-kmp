@@ -197,15 +197,16 @@
   },
   {
     "id": "database",
-    "name": "Database (Room KMP) -- scaffold only",
-    "status": "partial",
-    "specRef": "",
+    "name": "Database (Room KMP)",
+    "status": "done",
+    "specRef": "history-batch-tracking",
     "modules": [
       "data-database-api",
       "data-database-impl"
     ],
-    "description": "Pre-SDD infrastructure that is still a SCAFFOLD, not a used feature -- worth knowing before a planner assumes persistence exists. -api declares six generic datasource interfaces (Readable/Observable/Appendable/Upsertable/Deletable/Clearable) and has no core/ directory because it has no internal declarations. -impl holds AppDatabase, a placeholder ExampleEntity/ExampleDao, Migrations, and DatabaseBuilder as expect/actual across android/ios/desktop. Room's KSP needs an explicit kspDesktop entry alongside kspAndroid/kspIosArm64/kspIosSimulatorArm64 in any module using @Database/@ConstructedBy. Nothing in the shipped product reads or writes it yet -- annotation/capture history (F-8) is the first intended consumer.",
-    "waived": "No production consumer, example entity/dao only, no tests."
+    "description": "Room KMP persistence, in production use as of F-8. -api declares generic datasource interfaces (Readable/Observable/Appendable/Upsertable/Deletable/Clearable) and has no core/ directory. -impl holds AppDatabase (version 1, no migrations yet), the history_entry + history_annotation tables with their entities in source/entity/ (public, because the public HistoryDataSource names them and explicitApi() forbids naming a core/ internal), an internal HistoryEntryDao, HistoryDataSource(+Impl), Migrations and DatabaseBuilder as expect/actual across android/ios/desktop. Desktop DB file is ~/.rectify/rectify.db. Room KSP needs an explicit kspDesktop entry alongside kspAndroid/kspIosArm64/kspIosSimulatorArm64. First and currently only consumer: history-batch-tracking (F-8), via HistoryRepositoryImpl.",
+    "waived": "",
+    "notes": "DAO tests are desktopTest-only (they need BundledSQLiteDriver + file IO), so the iOS test tasks for data-database-impl are NO-SOURCE: no cross-target test coverage there by design."
   },
   {
     "id": "theming",
@@ -237,5 +238,24 @@
     ],
     "description": "Pre-SDD cross-cutting convention every layer depends on. domain-core/source/monad/Failure.kt defines Failure.Technical.{Database,Platform,Network,Preference}(cause) and Failure.Logic.{NotFound,Business(message)}. Every *UseCaseImpl body runs inside resultLauncher(errorMapper = Failure.Technical::<Kind>) { } (domain-usecase-impl/core/ResultLauncher.kt): a thrown Failure propagates unchanged, any other Throwable is mapped first, and invoke() always returns Result<T> rather than throwing past the boundary. common-core supplies Mapper/Execute, data-core the Resource base.",
     "waived": "Two known repo-wide gaps. (1) resultLauncher catches CancellationException -- an inherited open change request carried across all four specs, still unfixed. (2) Every feature's XSideEffect.ShowError(messageId) handler IGNORES messageId and shows a hardcoded, unlocalized \"Error\" title (AboutScreen, OnboardingScreen, HomeScreen, SettingsScreen) -- explicitly documented as a gap, NOT a pattern to extend; resolve messageId through stringResource() instead. resultLauncher's Failure-passthrough-vs-errorMapper behaviour is also still untested."
+  },
+  {
+    "id": "history-batch-tracking",
+    "name": "History & Batch Tracking (F-8)",
+    "status": "done",
+    "specRef": "history-batch-tracking",
+    "modules": [
+      "data-database-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-feature-mirror",
+      "presentation-core-localisation",
+      "compose-application"
+    ],
+    "description": "Desktop-only History tab in the right inspector panel: every sent annotation batch is persisted locally (Room parent+child tables, frame/crop PNGs under ~/.rectify/history/<batchId>/, a <=128px thumbnail as an inline BLOB) and listed grouped Today/Yesterday/Older with thumbnail, title, mono meta line, status chip and an in-progress tab badge that is omitted at zero. Persist runs inside publish.onSuccess before postSideEffect and can never fail a send. F-8 only ever writes status Sent; HistoryRepository.updateStatus exists for F-9. The Verify button on Fixed rows is an affordance only - the diff loop is F-9.",
+    "waived": "Nine manual GUI demo steps unexecuted (no GUI run in this environment): AC-36, SC-8, the app-restart halves of AC-33/SC-15, and the <=150ms render budget. Automated halves are green."
   }
 ]

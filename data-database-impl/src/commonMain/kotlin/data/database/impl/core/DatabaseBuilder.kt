@@ -8,6 +8,6 @@ import org.koin.core.module.Module
  *
  * - **Android:** uses the application [Context] to locate the database file.
  * - **iOS / macOS:** stores the database in the app's Documents directory.
- * - **Desktop:** stores the database in the user home directory.
+ * - **Desktop:** stores the database at `~/.rectify/rectify.db`.
  */
 internal expect fun Module.provideDatabaseBuilder()

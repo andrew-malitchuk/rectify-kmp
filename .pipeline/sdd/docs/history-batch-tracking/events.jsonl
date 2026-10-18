@@ -1,0 +1,58 @@
+{"stage": "preparation", "event": "start", "at": "2026-10-18T18:18:35Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "start", "at": "2026-10-18T18:18:52Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "end", "tokens": 50622, "at": "2026-10-18T18:20:47Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "start", "at": "2026-10-18T18:20:54Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "end", "tokens": 53818, "at": "2026-10-18T18:25:44Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "start", "at": "2026-10-18T18:25:44Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "end", "tokens": 97711, "at": "2026-10-18T18:36:27Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-18T18:36:31Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 60992, "at": "2026-10-18T18:39:33Z", "spec": "history-batch-tracking"}
+{"stage": "preparation", "event": "end", "at": "2026-10-18T18:39:33Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "event": "start", "at": "2026-10-18T18:39:40Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "at": "2026-10-18T18:39:40Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 175616, "at": "2026-10-18T18:56:58Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-18T18:57:30Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 171240, "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "event": "end", "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "event": "start", "at": "2026-10-18T19:11:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-18T19:11:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 103719, "at": "2026-10-18T19:16:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-18T19:16:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 103119, "at": "2026-10-18T19:21:37Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-18T19:21:37Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 130739, "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "event": "end", "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "event": "start", "at": "2026-10-18T19:28:22Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:28:22Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "end", "tokens": 38950, "at": "2026-10-18T19:31:29Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-2", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:31:29Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-2", "agent": "sdd-build-business-implement", "event": "end", "tokens": 68547, "at": "2026-10-18T19:35:48Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-3", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:35:52Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-3", "agent": "sdd-build-business-implement", "event": "end", "tokens": 143896, "at": "2026-10-18T19:46:42Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-4", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:46:42Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-4", "agent": "sdd-build-business-implement", "event": "end", "tokens": 91061, "at": "2026-10-18T19:53:57Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-5", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:53:57Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-5", "agent": "sdd-build-business-implement", "event": "end", "tokens": 37841, "at": "2026-10-18T19:56:17Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-6", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:56:17Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-6", "agent": "sdd-build-business-implement", "event": "end", "tokens": 158742, "at": "2026-10-18T20:10:55Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-7", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T20:10:55Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-7", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 90961, "at": "2026-10-18T20:15:49Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-8", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T20:15:49Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-8", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 50971, "at": "2026-10-18T20:18:51Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-9", "agent": "sdd-build-docs-implement", "event": "start", "at": "2026-10-18T20:18:51Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-9", "agent": "sdd-build-docs-implement", "event": "end", "tokens": 83315, "at": "2026-10-18T20:23:02Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-10", "agent": "sdd-build-test-audit", "event": "start", "at": "2026-10-18T20:23:02Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-10", "agent": "sdd-build-test-audit", "event": "end", "tokens": 137352, "at": "2026-10-18T20:32:31Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "event": "end", "at": "2026-10-18T20:32:32Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "event": "start", "at": "2026-10-18T20:32:38Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "start", "at": "2026-10-18T20:32:38Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "end", "tokens": 193876, "at": "2026-10-18T20:50:56Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "request", "agent": "sdd-build-validation-request", "event": "start", "at": "2026-10-18T20:50:56Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "request", "agent": "sdd-build-validation-request", "event": "end", "tokens": 40792, "at": "2026-10-18T20:53:18Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "start", "at": "2026-10-18T20:53:18Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 97487, "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "event": "end", "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "review", "event": "start", "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "review", "step": "panel", "agent": "sdd-build-correctness-review", "event": "start", "at": "2026-10-18T20:57:29Z", "spec": "history-batch-tracking"}
+{"stage": "review", "step": "panel", "agent": "sdd-build-correctness-review", "event": "end", "tokens": 157742, "at": "2026-10-18T21:05:14Z", "spec": "history-batch-tracking"}
+{"stage": "review", "event": "end", "at": "2026-10-18T21:15:52Z", "spec": "history-batch-tracking"}

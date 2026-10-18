@@ -1,0 +1,39 @@
+{
+  "spec": "history-batch-tracking",
+  "stage": "plan",
+  "step": "evaluation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "orchestrator-fast-tier",
+  "provenance": {
+    "selfHash": "31f502012d19a43848240b0ef469b9d0a10fccd6a6b7e17f3d3d0a86ad2c5c55"
+  },
+  "createdAt": "2026-10-18T18:57:20Z",
+  "updatedAt": "2026-10-18T18:57:30Z",
+  "data": {
+    "candidates": [
+      {
+        "id": "candidate-1",
+        "file": "candidates/candidate-1.json",
+        "score": 0,
+        "scores": {},
+        "rationale": "fast tier: N=1, no competitive judging ran"
+      }
+    ],
+    "corrections": [
+      {
+        "id": "C-1",
+        "area": "thumbnail",
+        "text": "Draft resolved the thumbnail-size contradiction itself (crop+scale to <=128px in commonMain before CropEncoder). Refine must confirm this holds against AwtCropEncoder's crop-only behaviour and that no new DI seam is introduced."
+      }
+    ],
+    "selectionRationale": "Single candidate at fast effort tier; judge machinery skipped per orchestrator contract.",
+    "selected": "candidate-1"
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator",
+    "approved": true,
+    "at": "2026-10-18T18:57:30Z"
+  }
+}

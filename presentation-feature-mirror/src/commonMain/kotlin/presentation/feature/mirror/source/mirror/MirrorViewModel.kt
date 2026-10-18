@@ -4,15 +4,21 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import data.handoff.api.source.envelope.AnnotationEnvelope
+import data.handoff.api.source.envelope.HandoffImage
 import data.handoff.api.source.handoff.AnnotationHandoff
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.PlatformModel
+import domain.core.source.model.history.SentAnnotationModel
+import domain.core.source.model.history.SentBatchModel
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
+import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -39,6 +45,9 @@ import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.syntax.Syntax
 import org.orbitmvi.orbit.viewmodel.container
 import presentation.feature.mirror.core.discovery.applyDiscovery
+import presentation.feature.mirror.core.history.cropAndScale
+import presentation.feature.mirror.core.history.thumbnailRect
+import presentation.feature.mirror.core.history.unionRect
 import presentation.feature.mirror.core.measure.measure
 import presentation.feature.mirror.core.measure.projectMeasureNodes
 import presentation.feature.mirror.core.measure.replaceNoteLine
@@ -75,6 +84,50 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
 internal data class HeldFrame(val bitmap: ImageBitmap, val bytes: ByteArray)
 
 /**
+ * Projects a published send into the durable record.
+ *
+ * Every field comes from the **envelope**, never from [MirrorUiState]. The prompt especially:
+ * a `promptOverride` can outlive the annotations it described (`bugs.json#PP-TD-2`), and
+ * history has to record what the agent actually received, not what the editor still holds
+ * (PLAN-AS-12).
+ *
+ * Nothing here is read back out of the handoff slot: [envelope] and [images] are the same
+ * in-memory values that were published, so the slot's own pruning cannot reach history
+ * (FR-27/AC-38).
+ *
+ * @param envelope The envelope the agent received.
+ * @param images Everything it referenced — the frame plus one crop per annotation that encoded.
+ * @param frameBytes The adb capture itself, straight off [HeldFrame].
+ * @param thumbPng The scaled batch thumbnail, or `null` when there was none to make.
+ */
+private fun sentBatch(
+    envelope: AnnotationEnvelope,
+    images: List<HandoffImage>,
+    frameBytes: ByteArray,
+    thumbPng: ByteArray?,
+): SentBatchModel = SentBatchModel(
+    id = envelope.sessionId,
+    sentAtMs = envelope.sentAtMs,
+    deviceLabel = envelope.device.label,
+    prompt = envelope.prompt,
+    frameBytes = frameBytes,
+    thumbPng = thumbPng,
+    hierarchyXml = envelope.hierarchyXml.takeIf { it.isNotEmpty() },
+    annotations = envelope.annotations.map { annotation ->
+        SentAnnotationModel(
+            left = annotation.left,
+            top = annotation.top,
+            right = annotation.right,
+            bottom = annotation.bottom,
+            comment = annotation.comment,
+            // Looked up rather than re-encoded: assembleEnvelope already produced these bytes.
+            cropBytes = annotation.cropPath
+                ?.let { path -> images.firstOrNull { it.name == path }?.bytes },
+        )
+    },
+)
+
+/**
  * The mirror surface's state machine.
  *
  * Two deliberate splits make this cheap at ten frames a second:
@@ -101,6 +154,11 @@ internal data class HeldFrame(val bitmap: ImageBitmap, val bytes: ByteArray)
  * @property dumpHierarchy Captures the view hierarchy to measure against. Fired once per
  *   freeze, never per keystroke: T-1 measured the dump at ~2.7 s, so asking for one when
  *   Option goes down would make measure mode unusable (NFR-2).
+ * @property recordSentBatch Makes a successful send durable (AC-38). REQUIRED, no default,
+ *   exactly like [handoff]: a default would turn a missing Koin binding into history silently
+ *   losing every batch instead of a startup wiring error.
+ * @property observeHistory The recorded batches, newest first — collected once at container
+ *   init into [MirrorUiState.history]. REQUIRED for the same reason as [recordSentBatch].
  * @property decodeFrame Seam for PNG decoding — a parameter so tests need no real image.
  * @property handoff T-9's publish target for a resolved send (AC-17/AC-19/FR-16/FR-18).
  *   REQUIRED, no default — a default would turn a missing Koin binding into a silent runtime
@@ -124,6 +182,8 @@ public class MirrorViewModel(
     private val refreshDiscovery: RefreshDiscoveryUseCase,
     private val setAdbPath: SetAdbPathUseCase,
     private val dumpHierarchy: DumpHierarchyUseCase,
+    private val recordSentBatch: RecordSentBatchUseCase,
+    private val observeHistory: ObserveHistoryUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
     private val handoff: AnnotationHandoff,
     private val encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
@@ -210,6 +270,7 @@ public class MirrorViewModel(
             observeDiscoveryWhileIdle()
             observeFrames()
             observeStats()
+            observeHistoryEntries()
         }
 
     /** Dispatches a user action. */
@@ -240,6 +301,7 @@ public class MirrorViewModel(
             MirrorIntent.RestartAdb -> restartAdb()
             MirrorIntent.LocateAdb -> locateAdb()
             is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
+            is MirrorIntent.VerifyBatch -> verifyBatch(intent.batchId)
         }
     }
 
@@ -304,6 +366,27 @@ public class MirrorViewModel(
                     delay(STATS_TICK_MS)
                 }
         }
+    }
+
+    /**
+     * Mirrors [observeStats]' shape with neither its throttle nor a `.catch`: the database
+     * reports once per send rather than once per frame, and the repository already degrades an
+     * unreadable table to an empty list, so there is no failure left to guard here.
+     */
+    private fun observeHistoryEntries() {
+        viewModelScope.launch {
+            observeHistory().collect { entries ->
+                intent { reduce { state.copy(history = entries) } }
+            }
+        }
+    }
+
+    /**
+     * F-9's seam (FR-32 / AC-36 / SC-8). Logs and returns — the Verify button needs a real
+     * intent to fire today, and the re-capture-and-diff behind it is the next feature's.
+     */
+    private fun verifyBatch(batchId: String) {
+        log.i { "Verify requested for batch $batchId — the diff lands with F-9" }
     }
 
     private suspend fun onSessionLost(deviceId: String) {
@@ -793,7 +876,9 @@ public class MirrorViewModel(
      * [HeldFrame] bytes and the staged list all survive, so the retry is over the same batch
      * (AS-31/AC-20/SC-25).
      *
-     * Success clears the batch (FR-19/AC-21) and resumes live — **unless** the session is
+     * Success additionally records the batch (AC-38) — in its own failure domain, logged and
+     * dropped, strictly before the toast; see the call site. Success clears the batch
+     * (FR-19/AC-21) and resumes live — **unless** the session is
      * [MirrorSession.Lost], where the frame stays pinned because there is no live mirror to
      * return to (SC-27). The toast's count is read off the frame that was actually sent, which
      * is by construction the pre-reset count.
@@ -835,7 +920,7 @@ public class MirrorViewModel(
             }
             reduce { state.copy(send = SendPhase.Publishing) }
             withContext(Dispatchers.Default) { handoff.publish(envelope, images) }
-            envelope
+            envelope to images
         }
 
         published
@@ -843,10 +928,14 @@ public class MirrorViewModel(
                 log.w(error) { "Resolve & Send failed — frame and batch left untouched" }
                 reduce { state.copy(send = SendPhase.Failed) }
             }
-            .onSuccess { envelope ->
+            .onSuccess { (envelope, images) ->
                 // Read off the frame that was sent, so it is the pre-reset count by
                 // construction rather than by ordering luck (FR-19).
                 val count = frozen.annotations.size
+                // Read here, not at the toast: the user waited on the publish, not on the
+                // thumbnail encode and history write that follow it (and the first send in a
+                // process pays Skiko's one-off native-library load inside that encode).
+                val elapsedMs = started.elapsedNow().inWholeMilliseconds
                 if (state.session is MirrorSession.Lost) {
                     // AF-5 (Stage 5): reset to Idle here, not Sent. Leaving the terminal phase
                     // set kept AC-19's final dot visible but let the overlay outlive the state it
@@ -861,12 +950,22 @@ public class MirrorViewModel(
                         state.copy(frozen = null, send = SendPhase.Idle).withoutMeasurements()
                     }
                 }
+                // AC-38, and the ordering is the whole guarantee: history is written
+                // BEFORE the toast is posted, and its failure is logged and dropped right
+                // here. It never reaches SendPhase and never posts a side effect -- a send
+                // the agent received stays successful even when the database does not.
+                val thumbPng = withContext(Dispatchers.Default) {
+                    thumbnailPng(frozen, held.bitmap)
+                }
+                recordSentBatch(sentBatch(envelope, images, held.bytes, thumbPng)).onFailure { error ->
+                    log.w(error) { "History not recorded for ${envelope.sessionId} -- the send stands" }
+                }
                 postSideEffect(
                     MirrorSideEffect.SendComplete(
                         count = count,
                         summary = toastLabel(
                             count = count,
-                            elapsedMs = started.elapsedNow().inWholeMilliseconds,
+                            elapsedMs = elapsedMs,
                             // Off the published envelope, never re-derived (AF-4).
                             hierarchyAttached = envelope.hierarchyAvailable,
                         ),
@@ -875,6 +974,26 @@ public class MirrorViewModel(
                 )
             }
     }
+
+    /**
+     * The batch thumbnail: the union box of every annotation, downscaled and encoded.
+     *
+     * Computed with the persist step rather than with the envelope, although both are pixel
+     * work on the same dispatcher: the thumbnail is history's alone and is never published, so
+     * running it before `publish` would delay the handoff the user is waiting on for the sake
+     * of a row they have not looked at yet.
+     *
+     * Returns `null` and never throws, on purpose. `CropEncoder` already contracts to report
+     * failure as `null`, but [cropAndScale] builds a real `ImageBitmap` and draws into it, and
+     * that is backend work -- a frame the graphics backend will not accept must cost the row
+     * its picture (the list renders a bare plate) and never the send.
+     */
+    private suspend fun thumbnailPng(frozen: FrozenFrame, frame: ImageBitmap): ByteArray? =
+        runCatching {
+            val union = unionRect(frozen.annotations) ?: return null
+            val scaled = cropAndScale(frame, thumbnailRect(union, frozen.deviceSize)) ?: return null
+            encodeCrop.encode(scaled, DeviceRect(0, 0, scaled.width, scaled.height))
+        }.getOrNull()
 
     /**
      * Back to the live mirror (AC-51).
