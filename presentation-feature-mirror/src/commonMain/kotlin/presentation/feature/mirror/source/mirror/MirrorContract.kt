@@ -360,6 +360,20 @@ public sealed interface MirrorIntent {
     /** Empty the staged list. The frame stays frozen (AC-48). */
     public data object ClearStaged : MirrorIntent
 
+    /**
+     * Replace the payload's default prompt for the pinned frame (AC-79).
+     *
+     * A no-op while the stage is live: the override belongs to [FrozenFrame], so there is
+     * nothing to attach it to until a frame is pinned.
+     *
+     * @property text Prompt as typed, or `null` to drop the override and fall back to the
+     *   generated prompt. `null` is sent by one caller only — the Payload tab discarding an
+     *   editing session that was seeded against annotations which no longer exist, where the
+     *   text on screen is the machine's own previous output and keeping it would export a prompt
+     *   describing a payload that is gone.
+     */
+    public data class EditPrompt(val text: String?) : MirrorIntent
+
     /** Unpin the frame and drop the staged list — back to the live mirror (AC-51). */
     public data object ResumeLive : MirrorIntent
 
@@ -517,15 +531,35 @@ public data class StagedAnnotation(
  * and keeping the `ImageBitmap` out means a state copy stays cheap. The bitmap sits on
  * [MirrorViewModel.frozenFrame], the second `StateFlow` beside `frame`.
  *
+ * [frameId], [deviceLabel] and [promptOverride] are **captured at freeze, dies with the frame**:
+ * each is stamped or typed against this one pinned frame and goes with it when the frame is
+ * released, which is why none of them is a field of [MirrorUiState]. Re-deriving them later
+ * would read a device chip or a prompt the user has since changed, and the exported payload
+ * would describe a frame that never existed.
+ *
  * @property deviceSize Size of the pinned screenshot, in device pixels.
  * @property annotations Staged annotations in badge order.
  * @property selectedIndex [StagedAnnotation.index] of the annotation whose popover is open, or
  *   `null` when none is.
+ * @property frameId 1-based freeze number within the session, stamped once at freeze and shared
+ *   by every annotation on this frame — `0` only for a frame built without a stamp.
+ * @property deviceLabel The selected row's [MirrorRow.detail] with the transport segment
+ *   stripped (`"Android 15 · USB"` → `"Android 15"`), stamped at freeze. Empty when there was
+ *   no selected row to read.
+ * @property promptOverride Prompt text the user typed for this frame, or `null` while the
+ *   default prompt applies. Survives every annotation edit and a session loss; no reducer drops
+ *   it except [MirrorIntent.ResumeLive], which drops the whole frame. The Payload tab clears it
+ *   with `EditPrompt(null)` in one case — an open editor whose seed was invalidated by an
+ *   annotation edit, where the text on screen is stale machine output rather than anything the
+ *   user wrote.
  */
 public data class FrozenFrame(
     val deviceSize: IntSize,
     val annotations: List<StagedAnnotation> = emptyList(),
     val selectedIndex: Int? = null,
+    val frameId: Int = 0,
+    val deviceLabel: String = "",
+    val promptOverride: String? = null,
 ) {
     /** The annotation the popover belongs to, or `null`. */
     public val selected: StagedAnnotation?

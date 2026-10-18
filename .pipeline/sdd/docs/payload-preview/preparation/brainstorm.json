@@ -1,0 +1,609 @@
+{
+  "spec": "payload-preview",
+  "stage": "preparation",
+  "step": "brainstorm",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-architecture-brainstorm",
+  "provenance": {
+    "selfHash": "260ef973d05a161d7f618809136c1cef61d9dee288748b956ddd92bff2680c1a",
+    "inputs": [
+      {
+        "artifact": "preparation/input.json",
+        "hash": "69585a72b0f9249a23960d3f78e230b9e4985b875498f4fdab271c973280db91"
+      },
+      {
+        "artifact": "preparation/clarify.json",
+        "hash": "223e969e953c5cf8d8b3a41bdf9ca66998ebbfd300e45d02e92f3c59e26920b6"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T10:09:49Z",
+  "updatedAt": "2026-10-17T10:09:49Z",
+  "data": {
+    "highLevelPlan": [
+      "Add exactly one new internal package — `presentation-feature-mirror/core/payload/` — holding every pure function this feature needs (prompt assembly, the 360+count*140 estimator, the (1.6+count*0.12) MB label, the crop window transform, the hierarchy-row projection, the source/footer labels). This is the only layer the repo's harness can test (testing.md), and it is the module's fourth `core/` package after `geometry`, `annotation`, `measure` — the precedent is already set (FR-47..FR-51, AC-72..AC-78).",
+      "Add one new public composable — `source/mirror/MirrorPayloadTab.kt` — the sibling of the shipped `MirrorNotesTab`: stateless, reads `MirrorUiState` + the frozen bitmap + the cached `HierarchySnapshotModel`, places strings the pure layer already formatted, and renders the three sections plus footer (FR-12..FR-15).",
+      "Join the tab strip by adding a single `if (tab == ShellTab.Payload)` branch to `RectifyWindow.kt`'s existing `sidePanel = { tab -> … }` lambda. `ShellTab.Payload`, `shortcutToTab(Cmd+2)`, `SidebarTabs` and `SidePanelFrame` all already ship and need no change — the tab exists and is empty today, so this is one branch, not any new chrome.",
+      "Expose the already-cached hierarchy to the panel by widening `MirrorHost`'s content lambda from `(state, frame, onIntent)` to `(state, frame, hierarchy, onIntent)` — one call site. Payload-preview reads `MirrorViewModel.frozenHierarchy` and never triggers a dump (AS-22, AC-74); the badge projection is derived in a `remember`, so hundreds of nodes still never enter the reduced state (the module's documented Deviation 2).",
+      "Mint the freeze counter where the freeze actually happens: a `private var freezeCounter` on `MirrorViewModel`, incremented in `stageAnnotation`'s intent body (NOT inside `reduce`, whose lambda can re-run on a lost race per its own KDoc), stamped onto the new `FrozenFrame.frameId`. The same freeze stamps `FrozenFrame.deviceLabel` so the prompt's device line survives a device drop (FR-52, FR-55).",
+      "Carry the edited prompt on `FrozenFrame.promptOverride: String?` so it dies with the pinned frame automatically at every site that already nulls `frozen` (resumeLive / stopSession / selectPlatform) and persists across tab switches until the user edits again (AC-79, FR-53).",
+      "Render crops with one `Canvas { drawImage(image, srcOffset, srcSize, dstOffset, dstSize) }` per annotation instead of porting the design's negative-margin/`transform: scale()` CSS — Compose crops and scales in one call, so the pure `cropWindow(...)` only has to return source rect, container size and the outline rect (AC-76, FR-49).",
+      "Reuse the shipped-but-callerless `HierarchyRow` molecule for the tree, with one additive `matched: Boolean` parameter so it can colour ink vs ink3; its `tag` badge already defaults to `Theme.color.annotate`, which is the design's red (AC-75, AS-24)."
+    ],
+    "proposedArchitecture": "Two layers in one module, plus two one-line edits outside it. No new Gradle module, no new dependency, no new data source — every byte this feature shows already exists in `MirrorUiState`, `MirrorViewModel.frozenFrame` and `MirrorViewModel.frozenHierarchy`.\n\n1. PURE LAYER — `presentation-feature-mirror/src/commonMain/.../core/payload/` (internal, per package-layout.md: `core/` is internal-only). Nothing here imports Compose beyond `IntSize`/`IntOffset`, nothing imports Orbit, so every AC with a formula or a format in it becomes a `commonTest` assertion. This is the load-bearing decision of the spec: `:compose-application` has no test wiring (testing.md), so anything stranded in the window layer or inside a `@Composable` is unverifiable by construction.\n   - `PromptAssembly.kt` — `buildPrompt(frozen: FrozenFrame, deviceLabel: String, nodeIdFor: (StagedAnnotation) -> String?): String`. Ports the design's `pl[]` exactly: headline with the `count === 1` plural branch, the device line from real data (FR-52), then per annotation `#{i} {nodeId} · {w}×{h}` + the comment verbatim in quotes (or `no comment`), then the `Attached: frame.png, N crops, hierarchy.xml` trailer. **No `measured:` branch** — AS-26/AC-73: measure-mode already folded the `⌥` line into `comment`, so the comment is printed verbatim and the design's third `pl.push` has no counterpart. Reuses `core/annotation`'s `TIMES` constant (already `internal` for exactly this reason) so the module keeps one `×` (AC-72).\n   - `PayloadEstimate.kt` — `tokenEstimate(count: Int): Int = 360 + count * 140`, `payloadSizeLabel(count: Int): String` and `footerLabel(count: Int): String`. One decimal is formatted by hand (`(value * 10).roundToInt()` then `tenths/10`.`tenths%10`) because `String.format` is not in the common stdlib — the `core/stats/formatFps` precedent, which should be promoted to a shared internal `oneDecimal(...)` rather than copied, so the two places that round cannot disagree (FR-48, FR-51, AC-78).\n   - `CropWindow.kt` — `cropWindow(rect: DeviceRect, frameSize: IntSize, boxW: Int = 84, boxH: Int = 72, pad: Int): CropWindow`. The design's `crop()` with the hardcoded `296`/`640` generalised to the real frame: `cx = max(0, x-pad)`, `cw = min(frameW-cx, w+2*pad)`, `s = min(boxW/cw, boxH/ch)`. Returns source rect (device px), container size, scale, and the outline rect in container coordinates — which is what AC-76 pins. The design's `fixed` flag is dropped: it is `false` at this call site and the design's own function only stores it.\n   - `HierarchyOutline.kt` — `payloadHierarchyRows(snapshot, frozen, frameSize): List<PayloadNodeRow>` where `PayloadNodeRow(nodeId, depth, last, badge: String?, matched: Boolean)`. Runs the existing `projectMeasureNodes` + `snapTarget` per annotation (AC-75 says badge iff `snapTarget` matched, so the badge must come from the same function measure-mode uses, not a second containment rule), builds an index-to-node map, then maps `snapshot.nodes` once. `last` is computed from the next row's depth, which is all `HierarchyRow`'s guide drawing needs.\n   - `PayloadLabels.kt` — `hierarchySourceLabel(status, nodeCount)`: the design's phase machine reduced to the four `HierarchyStatus` values this repo already ships — `Dumping` → `dumping…` (warn), `Ready` → `uiautomator · {n} nodes` (AC-74), `Absent`/`Unavailable` → the explicit no-hierarchy state (AC-80). No new enum, no new status (confirmed constraint).\n\n2. RENDER LAYER — `source/mirror/MirrorPayloadTab.kt` (public, the `MirrorNotesTab` precedent exactly: public composable, `state`/`onIntent`, `@Preview` pairs, every piece of localisable copy through `stringResource`). Private section composables in the same file (`PayloadPromptSection`, `PayloadCropsSection`, `CropThumb`, `PayloadHierarchySection`, `PayloadFooter`) — fewest files, and none of them is reusable kit: they are this tab's layout.\n   - Gate first: `annotations.isEmpty()` → the single empty-state `Text` and `return`, so Prompt/Crops/Hierarchy/footer are *not composed at all* (FR-54/AC-77 — the design's own `count === 0` gate, and the same early-return shape `MirrorNotesTab` already uses).\n   - Everything derived is `remember(...)`-keyed on its real inputs: the prompt on `(frozen.annotations, frozen.deviceLabel, hierarchy)`, the crop windows on `(annotations, frozen.deviceSize)`, the rows on `(hierarchy, annotations)`. Arithmetic therefore runs on change, not per frame, and AC-78's \"synchronously, no lag\" is satisfied by O(1) formulas rather than by a budget anyone has to measure.\n   - Crops: `LazyVerticalGrid`-free — a fixed 3-column layout is three `Row`s of `Modifier.weight(1f)` cells (the design's `repeat(3, minmax(0,1fr))`), each a 72 dp-high `Box` on `Theme.color.stage` containing one `Canvas` that `drawImage`s the source rect into the container rect, plus a 1 px `Theme.color.annotate` outline box at `CropWindow.outlineRect`. Caption `#{i} · {w}×{h}` from the annotation's own raw pixel dimensions (FR-49, AC-72).\n   - Hierarchy: a `LazyColumn` with **no vertical arrangement spacing** (HierarchyRow's KDoc makes this load-bearing — its tree guides only meet when rows are adjacent) over `payloadHierarchyRows`, inside the panel's bounded height. A real dump is ~400 rows; a plain `Column` + `verticalScroll` would compose 400 molecules each with their own `Canvas`.\n   - Prompt: read-only mono `Text` on `Theme.color.codeBg` with a `Theme.color.line` hairline and a max height, or — when the user has clicked Edit — the shipped `MultilineInput` atom seeded with the current prompt, dispatching `MirrorIntent.EditPrompt(text)` on change (the `CommentAnnotation` precedent: typing already goes through this reducer, at typing rate, not 60 Hz). The read/edit toggle itself is `remember`-local view state; the *text* is reduced, because it changes what gets sent.\n\n3. STATE — three small additions, no new state home. `FrozenFrame` gains `frameId: Int`, `deviceLabel: String` and `promptOverride: String?`; all three describe the pinned frame as it was at freeze, all three are value-equal, and all three are destroyed for free wherever `frozen` is already nulled. `MirrorIntent` gains `EditPrompt(text: String)` (one handler, one `reduce`). `MirrorViewModel` gains `private var freezeCounter: Int` incremented in `stageAnnotation`'s intent body before `reduce`. `MirrorUiState` itself gains nothing — the Payload tab is a projection of state that already exists, which is why this spec adds no reduced field at all.\n\n4. OUTSIDE THE MODULE — `MirrorHost`'s content lambda gains the hierarchy parameter (one definition, one call site), and `RectifyWindow.kt`'s `sidePanel` lambda gains an `else if (tab == ShellTab.Payload)` branch plus `ShellTab.Payload to mirror.stagedCount` in `tabCounts`. That is the whole of \"joining the tab strip\": `SidePanelFrame`, `SidebarTabs`, `ShellTab` and `shortcutToTab` are untouched.",
+    "components": [
+      {
+        "name": "core/payload/PromptAssembly.kt — buildPrompt(...)",
+        "responsibility": "FR-47 / FR-52 / AC-73: the design's `pl[]` assembly over real data — plural branch, real device label, one `#{i} {node} · {w}×{h}` line plus the comment verbatim per annotation, `Attached:` trailer. No `measured:` branch by construction. Pure, internal, one test file."
+      },
+      {
+        "name": "core/payload/PayloadEstimate.kt — tokenEstimate / payloadSizeLabel / footerLabel",
+        "responsibility": "FR-48 / FR-51 / AC-78: `360 + count*140` and `(1.6 + count*0.12)` to one hand-rolled decimal, plus `frame.png · N crops · hierarchy.xml`. O(1) arithmetic, so NFR-11 is met by shape rather than by measurement."
+      },
+      {
+        "name": "core/payload/CropWindow.kt — cropWindow(rect, frameSize, 84, 72, pad)",
+        "responsibility": "FR-49 / AC-76: the design's crop transform with `296×640` generalised to `FrozenFrame.deviceSize`. Returns source rect in device px, container size, scale and the outline rect in container coordinates — the single source of the red outline's position."
+      },
+      {
+        "name": "core/payload/HierarchyOutline.kt — payloadHierarchyRows(...) + PayloadNodeRow",
+        "responsibility": "FR-50 / AC-75: projects the cached snapshot into renderable rows, badging a node iff `snapTarget` returned it for some annotation (reusing measure-mode's function, not a second containment rule) and computing `last` for HierarchyRow's guide drawing."
+      },
+      {
+        "name": "core/payload/PayloadLabels.kt — hierarchySourceLabel(status, nodeCount)",
+        "responsibility": "AC-74 / AC-80: the design's dumping/ready/on-send machine expressed over the four already-shipped `HierarchyStatus` values. The only place the Hierarchy header's copy is decided."
+      },
+      {
+        "name": "source/mirror/MirrorPayloadTab.kt (public composable)",
+        "responsibility": "FR-12..FR-15: the tab's layout. Empty-state gate first (FR-54), then Prompt / Crops / Hierarchy / footer, each fed by `remember`-keyed pure calls. Sibling of `MirrorNotesTab`; takes `(state, frame, hierarchy, onIntent)` and holds only the read/edit toggle."
+      },
+      {
+        "name": "CropThumb (private composable in MirrorPayloadTab.kt)",
+        "responsibility": "One 72 dp cell: a `Canvas` `drawImage(srcOffset, srcSize, dstOffset, dstSize)` of the frozen bitmap plus a 1 px `Theme.color.annotate` outline at `CropWindow.outlineRect`, and the `#{i} · {w}×{h}` caption. Private because it is this tab's layout, not reusable kit."
+      },
+      {
+        "name": "FrozenFrame.frameId / deviceLabel / promptOverride (MirrorContract)",
+        "responsibility": "FR-55 / FR-52 / FR-53: the three facts the payload needs about the pinned frame, captured at freeze so a later device drop or discovery refresh cannot change what the prompt says, and destroyed automatically wherever `frozen` is already nulled."
+      },
+      {
+        "name": "MirrorViewModel.freezeCounter + the stageAnnotation stamp",
+        "responsibility": "FR-55: `+1` per freeze, incremented in the intent body and NOT inside `reduce` (whose lambda re-runs on a lost race — the file's own KDoc records this). Also reads the selected row's detail once to build `deviceLabel`."
+      },
+      {
+        "name": "MirrorIntent.EditPrompt(text) + its handler",
+        "responsibility": "AC-79: one intent, one `reduce` writing `frozen.promptOverride`. Typing through the reducer is the shipped `CommentAnnotation` precedent — typing rate, not pointer rate."
+      },
+      {
+        "name": "MirrorHost content lambda widened to (state, frame, hierarchy, onIntent)",
+        "responsibility": "AS-22: hands the already-cached `frozenHierarchy` to the panel without putting hundreds of nodes into reduced state. One definition, one call site."
+      },
+      {
+        "name": "RectifyWindow.kt sidePanel branch + tabCounts entry",
+        "responsibility": "The whole of 'join the tab strip': `if (tab == ShellTab.Payload) MirrorPayloadTab(...)` plus `ShellTab.Payload to mirror.stagedCount`. No change to SidePanelFrame, SidebarTabs, ShellTab or shortcutToTab."
+      },
+      {
+        "name": "HierarchyRow `matched: Boolean = false` parameter (presentation-core-ui delta)",
+        "responsibility": "AC-75's ink-vs-ink3 colouring. The molecule currently hardcodes `Theme.color.ink` for every row; its `tag` badge already defaults to `Theme.color.annotate`, so the badge needs nothing. One semantic parameter beats two colour parameters, and the component has no production caller today, so there is no regression surface."
+      }
+    ],
+    "alternatives": [
+      {
+        "title": "All payload arithmetic in internal pure functions under core/payload/, rendered from remember-keyed calls",
+        "pros": [
+          "Every formula AC (AC-72/73/76/78 and the FR-47..FR-51 formats) becomes a commonTest assertion with no Compose, no Skiko, no device",
+          "Matches the module's three existing core/ packages (geometry, annotation, measure) — zero new conventions",
+          "Keeps `:compose-application` (which deliberately has no test wiring) holding one `if` and nothing else",
+          "No new Gradle module, no new dependency"
+        ],
+        "cons": [
+          "The tab composable and the pure layer have to agree on types, so a format change touches two files",
+          "Prompt text is assembled in a presentation module rather than near whatever will eventually send it"
+        ],
+        "tradeoffs": "Costs one indirection to buy the only scarce thing here: testability. When the send feature arrives, moving `buildPrompt` down a layer is a package move, not a rewrite.",
+        "chosen": true
+      },
+      {
+        "title": "Assemble the prompt, estimates and crop maths inline inside the @Composable",
+        "pros": [
+          "Fewest files; the formula sits next to the Text that renders it",
+          "No projection types to maintain"
+        ],
+        "cons": [
+          "Nothing in this repo can test it — no Compose UI-test harness exists, so AC-72/73/76/78 would all degrade to `demo`",
+          "Recomposition becomes the trigger for arithmetic, which is exactly how displayed-vs-real drift (the spec's own success metric) gets in",
+          "Contradicts the module's documented split and measure-mode's shipped precedent"
+        ],
+        "tradeoffs": "Genuinely smaller diff, and rejected only because four must-have ACs would lose their verification method.",
+        "chosen": false
+      },
+      {
+        "title": "Crops drawn with Canvas drawImage(srcOffset, srcSize, dstOffset, dstSize)",
+        "pros": [
+          "Compose crops and scales in one call — no negative offsets, no `graphicsLayer` scale, no clipping parent to get right",
+          "`cropWindow` only has to return integers, so it stays pure and trivially testable",
+          "The outline is a sibling draw in the same coordinate space, so AC-76 is one rect used twice and cannot drift"
+        ],
+        "cons": [
+          "Downscaling a ~800 px slice into an 84 px box aliases unless filter quality is chosen deliberately",
+          "Diverges from the design's literal CSS, so a reviewer comparing code to the HTML sees different mechanics"
+        ],
+        "tradeoffs": "Trades literal fidelity to the CSS for fidelity to the geometry, which is what the AC actually pins.",
+        "chosen": true
+      },
+      {
+        "title": "Port the design's CSS literally: a scaled Image with negative ml/mt margins inside a clipped Box",
+        "pros": [
+          "Line-for-line traceable to the design's `crop()` output fields (bw/bh/ml/mt/tf)",
+          "The outline is a plain bordered Box, no drawing code"
+        ],
+        "cons": [
+          "`ml`/`mt`/`tf` are three interacting values whose composition order matters in Compose and did not in CSS — the FrameGeometry KDoc already records a density-division bug of exactly this family",
+          "Needs an extra clipping parent plus `graphicsLayer` scaling, and sub-pixel offsets land differently than CSS margins",
+          "Carries the design's `296×640` assumption into the implementation unless every value is rescaled"
+        ],
+        "tradeoffs": "Faithful to the source text, riskier in the coordinate space that has already bitten this project once.",
+        "chosen": false
+      },
+      {
+        "title": "Hierarchy handed to the panel as a fourth MirrorHost content-lambda parameter",
+        "pros": [
+          "Honours the module's Deviation 2 literally: large machine output stays out of the reducer",
+          "Zero new reduced state; the badge projection is derived in a `remember` keyed on (hierarchy, annotations)",
+          "One definition and one call site to change; `frame` already travels this exact path"
+        ],
+        "cons": [
+          "Widens a public signature, so every future host must pass a hierarchy it may not care about",
+          "Panel content now depends on a flow the shell layer cannot see into"
+        ],
+        "tradeoffs": "A four-argument lambda in exchange for never copying ~400 nodes on an unrelated reduction.",
+        "chosen": true
+      },
+      {
+        "title": "Reduce display-ready hierarchy rows into MirrorUiState",
+        "pros": [
+          "The Payload tab becomes a pure function of reduced state, testable through a state snapshot",
+          "No signature change anywhere outside the feature module"
+        ],
+        "cons": [
+          "Puts ~400 projected rows into a state object copied on every unrelated reduction, which MirrorUiState's own KDoc forbids for this exact data",
+          "The badge mapping depends on annotations, so every annotation edit re-reduces the whole list",
+          "Widens the public contract with data only one tab renders"
+        ],
+        "tradeoffs": "Buys snapshot-testability at a per-reduction cost the module has already decided it will not pay.",
+        "chosen": false
+      },
+      {
+        "title": "frameId on FrozenFrame, stamped from a private MirrorViewModel counter",
+        "pros": [
+          "The id belongs to the frame it names, so it cannot outlive it or be read while no frame is frozen",
+          "Cleared for free at the three sites that already null `frozen`; the counter keeps advancing per session, as FR-55 asks",
+          "Deterministic in tests — no clock, no platform call",
+          "Lets `deviceLabel` and `promptOverride` ride the same 'captured at freeze' rationale instead of inventing three homes"
+        ],
+        "cons": [
+          "Adds a field with a default to a confirmed F-4 contract type",
+          "The counter itself is ViewModel-private, so a test asserts it through the reduced FrozenFrame rather than directly"
+        ],
+        "tradeoffs": "One Int on an existing value class versus a fourth StateFlow or a counter in reduced state that nothing else reads.",
+        "chosen": true
+      },
+      {
+        "title": "frameId as a separate MirrorViewModel StateFlow (or a reduced MirrorUiState counter)",
+        "pros": [
+          "Leaves F-4's FrozenFrame untouched",
+          "Visible without a frozen frame, which a future History tab might want"
+        ],
+        "cons": [
+          "A second thing to clear in sync with the frame, and the bug it invites is a caption that names the previous frame",
+          "A StateFlow means another parameter down the host lambda for one Int",
+          "Nothing today needs the id when no frame is frozen"
+        ],
+        "tradeoffs": "Avoids touching a confirmed type at the cost of a synchronisation hazard whose failure mode is precisely the caption this feature exists to show.",
+        "chosen": false
+      },
+      {
+        "title": "Edited prompt stored on FrozenFrame.promptOverride (reduced), edit toggle kept in remember",
+        "pros": [
+          "Survives tab switches and annotation edits, which AC-79's 'what gets attached' requires",
+          "Dies with the frame automatically — a new freeze cannot inherit the previous frame's prompt",
+          "Matches the confirmed default (persists until Edit is clicked again, no auto-clear) with no extra flag",
+          "Typing through the reducer is the shipped CommentAnnotation path, so no new mechanism"
+        ],
+        "cons": [
+          "Keystroke-rate reductions (bounded by typing speed, unlike the pointer stream F-4 keeps out)",
+          "Two state homes during one interaction: the toggle is local, the text is reduced"
+        ],
+        "tradeoffs": "Same seam measure-mode and F-4 already defend: transient view state local, user-meaningful data reduced.",
+        "chosen": true
+      },
+      {
+        "title": "Keep the edited prompt entirely in remember inside the tab",
+        "pros": [
+          "No contract change, no intent, no reducer work",
+          "MultilineInput already holds its own text internally"
+        ],
+        "cons": [
+          "A tab switch (Cmd+1 then Cmd+2) silently discards the user's edit — data loss in the one feature whose purpose is trust",
+          "The send path could never read it, so AC-79's 'is what gets attached' would be unimplementable",
+          "Untestable: no Compose UI-test harness exists"
+        ],
+        "tradeoffs": "Smallest diff, wrong semantics.",
+        "chosen": false
+      },
+      {
+        "title": "Hierarchy tree in a LazyColumn with no arrangement spacing",
+        "pros": [
+          "A real dump is ~400 rows and each HierarchyRow owns a Canvas — lazy composition is the difference between a scroll and a stall",
+          "The panel already gives the tab a bounded height via `Modifier.weight(1f)`",
+          "Keeps HierarchyRow's guides meeting exactly, since rows stay adjacent"
+        ],
+        "cons": [
+          "A LazyColumn inside an already-scrollable panel needs the nesting kept straight (the sections above it must not also scroll vertically)",
+          "MirrorNotesTab chose a plain scrolling Column, so the tab pair is not symmetric"
+        ],
+        "tradeoffs": "MirrorNotesTab's KDoc justifies its plain Column by 'a handful of annotations'; 400 dumped nodes is the case that reasoning explicitly excludes.",
+        "chosen": true
+      },
+      {
+        "title": "Render only matched nodes plus a little ancestor context",
+        "pros": [
+          "Tiny list, no laziness needed, and the badges are what the reporter actually looks for",
+          "Smaller payload preview to read"
+        ],
+        "cons": [
+          "AC-15 and the design both show the tree, and the section's whole promise is 'this is the hierarchy.xml being sent'",
+          "Showing a filtered tree while sending a full one is exactly the displayed-vs-real drift the success metrics forbid"
+        ],
+        "tradeoffs": "Cheaper and more readable, but it makes the preview stop being a preview.",
+        "chosen": false
+      }
+    ],
+    "exceptions": [
+      "Zero staged annotations: the tab early-returns on the empty-state copy before any section composes, so no formula, no crop, no row and no footer runs at all (FR-54, AC-77, SC-20).",
+      "`HierarchyStatus.Unavailable` or `Absent` with annotations staged: `hierarchySourceLabel` returns the explicit no-hierarchy state, the row list is empty, and Prompt / Crops / footer render untouched (AC-80, SC-23). The footer still says `hierarchy.xml` because the send still attaches whatever the dump produced — the Hierarchy section is where the absence is reported, not the footer.",
+      "`HierarchyStatus.Dumping` (the ~2.7 s window after a freeze): the header reads `dumping…` in `Theme.color.warnStillOff` and the tree is empty-but-explained, reusing measure-mode's already-confirmed 'report it, don't lie' answer rather than inventing a Payload-specific one.",
+      "No annotation snapped to any node (`snapTarget` returned null for all of them): every row renders ink3 with no badge, and the prompt's per-annotation line falls back to the design's generic node word rather than printing a dangling id (SC-21).",
+      "Frozen bitmap is null while `frozen != null` (possible for one composition between the reduce and the flow emission): the Crops grid renders its containers on `Theme.color.stage` with no image rather than throwing or skipping the section, so the grid does not flicker its layout.",
+      "Hierarchy snapshot geometry disagrees with `FrozenFrame.deviceSize` (rotation between capture and dump): `projectMeasureNodes` already discards it, so the badge projection sees no nodes and the section reports no hierarchy — the same handling as a failed dump, with no second mismatch rule written here.",
+      "An annotation rect touching the frame edge: `cropWindow`'s `max(0, …)` / `min(frameSize, …)` clamps mean the crop is simply smaller on that side and the scale adjusts; the outline stays at the rect's true position inside the container.",
+      "A degenerate (zero-area) rect cannot reach the staged list (F-4's 8 px drag floor), but `cropWindow` still guards `cw`/`ch` against zero so the unit test of the formula cannot divide by zero.",
+      "Prompt edited, then every annotation deleted: the frame stays frozen with zero annotations, so the empty-state gate wins and the override is simply not rendered; it is still carried on the frame and reappears if an annotation is re-drawn. Deliberate — the confirmed default is 'no auto-clear'.",
+      "Prompt edited to an empty or whitespace string: treated as 'no override' for the purpose of what gets attached (FR-53 says non-empty and changed), so the user cannot accidentally send a blank prompt by selecting-all and deleting.",
+      "Device drops after freeze (`MirrorSession.Lost`): `deviceLabel` was captured at freeze, so the prompt's device line is unchanged; nothing in the Payload tab reads live discovery.",
+      "Resume Live / Stop / platform switch: `frozen` is nulled at three existing sites, which takes `frameId`, `deviceLabel` and `promptOverride` with it; the next freeze gets `freezeCounter + 1`."
+    ],
+    "edgeCases": [
+      "Crop padding is specified as `14` in a 296-px-wide design preview, i.e. ~4.7% of frame width — taken literally as 14 device pixels on a 1080-wide frame it is ~1.3% and the crops come out visually tighter than the design. Proposed: scale the pad by `frameWidth / 296` so the context around each box matches the design on any device, and keep `84`/`72` as literal container dp. This is survey question 3 and the only place AC-76's 'exactly crop(…, 14, …)' needs reading as design-space rather than device-space.",
+      "A very large annotation (a box covering most of the screen) scales to a crop where the red outline is almost the whole container; correct per the formula, and the caption's raw `{w}×{h}` is what tells the reporter the real size.",
+      "Annotations renumber on delete (F-4, AC-8): the crop caption index, the hierarchy badge `#n` and the prompt's `#n` all read `StagedAnnotation.index`, never a list position, so the success metric 'index-consistent across edits/deletes' holds by construction rather than by three agreeing loops.",
+      "Two annotations snapping to the SAME node: the node can only carry one badge. Proposed: the lowest annotation index wins and the others simply have no badged node — no merged `#1 #2` badge, because `MeasureTag` is a single short label and a merged badge would need a new component.",
+      "A node whose `resource-id` was empty (Compose surfaces) arrives from measure-mode already labelled by class name plus a sibling index — nothing new here, but the Hierarchy section is the first place a user sees dozens of them in a row, so the ellipsis and the 26 dp row height matter more than they did in the measure card.",
+      "A deep tree: `HierarchyRow` indents 16 dp per level, so depth 12+ pushes the node text off a 300 dp panel. The text already ellipsizes; no horizontal scroll is proposed (the design has none either), and this is recorded as a known ceiling rather than solved.",
+      "Prompt longer than the block's max height: the block scrolls and the Edit affordance stays in the section header, outside the scrolling area (the design's header/block split) — which also answers the input's open question about Edit scrolling away.",
+      "Token estimate while editing: the formula is `360 + count*140` and nothing else, so an edited prompt does NOT change the number. That is honest only because the label says `≈ tokens`; it is called out in the gaps because a user who deletes half the prompt will expect the figure to move.",
+      "Payload size while editing: same — the `(1.6 + count*0.12) MB` figure tracks crop count, not prompt length, which is fine because text is noise next to a PNG but is a visible inconsistency if anyone looks closely.",
+      "Panel narrowed to its minimum width: three crop columns at ~84 dp plus gaps still fit the clamped minimum panel width, but the caption `#1 · 1035×862` will ellipsize before the image does. Accepted; the caption is the dispensable half.",
+      "Cmd+2 pressed with nothing frozen: the tab shows the empty state, which is already the correct answer — no special 'no frame' state is invented (the design has none).",
+      "Switching to the Payload tab mid-dump and staying there: the header is the only thing that changes when the dump lands, because the row list is `remember`-keyed on the snapshot — no full-tab recomposition, no flash."
+    ],
+    "implementationSteps": [
+      "Add `core/payload/PayloadEstimate.kt` with `tokenEstimate`, `payloadSizeLabel`, `footerLabel`, promoting `core/stats`'s private one-decimal rounding to a shared internal helper; test the formulas at count 0/1/2/9 and the `.0`/`.1` boundary (FR-48, FR-51, AC-78).",
+      "Add `core/payload/CropWindow.kt` + its test: clamping at all four frame edges, scale picked as `min(bw/cw, bh/ch)`, outline rect relative to the crop, and the pad-space decision from the survey applied in exactly one place (FR-49, AC-76).",
+      "Add `core/payload/PromptAssembly.kt` + its test: the singular/plural headline, the real device line, the comment-verbatim line with the `no comment` fallback, an annotation whose comment already carries a `⌥` measurement line (AC-73 — asserting there is no second `measured:` line), and the `Attached:` trailer. Reuse `TIMES` (AC-72).",
+      "Add `core/payload/HierarchyOutline.kt` + its test over a small fixture snapshot: badge iff `snapTarget` matched, every other row ink3 and badge-free, `last` computed from the next depth, empty list for an empty/mismatched snapshot (FR-50, AC-75, SC-21).",
+      "Add `core/payload/PayloadLabels.kt` + its test: one case per `HierarchyStatus` value, including `uiautomator · {n} nodes` for Ready (AC-74) and the explicit no-hierarchy copy for Absent/Unavailable (AC-80).",
+      "Extend `MirrorContract`: `FrozenFrame.frameId` / `deviceLabel` / `promptOverride`, `MirrorIntent.EditPrompt`. Keep every new field defaulted so existing tests and previews still compile; update `MirrorContractTest`.",
+      "Extend `MirrorViewModel`: `freezeCounter` incremented in `stageAnnotation`'s intent body (before `reduce`), `deviceLabel` captured from the selected row at the same moment, and the `EditPrompt` handler. Test the counter advances once per freeze and NOT per annotation, that a second drag keeps the same `frameId`, and that Resume Live then re-freeze yields the next id.",
+      "Add `source/mirror/MirrorPayloadTab.kt`: the empty-state gate, the four sections, `remember`-keyed pure calls, `stringResource` for every localisable string, and light/dark `@Preview`s for the populated, empty and no-hierarchy cases — the only rendering check this repo has.",
+      "Add the `matched: Boolean` parameter to `HierarchyRow` (ink vs ink3), update its preview and the registry entry; the badge already defaults to `Theme.color.annotate` so no colour plumbing is needed.",
+      "Widen `MirrorHost`'s content lambda with the hierarchy parameter and update its single call site.",
+      "Wire `RectifyWindow.kt`: the `ShellTab.Payload` branch in the existing `sidePanel` lambda plus `ShellTab.Payload to mirror.stagedCount` in `tabCounts`; update the comment that currently says Notes is the only tab with content.",
+      "Add the Payload strings to `presentation-core-localisation` (empty state, section labels, `≈ tokens`, Edit, the no-hierarchy copy) and keep every machine string — the prompt body, `uiautomator · N nodes`, the footer, captions — unlocalised, exactly as measure-mode's `⌥` line is.",
+      "Run the cross-target gate: `:presentation-feature-mirror:desktopTest` and `:presentation-core-ui:desktopTest`, then `compileTestKotlinIosArm64` (backtick names: no commas, no colons) and `:presentation-core-ui:build`."
+    ],
+    "gaps": [
+      "The crop pad's coordinate space is genuinely undetermined by the design: `14` is stated in a 296-px preview and the AC repeats the literal. Device-space and design-space differ by ~3.6× on a 1080-wide frame, and only one of them looks like the screenshot. Survey question 3.",
+      "`frameId` has no display format: FR-55 says sequential counter, the design shows `from frame 18422` (five digits). A counter renders `from frame 1`, which is correct and looks nothing like the design. Proposed: render the bare counter; nobody has decided whether it should be zero-padded or offset.",
+      "The token estimate and the size figure are both functions of annotation count only, so neither moves when the user edits the prompt. Defensible for the size (bytes are dominated by PNGs) and visibly odd for the tokens. The `≈` label is the whole mitigation.",
+      "NFR-12 (versioned payload format) has no consumer in this spec — nothing sends anything yet. Proposed: declare `PayloadFormatVersion = 1` in `core/payload` now and let the send feature attach it; this spec renders nothing from it. Open decision below, because the alternative is to defer NFR-12 entirely to the send spec.",
+      "The design's `payload` rows (Frame `1344×2992 PNG`, Hierarchy, Agent `claude · ~/code/shopkit`) are NOT in this spec's ACs and the Agent row has no data source anywhere in the repo — no agent path, no project root, no MCP config exists. Only the footer line and the hierarchy state machine are implemented; the Agent row is unbuildable today and is left out deliberately rather than stubbed with the design's literal.",
+      "Nothing in this spec consumes the payload. The whole feature is a preview of a bundle no code assembles for real yet, so the success metric 'displayed always matches what is actually assembled' cannot be verified by anything until the send feature exists — the mitigation is that the send feature must call the same `core/payload` functions, which is a constraint on a future spec, not a test here.",
+      "The frozen bitmap is the full-resolution screenshot; crops are drawn from it live on every recomposition of a cell. Nobody has measured ~9 simultaneous `drawImage` downscales of a 1080×2400 bitmap in a resizing panel. Likely trivial, entirely unmeasured.",
+      "`HierarchyRow` has never had a production caller, so its 26 dp fixed row height, 16 dp indent and ellipsis behaviour have never been seen with real uiautomator node ids at real depths — only with the three hand-written preview rows.",
+      "No Compose UI-test harness exists, so the 3-column grid, the baked outline's position, the tree guides and the empty/no-hierarchy layouts are demo-verified only (already accepted in outOfScope). Everything assertable has been pushed below the Compose layer; pixel placement itself stays unproven by any test.",
+      "Whether `deviceLabel` should read the selected row's `detail` (`Android 15 · USB`, which carries a transport word the prompt does not want) or a dedicated `androidVersion` is undecided — `MirrorUiState` carries `selectedDeviceName` but no version, and `DeviceModel.androidVersion` is nullable. The proposal captures the row detail and strips the transport segment; a cleaner fix is a second reduced field at commit."
+    ],
+    "risks": [
+      {
+        "text": "The crop transform is the one piece of real geometry in this feature and it has no automated check of its placement — a correct `cropWindow` wired into a wrong `drawImage` src/dst pairing renders a plausible-looking slice of the WRONG part of the frame, and the red outline would move with it, so the error is self-consistent and invisible to review.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Keep every integer in the pure `CropWindow` type and unit-test it against hand-computed cases including all four edge clamps; have the composable pass those fields straight through with no arithmetic of its own; ship a light/dark `@Preview` with two annotations at known positions (one edge-touching) so a reviewer can check one crop by eye against the frame."
+      },
+      {
+        "text": "A real dump is ~400 nodes and the Hierarchy section renders a molecule-with-Canvas per node inside a panel the user can drag-resize; a non-lazy list or a badly keyed projection turns every resize frame into 400 recompositions plus 400 `snapTarget` calls.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "LazyColumn with no arrangement spacing, and the projection computed once in a `remember(hierarchy, annotations)` — never inside the row loop. The projection is O(nodes × annotations) with annotations in single digits, so one pass per change is cheap; the trap is doing it per row."
+      },
+      {
+        "text": "`FrozenFrame` is a contract F-4 confirmed and three features now read; adding three fields to it (frameId, deviceLabel, promptOverride) invites the next spec to add a fourth, and it becomes the dumping ground the KDoc warned pixels away from.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "All three share one stated rule — 'captured at freeze, dies with the frame' — written into the KDoc as the admission test for any future field. Anything that does not meet it goes elsewhere."
+      },
+      {
+        "text": "The edited prompt is the feature's only write path, and it is the one place a user can lose work: a tab switch, a Resume Live, or an auto-select of the Notes tab on the next drag can all take the user away from the editor, and only the frame-scoped lifetime stops the edit vanishing.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "Reduce the text on `FrozenFrame.promptOverride` (not `remember`), dispatch per change like `CommentAnnotation` already does, and test that it survives an annotation add/delete and is dropped exactly once — on Resume Live. Note that `RectifyWindow` already force-selects the Notes tab on the FIRST staged annotation only, so an editor open on Payload is not yanked away by later drags."
+      },
+      {
+        "text": "Displayed-vs-real drift is the spec's own success metric and nothing enforces it: the footer says `frame.png · N crops · hierarchy.xml` and a size in MB for a bundle that no code produces yet, so the figures are honest about the formula and unverifiable about reality.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "Put the formulas in one internal place the future send path must call, label the token count `≈`, and record in the plan that the send spec owns replacing both heuristics with measured values — not re-deriving them next to the real bytes."
+      },
+      {
+        "text": "Three near-identical mono type sizes (10.5 / 9.5 / 11.5 px) and five colour tokens are specified per element; getting one wrong is invisible in review and makes the panel subtly unlike the design, which is the one thing a design-led feature is judged on.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "Map every element to an existing `Theme.typography.mono*` token up front (AS-20/AS-24 already claim no new tokens are needed) and verify the mapping once in the Styleguide-adjacent previews rather than per section; any element with no matching token is a token decision, escalated, not an inline TextStyle."
+      },
+      {
+        "text": "The Payload tab is wired in `compose-application`, which deliberately has no test wiring; anything that creeps from `MirrorPayloadTab` into `RectifyWindow.kt` (a label, a count, a conditional) becomes permanently untestable.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "Hold the window layer to exactly one `if` branch plus one `tabCounts` entry, with the tab composable owning everything else — the shape `MirrorNotesTab` already established."
+      }
+    ],
+    "readyMadeSolutions": [
+      {
+        "name": "HierarchyRow (molecule)",
+        "ref": "registry components.json#hierarchy-row — presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/row/HierarchyRow.kt",
+        "fit": "The Hierarchy section's row, shipped with zero production callers: node id in mono, drawn tree guides, 16 dp indent per depth, ellipsis, and an optional `tag` badge that already defaults to `Theme.color.annotate` — the design's red. Needs exactly one additive `matched: Boolean` parameter for the ink/ink3 split (AC-75); its KDoc's 'no arrangement spacing' rule is load-bearing for the guides.",
+        "license": "in-repo"
+      },
+      {
+        "name": "MeasureTag (atom)",
+        "ref": "registry components.json#measure-tag — presentation-core-ui/.../atom/tag/MeasureTag.kt",
+        "fit": "The `#{n}` badge itself, reached through HierarchyRow's `tag`: already red-by-default, already mono, already the right radius and padding. Nothing to change.",
+        "license": "in-repo"
+      },
+      {
+        "name": "MultilineInput (atom)",
+        "ref": "registry components.json#multiline-input — presentation-core-ui/.../atom/input/MultilineInput.kt",
+        "fit": "The Edit mode's text area, as the confirmed survey answer requires: 120–240 dp scrollable, `initialText` + `onTextChanged`, animated border. Seed it with the current prompt and dispatch `EditPrompt` on change — zero new component work (AC-79, FR-53).",
+        "license": "in-repo"
+      },
+      {
+        "name": "SidePanelFrame + SidebarTabs + ShellTab + shortcutToTab",
+        "ref": "registry components.json#side-panel-frame, #sidebar-tabs, #shell-state",
+        "fit": "The tab strip, the Payload tab entry, the Cmd+2 shortcut and the per-tab content slot all already ship and are already exercised by unit tests. Joining the strip is one branch in `RectifyWindow`'s existing `sidePanel` lambda — no wiring, no new chrome, no change to any of these four.",
+        "license": "in-repo"
+      },
+      {
+        "name": "MirrorNotesTab",
+        "ref": "registry components.json#mirror-notes-tab — presentation-feature-mirror/.../source/mirror/MirrorNotesTab.kt",
+        "fit": "The exact shape to copy for `MirrorPayloadTab`: public stateless composable, `(state, onIntent, modifier)`, early-return empty state, `stringResource` for copy, private `previewState()` plus light/dark previews. Do not invent a second tab pattern.",
+        "license": "in-repo"
+      },
+      {
+        "name": "core/measure NodeSnap.snapTarget + MeasureProjection.projectMeasureNodes",
+        "ref": "presentation-feature-mirror/.../core/measure/NodeSnap.kt, MeasureProjection.kt",
+        "fit": "AC-75 defines the badge as 'the result of snapTarget for that annotation's rect', so the badge projection calls the shipped function instead of restating a containment rule; `projectMeasureNodes` already carries the geometry-mismatch guard that makes a rotated dump degrade correctly.",
+        "license": "in-repo"
+      },
+      {
+        "name": "core/annotation AnnotationFormat (TIMES, metaLine)",
+        "ref": "presentation-feature-mirror/.../core/annotation/AnnotationFormat.kt",
+        "fit": "`TIMES` is already `internal` precisely so a second formatter can reuse it — AC-72/AS-25 are satisfied by importing one constant, and no `D()`-style formatter is invented. `metaLine`'s `{w}×{h} @ {x},{y}` shape is the pattern the prompt's per-annotation line follows.",
+        "license": "in-repo"
+      },
+      {
+        "name": "core/measure MeasureFormat (noteLine / replaceNoteLine)",
+        "ref": "presentation-feature-mirror/.../core/measure/MeasureFormat.kt",
+        "fit": "Already folds the `⌥` measurement into `StagedAnnotation.comment`, which is why the prompt has no `measured:` branch (AS-26, AC-73). Read-only dependency: this spec adds nothing to it.",
+        "license": "in-repo"
+      },
+      {
+        "name": "core/stats formatFps (one-decimal-by-hand)",
+        "ref": "presentation-feature-mirror/.../core/stats/StatsFormatter.kt",
+        "fit": "`String.format` is not in the common stdlib and this file already solves it in four lines with `roundToInt`. Promote it to a shared internal helper for `payloadSizeLabel` rather than writing a second rounding rule.",
+        "license": "in-repo"
+      },
+      {
+        "name": "MirrorViewModel.frozenHierarchy + HierarchyStatus",
+        "ref": "presentation-feature-mirror/.../source/mirror/MirrorViewModel.kt, MirrorContract.kt",
+        "fit": "The hierarchy is already dumped once per freeze, cached, status-reduced and cleared at three sites. Payload-preview consumes all of it and triggers nothing (AS-22, AC-74, AC-80) — including the four-state enum that becomes the section header's state machine with no new states.",
+        "license": "in-repo"
+      },
+      {
+        "name": "MirrorFakes.kt (Orbit dispatcher pinning + runCurrent subscription)",
+        "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt",
+        "fit": "The `freezeCounter` and `EditPrompt` reducer tests need no new harness: both environment facts (pinned event-loop dispatcher, `runCurrent()` before `advanceUntilIdle()`) are already solved here.",
+        "license": "in-repo"
+      },
+      {
+        "name": "Theme colour + mono typography tokens",
+        "ref": "registry styles.json — presentation-core-styling/.../ThemeColor.kt, ThemeTypography.kt",
+        "fit": "AS-24 already verified the design's RED/OK/WARN map to `annotate` / `sentFixed` / `warnStillOff`, and `codeBg`, `line`, `ink`, `ink2`, `ink3`, `stage` all exist. The mono scale (`monoData`, `monoMeta`, `monoTag`) covers the 9.5/10.5 px elements — no new token expected (confirmed constraint).",
+        "license": "in-repo"
+      },
+      {
+        "name": "KeyValueRow (molecule)",
+        "ref": "registry components.json#key-value-row",
+        "fit": "Not used by this spec, but it is the shipped renderer for the design's `Frame / Hierarchy / Agent` summary rows if a later spec wants them — noted so nobody builds a second key/value row when the send feature arrives.",
+        "license": "in-repo"
+      }
+    ],
+    "techStack": [
+      {
+        "area": "Pure payload logic",
+        "choice": "Internal Kotlin functions in `presentation-feature-mirror/core/payload/`, commonMain",
+        "reason": "package-layout.md puts internals in `core/`; testing.md makes this the only layer the repo's harness reaches, and `:compose-application` has no test wiring at all. Fourth sibling of `core/geometry`, `core/annotation`, `core/measure`."
+      },
+      {
+        "area": "Rendering",
+        "choice": "Compose Multiplatform; the shipped `HierarchyRow` / `MultilineInput` / `MeasureTag` kit plus private section composables; `Canvas.drawImage(srcOffset, srcSize, dstOffset, dstSize)` for crops",
+        "reason": "Crop + scale in one native call instead of porting negative-margin CSS; everything else is already in the design system, so the only new component-level change is one additive `HierarchyRow` parameter."
+      },
+      {
+        "area": "List rendering",
+        "choice": "LazyColumn for the hierarchy tree (no arrangement spacing); plain weighted Rows for the 3-column crop grid",
+        "reason": "~400 Canvas-bearing rows justify laziness in a way MirrorNotesTab's handful of annotations never did; a fixed 3-column grid of up to a dozen cells does not justify a lazy grid."
+      },
+      {
+        "area": "State management",
+        "choice": "Orbit MVI for the edited prompt and the three new frame-scoped fields; `remember` for the read/edit toggle and every derived projection; the existing `frozenHierarchy` StateFlow for nodes",
+        "reason": "Honours the module's documented split (user-meaningful data reduced, transient view state local, bulk machine output outside the reducer) and adds no field to `MirrorUiState` at all."
+      },
+      {
+        "area": "Formatting / units",
+        "choice": "Device pixels throughout; `×` from the one shared `TIMES` constant; one decimal by hand via `roundToInt`",
+        "reason": "AC-72/AS-25 forbid a new formatter, and `String.format` is JVM-only — the `formatFps` precedent already solved this in the same module."
+      },
+      {
+        "area": "Localisation",
+        "choice": "`presentation-core-localisation` for UI chrome (empty state, section labels, Edit, no-hierarchy copy); unlocalised machine text for the prompt body, `uiautomator · N nodes`, the footer and the captions",
+        "reason": "localisation.md reserves machine output from localisation, and measure-mode already shipped its `⌥` note line unlocalised — a locale-dependent agent payload would be worse than untranslated."
+      },
+      {
+        "area": "Testing",
+        "choice": "kotlin.test in `commonTest` (one file per pure function + reducer tests for the counter and EditPrompt), run on desktop, gated by `compileTestKotlinIosArm64`",
+        "reason": "testing.md: the harness is wired once by the convention plugins, `commonTest` compiles for every target, and backtick names must avoid commas and colons. No new harness, no UI-test framework."
+      },
+      {
+        "area": "DI",
+        "choice": "None — no new binding, no new Koin module",
+        "reason": "The feature introduces no use case, no repository and no ViewModel; it reads state the existing `MirrorViewModel` already holds."
+      }
+    ],
+    "openDecisions": [
+      {
+        "decision": "Which coordinate space is the crop's `pad = 14` stated in?",
+        "options": [
+          "Design space: scale it by `frameWidth / 296`, so the visual context around each box matches the design on any device",
+          "Device space: 14 device pixels literally, as AC-76 reads",
+          "Make it proportional to the annotation rect instead (e.g. 10% of the shorter side)"
+        ],
+        "recommendation": "Design space. The `296` in the design's own `crop()` is the preview frame width, so `14` is ~4.7% of it; taken as device pixels on a 1080-wide screenshot the padding is ~1.3% and the crops are visibly tighter than the screenshot this feature is judged against. Option 3 invents a formula nothing specifies. Survey question 3."
+      },
+      {
+        "decision": "How does the Payload tab get the cached hierarchy?",
+        "options": [
+          "Widen `MirrorHost`'s content lambda to `(state, frame, hierarchy, onIntent)`",
+          "Reduce display-ready rows into `MirrorUiState`",
+          "Resolve `MirrorViewModel` a second time with `koinViewModel()` inside the tab"
+        ],
+        "recommendation": "Widen the lambda. `frame` already travels this exact path for the same reason, the reduced state stays free of ~400 nodes (the module's Deviation 2), and option 3 depends on two call sites implicitly sharing one `ViewModelStoreOwner` — true today, invisible when it stops being true. Survey question 1."
+      },
+      {
+        "decision": "Where does the per-session freeze counter live?",
+        "options": [
+          "`FrozenFrame.frameId`, stamped from a private `MirrorViewModel` counter",
+          "A fourth `MirrorViewModel` StateFlow read by the tab",
+          "A counter field inside `MirrorUiState`"
+        ],
+        "recommendation": "`FrozenFrame.frameId`. The id names a frame, so it should not be readable when no frame is frozen, and it is then cleared for free at the three sites that already null `frozen`. The counter must be incremented in the intent body, never inside `reduce` — that lambda can re-run on a lost race, per `stageAnnotation`'s own KDoc. Survey question 2."
+      },
+      {
+        "decision": "How is NFR-12 (versioned payload format) satisfied by a spec that sends nothing?",
+        "options": [
+          "Declare `PayloadFormatVersion = 1` in `core/payload` now, rendered nowhere, for the send feature to attach",
+          "Defer NFR-12 entirely to the send spec and record it as out of scope here",
+          "Print the version in the prompt's `Attached:` trailer so it is visible in the preview"
+        ],
+        "recommendation": "Declare the constant now. It costs one line, gives the send feature an obvious place to read from, and keeps the design's copy untouched — option 3 changes a prompt line the design fixes, and option 2 leaves a confirmed NFR with no artefact at all."
+      },
+      {
+        "decision": "Two annotations snapping to the same hierarchy node — what does the badge show?",
+        "options": [
+          "The lowest annotation index wins; the other annotation simply has no badged node",
+          "A merged badge, e.g. `#1 #2`",
+          "Duplicate the row, once per annotation"
+        ],
+        "recommendation": "Lowest index wins. `MeasureTag` renders one short label and a merged badge would need a new component for a case that only arises when two boxes cover the same view; duplicating a row would make the tree disagree with the hierarchy.xml being sent."
+      },
+      {
+        "decision": "Where does the prompt's device line get its Android version?",
+        "options": [
+          "Capture the selected picker row's `detail` at freeze and strip the transport segment",
+          "Add a reduced `selectedDeviceAndroidVersion` field, set where `selectedDeviceName` is set at commit",
+          "Read `rows` live at render time"
+        ],
+        "recommendation": "Capture at freeze (option 1), falling back to option 2 if stripping `· USB` from `Android 15 · USB` proves fragile. Option 3 breaks exactly when it matters: a dropped device removes its row, and the prompt for a still-frozen frame would lose its device line."
+      }
+    ],
+    "proposedSurvey": [
+      {
+        "question": "The Payload tab must render the cached view hierarchy, which deliberately lives OUTSIDE reduced state (MirrorViewModel.frozenHierarchy). How does it reach the panel?",
+        "options": [
+          "Widen MirrorHost's content lambda to (state, frame, hierarchy, onIntent) — one definition, one call site, the same path `frame` already takes",
+          "Reduce display-ready hierarchy rows into MirrorUiState so the tab is a pure function of state",
+          "Resolve MirrorViewModel a second time with koinViewModel() inside the Payload tab composable"
+        ],
+        "recommended": "Widen MirrorHost's content lambda to (state, frame, hierarchy, onIntent) — one definition, one call site, the same path `frame` already takes",
+        "rationale": "MirrorUiState's own KDoc keeps the snapshot out of the reducer because it is 'a few hundred nodes per dump' copied on every unrelated reduction; option 2 reverses that for the one tab that renders them, and option 3 relies on two call sites implicitly sharing a ViewModelStoreOwner — true today, silently wrong the day the shell nests one."
+      },
+      {
+        "question": "FR-55's per-session freeze counter is new state. Where does `frameId` live, and what reads it?",
+        "options": [
+          "On FrozenFrame (frameId: Int), stamped from a private MirrorViewModel counter at the freeze — alongside deviceLabel and promptOverride, all 'captured at freeze, dies with the frame'",
+          "As a fourth MirrorViewModel StateFlow, passed down beside the frame and the hierarchy",
+          "As a counter field inside MirrorUiState, reduced on every freeze"
+        ],
+        "recommended": "On FrozenFrame (frameId: Int), stamped from a private MirrorViewModel counter at the freeze — alongside deviceLabel and promptOverride, all 'captured at freeze, dies with the frame'",
+        "rationale": "The id names a frame, so it should not be readable while none is frozen, and on FrozenFrame it is cleared for free at the three sites that already null `frozen` — options 2 and 3 add a second thing to clear in sync, whose failure mode is a caption naming the previous frame. The counter must be incremented in stageAnnotation's intent body, not inside `reduce`, which can re-run on a lost race."
+      },
+      {
+        "question": "The crop transform's `pad = 14` comes from a design whose frame is 296 px wide (~4.7% of frame width). Device frames are ~1080 px wide, where 14 px is ~1.3%. Which space is it?",
+        "options": [
+          "Design space — scale pad by frameWidth/296 so each crop shows the same visual context as the screenshot, on any device",
+          "Device space — 14 device pixels literally, exactly as AC-76 reads",
+          "Proportional to the annotation instead — e.g. 10% of the rect's shorter side"
+        ],
+        "recommended": "Design space — scale pad by frameWidth/296 so each crop shows the same visual context as the screenshot, on any device",
+        "rationale": "Every other number in the design's crop() (84, 72, 296, 640) is in that same preview space; taking only `pad` as device pixels makes the crops ~3.6x tighter than the design on a 1080-wide frame, which is the one thing a design-led section is judged on. This is the only reading of AC-76 that needs confirming, and it changes exactly one expression in one pure function — option 3 invents a formula nothing specifies."
+      }
+    ],
+    "survey": [
+      {
+        "question": "The Payload tab must render the cached view hierarchy, which deliberately lives OUTSIDE reduced state (MirrorViewModel.frozenHierarchy). How does it reach the panel?",
+        "options": [
+          "Widen MirrorHost's content lambda to (state, frame, hierarchy, onIntent) — one definition, one call site, the same path `frame` already takes",
+          "Reduce display-ready hierarchy rows into MirrorUiState so the tab is a pure function of state",
+          "Resolve MirrorViewModel a second time with koinViewModel() inside the Payload tab composable"
+        ],
+        "answer": "Widen MirrorHost's content lambda to (state, frame, hierarchy, onIntent) — one definition, one call site, the same path `frame` already takes",
+        "source": "user-edited"
+      },
+      {
+        "question": "FR-55's per-session freeze counter is new state. Where does `frameId` live, and what reads it?",
+        "options": [
+          "On FrozenFrame (frameId: Int), stamped from a private MirrorViewModel counter at the freeze — alongside deviceLabel and promptOverride, all 'captured at freeze, dies with the frame'",
+          "As a fourth MirrorViewModel StateFlow, passed down beside the frame and the hierarchy",
+          "As a counter field inside MirrorUiState, reduced on every freeze"
+        ],
+        "answer": "On FrozenFrame (frameId: Int), stamped from a private MirrorViewModel counter at the freeze — alongside deviceLabel and promptOverride, all 'captured at freeze, dies with the frame'",
+        "source": "user-edited"
+      },
+      {
+        "question": "The crop transform's `pad = 14` comes from a design whose frame is 296 px wide (~4.7% of frame width). Device frames are ~1080 px wide, where 14 px is ~1.3%. Which space is it?",
+        "options": [
+          "Design space — scale pad by frameWidth/296 so each crop shows the same visual context as the screenshot, on any device",
+          "Device space — 14 device pixels literally, exactly as AC-76 reads",
+          "Proportional to the annotation instead — e.g. 10% of the rect's shorter side"
+        ],
+        "answer": "Design space — scale pad by frameWidth/296 so each crop shows the same visual context as the screenshot, on any device",
+        "source": "user-edited"
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "user",
+    "approved": true,
+    "at": "2026-10-17T10:09:49Z"
+  }
+}

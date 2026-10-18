@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.colorspace.ColorSpace
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import domain.core.source.model.device.DeviceModel
+import domain.core.source.model.device.DeviceStateModel
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
@@ -36,6 +38,26 @@ import kotlinx.coroutines.test.runCurrent
 import org.orbitmvi.orbit.Orbit
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.MirrorViewModel
+
+/**
+ * A selectable physical device carrying both an Android release and a transport — the shape
+ * `DiscoveryProjection`'s `toRow()` renders as `detail = "Android 15 · USB"` (T-1 / AC-14). Every
+ * parameter is defaulted so a test that only needs *a* device, not this exact one, can ignore
+ * all of them.
+ */
+internal fun physicalDevice(
+    id: String = "PHYSICAL-DEFAULT",
+    androidVersion: String = "15",
+    transportLabel: String = "USB",
+): DeviceModel = DeviceModel(
+    id = id,
+    displayName = "Pixel 8 Pro",
+    serial = id,
+    state = DeviceStateModel.Device,
+    isEmulator = false,
+    androidVersion = androidVersion,
+    transportLabel = transportLabel,
+)
 
 /** Probe result list, handed over verbatim. */
 internal class FakeDetectTools(private val tools: List<ToolModel> = emptyList()) : DetectToolsUseCase {

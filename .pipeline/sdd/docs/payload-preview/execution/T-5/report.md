@@ -1,0 +1,167 @@
+# payload-preview — T-5/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-5/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T15:31:10Z |
+| updatedAt | 2026-10-17T15:31:10Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+orchestrator-verified
+
+### approved
+
+true
+
+### at
+
+2026-10-17T15:31:10Z
+
+## Provenance
+
+### selfHash
+
+b47de24ce8529cfd34b202491d21e6dea3df9ddbdb335dcf357764620b682cf3
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23 |
+
+## Data
+
+### taskId
+
+T-5
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/HierarchyOutline.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PayloadLabels.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/HierarchyOutlineTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PayloadLabelsTest.kt
+
+### tdd
+
+#### cycle
+
+green
+
+#### testsFrozen
+
+true
+
+#### testsWritten
+
+- theBadgeLandsOnlyOnTheSnappedNodeAndNoneOfTheOthers
+- anAnnotationWithNoMatchingNodeLeavesEveryRowUnbadged
+- twoAnnotationsSnappingToTheSameNodeKeepTheLowerIndex
+- depthAndLastAreDerivedFromDocumentOrderUnaffectedByAnnotations
+- aMismatchedFrameSizeStillProducesARowPerNodeWithNoBadges
+- theFunctionTakesNothingDumpCapableOnlyAnAlreadyCachedSnapshot
+- readyFormatsTheNodeCountWithAMiddleDot
+- readyWithZeroNodesStillReportsTheCountNotTheNoHierarchyLabel
+- dumpingReportsTheEllipsisRegardlessOfNodeCount
+- absentReportsTheExplicitNoHierarchyLabel
+- unavailableReportsTheSameNoHierarchyLabelAsAbsent
+- hierarchyStatusStillHasExactlyFourShippedValues
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest --rerun  then  :presentation-feature-mirror:build
+
+#### passed
+
+true
+
+#### output
+
+BUILD SUCCESSFUL (forced --rerun). desktopTest: 218 tests, 0 failures, 0 errors, 0 skipped (MirrorViewModelPayloadTest 8/8, HierarchyOutlineTest 6/6, PayloadLabelsTest 6/6). Cross-target :presentation-feature-mirror:build BUILD SUCCESSFUL in 1m51s, 297 tasks (includes compileTestKotlinIosArm64 and runs the iosSimulatorArm64 suite).
+
+### implementation
+
+#### summary
+
+New internal package core/payload/ with HierarchyOutline.kt (payloadHierarchyRows: projectMeasureNodes + snapTarget once per annotation, node->lowest-index map, single pass over snapshot.nodes to PayloadNodeRow) and PayloadLabels.kt (hierarchySourceLabel over the four shipped HierarchyStatus values).
+
+#### tac5
+
+Covered STRUCTURALLY, not by an injected fake: payloadHierarchyRows(snapshot, frozenFrameSize, annotations) takes no dumper/repository parameter, so there is no dump-capable collaborator in scope to call. Reported honestly by the test author rather than dressed up as mock verification.
+
+#### tac3Discrepancy
+
+The backlog's TAC-3 says depth AND last 'pass through from the existing HierarchySnapshotModel rows unchanged'. Verified false: HierarchyNodeModel carries id/className/left/top/right/bottom/isTappable/depth and has NO `last` field. depth passes through; `last` is DERIVED per HierarchyRow's KDoc rule (no deeper node follows immediately, over depth-first document order). Flagged for Stage 5 rather than silently reinterpreted.
+
+### validations
+
+| stage | passed | iterations | issues |
+| --- | --- | --- | --- |
+| tests | true | 1 | [] |
+| cross-target-build | true | 1 | [] |
+| frozen-test-integrity | true | 1 | ["checked: no @Ignore, no disabled tests, zero backtick test names across all three new suites"] |
+
+### troubleshooting
+
+| at | severity | issue | resolution |
+| --- | --- | --- | --- |
+| wave-1 cross-target build | warn | The wave worktree had no local.properties (gitignored, not carried by `sdd.py worktree add`), so :build failed with 'SDK location not found' before compiling anything. | Orchestrator copied local.properties into the worktree; :build then passed. Stage 7 reflection candidate: worktree add should carry gitignored build-config files. |
+| wave-1 implement | warn | The wave-1 implement agent's host process exited before returning its report payload. | Code was already complete on disk. The orchestrator verified the diff and both gates itself and wrote this report deterministically from that evidence. |
+| T-5 implement | info | backlog TAC-3 says depth AND last 'pass through from the existing HierarchySnapshotModel rows unchanged', but HierarchyNodeModel has no `last` field at all. | depth passes through; `last` is derived per HierarchyRow's KDoc rule (no deeper node follows immediately, over depth-first document order). Flagged for Stage 5 rather than silently reinterpreted. |
+
+### registryUpdates
+
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+Both gates green on real runs; the one unverifiable criterion (TAC-4 counter placement) was confirmed by orchestrator diff inspection.
+
+### linkedAC
+
+- AC-15
+- AC-74
+- AC-75
+- AC-80
+
+### backlogUpdate
+
+#### taskId
+
+T-5
+
+#### status
+
+done
+
+### coverage
+
+skipped (config.coverageTool = none)

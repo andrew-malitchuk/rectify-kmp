@@ -1,0 +1,156 @@
+# payload-preview — T-1/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-1/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T15:31:10Z |
+| updatedAt | 2026-10-17T15:31:10Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+orchestrator-verified
+
+### approved
+
+true
+
+### at
+
+2026-10-17T15:31:10Z
+
+## Provenance
+
+### selfHash
+
+230da8d0750630c785ce73ee3e91311154a9660c1fa8479f139535c6ace3b6b2
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23 |
+
+## Data
+
+### taskId
+
+T-1
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelPayloadTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt
+
+### tdd
+
+#### cycle
+
+green
+
+#### testsFrozen
+
+true
+
+#### testsWritten
+
+- freezeStampsFrameIdOnFirstAnnotation
+- secondDragOnTheSamePinnedFrameKeepsTheSameFrameId
+- aNewFreezeAfterResumeLiveAdvancesTheFrameId
+- deviceLabelIsTheSelectedRowsDetailWithTheTransportSegmentStripped
+- editPromptSurvivesAnAnnotationAddAndADelete
+- editPromptSurvivesASessionLossAndReconnect
+- resumeLiveIsTheOnlyIntentThatDropsThePromptOverride
+- editPromptWithNoFrozenFrameIsANoOp
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest --rerun  then  :presentation-feature-mirror:build
+
+#### passed
+
+true
+
+#### output
+
+BUILD SUCCESSFUL (forced --rerun). desktopTest: 218 tests, 0 failures, 0 errors, 0 skipped (MirrorViewModelPayloadTest 8/8, HierarchyOutlineTest 6/6, PayloadLabelsTest 6/6). Cross-target :presentation-feature-mirror:build BUILD SUCCESSFUL in 1m51s, 297 tasks (includes compileTestKotlinIosArm64 and runs the iosSimulatorArm64 suite).
+
+### implementation
+
+#### summary
+
+FrozenFrame gained frameId/deviceLabel/promptOverride (all defaulted, KDoc states the 'captured at freeze, dies with the frame' admission rule). MirrorIntent.EditPrompt + reducer handler added. MirrorViewModel gained a private freezeCounter.
+
+#### frameIdPlacement
+
+VERIFIED BY ORCHESTRATOR DIFF INSPECTION (MirrorViewModel.kt:~360, inside stageAnnotation's intent body): `val freezing = currentFrozenFrame.value == null` / `if (freezing) currentFrozenFrame.value = held` / `val stampedFrameId = if (freezing) ++freezeCounter else freezeCounter`, with an in-code comment naming the CAS-retry hazard. The increment is OUTSIDE reduce{} and the stamped value is captured into a local that reduce reads, so a lambda re-run cannot advance the id twice. Satisfies TAC-4 and its definitionOfDone line.
+
+### validations
+
+| stage | passed | iterations | issues |
+| --- | --- | --- | --- |
+| tests | true | 1 | [] |
+| cross-target-build | true | 1 | [] |
+| frozen-test-integrity | true | 1 | ["checked: no @Ignore, no disabled tests, zero backtick test names across all three new suites"] |
+
+### troubleshooting
+
+| at | severity | issue | resolution |
+| --- | --- | --- | --- |
+| wave-1 cross-target build | warn | The wave worktree had no local.properties (gitignored, not carried by `sdd.py worktree add`), so :build failed with 'SDK location not found' before compiling anything. | Orchestrator copied local.properties into the worktree; :build then passed. Stage 7 reflection candidate: worktree add should carry gitignored build-config files. |
+| wave-1 implement | warn | The wave-1 implement agent's host process exited before returning its report payload. | Code was already complete on disk. The orchestrator verified the diff and both gates itself and wrote this report deterministically from that evidence. |
+
+### registryUpdates
+
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+Both gates green on real runs; the one unverifiable criterion (TAC-4 counter placement) was confirmed by orchestrator diff inspection.
+
+### linkedAC
+
+- AC-14
+- AC-79
+
+### backlogUpdate
+
+#### taskId
+
+T-1
+
+#### status
+
+done
+
+### coverage
+
+skipped (config.coverageTool = none)

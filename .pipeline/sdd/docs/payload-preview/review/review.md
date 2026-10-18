@@ -1,0 +1,139 @@
+# payload-preview — review
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | review |
+| step | review |
+| status | done |
+| producedBy | sdd-build-review-consolidate |
+| schemaVersion | 1 |
+| createdAt | 2026-10-18T09:22:05Z |
+| updatedAt | 2026-10-18T09:43:09Z |
+
+## Gate
+
+### type
+
+human
+
+### approvedBy
+
+user
+
+### approved
+
+true
+
+### at
+
+2026-10-18T09:43:09Z
+
+## Provenance
+
+### selfHash
+
+f937d3ac55a15523f413452117bd400fc8f4fb0ff27fef9a95002c7a0e38d8c1
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| review/findings.json | b0cfd4685c8ab0a7d02f152bdac5c26e977502106e56967d7e409c4d656f8ce1 |
+
+## Data
+
+### verdict
+
+approve-with-nits
+
+### summary
+
+```
+8 findings from the single fast-tier consolidated reviewer: 0 blocking, 2 major, 3 minor, 3 nits. No security and no performance findings, honestly reached with reasoning recorded. The two majors were independently re-verified against source by the orchestrator before the gate. Engineer chose request-changes: F-2 breaks the feature's stated premise (previews exactly what Claude receives) on a routine path and is covered by no test, and F-1 silently exports a prompt that misdescribes its own attachment set. Both are one-line-class fixes.
+
+ITERATION 2 (post-fix): both majors RESOLVED and verified by the orchestrator. RCR-2 — buildPrompt's device line now drops a blank deviceLabel with its separator via listOfNotNull, so an emulator payload emits the bare resolution instead of ' · 1080x2400'; RED confirmed by a real ComparisonFailure, and the implementer corrected the orchestrator's diagnosis (PromptAssemblyTest never used MirrorFakes — the cause was an optional field's DECLARED DEFAULT going unexercised, which is the generalisable lesson). RCR-1 — promptSeedIsStale() in core/payload with 6 tests that run the real buildPrompt over two payload states; shapes (b)+(c) shipped together because neither holds alone, correcting the orchestrator's three-sufficient-options framing. AM-1 recorded in plan.json narrows the Stage 1 no-auto-clear decision to the closed-editor case. Final full-suite regression 446 tests / 0 failures across all 8 modules (433 -> 439 -> 446 as each found defect gained a test that pins it); cross-target green with iosSimulatorArm64 at 264/0. APPROVE-WITH-NITS: six findings remain as recorded tech debt, all 9 debt items written into bugs.json so future specs' recurrence checks see them.
+```
+
+### changeRequests
+
+| id | target | severity | linkedFindings | about | context | status |
+| --- | --- | --- | --- | --- | --- | --- |
+| RCR-1 | T-7 | major | ["F-1"] | The Edit-mode seed goes stale when annotations change while the editor is open. | MirrorPayloadTab.kt:334 — `val seed = remember(isEditing) { effective }` captures the prompt once when the editor opens. Stage an annotation while the editor is open and the text area still holds the previous prompt; the first keystroke then commits that stale text through MirrorIntent.EditPrompt as promptOverride, which by explicit engineer decision NEVER auto-clears. The exported prompt therefore permanently describes 1 of 2 annotations — the precise failure this feature exists to prevent.  DO NOT simply widen the remember key to `effective`. T-7 keyed on isEditing deliberately, and it documented why: MultilineInput does `var text by remember(initialText)` internally, so a live key re-keys its internal state on every keystroke as the override round-trips through FrozenFrame.promptOverride. Re-introducing that is a worse bug.  Pick a shape that holds both properties and justify it. Options worth weighing: (a) key the seed on the annotation IDENTITY as well as isEditing (e.g. frozen.annotations.size or the list itself) so a staged annotation re-seeds the editor — the in-progress edit is lost, but what is shown is true; (b) keep the seed stable but DISCARD the override when the annotation set changes while editing, so the generated prompt wins again; (c) close the editor on a new annotation. (a) and (b) both lose typing; (c) is the most explicit. Whichever you choose, the user must never end up with a committed override that describes an annotation set that no longer exists.  ADD A TEST. The gating/seeding decision is extractable to core/payload/ exactly as hasPayload and hierarchyOutlineDisplay already are — that pattern is now proven three times in this spec and is the established fix for 'logic inside a @Composable nothing can reach'. If your chosen shape is expressible as a pure function of (isEditing, annotations, override), extract it and unit-test it rather than leaving it eye-verifiable.  Note F-4 (ClearStaged keeps promptOverride, resurfacing a prompt for deleted annotations) is the same defect class. If your fix naturally covers it, say so and we close both; if not, leave F-4 as recorded debt rather than widening scope. | resolved |
+| RCR-2 | T-3 | major | ["F-2"] | The prompt's device line emits a dangling separator for every emulator-sourced payload. | PromptAssembly.kt:47 — `"${frozen.deviceLabel} · ${frozen.deviceSize.width}${TIMES}${frozen.deviceSize.height}"` interpolates deviceLabel unconditionally. Verified chain: MirrorRow.detail defaults to "" (MirrorContract.kt:56); EmulatorModel.toRow() in core/discovery/DiscoveryProjection.kt NEVER sets detail, while DeviceModel.toRow() sets "Android 15 · USB"; and MirrorViewModel.selectedRowDetailWithoutTransport() returns .orEmpty(). So selecting an emulator — a first-class path, the app boots AVDs on request — produces a prompt whose second line reads " · 1080×2400": a leading space, a dangling middle dot, no platform and no OS version, sent to Claude on every payload.  WHY NO TEST CAUGHT IT: MirrorFakes.kt exposes only physicalDevice(...) — there is no emulator fixture at all — and all four PromptAssemblyTest cases pass a non-empty deviceLabel ("Android 14", "iOS 17", "Android 13", "Android 12").  FIX: omit the label segment and its separator when deviceLabel is blank, so the line degrades to just the resolution rather than to malformed text. buildPrompt already uses listOfNotNull for exactly this purpose on the per-annotation head line — use the same idiom for consistency rather than inventing a second one.  ALSO consider whether the better fix is upstream: an emulator row arguably SHOULD carry a detail (its AVD/API level is known). If you believe that is the right call, say so in your report rather than doing it — DiscoveryProjection is outside T-3's scope and belongs to the android-device-discovery spec, so it would be a cross-spec change needing its own decision.  ADD A TEST with an empty deviceLabel asserting the exact degraded line. A non-empty-only fixture set is what let this through, so the test matters as much as the fix. | resolved |
+
+### techDebt
+
+- TD-1 (from F-3 / AF-4, minor): MirrorPayloadTab.kt:416 — crop cells are fitted to a constant CropCellWidth (84dp) but drawn in weight(1f). The real cell is ~76dp at PanelMinWidth, so a wide annotation's red outline right edge is clipped (worked: 79.7 of 84), and ~149dp at PanelMaxWidth leaves slack. cropWindow's KDoc claiming the pad changes only on a different display is therefore inaccurate. ASSESSED BY THE REVIEWER AND NOT PROMOTED: real but cosmetic. Fixing it means passing the measured cell width through, which reintroduces the arithmetic TAC-4 forbids in the composable — so the clean shape is a measured width handed to cropWindow.
+- TD-2 (from F-4, minor): MirrorViewModel.kt:536 — ClearStaged keeps promptOverride, so re-annotating the same frame resurfaces a prompt written for annotations that no longer exist, with no cue. Same defect class as F-1; may be closed by RCR-1's fix.
+- TD-3 (from F-5, minor): HierarchyRow.kt:67 — matched is exactly `tag != null` at every call site in the repo, and matched=false by default dims the entire tree for any future consumer that forgets it. Worth collapsing to a derived value or defaulting from tag.
+- TD-4 (from F-6 / AF-6, nit): PayloadEstimateTest.kt:159 — PAYLOAD_FORMAT_VERSION itself is planned scope (plan.json says 'rendered nowhere'), so the unread constant is not a finding; its test is: assertEquals(1, PAYLOAD_FORMAT_VERSION) asserts a literal against itself and would pass under any edit. Either assert something behavioural or drop it.
+- TD-5 (from F-7, nit): HierarchyOutlineTest.kt:171 — the test name and comment claim a structural property; the body asserts 'Empty -> empty' twice. Same self-referential failure mode that produced two of this spec's three defects.
+- TD-6 (from F-8, nit): core/payload/ file names do not partition their contents: one label function lives in PayloadLabels.kt while two live in PayloadEstimate.kt, and PayloadGate.kt now holds two unrelated concerns (hasPayload + hierarchyOutlineDisplay).
+- TD-7 (from stage-5 carry, minor): dumpHierarchyFor still publishes a snapshot it has already judged unusable; CR-2 made that harmless, not correct, and only the enum's KDoc stops the next consumer repeating the mistake. The suppress-the-snapshot alternative was rejected with evidence (it would regress the measure readout from dp to px). If a third consumer of frozenHierarchy appears, the right shape is a snapshot carrying its own usability verdict rather than two flows that can disagree.
+
+### notReported
+
+- cropWindow degenerate rect / division-by-zero — unreachable: FrameGeometry.toDeviceCoordinate coerces every edge into [0, deviceSize] and isMeaningfulDrag gates both axes.
+- Duplicate hierarchy node ids — the parser's withCollisionIndices() enforces uniqueness.
+- LazyColumn inside verticalScroll — heightIn(max=338.dp) makes the constraint finite, so no throw and lazy windowing genuinely holds.
+- MirrorPayloadTab.kt at 986 lines — MirrorAnnotationStage.kt is already 1129; splitting would fight the module's own precedent.
+- Security/privacy — nothing in this diff transmits; deviceLabel's strip leaves 'Android 15' with no serial, and node text adds nothing the attached frame.png does not already carry. No findings, honestly reached.
+- Performance — every remember key set checks out (generated recomputes after rows in the same pass, no staleness); the only per-recomposition allocation is zip/chunked over <=12 items and does not run on panel-drag frames. No findings.
+- The orphaned resumeLive KDoc at MirrorViewModel.kt:546 is pre-existing on sdd/measure-mode — out of scope for this diff.
+- The parallel :build heap OOM on linkReleaseFramework* — pre-existing infra, not this diff.
+
+### survey
+
+| question | options | answer | source |
+| --- | --- | --- | --- |
+| Stage 6 PR approval — 8 findings, 0 blocking, 2 verified majors (F-1 stale edit seed, F-2 dangling device line on every emulator prompt). | ["Request changes: fix F-1+F-2 (Recommended)", "Fix F-2 only, nit the rest", "Approve with nits"] | Request changes: fix F-1+F-2 (Recommended) | user-edited |
+| Stage 6 re-review — both majors fixed, 446 tests green, cross-target green. Six findings remain as recorded tech debt. | ["Approve with nits (Recommended)", "Run a full re-review pass", "Also fix F-4 and F-5 now"] | Approve with nits (Recommended) | user-edited |
+| AM-1 amendment marked backlog/audit/findings stale. Documentation-only change. | ["Keep, re-seal (Recommended)", "Re-run the three steps", "Revert AM-1"] | Keep, re-seal (Recommended) | user-edited |
+
+### techDebtDetail
+
+| id | from | severity | detail |
+| --- | --- | --- | --- |
+| TD-1 | F-3 / AF-4 | minor | MirrorPayloadTab.kt:416 — crop cells are fitted to a constant CropCellWidth (84dp) but drawn in weight(1f). The real cell is ~76dp at PanelMinWidth, so a wide annotation's red outline right edge is clipped (worked: 79.7 of 84), and ~149dp at PanelMaxWidth leaves slack. cropWindow's KDoc claiming the pad changes only on a different display is therefore inaccurate. ASSESSED BY THE REVIEWER AND NOT PROMOTED: real but cosmetic. Fixing it means passing the measured cell width through, which reintroduces the arithmetic TAC-4 forbids in the composable — so the clean shape is a measured width handed to cropWindow. |
+| TD-2 | F-4 | minor | MirrorViewModel.kt:536 — ClearStaged keeps promptOverride, so re-annotating the same frame resurfaces a prompt written for annotations that no longer exist, with no cue. Same defect class as F-1; may be closed by RCR-1's fix. |
+| TD-3 | F-5 | minor | HierarchyRow.kt:67 — matched is exactly `tag != null` at every call site in the repo, and matched=false by default dims the entire tree for any future consumer that forgets it. Worth collapsing to a derived value or defaulting from tag. |
+| TD-4 | F-6 / AF-6 | nit | PayloadEstimateTest.kt:159 — PAYLOAD_FORMAT_VERSION itself is planned scope (plan.json says 'rendered nowhere'), so the unread constant is not a finding; its test is: assertEquals(1, PAYLOAD_FORMAT_VERSION) asserts a literal against itself and would pass under any edit. Either assert something behavioural or drop it. |
+| TD-5 | F-7 | nit | HierarchyOutlineTest.kt:171 — the test name and comment claim a structural property; the body asserts 'Empty -> empty' twice. Same self-referential failure mode that produced two of this spec's three defects. |
+| TD-6 | F-8 | nit | core/payload/ file names do not partition their contents: one label function lives in PayloadLabels.kt while two live in PayloadEstimate.kt, and PayloadGate.kt now holds two unrelated concerns (hasPayload + hierarchyOutlineDisplay). |
+| TD-7 | stage-5 carry | minor | dumpHierarchyFor still publishes a snapshot it has already judged unusable; CR-2 made that harmless, not correct, and only the enum's KDoc stops the next consumer repeating the mistake. The suppress-the-snapshot alternative was rejected with evidence (it would regress the measure readout from dp to px). If a third consumer of frozenHierarchy appears, the right shape is a snapshot carrying its own usability verdict rather than two flows that can disagree. |
+
+### followUps
+
+- TD-1: MirrorPayloadTab.kt:416 — crop cells are fitted to a constant CropCellWidth (84dp) but drawn in weight(1f). The real cell is ~76dp at PanelMinWidth, so a wide annotation's red outline right edge is cl
+- TD-2: MirrorViewModel.kt:536 — ClearStaged keeps promptOverride, so re-annotating the same frame resurfaces a prompt written for annotations that no longer exist, with no cue. Same defect class as F-1; may 
+- TD-3: HierarchyRow.kt:67 — matched is exactly `tag != null` at every call site in the repo, and matched=false by default dims the entire tree for any future consumer that forgets it. Worth collapsing to a d
+- TD-4: PayloadEstimateTest.kt:159 — PAYLOAD_FORMAT_VERSION itself is planned scope (plan.json says 'rendered nowhere'), so the unread constant is not a finding; its test is: assertEquals(1, PAYLOAD_FORMAT_VE
+- TD-5: HierarchyOutlineTest.kt:171 — the test name and comment claim a structural property; the body asserts 'Empty -> empty' twice. Same self-referential failure mode that produced two of this spec's three 
+- TD-6: core/payload/ file names do not partition their contents: one label function lives in PayloadLabels.kt while two live in PayloadEstimate.kt, and PayloadGate.kt now holds two unrelated concerns (hasPay
+- TD-7: dumpHierarchyFor still publishes a snapshot it has already judged unusable; CR-2 made that harmless, not correct, and only the enum's KDoc stops the next consumer repeating the mistake. The suppress-t
+
+### blocking
+
+
+### major
+
+- F-1
+- F-2
+
+### minor
+
+- F-3
+- F-4
+- F-5
+
+### nits
+
+- F-6
+- F-7
+- F-8
+
+### reviewIteration
+
+2

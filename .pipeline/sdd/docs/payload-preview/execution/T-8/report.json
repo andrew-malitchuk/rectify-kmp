@@ -1,0 +1,152 @@
+{
+  "spec": "payload-preview",
+  "stage": "execution",
+  "step": "T-8/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-frontend-implement",
+  "provenance": {
+    "selfHash": "b336c3ae3a9f506c9fe699d64063186b105415106f7c9db24dfac69770706c0b",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T19:01:11Z",
+  "updatedAt": "2026-10-17T19:01:11Z",
+  "data": {
+    "taskId": "T-8",
+    "type": "ui",
+    "outcome": "success",
+    "touchedPaths": [
+      "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorPayloadTab.kt"
+    ],
+    "tdd": {
+      "cycle": "n/a",
+      "testsFrozen": true,
+      "testsWritten": [
+        "none — no Compose UI-test harness exists in this repo. The populated/empty preview pair is the visual evidence; the populated one paints a preview-only stand-in ImageBitmap so crops actually render."
+      ]
+    },
+    "testRun": {
+      "command": "./gradlew :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest --rerun  then  :presentation-feature-mirror:build :presentation-core-ui:build",
+      "passed": true,
+      "output": "Verified independently by the orchestrator with --rerun: mirror 248 tests, 0 failures, 0 errors; core-ui 29 tests, 0 failures — both exactly at baseline, as expected since T-8 adds no tests. Cross-target :build BUILD SUCCESSFUL for both modules (338 tasks), including the iosSimulatorArm64 suites."
+    },
+    "implementation": {
+      "filesChanged": [
+        "presentation-feature-mirror/.../source/mirror/MirrorPayloadTab.kt"
+      ],
+      "summary": "Added the Crops section to MirrorPayloadTab.kt and fixed the plan's missing-bitmap defect by widening the tab signature with frame: ImageBitmap? as the second parameter, matching the widened MirrorHost content lambda's order. New private unregistered composables: PayloadCropsSection (CROPS label + right-aligned 'from frame {frameId}' using wave 1's bare counter; annotations.zip(windows).chunked(3) into weighted Rows with 8dp gaps and weighted Spacer fillers for a short last row — the Compose equivalent of the design's repeat(3, minmax(0,1fr))) and PayloadCropCell (72dp Box on Theme.color.stage, 6dp radius, ONE Canvas doing drawImage from window.srcOffset/srcSize into dstOffset=IntOffset.Zero/dstSize then stroking Theme.color.annotate at window.outlineRect — both read from the SAME CropWindow value, so image placement and outline cannot drift; caption '#{index} · {w}×{h}' interpolating core/annotation's TIMES directly). Crop windows built once in a keyed remember. Also extracted a shared private PayloadSectionLabel and moved T-7's PROMPT label onto it rather than duplicating the treatment."
+    },
+    "validations": [
+      {
+        "stage": "desktopTest",
+        "passed": true,
+        "iterations": 1,
+        "issues": []
+      },
+      {
+        "stage": "cross-target-build",
+        "passed": true,
+        "iterations": 2,
+        "issues": [
+          "First run hit the known Kotlin/Native release-linker heap exhaustion (3x 'Java heap space' on linkReleaseFramework* under 4-way parallelism); passed unchanged on re-run. Orchestrator's own re-run also green."
+        ]
+      },
+      {
+        "stage": "dod-sizeLabel-grep",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "grep -c sizeLabel on the file = 0, including KDoc — the caption divergence is explained as 'either module's size formatter' rather than naming it."
+        ]
+      },
+      {
+        "stage": "tac-4-no-arithmetic",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Orchestrator verified: no max, min, division or '* scale' anywhere in the file. The only operators are Dp->px unit conversion feeding cropWindow's own parameters, .toInt() narrowing at the drawImage call site, outlineWidth.toPx(), and a filler count."
+        ]
+      },
+      {
+        "stage": "tac-2-same-cropwindow",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Orchestrator verified drawImage and drawRect both read from the same `window` value inside one Canvas."
+        ]
+      },
+      {
+        "stage": "dod-private-sections",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Only MirrorPayloadTab is public; PayloadSectionLabel, PayloadCropsSection, PayloadCropCell and all preview helpers are private and unregistered."
+        ]
+      }
+    ],
+    "troubleshooting": [
+      {
+        "at": "cross-target build",
+        "severity": "warn",
+        "issue": "3x 'e: Compilation failed: Java heap space' on linkReleaseFramework* tasks (4 GiB daemon heap).",
+        "resolution": "Known, already root-caused infra issue. Re-ran unchanged: green. Not chased with code."
+      },
+      {
+        "at": "crop scaling on non-1.0-density displays",
+        "severity": "warn",
+        "issue": "REAL RENDERING BUG IN THE BRIEF, caught by the implementer. The backlog mandated remember(annotations, frozen.deviceSize) with cropWindow's boxW/boxH left at their design defaults (84f/72f). Those are DESIGN-SPACE units but a Canvas DrawScope works in PIXELS, so on a 2x display dstSize would max at 72px inside a 144px cell: the crop blits into the top-left quarter and outlineRect strokes at half scale.",
+        "resolution": "ORCHESTRATOR VERIFIED AND ACCEPTED the deviation. The cell size is converted to px via LocalDensity and passed as boxW/boxH, so every CropWindow value is already Canvas-space, and cellWidth/cellHeight joined the remember key set. Still computed once per freeze — never per recomposition, row or cell; the added keys are density-derived constants that change only when the window moves to another display. The cleaner long-term fix the implementer itself proposed is moving the Dp->px conversion into CropWindow.kt where that arithmetic belongs, but that edits T-4's shipped file and is outside T-8's scope. Stage 5 should treat the backlog's literal key list as superseded."
+      },
+      {
+        "at": "PayloadSectionLabel extraction",
+        "severity": "info",
+        "issue": "Wave 4 left no reusable header composable, so rendering CROPS the same way as PROMPT meant either duplicating the treatment or editing T-7's code.",
+        "resolution": "ACCEPTED: extracted a shared private PayloadSectionLabel and switched the PROMPT label onto it — a ~5 line edit inside PayloadPromptSection, within the one file T-8 owns. DRY within its own file, and it prevents two label treatments drifting. Flagged honestly by the implementer as outside a strict 'append a section' reading."
+      },
+      {
+        "at": "cell width vs crop box",
+        "severity": "info",
+        "issue": "Cells are weighted (fillMaxWidth) while the crop is fitted to the design's 84x72 box, so on a panel wider than 296dp the blit sits top-left with slack on the right.",
+        "resolution": "That is what the mandated dstOffset = IntOffset.Zero implies. Centring would require the arithmetic TAC-4 forbids in the composable. Left as-is and recorded."
+      },
+      {
+        "at": "null frame",
+        "severity": "info",
+        "issue": "frame is nullable; what a cell renders without a bitmap had to be decided.",
+        "resolution": "The Canvas early-returns, leaving the flat Theme.color.stage box with its 6dp radius — and deliberately NOT the outline, since a lone annotate-coloured rect over an empty cell would read as a measured region of a frame that is not there. The caption still shows the real '#index · w×h' because that comes from reduced state, not the bitmap. frame is only dereferenced after the null check, so there is no crash path."
+      }
+    ],
+    "registryUpdates": [
+      {
+        "registry": "components.json",
+        "entry": "mirror-payload-tab",
+        "change": "props updated to 'state: MirrorUiState, frame: ImageBitmap?, hierarchy: HierarchySnapshotModel, onIntent: (MirrorIntent) -> Unit, modifier: Modifier = Modifier' — frame added as the 2nd parameter to fix the plan defect. T-11's call site is MirrorPayloadTab(state, frame, hierarchy, onIntent). Section composables remain private and unregistered."
+      }
+    ],
+    "needsHumanReview": {
+      "required": false,
+      "reason": "Gates green and every DoD/TAC line independently verified. Visual evidence is the preview pair; no UI-test harness exists in this repo."
+    },
+    "linkedAC": [
+      "AC-14",
+      "AC-72",
+      "AC-76"
+    ],
+    "backlogUpdate": {
+      "taskId": "T-8",
+      "status": "done"
+    },
+    "coverage": "skipped (no UI-test harness in this repo)"
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator-verified",
+    "approved": true,
+    "at": "2026-10-17T19:01:11Z"
+  }
+}

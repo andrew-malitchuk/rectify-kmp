@@ -1,0 +1,230 @@
+{
+  "spec": "payload-preview",
+  "stage": "validation",
+  "step": "verdict",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-validation-verdict",
+  "provenance": {
+    "selfHash": "0babe0104948b1878b9f39467524aa8cacab7587fb3570be08222feb19c48211",
+    "inputs": [
+      {
+        "artifact": "validation/audit.json",
+        "hash": "1211aed62b561b3e47ca27f5e6d1b4b82ae7467b0ab83b0301994a324cab78ad"
+      },
+      {
+        "artifact": "validation/change-requests.json",
+        "hash": "bf5c6ed50302042a924c0d12a2ef11e78b41d44ddd69930cb98e525599ec40c2"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T09:01:13Z",
+  "updatedAt": "2026-10-18T09:01:37Z",
+  "data": {
+    "verdict": "complete-with-waivers",
+    "changelogRef": "validation/changelog.json",
+    "tasks": [
+      {
+        "id": "T-1",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-14",
+          "AC-79"
+        ]
+      },
+      {
+        "id": "T-2",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-16",
+          "AC-78"
+        ]
+      },
+      {
+        "id": "T-3",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-13",
+          "AC-72",
+          "AC-73"
+        ]
+      },
+      {
+        "id": "T-4",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-76",
+          "AC-14"
+        ]
+      },
+      {
+        "id": "T-5",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-15",
+          "AC-74",
+          "AC-75",
+          "AC-80"
+        ]
+      },
+      {
+        "id": "T-6",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-15",
+          "AC-75"
+        ]
+      },
+      {
+        "id": "T-7",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-13",
+          "AC-77",
+          "AC-79"
+        ]
+      },
+      {
+        "id": "T-8",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-14",
+          "AC-72",
+          "AC-76"
+        ]
+      },
+      {
+        "id": "T-9",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-15",
+          "AC-74",
+          "AC-75",
+          "AC-80"
+        ]
+      },
+      {
+        "id": "T-10",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-16",
+          "AC-78"
+        ]
+      },
+      {
+        "id": "T-11",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-13",
+          "AC-14",
+          "AC-15",
+          "AC-16",
+          "AC-80"
+        ]
+      },
+      {
+        "id": "T-12",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-14",
+          "AC-16",
+          "AC-72",
+          "AC-80"
+        ]
+      },
+      {
+        "id": "T-13",
+        "status": "done",
+        "satisfiesAC": [
+          "AC-13",
+          "AC-14",
+          "AC-15",
+          "AC-16",
+          "AC-72",
+          "AC-73",
+          "AC-74",
+          "AC-75",
+          "AC-76",
+          "AC-77",
+          "AC-78",
+          "AC-79",
+          "AC-80"
+        ]
+      }
+    ],
+    "unsatisfied": {
+      "acceptanceCriteria": [],
+      "scenarios": [
+        "SC-6",
+        "SC-20",
+        "SC-21",
+        "SC-22",
+        "SC-23",
+        "SC-24"
+      ],
+      "tasks": []
+    },
+    "waivers": [
+      {
+        "item": "HV-1 — the real-device manual demo over SC-6 and SC-20..24",
+        "reason": "Owed at this gate by the engineer's explicit Stage 3 decision, because Stage 4 executors cannot drive a real Android device. Waived here and handed to the QA pipeline (sdd-flow-launch-qa), which owns scenario verification properly. Recorded in backlog.json humanVerificationRequirements and state.json.",
+        "acceptedBy": "human",
+        "at": "stage-5-gate",
+        "id": "W-1"
+      },
+      {
+        "item": "Preview-only UI halves of AC-13, AC-14, AC-15, AC-72, AC-78, AC-79",
+        "reason": "Each of these six ACs has an automated logic half that passes, but the actual Compose rendering/interaction is proven only by the 8 @Preview pairs, which nobody has opened. This repo has NO Compose UI-test harness and a DoD line forbids adding one, so no automated assertion is possible for the render itself. A preview is not evidence until a human looks at it; classified honestly rather than counted as an automated pass.",
+        "acceptedBy": "human",
+        "at": "stage-5-gate",
+        "id": "W-2"
+      },
+      {
+        "item": "AC-80's primary evidence is a preview pair",
+        "reason": "By explicit Stage 1 engineer decision: forcing a real uiautomator dump failure on demand is not reproducible, so the Unavailable preview pair is the declared primary evidence. NOTE: Stage 5's AF-2 proved that pair steers around the only failing combination (it pins an empty snapshot), which is why CR-2 added both a unit-tested gate and a mismatch-state preview pair. AC-80 now also has genuine automated coverage via PayloadHierarchyDisplayTest.",
+        "acceptedBy": "human",
+        "at": "stage-1-gate, reaffirmed stage-5",
+        "id": "W-3"
+      },
+      {
+        "item": "Five design divergences accepted as shipped",
+        "reason": "T-12's two: the prompt body renders Theme.typography.monoData 11sp where the design figure says 10.5px mono (no 10.5sp tabular-mono token exists and monoMeta is owned by the footer, so matching the figure would mean a new token for one composable); the Crops 'from frame #N' tag uses ink3 where the design's ink2 row implies ink2. Plus AF-5's three plan.errorStates colour divergences (the empty-state and no-hierarchy lines ship ink2 vs the plan's ink3; Dumping ships ink3 vs warnStillOff). All recorded, none fixed, by engineer decision.",
+        "acceptedBy": "human",
+        "at": "stage-5-gate",
+        "id": "W-4"
+      },
+      {
+        "item": "Residual tech debt carried to Stage 6, not converted to CRs",
+        "reason": "AF-4: crop cells are fitted to a constant CropCellWidth (84dp) but drawn in weight(1f), so the real cell is ~76dp at PanelMinWidth (clipping the right edge of the red outline) and ~149dp at PanelMaxWidth, and cropWindow's 'changes only on a different display' KDoc is therefore inaccurate. AF-6: PAYLOAD_FORMAT_VERSION is dead code with a tautological test. Both are genuine and both are recorded for the Stage 6 tech review.",
+        "acceptedBy": "human",
+        "at": "stage-5-gate",
+        "id": "W-5"
+      }
+    ],
+    "openChangeRequests": [],
+    "humanRemarks": [
+      "Stage 5 found TWO real correctness defects that 251 green tests and 13 success reports had missed, both independently re-verified by the orchestrator before any fix was dispatched, and both now closed by targeted CRs with the re-audit green at 439 tests.",
+      "CR-1 (AF-1, AC-15): HierarchyOutline's `last` predicate used <= instead of <, marking any node FOLLOWED BY A SIBLING as last. Its guide stopped at the elbow while the sibling's line began at the next row's top, leaving a half-row gap before every non-final sibling — a ~400-node dump would have rendered as disconnected dashes. The deeper defect was the test: it asserted the buggy behaviour with a comment rationalising it, restating the implementation instead of HierarchyRow's documented contract. Fixed, comment rewritten to state the contract, and the tree extended so a final sibling WITH children now has a dedicated assertion (previously only root covered that case, accidentally).",
+      "CR-2 (AF-2, AC-80): a reachable state rendered hundreds of unbadged rows UNDER a 'no hierarchy' readout, because dumpHierarchyFor publishes the snapshot before reducing its verdict and the section's `when` tested rows.isNotEmpty() first. Triggered by the measured 9.76% uiautomator display-override mismatch — a real device condition, documented in HierarchySnapshotModel's own KDoc. Fixed by extracting the decision to core/payload/hierarchyOutlineDisplay() with status tested before row count, following the hasPayload precedent so branch ORDER is unit-testable. Six tests, with genuine red observed first.",
+      "ORCHESTRATOR ERROR, caught by the CR-2 implementer and verified: CR-2's brief offered 'stop publishing an unusable snapshot' as an equally acceptable fix. It is not. startMeasure reads snapshot.densityDpi, HierarchySnapshotModel.Empty carries densityDpi = 0, and PixelUnits degrades every figure to raw px below 1 — so that option would have fixed the payload tab while silently regressing the measure readout from dp to px in the same frame-size-mismatch condition. Option withdrawn from the record so nobody picks it later on diff-size grounds.",
+      "AF-3 was FIXED rather than deferred: StyleguideScreen.kt:744-745 passed a tag but no matched, a state the contract T-6 introduced says cannot exist, and that screen is reachable in the app via NavigationHost as the project's own component reference. Completing T-6's own call sites, not new scope.",
+      "ROOT CAUSE for Stage 7, raised by the CR-2 implementer and endorsed: THREE findings on this spec were the same shape — branch logic inside a @Composable that nothing in this repo can reach (AC-77's empty-state gate, AF-1's last predicate covered by a test that restated the implementation, AF-2's when-ordering whose preview evidence steered around the failing case). The pattern recurs until either a Compose UI-test harness exists or the convention is made explicit that no composable holds a branch condition it does not import from core/. The fix pattern is already proven three times in this spec (hasPayload, hierarchyOutlineDisplay) and is cheap.",
+      "Also noted: CR-2's fix makes dumpHierarchyFor HARMLESS, not correct — it still publishes a snapshot it has already judged unusable, and only the enum's KDoc stops the next consumer repeating the mistake. If a third consumer of frozenHierarchy appears, the right shape is a snapshot carrying its own usability verdict rather than two flows that can disagree.",
+      "Infra, not this spec: the Kotlin/Native release linker exhausts a 4 GiB daemon heap under ~4 parallel linkReleaseFramework* tasks. Fully characterized; --max-workers=1 passes. The real fix (kotlin.native.linkerThreads or a higher daemon -Xmx in gradle.properties) belongs in a standalone task, since TAC-6 forbade touching shared build files here.",
+      "Orchestrator self-correction: my first full-suite regression reported 407 tests across 7 modules, having missed :data-device-impl (26 tests). The audit agent caught it. Correct pre-CR figure was 433; post-CR it is 439."
+    ],
+    "evidence": {
+      "fullSuiteRegression": "439 tests, 0 failures, 0 errors, 0 skipped across ALL 8 test-bearing modules (data-device-api 61, data-device-impl 26, data-preference-impl 9, data-repository-impl 50, domain-usecase-impl 1, presentation-core-styling 6, presentation-core-ui 29, presentation-feature-mirror 257), forced with --rerun. Mandatory Stage 5 gate — GREEN.",
+      "crossTarget": "./gradlew :presentation-feature-mirror:build :presentation-core-ui:build --max-workers=1 BUILD SUCCESSFUL, with the iosSimulatorArm64 suite genuinely RUNNING at mirror 257/0 and core-ui 29/0 on real Kotlin/Native — not merely compiling.",
+      "acCoverage": "All 13 ACs (AC-13..16, AC-72..80) satisfied per their verificationMethod, with the six preview-only UI halves waived as W-2 and AC-80's demo evidence as W-3. AC-77 gained genuine automated coverage during Stage 4 (PayloadGateTest) and AC-80 during Stage 5 (PayloadHierarchyDisplayTest).",
+      "registry": "components.json 84 entries, all three deltas (hierarchy-row, mirror-host, mirror-payload-tab) verified byte-exact against real source signatures. No private section composable is registered. bugs.json genuinely empty — no recurrence findings invented.",
+      "crLoop": "2 CRs, both human-sourced (so the automated ping-pong counter was never engaged), both resolved in one iteration. Automated re-audit iteration 1 of a maximum 3. No task failed, blocked or escalated."
+    }
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "user",
+    "approved": true,
+    "at": "2026-10-18T09:01:37Z"
+  }
+}

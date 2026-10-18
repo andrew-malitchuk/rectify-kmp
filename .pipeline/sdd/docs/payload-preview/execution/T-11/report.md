@@ -1,0 +1,159 @@
+# payload-preview — T-11/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-11/report |
+| status | done |
+| producedBy | sdd-build-frontend-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T20:00:30Z |
+| updatedAt | 2026-10-17T20:00:30Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+orchestrator-verified
+
+### approved
+
+true
+
+### at
+
+2026-10-17T20:00:30Z
+
+## Provenance
+
+### selfHash
+
+ca55cdd983229ae711ba6606ad4486c517a432d057bf0013fa9fff50e838c827
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23 |
+
+## Data
+
+### taskId
+
+T-11
+
+### type
+
+ui
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt
+- compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt
+
+### tdd
+
+#### cycle
+
+n/a
+
+#### testsFrozen
+
+true
+
+#### testsWritten
+
+- none — no new logic. A lambda-arity widening plus one `when` branch, both compile-time enforced; the pre-existing 248 + 29 suites are the regression net. The DoD-named MirrorFakes.kt update proved to be a no-op (see troubleshooting), so no test file was touched.
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest --rerun  then  :compose-application:compileKotlinDesktop  then  :presentation-feature-mirror:build :presentation-core-ui:build
+
+#### passed
+
+true
+
+#### output
+
+Verified independently by the orchestrator with --rerun: mirror 248 tests, 0 failures, 0 errors; core-ui 29 tests, 0 failures — exact baseline. :compose-application:compileKotlinDesktop BUILD SUCCESSFUL (the only check for the RectifyWindow wiring, since that module deliberately has no test wiring). Cross-target :build BUILD SUCCESSFUL for both modules (338 tasks).
+
+### implementation
+
+#### filesChanged
+
+- presentation-feature-mirror/.../source/mirror/MirrorHost.kt
+- compose-application/.../source/window/RectifyWindow.kt
+
+#### summary
+
+MirrorHost's content lambda widened from 3-arg to 4-arg: (MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit). It collects viewModel.frozenHierarchy (a non-null StateFlow) as state and passes it third, with KDoc recording engineer decision #5 — why the snapshot is NOT reduced into MirrorUiState (its own KDoc keeps a few-hundred-node snapshot out of the reducer because it would be copied on every unrelated reduction) and NOT fetched by a second koinViewModel() resolution (which would rely on two call sites implicitly sharing a ViewModelStoreOwner — true today, silently wrong the day the shell nests one). RectifyWindow.kt: the single call site destructures the new hierarchy param; the sidePanel `if (tab == ShellTab.Notes)` became a `when (tab)` with one new ShellTab.Payload branch calling MirrorPayloadTab(state, frame, hierarchy, onIntent, Modifier.weight(1f)) plus `else -> Unit`; the stale 'Notes is the only tab with content this deliverable' comment was replaced; tabCounts gained ShellTab.Payload to mirror.stagedCount. No new Gradle dependency, no Koin change, and RectifyShellContent's signature is untouched because the sidePanel lambda closes over frame and hierarchy from MirrorHost's scope.
+
+### validations
+
+| stage | passed | iterations | issues |
+| --- | --- | --- | --- |
+| desktopTest | true | 1 | [] |
+| compose-application-compile | true | 1 | ["The only possible check on the RectifyWindow.kt edit — :compose-application has no test wiring by design per .claude/rules/testing.md."] |
+| cross-target-build | true | 3 | ["Two OOM failures then green serially; orchestrator's own run also green. See troubleshooting."] |
+| tac-2-rectifywindow-diff | true | 1 | ["One import, the lambda destructuring, the when-branch (Notes unchanged + one Payload branch + else), the rewritten stale comment, and one tabCounts entry. Nothing else in the file moved."] |
+| tac-3-byte-unchanged | true | 1 | ["Orchestrator verified `git status --porcelain -- *ShellTab.kt *SidePanelFrame.kt *SidebarTabs.kt` is EMPTY. ShellTab already shipped Payload and Cmd+2 -> Payload from the app-shell spec, so the tab was already selectable — it just rendered nothing."] |
+| single-call-site-no-new-di | true | 1 | ["Orchestrator verified exactly one MirrorHost call site repo-wide (RectifyWindow.kt:155); the only other mentions are its own declaration and KDoc. No new Koin binding, no second ViewModel resolution."] |
+| t-10-host-contract | true | 1 | ["The Payload branch passes Modifier.weight(1f) and SidePanelFrame.kt:61 is Column(Modifier.fillMaxHeight()) invoking content(activeTab) inside it, so the ColumnScope has a bounded height and T-10's inner weight(1f) footer pin resolves to real pixels. A load-bearing comment was left at the call site explaining this."] |
+
+### troubleshooting
+
+| at | severity | issue | resolution |
+| --- | --- | --- | --- |
+| cross-target build | warn | linkReleaseFrameworkIosArm64 / linkReleaseFrameworkIosSimulatorArm64 failed with 'Compilation failed: Java heap space' on BOTH attempts this wave — not just the first, unlike earlier waves. | CHARACTERIZED rather than chased: the implementer isolated it to 4-way parallelism and confirmed the same four tasks pass with --max-workers=1 (BUILD SUCCESSFUL in 1m45s). The iosSimulatorArm64 suites inside the FAILING build were already green (mirror 248/0, core-ui 29/0), and nothing in the diff reaches the linker. Proposed fix for Stage 7 or a standalone infra task: kotlin.native.linkerThreads and/or a higher daemon -Xmx in gradle.properties. Deliberately not done here — that is a shared file and outside T-11's scope. |
+| MirrorFakes.kt | info | BACKLOG DEFECT: T-11's DoD requires 'desktopTest green including the MirrorFakes arity update' and predictedScope lists MirrorFakes.kt as a third file — both rest on a wrong premise. | CONFIRMED BY THE ORCHESTRATOR: grep proves ZERO references to MirrorHost anywhere under presentation-feature-mirror/src/commonTest, so widening the lambda broke no fake. The implementer left the file byte-unchanged rather than inventing a no-op edit, and both the desktop and iosSimulatorArm64 test compilations are green at the unchanged 248 baseline — which is itself the proof no fake supplied the 3-arg form. Stage 5 should expect 2 touched paths for T-11, not 3. |
+| RectifyShellContent signature | info | Threading frame/hierarchy as explicit RectifyShellContent parameters was a plausible alternative. | Not done: the sidePanel lambda already closes over both from MirrorHost's scope, so adding them would widen a harness-facing signature for nothing. Add when a non-MirrorHost caller needs to drive the Payload tab from literals. |
+
+### registryUpdates
+
+| registry | entry | change |
+| --- | --- | --- |
+| components.json | mirror-host | Content lambda widened from 3-arg to 4-arg: (MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit). HierarchySnapshotModel is non-null (HierarchySnapshotModel.Empty when nothing is captured) and is handed in third from MirrorViewModel.frozenHierarchy. A breaking change for any call site — there is exactly one. |
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+All gates green including :compose-application compile; every TAC and DoD line independently verified.
+
+### linkedAC
+
+- AC-13
+- AC-14
+- AC-15
+- AC-16
+- AC-80
+
+### backlogUpdate
+
+#### taskId
+
+T-11
+
+#### status
+
+done
+
+### coverage
+
+skipped (no UI-test harness in this repo)

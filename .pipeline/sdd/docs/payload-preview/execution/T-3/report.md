@@ -1,0 +1,150 @@
+# payload-preview — T-3/report
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-3/report |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T17:43:43Z |
+| updatedAt | 2026-10-17T17:43:43Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+orchestrator-verified
+
+### approved
+
+true
+
+### at
+
+2026-10-17T17:43:43Z
+
+## Provenance
+
+### selfHash
+
+827538700b6d39fa0f2e8343354e40111a5bf37fef0811a3d3b008cda14bdec4
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23 |
+
+## Data
+
+### taskId
+
+T-3
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PromptAssembly.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/PromptAssemblyTest.kt
+
+### tdd
+
+#### cycle
+
+green
+
+#### testsFrozen
+
+true
+
+#### testsWritten
+
+- PromptAssemblyTest: 4 tests. The one- and two-annotation cases assert the WHOLE assembled string with assertEquals (so a wrong blank-line count, indent or line order fails), plus a no-node-match case and a TIMES-unspaced case that asserts both the presence of 48×17 and the absence of ' × ' anywhere.
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest --rerun  then  :presentation-feature-mirror:build :presentation-core-ui:build
+
+#### passed
+
+true
+
+#### output
+
+Verified independently by the orchestrator with --rerun: mirror desktopTest 248 tests, 0 failures, 0 errors, 0 skipped (244 -> 248, PromptAssemblyTest 4/4); core-ui 29 tests, 0 failures. Cross-target :build green for both modules on the second attempt (see the heap troubleshooting entry).
+
+### implementation
+
+#### filesChanged
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PromptAssembly.kt
+
+#### summary
+
+New internal buildPrompt(frozen, nodeIdFor) in core/payload — 32 lines, no new types, no builder, no state. Singular/plural headline with NO screen clause (orchestrator decision: the design's 'on the Cart screen' names the design demo's own app and this codebase has no screen-name source, so fabricating one would inject invented data into every prompt sent to Claude; hierarchy.xml carries the real context). Device line derived from frozen.deviceLabel + frozen.deviceSize, never the design's hardcoded literal — the frozen test deliberately uses different numbers so a hardcoded impl fails. Per annotation: '#{index} [{nodeId} · ]{w}×{h}' with the node-id segment AND its separator both dropped via listOfNotNull when nodeIdFor returns null, then the comment three-space-indented and quoted verbatim ('no comment' when empty), then a blank line. NO 'measured:' branch: core/measure's noteLine already folds the measurement into the comment as a ⌥-prefixed line, which passes through byte-identical. Trailer 'Attached: frame.png, N crops, hierarchy.xml'. Joined with newlines, no trailing newline.
+
+### validations
+
+| stage | passed | iterations | issues |
+| --- | --- | --- | --- |
+| desktopTest | true | 1 | [] |
+| cross-target-build | true | 2 | ["First attempt failed 3 of 4 linkReleaseFramework* tasks with Java heap space OOM; passed on re-run with code unchanged. iosSimulatorArm64Test itself passed on both attempts."] |
+| frozen-test-integrity | true | 1 | ["Orchestrator verified: 4 @Test, zero backticks, zero @Ignore, test file unmodified."] |
+| dod-sizeLabel-grep | true | 1 | ["grep -c sizeLabel on the new file = 0, including KDoc prose. The implementer's first draft named sizeLabel in a comment, which would have given the DoD grep a hit; it reworded to 'either module's size formatter' and re-ran the desktop gate."] |
+
+### troubleshooting
+
+| at | severity | issue | resolution |
+| --- | --- | --- | --- |
+| cross-target-build | warn | linkReleaseFrameworkIosArm64 plus two linkReleaseFrameworkIosSimulatorArm64 tasks failed with 'e: Compilation failed: Java heap space' / OutOfMemoryError under four concurrent release links. This is the same flake wave 2 hit with no diagnostic — now with a visible root cause. | Re-ran the identical command once with no code change: BUILD SUCCESSFUL. Not a code defect and NOT fixed — the Kotlin/Native release linker simply exhausts heap at this parallelism. Needs a gradle/native daemon heap bump or a serialized release link in an infra task; logged as a Stage 7 reflection candidate because it affects every future cross-target gate in this repo. |
+| badge numbering | info | The brief specified the badge as '#{i+1}' (list position); the implementer used StagedAnnotation.index instead. | ORCHESTRATOR VERIFIED AND ACCEPTED: deleteAnnotation renumbers survivors via annotation.copy(index = position + 1) (MirrorViewModel.kt:518-520), so index == position+1 is an invariant rather than a coincidence of the fixtures. The two can never disagree, so there is no inconsistency risk against the crop captions (which use list position), and index is the field that matches the badge painted on the frame. |
+| scope discipline | info | A PromptSection type, a builder, and a zero-annotation special case were all plausible additions. | None added. Zero annotations degrades to a well-formed 'Fix 0 UI issues.' prompt; the Payload tab's empty-state gate (T-7) is what actually prevents that being shown. Add a section type only when a caller needs the blocks separately. |
+
+### registryUpdates
+
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
+
+Both gates green on real runs verified by the orchestrator; no frozen-test disagreements; the one judgment call was independently confirmed as an invariant.
+
+### linkedAC
+
+- AC-13
+- AC-72
+- AC-73
+
+### backlogUpdate
+
+#### taskId
+
+T-3
+
+#### status
+
+done
+
+### coverage
+
+skipped (config.coverageTool = none)

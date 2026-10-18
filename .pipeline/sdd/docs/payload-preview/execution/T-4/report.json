@@ -1,0 +1,111 @@
+{
+  "spec": "payload-preview",
+  "stage": "execution",
+  "step": "T-4/report",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-business-implement",
+  "provenance": {
+    "selfHash": "4e53f143b7ba1f6e20f8b048093fb900adfc790ef1ba9be3b44b13c7955e8725",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T17:22:52Z",
+  "updatedAt": "2026-10-17T17:22:52Z",
+  "data": {
+    "taskId": "T-4",
+    "type": "business-logic",
+    "outcome": "success",
+    "touchedPaths": [
+      "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/CropWindow.kt",
+      "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/CropWindowTest.kt"
+    ],
+    "tdd": {
+      "cycle": "green",
+      "testsFrozen": true,
+      "testsWritten": [
+        "CropWindowTest: 8 tests — hand-computed centred-1080 case, all four edge clamps, pad scaling on two frame widths, oversized-rect downscale; assertOutlineInsideDst is called in EVERY test so TAC-4's invariant has real breadth"
+      ]
+    },
+    "testRun": {
+      "command": "./gradlew :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest --rerun  then  :presentation-feature-mirror:build :presentation-core-ui:build",
+      "passed": true,
+      "output": "Verified independently by the orchestrator with --rerun: :presentation-feature-mirror:desktopTest 244 tests, 0 failures, 0 errors, 0 skipped (+26 this wave); :presentation-core-ui:desktopTest 29 tests, 0 failures. Cross-target :build green for BOTH modules (includes compileTestKotlinIosArm64 and runs iosSimulatorArm64Test). CropWindowTest 8/8 green."
+    },
+    "implementation": {
+      "summary": "New internal CropWindow(srcOffset, srcSize, dstSize, scale, outlineRect) + cropWindow(rect, frameSize, boxW=84f, boxH=72f, designPad=14f, designWidth=296f). pad = designPad * frameSize.width / designWidth — 51.0811 on a 1080-wide frame, independently re-verified by the orchestrator, never a literal 14 device px. Window clamped on all four sides; scale = min(boxW/cropW, boxH/cropH); outlineRect in container coordinates. Float throughout (Offset/Size/Rect), no Int rounding, so pad has no truncate-vs-round decision. The design's 'fixed' flag is not modelled. All arithmetic lives here so T-8's composable does none."
+    },
+    "validations": [
+      {
+        "stage": "desktopTest",
+        "passed": true,
+        "iterations": 1,
+        "issues": []
+      },
+      {
+        "stage": "cross-target-build",
+        "passed": true,
+        "iterations": 2,
+        "issues": [
+          "same iOS release-link flake, green on re-run"
+        ]
+      },
+      {
+        "stage": "frozen-test-integrity",
+        "passed": true,
+        "iterations": 1,
+        "issues": []
+      }
+    ],
+    "troubleshooting": [
+      {
+        "at": "frozen-test integrity",
+        "severity": "info",
+        "issue": "Implementer could have weakened a frozen test to go green.",
+        "resolution": "Orchestrator verified: no test file modified (git status shows only the two new untracked test files), 18+8 @Test, zero backticks, zero @Ignore."
+      },
+      {
+        "at": "wave-2 cross-target build",
+        "severity": "warn",
+        "issue": "iosSimulatorArm64 linkReleaseFramework failed once with no diagnostic line under parallel release links.",
+        "resolution": "Passed unchanged on re-run; orchestrator could not reproduce. Treated as a Kotlin/Native linker flake, not a code defect. Logged as a Stage 7 reflection candidate."
+      },
+      {
+        "at": "scale upper bound",
+        "severity": "info",
+        "issue": "TAC-4's prose 'scales down only, never up' reads like scale should be coerced to <= 1, but the frozen right-edge-clamp test pins scale = 1.0588 for a small rect.",
+        "resolution": "ADJUDICATED BY THE ORCHESTRATOR: the clause is conditional on a rect LARGER than the box. A small crop window legitimately upscales to fill the 84x72 thumbnail box, and min(boxW/cw, boxH/ch) already guarantees downscaling for any oversized rect. Adding coerceAtMost(1f) would match the looser prose and BREAK a frozen test. No change needed; Stage 5 need not re-open this."
+      },
+      {
+        "at": "outlineRect invariant",
+        "severity": "info",
+        "issue": "assertOutlineInsideDst runs in all 8 tests, so containment had to hold by construction rather than per case.",
+        "resolution": "Proved algebraically for both cw branches (pad branch: left offset <= pad so left+w <= w+2pad; frame branch: rect.right <= frameW). No runtime clamping added because none is needed."
+      }
+    ],
+    "registryUpdates": [],
+    "needsHumanReview": {
+      "required": false,
+      "reason": "Both gates green; the one prose/test disagreement was adjudicated in favour of the frozen tests."
+    },
+    "linkedAC": [
+      "AC-76",
+      "AC-14"
+    ],
+    "backlogUpdate": {
+      "taskId": "T-4",
+      "status": "done"
+    },
+    "coverage": "skipped (config.coverageTool = none)"
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator-verified",
+    "approved": true,
+    "at": "2026-10-17T17:22:52Z"
+  }
+}

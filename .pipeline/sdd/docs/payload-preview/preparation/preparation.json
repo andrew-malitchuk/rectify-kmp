@@ -1,0 +1,414 @@
+{
+  "spec": "payload-preview",
+  "stage": "preparation",
+  "step": "preparation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-preparation-compile",
+  "provenance": {
+    "selfHash": "2267cda5392a2e91907782c27c41817c193e0366ba5635c65ad9034941bce918",
+    "inputs": [
+      {
+        "artifact": "preparation/input.json",
+        "hash": "69585a72b0f9249a23960d3f78e230b9e4985b875498f4fdab271c973280db91"
+      },
+      {
+        "artifact": "preparation/clarify.json",
+        "hash": "223e969e953c5cf8d8b3a41bdf9ca66998ebbfd300e45d02e92f3c59e26920b6"
+      },
+      {
+        "artifact": "preparation/brainstorm.json",
+        "hash": "260ef973d05a161d7f618809136c1cef61d9dee288748b956ddd92bff2680c1a"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T10:27:22Z",
+  "updatedAt": "2026-10-17T10:27:22Z",
+  "data": {
+    "summary": "Payload Preview (PRD F-6) is the Payload tab's three-section readout — Prompt, Crops, Hierarchy — plus a footer summary, letting the reporter see exactly what the agent will receive before Resolve & Send. It is pure assembly over data two already-shipped specs produce: F-4 (drag-annotate-frozen-frame)'s StagedAnnotation list and FrozenFrame, and F-5 (measure-mode)'s cached HierarchySnapshotModel/HierarchyStatus and finding-carrying annotation comments. Seven decisions are FINAL and encoded here: frameId is a new per-session sequential freeze counter stamped on FrozenFrame; Edit toggles the prompt into the existing MultilineInput atom with no auto-clear; the token estimate ships as the 360+count*140 heuristic as the final estimate, no tokenizer dependency; the footer is Payload-tab-only (MirrorNotesTab unchanged); hierarchy reaches the tab by widening MirrorHost's content lambda to (state, frame, hierarchy, onIntent) — not by reducing node rows into MirrorUiState, and not by re-resolving the ViewModel; the freeze counter increments only in stageAnnotation's intent body, never inside reduce (a real concurrency trap, called out explicitly); and crop pad=14 is design space, scaled by frameWidth/296. Android only, matching measure-mode's boundary; no new Gradle module, dependency, or data source — every byte this feature shows already exists in MirrorUiState, MirrorViewModel.frozenFrame and MirrorViewModel.frozenHierarchy. All three Stage 1 artifacts (input, clarify, brainstorm) are human-approved; this deliverable consolidates them, resolves two explicit contradictions (see resolvedContradictions), confirms every AC has an executable verificationMethod, and authorizes Stage 2 planning.",
+    "problemStatement": "The reporter currently has no way to see the actual bundle (prompt text, cropped evidence images, hierarchy tree, size) before it is sent to the agent — trust in the one-shot handoff requires inspecting and lightly tuning what gets sent, not sending blind.",
+    "confirmedRequirements": {
+      "functional": [
+        {
+          "id": "FR-12",
+          "text": "In the Payload tab's Prompt section, show the auto-generated text prompt, its token-count estimate, and an Edit affordance."
+        },
+        {
+          "id": "FR-13",
+          "text": "In the Payload tab's Crops section, show a 3-column grid of per-annotation cropped images with the red outline baked in, each captioned 'from frame <id>'."
+        },
+        {
+          "id": "FR-14",
+          "text": "In the Payload tab's Hierarchy section, show a monospace, indented view-hierarchy tree with matched/flagged nodes visually marked."
+        },
+        {
+          "id": "FR-15",
+          "text": "Show a Payload footer summarizing contents ('frame.png · N crops · hierarchy.xml') and total payload size."
+        },
+        {
+          "id": "FR-47",
+          "text": "Prompt assembly builds one line per staged annotation from its rect (metaLine-style) plus its comment verbatim — comment already carries any ⌥-prefixed measurement line from measure-mode, so no separate finding branch exists."
+        },
+        {
+          "id": "FR-48",
+          "text": "Token estimate = 360 + (staged annotation count × 140); recomputed whenever the annotation count changes, with no tokenizer dependency."
+        },
+        {
+          "id": "FR-49",
+          "text": "For each staged annotation, compute crop(rect, bw=84, bh=72, pad=14, fixed=false, withRect=true) and render the cropped frame slice with the baked red outline plus caption '#{index}·{w}×{h}' using the annotation rect's own raw pixel dimensions."
+        },
+        {
+          "id": "FR-50",
+          "text": "Hierarchy section renders HierarchySnapshotModel.nodes as indented rows (indent = node.depth) labeled 'uiautomator · {nodes.size} nodes'; a node returned by NodeSnap.snapTarget for any staged annotation gets a red '#{annotationIndex}' badge and ink color, every other node is ink3."
+        },
+        {
+          "id": "FR-51",
+          "text": "Footer renders 'frame.png · {count} crops · hierarchy.xml' (left) and '{(1.6 + count*0.12).toFixed(1)} MB' (right); Payload tab only."
+        },
+        {
+          "id": "FR-52",
+          "text": "The prompt's device/resolution line reads the real selected device (DeviceModel.displayName + DeviceModel.androidVersion) and the real frozen frame size (FrozenFrame.deviceSize) — never the design's hardcoded 'Pixel 8 Pro · Android 15 · 1344×2992' literal."
+        },
+        {
+          "id": "FR-53",
+          "text": "Edit affordance click toggles the prompt block between read-only mono text and an editable MultilineInput; the edited text, once non-empty and changed, overrides the auto-generated prompt for sending."
+        },
+        {
+          "id": "FR-54",
+          "text": "When zero annotations are staged, the Payload tab renders only the empty-state copy; Prompt, Crops, Hierarchy and the footer do not render at all (matches the design's own count === 0 gate)."
+        },
+        {
+          "id": "FR-55",
+          "text": "Crops section header shows 'from frame {frameId}' where frameId is a new per-session sequential freeze counter (increments once per freeze), not a device timestamp or literal placeholder."
+        }
+      ],
+      "nonFunctional": [
+        {
+          "id": "NFR-11",
+          "category": "performance",
+          "text": "Token-count estimation for the generated prompt computes without perceptible delay (target under ~200ms) before Resolve & Send is enabled."
+        },
+        {
+          "id": "NFR-12",
+          "category": "maintainability",
+          "text": "The payload format (prompt + crops + hierarchy XML) is versioned so the receiving MCP server/Claude Code agent can evolve its parsing without breaking older sends."
+        }
+      ]
+    },
+    "acceptanceCriteria": [
+      {
+        "id": "AC-13",
+        "text": "Given at least one staged annotation exists, when the user opens the Payload tab, then a generated text prompt with token-count estimate and an Edit affordance is shown.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-14",
+        "text": "Given staged annotations exist, when viewing Payload > Crops, then a 3-column grid shows each annotation's cropped image with its red outline baked in and caption 'from frame <id>'.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-15",
+        "text": "Given staged annotations exist, when viewing Payload > Hierarchy, then a monospace indented tree displays with matched/flagged nodes visually marked.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-16",
+        "text": "Given the Payload tab is open, then its footer summarizes 'frame.png · N crops · hierarchy.xml' plus a total size that matches the actual payload.",
+        "priority": "must",
+        "verificationMethod": "inspection",
+        "confirmed": false
+      },
+      {
+        "id": "AC-72",
+        "text": "Crop captions and any pixel dimensions in the Payload tab render with the unspaced × (U+00D7) multiplication sign, reusing AnnotationFormat.kt's metaLine pattern — never a letter x and never a new formatter.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-73",
+        "text": "The per-annotation prompt line is built from StagedAnnotation.rect and StagedAnnotation.comment verbatim (which already carries any ⌥-prefixed measurement line from measure-mode's noteLine/replaceNoteLine) with no separate 'measured:' branch, regardless of whether the user ever held Option on that annotation.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-74",
+        "text": "The Hierarchy section's source label reads 'uiautomator · {nodes.size} nodes' from the already-cached HierarchySnapshotModel (MirrorViewModel.frozenHierarchy); it never triggers a new dump.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-75",
+        "text": "A hierarchy node is marked (red '#{annotationIndex}' badge, ink color) if and only if it is the result of NodeSnap.snapTarget for that annotation's rect; every other node renders in ink3 with no badge.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-76",
+        "text": "The crop red outline is positioned using exactly crop(annotationRect, 84, 72, 14, fixed=false, withRect=true)'s returned rect — never a differently-padded or unscaled rect.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-77",
+        "text": "Given zero staged annotations, the Payload tab renders only the literal empty-state copy ('Nothing staged. Draw a box and the payload builds here, exactly as Claude will get it.') — none of Prompt, Crops, Hierarchy or the footer render.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-78",
+        "text": "Token estimate (360 + count*140) and payload size ((1.6 + count*0.12) MB, one decimal) recompute synchronously as annotations are added/removed/edited, with no measurable lag (satisfies NFR-11's ~200ms budget trivially since both are O(1) arithmetic).",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-79",
+        "text": "Clicking the Edit affordance toggles the prompt block into an editable text area (reusing the existing MultilineInput atom); the edited text, once changed, is what gets attached as the prompt instead of the auto-generated text.",
+        "priority": "should",
+        "verificationMethod": "test",
+        "confirmed": false
+      },
+      {
+        "id": "AC-80",
+        "text": "When HierarchyStatus is Unavailable or Absent for the frozen frame, the Hierarchy section shows zero nodes and an explicit 'no hierarchy' state rather than an empty tree that looks like a bug, and the rest of the Payload tab (Prompt, Crops, footer) still renders normally.",
+        "priority": "must",
+        "verificationMethod": "demo",
+        "confirmed": false
+      }
+    ],
+    "scope": {
+      "in": [
+        "Payload tab's four sections — Prompt (text + token estimate + Edit), Crops (3-col grid with baked red outline + captions), Hierarchy (indented tree with matched/flagged nodes), footer (file summary + size) — FR-12..15, AC-13..16.",
+        "Prompt assembly from StagedAnnotation.rect + comment verbatim (no separate 'measured:' branch), real device/resolution line, 'Attached:' trailer — FR-47, FR-52, AC-73.",
+        "360+count*140 token estimate and (1.6+count*0.12) MB size/footer labels shipped as the final heuristics, O(1) arithmetic, no tokenizer dependency — FR-48, FR-51, AC-78.",
+        "Crop transform cropWindow(rect, frameSize, 84, 72, pad) with pad=14 interpreted in design space (scaled by frameWidth/296) and rendered via Canvas.drawImage(srcOffset, srcSize, dstOffset, dstSize) — FR-49, AC-76.",
+        "Hierarchy section reading the already-cached HierarchySnapshotModel/HierarchyStatus via a widened MirrorHost content lambda, badging nodes via the existing NodeSnap.snapTarget, never triggering a new dump — FR-50, AC-74, AC-75, AS-22.",
+        "New per-session sequential frameId stamped on FrozenFrame at freeze time, incremented in stageAnnotation's intent body only (never inside reduce) — FR-55.",
+        "Edit affordance toggling the prompt into the existing MultilineInput atom; edited text persists on FrozenFrame.promptOverride until Edit is clicked again (no auto-clear) — AC-79, FR-53.",
+        "Empty-state gate (zero annotations renders only the empty-state copy, no sections at all) and an explicit no-hierarchy state for HierarchyStatus.Unavailable/Absent — FR-54, AC-77, AC-80.",
+        "One additive HierarchyRow.matched: Boolean parameter and one new mirror-payload-tab registry entry (components.json delta); crop/section composables stay private to MirrorPayloadTab.kt.",
+        "Android only, matching measure-mode's AS-19 boundary; no iOS hierarchy-dump equivalent exists in this codebase."
+      ],
+      "out": [
+        "iOS payload preview — no view-hierarchy-dump equivalent exists for iOS in this codebase (same boundary as measure-mode's AS-19); ios-platform-support is a separate backlog item.",
+        "Real tokenizer integration — ships the design's 360+count*140 heuristic; a genuine tokenizer dependency is a future upgrade only if the heuristic proves materially wrong.",
+        "A new Compose UI-test harness — visual/geometry acceptance criteria (AC-67-style, AC-80) stay manual (demo), consistent with testing.md and measure-mode's precedent.",
+        "Mirroring the payload footer into the Notes tab — confirmed by survey as Payload tab only; SidePanelFrame's content slot is per-tab with no shared footer, so this stays additive scope.",
+        "New HierarchyStatus states or hierarchy phase visuals beyond dumping/ready/sent/unavailable — reuses the enum measure-mode already shipped, no new states invented here."
+      ]
+    },
+    "constraints": [
+      {
+        "type": "tech",
+        "text": "Android only: the hierarchy dump source (HierarchySnapshotModel) has no iOS equivalent in this codebase; payload-preview inherits measure-mode's Android-only boundary."
+      },
+      {
+        "type": "tech",
+        "text": "No new dependency for tokenization or hierarchy parsing — reuse NodeSnap.snapTarget, AnnotationFormat.TIMES/metaLine, MeasureFormat's noteLine shape, and HierarchySnapshotModel/HierarchyStatus as already shipped."
+      },
+      {
+        "type": "tech",
+        "text": "All colors/typography must come from Theme.* tokens: RED→Theme.color.annotate, OK→Theme.color.sentFixed, WARN→Theme.color.warnStillOff (verified in ThemeColor.kt), plus ink/ink2/ink3/codeBg/line — no new tokens expected."
+      },
+      {
+        "type": "tech",
+        "text": "SidePanelFrame's content lambda is per-tab with no shared footer slot; a Notes-tab-mirrored footer (not chosen) would have had to be added directly to MirrorNotesTab, not the SidePanelFrame organism."
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "AS-22",
+        "text": "The view hierarchy is already dumped once at freeze time and cached (measure-mode's AS-18): HierarchySnapshotModel lives on MirrorViewModel.frozenHierarchy, its readiness mirrored via MirrorUiState.hierarchyStatus (HierarchyStatus.Absent/Dumping/Ready/Unavailable). Payload-preview reads this cache only and never triggers its own dump — this resolves input ambiguity #4 (hierarchy source & timing) from measure-mode's already-shipped decision rather than re-surveying it."
+      },
+      {
+        "id": "AS-23",
+        "text": "Payload-preview ships Android-only, matching measure-mode's AS-19; iOS has no hierarchy-dump equivalent wired and stays out of scope."
+      },
+      {
+        "id": "AS-24",
+        "text": "The design's WARN/OK/RED constants map to Theme.color.warnStillOff / Theme.color.sentFixed / Theme.color.annotate respectively (verified by reading ThemeColor.kt's doc comments) — no new color tokens are needed."
+      },
+      {
+        "id": "AS-25",
+        "text": "Crop caption and any other raw-pixel dimension text reuses the existing unspaced × (U+00D7) pattern from AnnotationFormat.kt's metaLine rather than inventing a new 'D()' formatter — this resolves input ambiguity #8."
+      },
+      {
+        "id": "AS-26",
+        "text": "Measure-mode already folds any measurement finding into StagedAnnotation.comment (⌥-prefixed line via noteLine/replaceNoteLine); the prompt's per-annotation text is therefore the comment verbatim with no parallel finding field to check — this resolves input ambiguity #5 without a special-case branch."
+      },
+      {
+        "id": "AS-27",
+        "text": "Frame id, the Edit affordance's depth, and the token formula's finality were the three decisions genuinely not resolvable from existing code or design text; all three are now FINAL per the brainstorm-stage survey (see resolvedContradictions) rather than deferred."
+      }
+    ],
+    "dependencies": [
+      {
+        "on": "drag-annotate-frozen-frame",
+        "note": "Supplies StagedAnnotation (rect, comment, index) and FrozenFrame (deviceSize) that the prompt, crops and footer are built from."
+      },
+      {
+        "on": "measure-mode",
+        "note": "Supplies the cached HierarchySnapshotModel/HierarchyStatus the Hierarchy section reads, the NodeSnap.snapTarget function reused for badge matching, and the ⌥-prefixed finding lines already folded into annotation comments."
+      }
+    ],
+    "chosenApproach": "Two layers in one feature module plus two one-line edits outside it — no new Gradle module, no new dependency, no new data source. (1) A pure, internal core/payload/ package (commonMain, Compose-free) holds every formula and transform this spec needs: prompt assembly, the 360+count*140 token estimate, the (1.6+count*0.12) MB size/footer labels, the crop-window transform, and the hierarchy-row projection — the only layer this repo's test harness (testing.md) can actually exercise, so every formula AC (AC-72/73/76/78, FR-47..51) becomes a commonTest assertion. (2) A new public composable source/mirror/MirrorPayloadTab.kt, sibling to the shipped MirrorNotesTab, renders the four sections (Prompt/Crops/Hierarchy/footer) from remember-keyed calls into that pure layer, with a true empty-state gate up front (FR-54/AC-77). Outside the module: MirrorHost's content lambda widens to (state, frame, hierarchy, onIntent) so the already-cached MirrorViewModel.frozenHierarchy reaches the panel without entering reduced state (AS-22), and RectifyWindow.kt's sidePanel lambda gains one ShellTab.Payload branch plus a tabCounts entry — SidePanelFrame/SidebarTabs/ShellTab/shortcutToTab are untouched. FrozenFrame gains three freeze-scoped fields (frameId: Int, deviceLabel: String, promptOverride: String?), all captured at freeze and cleared for free wherever frozen is already nulled; the freeze counter increments in stageAnnotation's intent body, never inside reduce (that lambda can re-run on a lost race per its own KDoc). HierarchyRow gains one additive matched: Boolean = false parameter for the ink/ink3 split (AC-75); its badge already defaults to the design's red.",
+    "rationale": "Every layer choice resolves to the option that keeps the feature inside this repo's only real verification surface (commonTest; no Compose UI-test harness exists, :compose-application has zero test wiring) without adding a dependency, a Gradle module, or an unnecessary signature change. Canvas.drawImage(srcOffset, srcSize, dstOffset, dstSize) was chosen over porting the design's negative-margin CSS because Compose crops and scales in one call and the outline becomes one rect used twice, which cannot drift (AC-76). Widening MirrorHost's content lambda was chosen over reducing hierarchy rows into MirrorUiState because MirrorUiState's own KDoc keeps ~400-node dumps out of the reducer on every unrelated reduction, and over re-resolving the ViewModel because that depends on two call sites implicitly sharing one ViewModelStoreOwner. frameId/deviceLabel/promptOverride live on FrozenFrame, not a fourth StateFlow or a reduced counter, because all three describe the pinned frame and should die with it automatically rather than needing a second thing cleared in sync — the failure mode of the alternative is a caption naming the previous frame. A LazyColumn with no arrangement spacing is mandatory for the hierarchy tree because a real dump is ~400 Canvas-bearing rows, unlike MirrorNotesTab's 'a handful of annotations' plain-Column precedent.",
+    "architectureOverview": "Two layers in one module, plus two one-line edits outside it. No new Gradle module, no new dependency, no new data source — every byte this feature shows already exists in MirrorUiState, MirrorViewModel.frozenFrame and MirrorViewModel.frozenHierarchy.\n\n1. PURE LAYER — presentation-feature-mirror/src/commonMain/.../core/payload/ (internal, per package-layout.md: core/ is internal-only). Nothing here imports Compose beyond IntSize/IntOffset, nothing imports Orbit, so every AC with a formula or a format in it becomes a commonTest assertion. This is the load-bearing decision of the spec: :compose-application has no test wiring (testing.md), so anything stranded in the window layer or inside a @Composable is unverifiable by construction.\n   - PromptAssembly.kt — buildPrompt(frozen: FrozenFrame, deviceLabel: String, nodeIdFor: (StagedAnnotation) -> String?): String. Ports the design's pl[] assembly exactly: headline with the count===1 plural branch, the device line from real data (FR-52), then per annotation '#{i} {nodeId} · {w}×{h}' + the comment verbatim in quotes (or 'no comment'), then the 'Attached: frame.png, N crops, hierarchy.xml' trailer. No 'measured:' branch — AS-26/AC-73: measure-mode already folded the ⌥ line into comment. Reuses core/annotation's TIMES constant (already internal for exactly this reason) (AC-72).\n   - PayloadEstimate.kt — tokenEstimate(count: Int): Int = 360 + count*140, payloadSizeLabel(count: Int): String and footerLabel(count: Int): String. One decimal is formatted by hand because String.format is not in the common stdlib — the core/stats formatFps precedent, promoted to a shared internal oneDecimal(...) helper rather than copied (FR-48, FR-51, AC-78).\n   - CropWindow.kt — cropWindow(rect: DeviceRect, frameSize: IntSize, boxW: Int = 84, boxH: Int = 72, pad: Int). The design's crop() with the hardcoded 296/640 generalised to the real frame; pad is applied in design space, scaled by frameWidth/296 (confirmed survey answer — see resolvedContradictions). Returns source rect (device px), container size, scale, and the outline rect in container coordinates — what AC-76 pins. The design's fixed flag is dropped: it is false at this call site.\n   - HierarchyOutline.kt — payloadHierarchyRows(snapshot, frozen, frameSize): List<PayloadNodeRow> where PayloadNodeRow(nodeId, depth, last, badge: String?, matched: Boolean). Runs the existing projectMeasureNodes + snapTarget per annotation (AC-75 requires the same function measure-mode uses, not a second containment rule), builds an index-to-node map, then maps snapshot.nodes once.\n   - PayloadLabels.kt — hierarchySourceLabel(status, nodeCount): the design's phase machine reduced to the four already-shipped HierarchyStatus values — Dumping → 'dumping…' (warn), Ready → 'uiautomator · {n} nodes' (AC-74), Absent/Unavailable → the explicit no-hierarchy state (AC-80). No new enum, no new status.\n\n2. RENDER LAYER — source/mirror/MirrorPayloadTab.kt (public, the MirrorNotesTab precedent exactly). Private section composables in the same file (PayloadPromptSection, PayloadCropsSection, CropThumb, PayloadHierarchySection, PayloadFooter) — fewest files, none reusable kit.\n   - Gate first: annotations.isEmpty() → the single empty-state Text and return, so Prompt/Crops/Hierarchy/footer are not composed at all (FR-54/AC-77).\n   - Everything derived is remember(...)-keyed on its real inputs: the prompt on (frozen.annotations, frozen.deviceLabel, hierarchy), the crop windows on (annotations, frozen.deviceSize), the rows on (hierarchy, annotations). AC-78's 'synchronously, no lag' is satisfied by O(1) formulas rather than by a budget anyone has to measure.\n   - Crops: three Rows of Modifier.weight(1f) cells (the design's repeat(3, minmax(0,1fr))), each a 72 dp-high Box on Theme.color.stage containing one Canvas that drawImages the source rect into the container rect, plus a 1 px Theme.color.annotate outline box at CropWindow.outlineRect. Caption '#{i} · {w}×{h}' from the annotation's own raw pixel dimensions (FR-49, AC-72).\n   - Hierarchy: a LazyColumn with no vertical arrangement spacing (HierarchyRow's KDoc makes this load-bearing — its tree guides only meet when rows are adjacent) over payloadHierarchyRows, inside the panel's bounded height.\n   - Prompt: read-only mono Text on Theme.color.codeBg with a Theme.color.line hairline and a max height, or — when the user has clicked Edit — the shipped MultilineInput atom seeded with the current prompt, dispatching MirrorIntent.EditPrompt(text) on change. The read/edit toggle is remember-local view state; the text is reduced, because it changes what gets sent.\n\n3. STATE — three small additions, no new state home. FrozenFrame gains frameId: Int, deviceLabel: String and promptOverride: String?; all three describe the pinned frame as it was at freeze, all three are value-equal, and all three are destroyed for free wherever frozen is already nulled. MirrorIntent gains EditPrompt(text: String) (one handler, one reduce). MirrorViewModel gains private var freezeCounter: Int incremented in stageAnnotation's intent body before reduce. MirrorUiState itself gains nothing — the Payload tab is a projection of state that already exists.\n\n4. OUTSIDE THE MODULE — MirrorHost's content lambda gains the hierarchy parameter (one definition, one call site), and RectifyWindow.kt's sidePanel lambda gains an else if (tab == ShellTab.Payload) branch plus ShellTab.Payload to mirror.stagedCount in tabCounts. SidePanelFrame, SidebarTabs, ShellTab and shortcutToTab are untouched.",
+    "techStack": [
+      {
+        "area": "Pure payload logic",
+        "choice": "Internal Kotlin functions in presentation-feature-mirror/core/payload/, commonMain",
+        "reason": "package-layout.md puts internals in core/; testing.md makes this the only layer the repo's harness reaches, and :compose-application has no test wiring at all. Fourth sibling of core/geometry, core/annotation, core/measure."
+      },
+      {
+        "area": "Rendering",
+        "choice": "Compose Multiplatform; the shipped HierarchyRow / MultilineInput / MeasureTag kit plus private section composables; Canvas.drawImage(srcOffset, srcSize, dstOffset, dstSize) for crops",
+        "reason": "Crop + scale in one native call instead of porting negative-margin CSS; everything else is already in the design system, so the only new component-level change is one additive HierarchyRow parameter."
+      },
+      {
+        "area": "List rendering",
+        "choice": "LazyColumn for the hierarchy tree (no arrangement spacing); plain weighted Rows for the 3-column crop grid",
+        "reason": "~400 Canvas-bearing rows justify laziness in a way MirrorNotesTab's handful of annotations never did; a fixed 3-column grid of up to a dozen cells does not justify a lazy grid."
+      },
+      {
+        "area": "State management",
+        "choice": "Orbit MVI for the edited prompt and the three new frame-scoped fields; remember for the read/edit toggle and every derived projection; the existing frozenHierarchy StateFlow for nodes",
+        "reason": "Honours the module's documented split (user-meaningful data reduced, transient view state local, bulk machine output outside the reducer) and adds no field to MirrorUiState at all."
+      },
+      {
+        "area": "Formatting / units",
+        "choice": "Device pixels throughout; × from the one shared TIMES constant; one decimal by hand via roundToInt",
+        "reason": "AC-72/AS-25 forbid a new formatter, and String.format is JVM-only — the formatFps precedent already solved this in the same module."
+      },
+      {
+        "area": "Localisation",
+        "choice": "presentation-core-localisation for UI chrome (empty state, section labels, Edit, no-hierarchy copy); unlocalised machine text for the prompt body, 'uiautomator · N nodes', the footer and the captions",
+        "reason": "localisation.md reserves machine output from localisation, and measure-mode already shipped its ⌥ note line unlocalised."
+      },
+      {
+        "area": "Testing",
+        "choice": "kotlin.test in commonTest (one file per pure function + reducer tests for the counter and EditPrompt), run on desktop, gated by compileTestKotlinIosArm64",
+        "reason": "testing.md: the harness is wired once by the convention plugins, commonTest compiles for every target, and backtick names must avoid commas and colons. No new harness, no UI-test framework."
+      },
+      {
+        "area": "DI",
+        "choice": "None — no new binding, no new Koin module",
+        "reason": "The feature introduces no use case, no repository and no ViewModel; it reads state the existing MirrorViewModel already holds."
+      }
+    ],
+    "resolvedContradictions": [
+      {
+        "issue": "AC-76's text reads 'exactly crop(annotationRect, 84, 72, 14, fixed=false, withRect=true)'s returned rect' — read literally, pad=14 is 14 device pixels. But the design's own crop() is defined against a 296px-wide preview frame, where 14 is ~4.7% of frame width; taken as literal device pixels on a ~1080px-wide real frame it is only ~1.3%, producing visibly tighter crops than the design.",
+        "resolution": "Design space wins: pad is scaled by frameWidth/296 so the visual context around each box matches the design screenshot on any device. This is the brainstorm-stage survey's confirmed, human-approved answer (source: user-edited) and is now FINAL.",
+        "winner": "brainstorm.json survey answer (design-space scaling)",
+        "reason": "Every other number in the design's crop() (84, 72, 296, 640) is stated in that same preview space; reading only pad literally as device pixels would make this one dimension inconsistent with the rest of the formula and with the screenshot this feature is judged against. AC-76's wording must therefore be read as 'crop(...)'s returned rect, with pad expressed in design space and scaled to the real frame' — Stage 2/4 must implement the scaling, not the literal 14 device px."
+      },
+      {
+        "issue": "clarify.json's openQuestions explicitly deferred FR-55's host decision: 'Where the new per-session freeze counter (FR-55) is hosted (FrozenFrame vs. MirrorViewModel) is left to Stage 2 planning.'",
+        "resolution": "Already decided, not deferred: frameId lives on FrozenFrame (frameId: Int), stamped from a private MirrorViewModel counter at the freeze, alongside deviceLabel and promptOverride — all three captured at freeze and cleared for free wherever frozen is already nulled. The counter increments in stageAnnotation's intent body, never inside reduce.",
+        "winner": "brainstorm.json survey answer (FrozenFrame.frameId)",
+        "reason": "The brainstorm stage's own survey resolved this with a human-confirmed answer after clarify.json was already gated; the later, more specific, human-approved decision supersedes the earlier deferral. This is one of the seven FINAL decisions carried into this preparation — Stage 2 planning consumes it as settled, not as an open decision to re-litigate."
+      }
+    ],
+    "openRisks": [
+      {
+        "text": "The crop transform is the one piece of real geometry in this feature and it has no automated check of its placement — a correct cropWindow wired into a wrong drawImage src/dst pairing renders a plausible-looking slice of the WRONG part of the frame, and the red outline would move with it, so the error is self-consistent and invisible to review.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Keep every integer in the pure CropWindow type and unit-test it against hand-computed cases including all four edge clamps; have the composable pass those fields straight through with no arithmetic of its own; ship a light/dark @Preview with two annotations at known positions (one edge-touching) so a reviewer can check one crop by eye against the frame."
+      },
+      {
+        "text": "A real dump is ~400 nodes and the Hierarchy section renders a molecule-with-Canvas per node inside a panel the user can drag-resize; a non-lazy list or a badly keyed projection turns every resize frame into 400 recompositions plus 400 snapTarget calls.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "LazyColumn with no arrangement spacing, and the projection computed once in a remember(hierarchy, annotations) — never inside the row loop. The trap is doing it per row."
+      },
+      {
+        "text": "FrozenFrame is a contract F-4 confirmed and three features now read; adding three fields to it (frameId, deviceLabel, promptOverride) invites the next spec to add a fourth, and it becomes the dumping ground the KDoc warned pixels away from.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "All three share one stated rule — 'captured at freeze, dies with the frame' — written into the KDoc as the admission test for any future field. Anything that does not meet it goes elsewhere."
+      },
+      {
+        "text": "The edited prompt is the feature's only write path, and it is the one place a user can lose work: a tab switch, a Resume Live, or an auto-select of the Notes tab on the next drag can all take the user away from the editor, and only the frame-scoped lifetime stops the edit vanishing.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "Reduce the text on FrozenFrame.promptOverride (not remember), dispatch per change like CommentAnnotation already does, and test that it survives an annotation add/delete and is dropped exactly once — on Resume Live."
+      },
+      {
+        "text": "Displayed-vs-real drift is the spec's own success metric and nothing enforces it: the footer says 'frame.png · N crops · hierarchy.xml' and a size in MB for a bundle that no code produces yet, so the figures are honest about the formula and unverifiable about reality.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "Put the formulas in one internal place the future send path must call, label the token count '≈', and record in the plan that the send spec owns replacing both heuristics with measured values — not re-deriving them next to the real bytes."
+      },
+      {
+        "text": "Three near-identical mono type sizes (10.5 / 9.5 / 11.5 px) and five colour tokens are specified per element; getting one wrong is invisible in review and makes the panel subtly unlike the design, which is the one thing a design-led feature is judged on.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "Map every element to an existing Theme.typography.mono* token up front (AS-24 already claims no new tokens are needed) and verify the mapping once in the Styleguide-adjacent previews rather than per section."
+      },
+      {
+        "text": "The Payload tab is wired in compose-application, which deliberately has no test wiring; anything that creeps from MirrorPayloadTab into RectifyWindow.kt (a label, a count, a conditional) becomes permanently untestable.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "Hold the window layer to exactly one if branch plus one tabCounts entry, with the tab composable owning everything else — the shape MirrorNotesTab already established."
+      }
+    ],
+    "openQuestions": [
+      "Real tokenizer integration remains a future upgrade candidate over the 360+count*140 heuristic if it proves materially misleading at scale — not pursued in this spec (confirmed final by brainstorm survey Q3).",
+      "frameId has no display format decision: FR-55 only specifies a sequential counter, so a bare counter ('from frame 1') is proposed; zero-padding/offset to visually resemble the design's five-digit example is undecided and left as a cosmetic default for Stage 2/4.",
+      "NFR-12 (versioned payload format) has no consumer in this spec since nothing sends the payload yet; recommended resolution is to declare PayloadFormatVersion = 1 in core/payload now (rendered nowhere) for the future send feature to read — Stage 2 should confirm this placement rather than deferring NFR-12 with no artifact at all.",
+      "deviceLabel's Android-version source is undecided between stripping the transport segment from the device picker row's existing `detail` field (recommended) vs. adding a new reduced `selectedDeviceAndroidVersion` field — Stage 2 to confirm during the MirrorContract extension.",
+      "Two annotations snapping to the same hierarchy node: lowest-index-wins is recommended (no merged badge, no duplicated row) but is not yet a ratified requirement — Stage 2 to confirm before HierarchyOutline.kt is implemented.",
+      "The design's Frame/Hierarchy/Agent payload summary rows (beyond the footer line) are not covered by any AC, and the Agent row has no data source anywhere in this repo (no agent path, no project root, no MCP config) — deliberately left unbuilt rather than stubbed with the design's literal; flagged so Stage 2 does not silently add them."
+    ],
+    "readyForPlan": true,
+    "proposedSurvey": [
+      {
+        "question": "Sign off this Preparation deliverable (consolidated requirements, acceptance criteria, architecture, risks, and the two explicitly resolved contradictions) for payload-preview and open Stage 2 planning?",
+        "options": [
+          "Approve (Recommended)",
+          "Send back with remarks",
+          "Reject and re-run"
+        ],
+        "recommended": "Approve (Recommended)",
+        "rationale": "All three upstream artifacts (input, clarify, brainstorm) are already human-approved; this step only consolidates them, verifies every AC-13..16/AC-72..80 maps to an executable verificationMethod Stage 5 can run, and explicitly resolves two contradictions (AC-76's literal pad reading vs. the confirmed design-space scaling; FR-55's 'left to Stage 2' deferral vs. the confirmed FrozenFrame.frameId decision) rather than leaving them silent. No orphaned AC or FR was found during consolidation; remaining open items are non-blocking and carried forward for Stage 2."
+      }
+    ],
+    "artifacts": {
+      "input": "input.json",
+      "clarify": "clarify.json",
+      "brainstorm": "brainstorm.json"
+    },
+    "survey": [
+      {
+        "question": "Sign off this Preparation deliverable (consolidated requirements, acceptance criteria, architecture, risks, and the two explicitly resolved contradictions) for payload-preview and open Stage 2 planning?",
+        "options": [
+          "Approve (Recommended)",
+          "Send back with remarks",
+          "Reject and re-run"
+        ],
+        "answer": "Approve (Recommended)",
+        "source": "user-edited"
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "user",
+    "approved": true,
+    "at": "2026-10-17T10:27:22Z"
+  }
+}
