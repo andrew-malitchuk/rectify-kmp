@@ -1,6 +1,6 @@
 {
   "spec": "resolve-and-send-mcp",
-  "updatedAt": "2026-10-18T11:04:00Z",
+  "updatedAt": "2026-10-18T11:50:14Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -34,11 +34,27 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-plan-draft": {
+      "tokens": 258439,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-refine": {
+      "tokens": 242133,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 367157,
+    "tokens": 867729,
     "durationMs": 0,
-    "invocations": 4
+    "invocations": 6
   }
 }

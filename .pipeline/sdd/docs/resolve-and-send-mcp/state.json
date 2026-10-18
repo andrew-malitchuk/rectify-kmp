@@ -1,8 +1,11 @@
 {
   "spec": "resolve-and-send-mcp",
-  "currentStage": "preparation",
+  "currentStage": "plan",
   "stages": {
     "preparation": {
+      "status": "done"
+    },
+    "plan": {
       "status": "done"
     }
   },
@@ -17,6 +20,9 @@
       "status": "done"
     },
     "preparation": {
+      "status": "done"
+    },
+    "plan": {
       "status": "done"
     }
   },
