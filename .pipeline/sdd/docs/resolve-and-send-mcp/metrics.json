@@ -1,6 +1,6 @@
 {
   "spec": "resolve-and-send-mcp",
-  "updatedAt": "2026-10-18T13:32:37Z",
+  "updatedAt": "2026-10-18T16:03:23Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -74,11 +74,27 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-business-test": {
+      "tokens": 0,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 0,
+      "failures": 0
+    },
+    "sdd-build-business-implement": {
+      "tokens": 146424,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 4,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1216430,
+    "tokens": 1362854,
     "durationMs": 0,
-    "invocations": 9
+    "invocations": 13
   }
 }
