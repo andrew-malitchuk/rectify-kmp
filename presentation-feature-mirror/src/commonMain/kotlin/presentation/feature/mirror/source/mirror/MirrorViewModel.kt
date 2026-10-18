@@ -486,6 +486,15 @@ public class MirrorViewModel(
      * Every abort carries a named [VerifyError] with an EMPTY row list and writes no status —
      * a run that could not run must never be readable as a set of verdicts.
      *
+     * **A device change does not CANCEL this run, and must not.** The `flatMapLatest`
+     * teardown on [sessionDeviceId] tears down the capture loop and leaves [verifyJob] alone,
+     * because a cancelled run reduces nothing at all: the stage would sit on
+     * [VerifyPhase.Recapturing] with no error and no way back. The run instead re-reads
+     * [sessionDeviceId] after every suspension point — decode, dump, diff — and ends itself
+     * with [VerifyError.Disconnected], which is a state the user can retry from. A device
+     * SWAP reads the same way as a device loss: the comparison is against the id the run
+     * started on, not against null.
+     *
      * **Both hierarchies are projected**, not just the AFTER one: `HistoryRepository.get`
      * parses the stored dump in the data layer (where the parser legally lives) and hands it
      * back as [SentBatchModel.hierarchy], so step 6 measures the annotation TWICE — once per
@@ -600,11 +609,19 @@ public class MirrorViewModel(
      * [VerifyUiState] enforces the empty-rows half at construction; this is the only place that
      * sets an error, so "every abort is rowless and writes no status" is one call site, not a
      * rule spread over six returns.
+     *
+     * The pixel pair goes with the verdicts (T-15). The last two aborts are reachable AFTER the
+     * run published [verifyFrames] and retained [verifyAfterHeld] — a disconnect noticed at the
+     * post-diff check is the common one — and leaving those behind would hand the stage two
+     * full-size bitmaps for a run that has no rows, and leave a follow-up croppable from a
+     * frame nobody is looking at. The four verify-scoped fields must agree in BOTH directions,
+     * not only on the way out through [exitVerify].
      */
     private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.abortVerify(
         view: VerifyUiState,
         error: VerifyError,
     ) {
+        releaseVerify()
         reduce { state.copy(verify = view.copy(rows = emptyList(), error = error)) }
     }
 

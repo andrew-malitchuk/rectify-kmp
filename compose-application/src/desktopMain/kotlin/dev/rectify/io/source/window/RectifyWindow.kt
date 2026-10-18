@@ -206,7 +206,10 @@ public fun ApplicationScope.RectifyWindow() {
                                 else -> Unit
                             }
                         },
-                    ) { mirror, frame, hierarchy, onMirrorIntent ->
+                        // The fifth slot is a verification run's BEFORE/AFTER pair. Only the
+                        // verify stage draws it, and that surface lands with its own task —
+                        // ignored by name until then rather than forwarded nowhere.
+                    ) { mirror, frame, hierarchy, _, onMirrorIntent ->
                         // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
                         // only the first — the key stays true from the second one on, so a user who
                         // has walked over to Payload is not yanked back on every drag.

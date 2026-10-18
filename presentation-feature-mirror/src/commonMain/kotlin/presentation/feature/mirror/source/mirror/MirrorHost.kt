@@ -32,8 +32,14 @@ import org.orbitmvi.orbit.compose.collectSideEffect
  * implicitly sharing a `ViewModelStoreOwner` — true today, silently wrong the day the shell
  * nests one. There is exactly **one** `MirrorHost` call site; keep it that way.
  *
+ * The verification pair travels the same way and for the same reason as the frame: it is two
+ * full-size bitmaps, which is exactly what `MirrorUiState` must never carry (Deviation 2). It
+ * is a FIFTH argument rather than a holder type bundling it with [MirrorViewModel.frame],
+ * because the three pixel flows have three different lifetimes and one call site to update.
+ *
  * @param content Renders the surface. Receives the state, the latest frame, the hierarchy
- *   captured for the pinned frame and the intent sink.
+ *   captured for the pinned frame, the BEFORE/AFTER pair of a verification run (null unless
+ *   one has reached its diff) and the intent sink.
  * @param viewModel The state machine; resolved from Koin by default.
  * @param onSideEffect One-shot events. F-2 renders no error UI (that is F-3's card), so the
  *   default drops them rather than pretending to handle them.
@@ -49,14 +55,21 @@ public fun MirrorHost(
     // something — and a file dialog has to be confined to the EDT, which needs a
     // `withContext`. Orbit's `collectSideEffect` body is already a coroutine, so this is free.
     onSideEffect: suspend (MirrorSideEffect, (MirrorIntent) -> Unit) -> Unit = { _, _ -> },
-    content: @Composable (MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit) -> Unit,
+    content: @Composable (
+        MirrorUiState,
+        ImageBitmap?,
+        HierarchySnapshotModel,
+        VerifyFrames?,
+        (MirrorIntent) -> Unit,
+    ) -> Unit,
 ) {
     val state by viewModel.collectAsState()
     val frame by viewModel.frame.collectAsState()
     val frozenFrame by viewModel.frozenFrame.collectAsState()
     val frozenHierarchy by viewModel.frozenHierarchy.collectAsState()
+    val verifyFrames by viewModel.verifyFrames.collectAsState()
 
     viewModel.collectSideEffect { effect -> onSideEffect(effect, viewModel::handleIntent) }
 
-    content(state, frozenFrame ?: frame, frozenHierarchy, viewModel::handleIntent)
+    content(state, frozenFrame ?: frame, frozenHierarchy, verifyFrames, viewModel::handleIntent)
 }

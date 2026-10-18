@@ -10,6 +10,7 @@ import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.SentAnnotationModel
 import domain.core.source.model.history.SentBatchModel
+import domain.core.source.monad.Failure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -40,6 +41,8 @@ import kotlin.test.assertTrue
 
 private const val BATCH_ID = "VERIFY-BATCH"
 private const val PHONE_ID = "VERIFY-PHONE"
+private const val OTHER_PHONE_ID = "VERIFY-OTHER-PHONE"
+private const val OTHER_BATCH_ID = "VERIFY-OTHER-BATCH"
 private const val FRAME_WIDTH = 1080
 private const val FRAME_HEIGHT = 2400
 private const val DENSITY_DPI = 420
@@ -81,9 +84,16 @@ private fun phone(): DeviceModel = DeviceModel(
     transportLabel = "USB",
 )
 
-private fun scriptedPhoneDiscovery(): FakeObserveDiscovery = FakeObserveDiscovery(
-    listOf(DiscoveryModel.Found(physical = listOf(phone()), emulators = emptyList())),
+private fun otherPhone(): DeviceModel = phone().copy(
+    id = OTHER_PHONE_ID,
+    displayName = "Pixel 9",
+    serial = OTHER_PHONE_ID,
 )
+
+private fun scriptedPhoneDiscovery(physical: List<DeviceModel> = listOf(phone())): FakeObserveDiscovery =
+    FakeObserveDiscovery(
+        listOf(DiscoveryModel.Found(physical = physical, emulators = emptyList())),
+    )
 
 private fun liveFrame(): MirrorFrameModel = MirrorFrameModel(
     bytes = byteArrayOf(AFTER_TAG),
@@ -227,8 +237,11 @@ class MirrorViewModelVerifyTest {
     private suspend fun TestScope.startSession(
         viewModel: MirrorViewModel,
         mirroring: FakeStartMirroring,
+        deviceId: String = PHONE_ID,
     ) {
         subscribe(viewModel)
+        advanceUntilIdle()
+        viewModel.handleIntent(MirrorIntent.HighlightRow(deviceId))
         advanceUntilIdle()
         viewModel.handleIntent(MirrorIntent.Commit)
         advanceUntilIdle()
@@ -722,5 +735,174 @@ class MirrorViewModelVerifyTest {
         assertNull(viewModel.verifyFrames.value)
         assertNull(viewModel.verifyAfterHeld)
         assertTrue(status.writes.isEmpty())
+    }
+
+    // -- T-15: the gaps around the disconnect path ------------------------------------------------
+
+    /**
+     * Cancellation that is deterministic without a second gate inside the diff.
+     *
+     * [MirrorIntent.VerifyBatch] parks on the dump; resolving it and dispatching the next intent
+     * WITHOUT settling in between queues that intent on the test dispatcher behind the run's own
+     * resumption and ahead of the diff's continuation, which can only be queued once the run has
+     * reached its `Dispatchers.Default` hop. The run is therefore always interrupted mid-diff —
+     * no sleep, no racing a real dispatcher against a virtual clock.
+     */
+    private suspend fun TestScope.interruptMidDiff(
+        viewModel: MirrorViewModel,
+        dump: FakeDumpHierarchy,
+        intent: MirrorIntent,
+    ) {
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        dump.resolve(Result.success(snapshot()))
+        viewModel.handleIntent(intent)
+        settle()
+    }
+
+    @Test
+    fun aDumpThatFailsReadsAsDisconnected() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            // DumpHierarchyUseCase degrades an unreadable dump to Empty and fails only on a
+            // dead device, a missing adb or a timeout -- a failure here IS a disconnect.
+            dumpHierarchy = FakeDumpHierarchy(Result.failure(Failure.Logic.NotFound)),
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(VerifyError.Disconnected, verify.error)
+        assertTrue(verify.rows.isEmpty())
+        assertTrue(status.writes.isEmpty())
+        assertNull(viewModel.verifyFrames.value, "an abort leaves no pixels behind")
+    }
+
+    @Test
+    fun aSwapToAnotherDeviceMidRunIsDisconnectedAndWritesNoStatus() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(listOf(phone(), otherPhone())),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        // Not a disconnect: the session stays live, on a DIFFERENT phone. The run compares
+        // against the id it started on, so this has to read the same as the device going away
+        // -- every stored rect belongs to the other screen now.
+        viewModel.handleIntent(MirrorIntent.HighlightRow(OTHER_PHONE_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.Commit)
+        settle()
+        dump.resolve(Result.success(snapshot()))
+        settle()
+
+        assertEquals(OTHER_PHONE_ID, viewModel.currentState.selectedDeviceId, "setup check")
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(VerifyError.Disconnected, verify.error)
+        assertTrue(verify.rows.isEmpty(), "the other phone cannot answer for this batch")
+        assertTrue(status.writes.isEmpty(), "the batch keeps the status it had")
+    }
+
+    @Test
+    fun anAbortAfterTheDiffStartedLeavesNoPixelsBehind() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        interruptMidDiff(viewModel, dump, MirrorIntent.StopMirroring)
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(VerifyError.Disconnected, verify.error)
+        // Read off the terminal state, NOT off a collected trace: the phase the abort froze is
+        // what proves the run had already published its pair when it was cut off, which is the
+        // only interleaving where the four fields can disagree.
+        assertEquals(VerifyPhase.Diffing, verify.phase, "setup check -- the pair was published")
+        assertTrue(verify.rows.isEmpty())
+        assertNull(viewModel.verifyFrames.value, "two bitmaps for a rowless run is a leak")
+        assertNull(viewModel.verifyAfterHeld, "nothing may be cropped from an aborted run")
+        assertNull(viewModel.pendingFollowUpBatchId)
+        assertTrue(status.writes.isEmpty())
+    }
+
+    @Test
+    fun exitVerifyMidDiffLandsNoVerdict() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        interruptMidDiff(viewModel, dump, MirrorIntent.ExitVerify)
+
+        assertNull(viewModel.currentState.verify, "the diff in flight must not reduce over this")
+        assertNull(viewModel.verifyFrames.value)
+        assertNull(viewModel.verifyAfterHeld)
+        assertTrue(status.writes.isEmpty())
+        assertEquals(MirrorStage.Mirror, viewModel.currentState.stage)
+    }
+
+    @Test
+    fun verifyingAnotherBatchMidRunKeepsOnlyTheSecondRun() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(OTHER_BATCH_ID))
+        settle()
+        // Releases the SECOND run's dump; the first is parked on a gate nobody completes.
+        dump.resolve(Result.success(snapshot()))
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(OTHER_BATCH_ID, verify.batchId, "the stale run must not re-stamp the stage")
+        assertEquals(
+            listOf(OTHER_BATCH_ID to BatchStatusModel.Verified),
+            status.writes,
+            "exactly one batch may be moved on, and it is the one the user asked about",
+        )
     }
 }
