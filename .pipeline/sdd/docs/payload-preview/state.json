@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -12,6 +12,9 @@
       "status": "done"
     },
     "execution": {
+      "status": "done"
+    },
+    "validation": {
       "status": "done"
     }
   },
@@ -88,6 +91,10 @@
       "notes": [
         "TAC-5 covered structurally: payloadHierarchyRows(snapshot, frozenFrameSize, annotations) has no dump-capable collaborator to inject",
         "TAC-3 wording is wrong: HierarchyNodeModel has depth but no last; last is derived, not passed through"
+      ],
+      "crCount": 1,
+      "crResolved": [
+        "CR-1"
       ]
     },
     "T-6": {
@@ -120,7 +127,11 @@
       "type": "ui",
       "subSteps": {
         "implement": "done"
-      }
+      },
+      "crCount": 1,
+      "crResolved": [
+        "CR-2"
+      ]
     },
     "T-10": {
       "status": "done",
@@ -203,5 +214,6 @@
     "wave-9": {
       "status": "done"
     }
-  }
+  },
+  "verdict": "complete-with-waivers"
 }

@@ -741,8 +741,8 @@ public fun StyleguideScreen(onBack: () -> Unit) {
                 // floating dashes — a tree has to be stacked with no gaps.
                 Column(verticalArrangement = Arrangement.Top) {
                     HierarchyRow(nodeId = "CartItemView[1]", depth = 0)
-                    HierarchyRow(nodeId = "TextView#item_price", depth = 1, tag = "#1")
-                    HierarchyRow(nodeId = "QtyStepper#qty", depth = 1, last = true, tag = "#2")
+                    HierarchyRow(nodeId = "TextView#item_price", depth = 1, tag = "#1", matched = true)
+                    HierarchyRow(nodeId = "QtyStepper#qty", depth = 1, last = true, tag = "#2", matched = true)
                 }
             }
         }

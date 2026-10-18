@@ -1,0 +1,793 @@
+{
+  "spec": "payload-preview",
+  "stage": "validation",
+  "step": "audit",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-validation-audit",
+  "provenance": {
+    "selfHash": "1211aed62b561b3e47ca27f5e6d1b4b82ae7467b0ab83b0301994a324cab78ad",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "b9f978314208a4d444c4144e3df6d965d7a701e5d9e5eb9a049a669afe3d43a8"
+      },
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "a0d78474590386b4950f70a3807ae7a5e9006ae680e326103a8e1d652c3aef23"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T20:45:09Z",
+  "updatedAt": "2026-10-17T20:46:01Z",
+  "data": {
+    "iteration": 1,
+    "auditScope": {
+      "spec": "payload-preview",
+      "branch": "sdd/payload-preview",
+      "commit": "abe29b2",
+      "baseBranch": "sdd/measure-mode",
+      "readOnly": true,
+      "method": "Every claim below was re-derived from the real tree and a real test run. Executor reports were read as claims only; nothing in this payload is sourced from a report.json."
+    },
+    "tasksChecked": [
+      {
+        "id": "T-1",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "MirrorContract.kt FrozenFrame gains frameId/deviceLabel/promptOverride + MirrorIntent.EditPrompt; MirrorViewModel.kt freezeCounter stamped in the intent body (line 357-359), deviceLabel via selectedRowDetailWithoutTransport(); MirrorUiState gained nothing (diff confirms)."
+      },
+      {
+        "id": "T-2",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "core/payload/PayloadEstimate.kt exists, all declarations internal/private, 18 passing tests in PayloadEstimateTest. See AF-6: PAYLOAD_FORMAT_VERSION is dead."
+      },
+      {
+        "id": "T-3",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "core/payload/PromptAssembly.kt buildPrompt; 4 passing tests; no AnnotationFormat.sizeLabel call anywhere in PromptAssembly.kt or MirrorPayloadTab.kt (grep: zero hits repo-wide)."
+      },
+      {
+        "id": "T-4",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "core/payload/CropWindow.kt line 56 `val pad = designPad * frameSize.width / designWidth` — no literal 14; 8 hand-computed tests. See AF-7 (dead `scale` field)."
+      },
+      {
+        "id": "T-5",
+        "status": "done",
+        "done": false,
+        "verifiedAgainst": "core/payload/HierarchyOutline.kt + PayloadLabels.kt exist with 12 passing tests, but the `last` derivation is wrong (AF-1) and its test encodes the bug. Functionally incomplete despite being marked done."
+      },
+      {
+        "id": "T-6",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "HierarchyRow.kt gains `matched: Boolean = false` additively; signature matches registry. But the default flips the shipped colour of existing call sites (AF-3)."
+      },
+      {
+        "id": "T-7",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "MirrorPayloadTab.kt:202 `if (!hasPayload(frozen))` is the FIRST statement of the body, with a literal early return; hasPayload is internal and carries `contract { returns(true) implies (frozen != null) }` (PayloadGate.kt:33). Signature is the 4-arg (state, frame, hierarchy, onIntent, modifier) with explicit `: Unit`."
+      },
+      {
+        "id": "T-8",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "PayloadCropsSection passes the cell size in PIXELS as boxW/boxH with cellWidth/cellHeight in the remember keys (line 414) — adjudicated fix is present. But the fit box is a constant while the draw box is weighted (AF-4)."
+      },
+      {
+        "id": "T-9",
+        "status": "done",
+        "done": false,
+        "verifiedAgainst": "PayloadHierarchySection exists as a height-capped LazyColumn (would-be crash fix present), but its `when` branch order lets a non-empty snapshot shadow the AC-80 no-hierarchy state in the exact combination MirrorViewModel actually produces (AF-2)."
+      },
+      {
+        "id": "T-10",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "PayloadFooter reads footerLabel(count)/payloadSizeLabel(count) directly, no re-derivation; pinned below a weight(1f) content column. See AF-10 on AC-16's literal wording."
+      },
+      {
+        "id": "T-11",
+        "status": "done",
+        "done": true,
+        "verifiedAgainst": "MirrorHost content lambda is 4-arg and collects viewModel.frozenHierarchy; exactly one MirrorHost call site (RectifyWindow.kt:167); no second koinViewModel(); no new Koin binding in the diff. MirrorNotesTab.kt / SidePanelFrame.kt / SidebarTabs.kt / ShellTab.kt are byte-unchanged vs sdd/measure-mode. See AF-9 on the DoD's exact-diff line."
+      },
+      {
+        "id": "T-12",
+        "status": "done",
+        "done": true,
+        "needsHumanReview": true,
+        "verifiedAgainst": "6 @Preview functions (populated, no-hierarchy, empty × light/dark) + token-mapping comment block at MirrorPayloadTab.kt:678-716. Two divergences recorded as claimed; three further plan-errorStates divergences are NOT recorded (AF-5), and the no-hierarchy pair pins inputs away from the real defect (AF-2)."
+      },
+      {
+        "id": "T-13",
+        "status": "done",
+        "done": true,
+        "needsHumanReview": true,
+        "verifiedAgainst": "Registry deltas present and signature-accurate; zero backtick test-fun names in the 7 new test files (grep: no `fun \\`` match); my own full-suite run is green. But T-13's own claimed baseline omitted a module (AF-8)."
+      }
+    ],
+    "findings": [
+      {
+        "id": "AF-1",
+        "severity": "error",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-15",
+        "target": "T-5",
+        "recommendedTarget": "T-5",
+        "issue": "payloadHierarchyRows marks a node `last` when it is immediately followed by a SIBLING at the same depth, which breaks the drawn tree guides into floating segments — the exact failure HierarchyRow's KDoc exists to warn about. The accompanying test asserts the bug and its comment rationalises it.",
+        "description": "HierarchyOutline.kt:75 computes `last = next == null || next.depth <= node.depth`. HierarchyRow draws this node's own-column branch as `drawLine(branchX, 0 -> if (last) midY else size.height)` (HierarchyRow.kt:109-116) while every descendant AND every later same-depth sibling redraws a full-height line at that same branchX. So `last` must mean 'nothing below continues in my column'. A following sibling at the same depth DOES continue it, so the correct predicate is `next == null || next.depth < node.depth` (strict). With `<=`, every non-final sibling stops its guide at midY and leaves a half-row gap before the next sibling's branch begins. The pre-existing reference usage confirms the intent: StyleguideScreen.kt:743-745 deliberately leaves the non-final depth-1 row `last = false` and only the final sibling `last = true`. In a real ~400-node uiautomator dump most nodes have a following sibling, so AC-15's 'monospace indented tree' renders as a field of disconnected dashes rather than a tree.",
+        "evidence": "presentation-feature-mirror/.../core/payload/HierarchyOutline.kt:75 `last = next == null || next.depth <= node.depth` | presentation-core-ui/.../molecule/row/HierarchyRow.kt:109-116 (branch drawn to `if (last) midY else size.height`) and its `last` KDoc at HierarchyRow.kt:50-54 | presentation-core-ui/.../showcase/StyleguideScreen.kt:743-745 (reference tree: only the final sibling is `last = true`) | HierarchyOutlineTest.kt:65-67 asserts `item_a` (depth 1, immediately followed by sibling `item_b` at depth 1) has `last = true`, with the comment at :61-64 rationalising it as 'each one's own column guide ends right there, regardless of sibling order' — the test re-states the implementation's rule instead of the component's contract, so 251 green mirror tests cannot catch this."
+      },
+      {
+        "id": "AF-2",
+        "severity": "error",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-80",
+        "target": "T-9",
+        "recommendedTarget": "T-9",
+        "issue": "The AC-80 / SC-23 no-hierarchy state is unreachable in the combination production actually produces: HierarchyStatus.Unavailable is reduced while a FULL snapshot is published to frozenHierarchy, and PayloadHierarchySection's `when` tests `rows.isNotEmpty()` first — so the tab renders a several-hundred-node unbadged tree under a readout that says 'no hierarchy'.",
+        "description": "MirrorViewModel.dumpHierarchyFor (MirrorViewModel.kt:407-421) sets `currentFrozenHierarchy.value = snapshot` BEFORE reducing, then reduces `Unavailable` whenever `projectMeasureNodes(snapshot, frozenSize).isEmpty()`. Its own KDoc (MirrorViewModel.kt:396-404) names the live cause: a dump that succeeds but whose frame size disagrees with the frozen frame — the T-1 spike measured a 9.76% gap between uiautomator's reported size and the physical screen, so this is a measured, recurring device condition, not a hypothetical. In that state MirrorPayloadTab receives `hierarchy` with hundreds of nodes plus `hierarchyStatus == Unavailable`. payloadHierarchyRows returns one row per node, all unbadged (HierarchyOutlineTest.aMismatchedFrameSizeStillProducesARowPerNodeWithNoBadges proves exactly this). PayloadHierarchySection then takes its first branch and renders the whole LazyColumn tree — every row at ink3 because nothing is `matched` — while hierarchySourceLabel(Unavailable, nodeCount) prints 'no hierarchy' beside the label. AC-80 requires 'shows zero nodes and an explicit no-hierarchy state rather than an empty tree that looks like a bug'; what ships is the opposite failure (a full tree contradicting its own readout). The section's KDoc (MirrorPayloadTab.kt:558-561) states 'Absent and Unavailable get an explicit line saying so' unconditionally — behaviour the code does not have, since that branch only runs when rows are empty.",
+        "evidence": "MirrorViewModel.kt:407-410 `val snapshot = dumpHierarchy(deviceId).getOrNull(); currentFrozenHierarchy.value = snapshot ?: HierarchySnapshotModel.Empty` then :413-419 `val usable = snapshot != null && projectMeasureNodes(...).isNotEmpty(); hierarchyStatus = if (usable) Ready else Unavailable` | MirrorPayloadTab.kt:594-616 `when { rows.isNotEmpty() -> LazyColumn(...); status == Absent || status == Unavailable -> Text(no-hierarchy) }` | MirrorPayloadTab.kt:896-916: the AC-80 preview pair — the spec's declared PRIMARY evidence for AC-80 — pins `hierarchy = HierarchySnapshotModel.Empty` alongside `hierarchyStatus = Unavailable`, i.e. it demonstrates only the combination that cannot fail and never the one production emits."
+      },
+      {
+        "id": "AF-3",
+        "severity": "warn",
+        "area": "diff",
+        "about": "diff",
+        "ref": "T-6",
+        "target": "T-6",
+        "recommendedTarget": "T-6",
+        "issue": "The new `matched: Boolean = false` parameter silently changed the shipped appearance of a public shared component: HierarchyRow node labels were unconditionally Theme.color.ink and are now ink3 unless the caller opts in. The three pre-existing call sites were not updated.",
+        "description": "The parameter is additive in signature but NOT additive in behaviour. StyleguideScreen.kt:743-745 renders three HierarchyRows with no `matched` argument, so the showcase hierarchy now reads de-emphasised — including the rows carrying `tag = \"#1\"` and `tag = \"#2\"`, producing a tagged-but-grey state that the new KDoc declares impossible ('Matched nodes read at full ink; the rest of the dump recedes to ink3 so the matches stand out'). A tag is the component's own marker for 'an annotation matched this node', so a tagged ink3 row is self-contradictory. There is no Compose UI-test harness in this repo and HierarchyRow has no test at all, so nothing would catch it; the only reason it did not surface is that the affected screen is the internal styleguide. The lazy fix is to pass `matched = true` wherever a `tag` is passed at the existing call sites, or to derive the ink from `tag != null` inside the component so the two can never disagree.",
+        "evidence": "git diff sdd/measure-mode...HEAD -- HierarchyRow.kt: `- color = Theme.color.ink` / `+ color = if (matched) Theme.color.ink else Theme.color.ink3` (HierarchyRow.kt:125) | presentation-core-ui/.../showcase/StyleguideScreen.kt:743-745 — three call sites, zero `matched` arguments, two of them carrying `tag` | presentation-core-ui desktopTest has 29 tests and none of them touch HierarchyRow."
+      },
+      {
+        "id": "AF-4",
+        "severity": "warn",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-14",
+        "target": "T-8",
+        "recommendedTarget": "T-8",
+        "issue": "Crop cells are FITTED to a constant (CropCellWidth = 84.dp) but DRAWN in a weighted box whose real width is (panelWidth - 32dp)/3. At PanelMinWidth the crop and the right edge of its red outline are clipped; at PanelMaxWidth ~44% of each cell is empty, left-anchored. cropWindow's KDoc claim that the cell size 'changes only when the window moves to a different display' is false.",
+        "description": "PayloadCropsSection passes `boxW = CropCellWidth.toPx()` (84.dp) into cropWindow, but each PayloadCropCell is laid out with `Modifier.weight(1f)`, its Box is `fillMaxWidth().height(CropCellHeight)` and the Canvas is `matchParentSize()`. The real cell width is therefore (panelWidth - 2*spacingS tab padding - 2*spacingS gaps)/3. With ShellWindowDefaults.PanelMinWidth = 260.dp that is (260-16-16)/3 ~= 76.dp, 8.dp narrower than the 84.dp the window was fitted for: the drawImage dstSize and the outlineRect (both anchored at dstOffset = IntOffset.Zero) overrun the Canvas and the right ~10% of the crop plus the right edge of the red outline are clipped away, so AC-14's 'cropped image with its red outline baked in' and AC-76's exact outline placement are both visually broken at minimum panel width. With PanelMaxWidth = 480.dp the cell is ~149.dp and each crop sits in the top-left of a cell that is 65.dp too wide — the KDoc's 'a cell a few dp wider than this shows the slack on its right' understates it by an order of magnitude. The geometry is only correct near PanelDefaultWidth = 300.dp (~89.dp cell). CropWindowTest's assertOutlineInsideDst guarantees containment in `dstSize` only, never containment in the cell actually drawn, so the unit suite cannot see this. Lazy fix: hand cropWindow the measured cell width (BoxWithConstraints / onSizeChanged) instead of the design constant, or give each cell `Modifier.width(CropCellWidth)` and stop weighting.",
+        "evidence": "MirrorPayloadTab.kt:409-422 (`cellWidth = CropCellWidth.toPx()` fed as `boxW`) vs MirrorPayloadTab.kt:448-456 (`PayloadCropCell(..., modifier = Modifier.weight(1f))`) and :501-508 (`fillMaxWidth().height(CropCellHeight)` + `Canvas(matchParentSize())`) | MirrorPayloadTab.kt:124-127 CropCellWidth = 84.dp with the KDoc that claims only-wider | presentation-core-ui/.../ShellWindowDefaults.kt:23,26,29 PanelMinWidth 260.dp / PanelMaxWidth 480.dp / PanelDefaultWidth 300.dp | ThemeSpacing.kt:11 spacingS = 8.dp | core/payload/CropWindow.kt:43-45 KDoc 'it is a density conversion of two constants, so it changes only when the window moves to a different display'."
+      },
+      {
+        "id": "AF-5",
+        "severity": "warn",
+        "area": "ac",
+        "about": "diff",
+        "ref": "T-12",
+        "target": "T-12",
+        "recommendedTarget": "T-12",
+        "issue": "T-12's one-pass token mapping reconciles only against the design figure, never against plan.json's own errorStates — which specify three token values the code does not use.",
+        "description": "plan.json errorStates says: empty state 'ink3, 12/18' (code ships Theme.color.ink2 + typography.secondary), no-hierarchy line '(ink3)' (code ships ink2 + typography.secondary), and Dumping source label 'in Theme.color.warnStillOff' (code ships ink3 for all four statuses, since hierarchySourceLabel's caller hardcodes `color = Theme.color.ink3`). The token table's 'ink2 -> frame/agent labels' row does acknowledge the ink2 usage, but justifies it with 'the figure has no row for either' — it was never checked against the plan, which does have a row for both. None of the three is a defect on its own; the gap is that T-12 was the task whose whole job was to record divergences and it recorded two of five.",
+        "evidence": "plan.json data.errorStates[0] 'ink3, 12/18' vs MirrorPayloadTab.kt:203-208 (`color = Theme.color.ink2`, `style = Theme.typography.secondary`) | plan.json data.errorStates[2] '(ink3)' vs MirrorPayloadTab.kt:618-623 (`color = Theme.color.ink2`) | plan.json data.errorStates[1] 'Theme.color.warnStillOff' vs MirrorPayloadTab.kt:589-593 (`color = Theme.color.ink3`, unconditional for Ready/Dumping/Absent/Unavailable) | MirrorPayloadTab.kt:678-716 token table."
+      },
+      {
+        "id": "AF-6",
+        "severity": "warn",
+        "area": "diff",
+        "about": "diff",
+        "ref": "T-2",
+        "target": "T-2",
+        "recommendedTarget": "T-2",
+        "issue": "PAYLOAD_FORMAT_VERSION is dead code with a tautological test, and its KDoc documents a consumer that does not exist.",
+        "description": "The constant is referenced exactly once in the whole repository outside its own declaration: by PayloadEstimateTest:160 `assertEquals(1, PAYLOAD_FORMAT_VERSION)`, which compares a compile-time constant to its own literal and can therefore only fail if someone edits the constant and forgets the test — it asserts no behaviour. Nothing in the tree serialises, encodes or exports a payload, so the KDoc's 'a reader on the other side keys its parsing off this number' describes a reader that does not exist. No AC in this spec mentions a format version. Lazy resolution: delete both the constant and its test, and reintroduce them in the deliverable that actually writes the wire format.",
+        "evidence": "grep -rn PAYLOAD_FORMAT_VERSION --include=*.kt . -> core/payload/PayloadEstimate.kt:24 (declaration) and PayloadEstimateTest.kt:3,160 (import + tautology). Zero production readers."
+      },
+      {
+        "id": "AF-7",
+        "severity": "info",
+        "area": "diff",
+        "about": "diff",
+        "ref": "T-4",
+        "target": "T-4",
+        "recommendedTarget": "T-4",
+        "issue": "CropWindow.scale is never read by production code — only by its own test. dstSize already carries it.",
+        "description": "PayloadCropCell consumes srcOffset, srcSize, dstSize and outlineRect; a grep for a `.scale` reader across presentation-feature-mirror/src/commonMain returns nothing. The field exists only so CropWindowTest can assert the fit factor directly. Harmless (the type is internal) but it is a public-to-the-module field on a data class with no consumer.",
+        "evidence": "grep -rn '\\.scale' presentation-feature-mirror/src/commonMain --include=*.kt -> zero reader hits (only KDoc prose at MirrorPayloadTab.kt:390,713-715) | CropWindow.kt:32 `val scale: Float` | CropWindowTest.kt:66,95,120,147,174,236-237 (sole readers)."
+      },
+      {
+        "id": "AF-8",
+        "severity": "info",
+        "area": "diff",
+        "about": "task",
+        "ref": "T-13",
+        "target": "T-13",
+        "recommendedTarget": "T-13",
+        "issue": "The claimed Stage 4 baseline ('ALL 7 test-bearing modules, 407 tests') omitted :data-device-impl (26 tests). The real repository has 8 test-bearing desktop modules / 433 tests.",
+        "description": "Benign in outcome — data-device-impl is green and untouched by this spec — but the 'full suite' claim handed to this gate was not in fact full. My own run below covers all 8 and reconciles exactly: 407 + 26 = 433.",
+        "evidence": "My run: data-device-api 61, data-device-impl 26, data-preference-impl 9, data-repository-impl 50, domain-usecase-impl 1, presentation-core-styling 6, presentation-core-ui 29, presentation-feature-mirror 251 = 433 tests, 0 failures, 0 errors, 0 skipped (TEST-*.xml under */build/test-results/desktopTest, all regenerated 23:37:56)."
+      },
+      {
+        "id": "AF-9",
+        "severity": "info",
+        "area": "diff",
+        "about": "diff",
+        "ref": "T-11",
+        "target": "T-11",
+        "recommendedTarget": "T-11",
+        "issue": "DoD line 'RectifyWindow.kt's diff is exactly one `if (tab == ShellTab.Payload)` branch plus one tabCounts entry' is not met literally — the pre-existing Notes `if` was refactored into a `when (tab) { Notes -> ...; Payload -> ...; else -> Unit }` (36 lines changed).",
+        "description": "Recorded for the gate, not raised as a defect: the `when` is the better shape for two content tabs and the Notes branch is semantically unchanged. But it is a wider diff in a file the plan explicitly wanted touched minimally, and the rewrite also rewrote the surrounding comment, so a reviewer diffing that file sees more than the DoD promised.",
+        "evidence": "git diff --stat sdd/measure-mode...HEAD -- compose-application -> RectifyWindow.kt | 36 +- ; the hunk at RectifyWindow.kt:179-206 replaces `if (tab == ShellTab.Notes) { ... }` with a three-arm `when`."
+      },
+      {
+        "id": "AF-10",
+        "severity": "info",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-16",
+        "target": "T-10",
+        "recommendedTarget": "T-10",
+        "issue": "AC-16's literal wording — 'a total size that matches the actual payload' — is not met and is not meetable in this deliverable: nothing encodes or exports a payload, and payloadSizeLabel is an admitted linear heuristic.",
+        "description": "I inspected this one (verificationMethod: inspection). PayloadFooter reads footerLabel(count) and payloadSizeLabel(count) straight from core/payload with no re-derivation, which is the property the task was really after: the readout and any future exporter share one function, so a displayed size that disagrees with the computed one is not expressible. But the function is `1.6 + 0.12*count MB` with its own KDoc conceding 'the real size is not known until the frame is encoded', and AC-78 blesses that exact formula. So AC-16 and AC-78 are mutually inconsistent as written in the plan; AC-16 is satisfied only in the weaker 'single source of truth' sense. Flagging so the human gate records which reading was accepted rather than discovering it at export time.",
+        "evidence": "core/payload/PayloadEstimate.kt:11-15,34-40 (SIZE_BASE_MB 1.6, SIZE_PER_CROP_MB 0.12, KDoc 'Also a heuristic; the real size is not known until the frame is encoded') | MirrorPayloadTab.kt:663-668 PayloadFooter | plan.json AC-16 vs AC-78."
+      },
+      {
+        "id": "AF-11",
+        "severity": "info",
+        "area": "diff",
+        "about": "diff",
+        "ref": "AC-75",
+        "target": "T-5",
+        "recommendedTarget": "T-5",
+        "issue": "The badge-to-annotation coupling is implicit and untested: payloadHierarchyRows discards StagedAnnotation.index and re-derives badges as `position + 1`, while PayloadPromptSection matches them back with `row.badge == annotation.index`.",
+        "description": "The two agree today only because stageAnnotation assigns `index = frozen.annotations.size + 1` and deleteAnnotation renumbers survivors to `position + 1`. If that invariant ever slips, the prompt silently loses every node id (nodeIdFor returns null for all annotations) and the badges in the tree no longer correspond to the `#N` in the prompt — a silent degradation, not a failure. No test pins the row badge and the prompt's node id together for a non-trivially-numbered annotation list. The lazy fix is to pass `List<StagedAnnotation>` (or a list of index/rect pairs) into payloadHierarchyRows so the real index travels with the rect instead of being reconstructed.",
+        "evidence": "HierarchyOutline.kt:63-66 (`annotations.forEachIndexed { position, ... } ... getOrPut(it.id) { position + 1 }`, parameter type `List<DeviceRect>`) | MirrorPayloadTab.kt:294 `rows.firstOrNull { row -> row.badge == annotation.index }?.nodeId` | MirrorViewModel.kt:373 and :518-519 (the two places that keep index == position + 1)."
+      },
+      {
+        "id": "AF-12",
+        "severity": "info",
+        "area": "registry",
+        "about": "registry",
+        "ref": "components.json#mirror-notes-tab",
+        "target": "T-13",
+        "recommendedTarget": "T-13",
+        "issue": "Stale registry description: mirror-notes-tab still reads 'the only side-panel tab with real content', which stopped being true the moment mirror-payload-tab was registered.",
+        "description": "Not a phantom entry and not a signature error — the props are correct — but the description now contradicts the sibling entry added by this spec. RectifyWindow.kt's equivalent comment WAS updated in the same diff ('Notes and Payload have content; Context is empty rather than absent'); the registry was not.",
+        "evidence": ".pipeline/sdd/docs/registry/components.json entry id 'mirror-notes-tab' description vs entry id 'mirror-payload-tab' (both present, 84 entries total) and RectifyWindow.kt:182-184."
+      },
+      {
+        "id": "AF-13",
+        "severity": "info",
+        "area": "diff",
+        "about": "diff",
+        "ref": "T-5",
+        "target": "T-5",
+        "recommendedTarget": "T-5",
+        "issue": "PayloadNodeRow.matched duplicates `badge != null`; the data class permits constructing a row where the two disagree.",
+        "description": "Its own KDoc admits the field is derived ('`badge != null`, named for the renderer's benefit'). It is only ever constructed as `matched = badge != null`, so no live inconsistency exists — but it is two fields encoding one fact in a type that a future caller can build by hand. A computed `val matched: Boolean get() = badge != null` would make the duplication unrepresentable for the same line count.",
+        "evidence": "HierarchyOutline.kt:19-27 (KDoc) and :22-28 / :72-78 (declaration and sole construction site)."
+      },
+      {
+        "id": "AF-14",
+        "severity": "info",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-13",
+        "target": "T-7",
+        "recommendedTarget": "T-7",
+        "issue": "A11Y-1's content description ships as 'Edit the prompt sent to Claude' where plan.json accessibility specifies 'Edit prompt'.",
+        "description": "Recorded, not raised: the shipped string is strictly more informative and the a11y requirement (a real clickable, a content description, >=24dp target via AppButtonSize.ListAction) is met in substance. Noting only because the plan quoted an exact string.",
+        "evidence": "strings.xml `mirror_payload_prompt_edit_description` = 'Edit the prompt sent to Claude' | MirrorPayloadTab.kt:316-325 (AppButton, AppButtonSize.ListAction with the comment 'smallest preset that still clears the 24 dp touch target', semantics { contentDescription = editDescription }) | plan.json accessibility A11Y-1."
+      },
+      {
+        "id": "AF-15",
+        "severity": "warn",
+        "area": "sc",
+        "about": "sc",
+        "ref": "SC-6,SC-20,SC-21,SC-22,SC-23,SC-24",
+        "target": "HV-1",
+        "recommendedTarget": "HV-1",
+        "issue": "HV-1: the real-device manual demo over SC-6 / SC-20..24 is owed at this gate and has not been performed. No AC is failed for lacking it (Stage 4 executors cannot drive a device, by explicit engineer decision) — but no scenario can be signed off without it either.",
+        "description": "state.json humanVerificationRequirements carries exactly this one entry. Automated coverage exists for the logic half of SC-20 (PayloadGateTest, 3 tests), SC-21 (HierarchyOutlineTest badge/no-badge cases), SC-22 (PromptAssemblyTest, no 'measured:' branch) and SC-24's persistence half (MirrorViewModelPayloadTest.editPromptSurvivesAnAnnotationAddAndADelete / ...ASessionLossAndReconnect). SC-6 (end-to-end review of all four blocks) and SC-23 have no automated end-to-end coverage at all — and see AF-2, which is precisely the kind of defect only SC-23 on a real device would have surfaced.",
+        "evidence": ".pipeline/sdd/docs/payload-preview/state.json humanVerificationRequirements[0] = 'HV-1: manual demo over SC-6/20/21/22/23/24 on a real Android device, owed at the Stage 5 human gate'."
+      },
+      {
+        "id": "AF-16",
+        "severity": "warn",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-13,AC-14,AC-15,AC-72,AC-78,AC-79",
+        "target": "HV-1",
+        "recommendedTarget": "HV-1",
+        "issue": "Six ACs with verificationMethod: test have an automated logic half and a UI half proven only by @Preview pairs that nobody has opened. A preview is not evidence until a human looks at it.",
+        "description": "The repo has no Compose UI-test harness and a DoD line forbids adding one, so this is a structural ceiling rather than an executor omission. Per AC: AC-13 — buildPrompt and tokenEstimate are tested; that the Prompt block actually renders the estimate and the Edit affordance is preview-only. AC-14 — cropWindow is tested to 8 hand-computed cases; the 3-column grid rendering is preview-only (and see AF-4). AC-15 — payloadHierarchyRows is tested; the rendered tree is preview-only (and see AF-1, AF-3: both of this audit's errors live exactly in that unverified half). AC-72 — PromptAssemblyTest.dimensionPairIsUnspacedTimesNeverTheSpacePaddedSizeLabel covers the prompt; the crop caption's glyph is preview-only (string-level inspection confirms MirrorPayloadTab.kt:535-536 interpolates TIMES with no spaces and calls no formatter). AC-78 — tokenEstimate/payloadSizeLabel are tested at 18 cases; 'recompute synchronously with no measurable lag' is satisfied by construction (both are read inline from `count`, O(1), no cache to invalidate) and by inspection, not by measurement. AC-79 — the override's reducer half is tested at 8 cases; that clicking Edit swaps in MultilineInput and that `promptOverride ?: generated` is what renders is preview-only.",
+        "evidence": "MirrorPayloadTab.kt:863-946 (6 @Preview functions: populated/no-hierarchy/empty x light/dark) | HierarchyRow.kt:136-165 (light/dark pair) | .claude/rules/testing.md 'No Compose UI-test harness exists' | plan.json definitionOfDone (previews are the declared visual evidence)."
+      },
+      {
+        "id": "AF-17",
+        "severity": "warn",
+        "area": "ac",
+        "about": "ac",
+        "ref": "AC-80",
+        "target": "HV-1",
+        "recommendedTarget": "HV-1",
+        "issue": "AC-80's verificationMethod is `demo` and its declared primary evidence is the Unavailable preview pair (explicit Stage 1 decision) — so it requires human confirmation and cannot be passed by this audit. AF-2 shows the preview pair pins its inputs away from the real failure mode.",
+        "description": "Mandatory human confirmation, recorded as such. The reviewer should be told to check the Unavailable state with a NON-empty cached snapshot, not just HierarchySnapshotModel.Empty.",
+        "evidence": "plan.json AC-80 verificationMethod 'demo'; traceabilityMatrix AC-80 tests include 'Preview (Unavailable)' and 'SC-23 (demo)' | MirrorPayloadTab.kt:889-916."
+      },
+      {
+        "id": "AF-18",
+        "severity": "warn",
+        "area": "task",
+        "about": "task",
+        "ref": "T-12",
+        "target": "T-12",
+        "recommendedTarget": "T-12",
+        "issue": "T-12's two recorded-not-fixed design divergences need a designer's ruling, not an engineer's: the prompt body renders Theme.typography.monoData at 11sp where the design figure says 10.5px mono, and the Crops 'from frame N' tag uses ink3 where the design's ink2 row implies ink2.",
+        "description": "Both are in the token-mapping comment block as 'SIZE DIFFERS 11/10.5' and 'COLOUR DIFFERS', with the engineering rationale recorded (no 10.5sp mono-with-tabular-figures token exists, and adding one is a re-skin not this task). Classified, not resolved. Plus AF-5: three further divergences against plan.errorStates were never entered in that table at all.",
+        "evidence": "MirrorPayloadTab.kt:685-690 (prompt body row: 'typography.monoData (11sp mono) ... SIZE DIFFERS 11/10.5') and :694-696 ('Crops `frame #N` tag | ink2 (frame label) | typography.monoTag + color.ink3 | COLOUR DIFFERS')."
+      },
+      {
+        "id": "AF-19",
+        "severity": "info",
+        "area": "task",
+        "about": "task",
+        "ref": "T-13",
+        "target": "T-13",
+        "recommendedTarget": "T-13",
+        "issue": "T-13 carries needsHumanReview because a verification task cannot self-certify. Independently re-verified here, with two exceptions.",
+        "description": "Independently confirmed by this audit: zero backtick test-fun names in the 7 new test files; registry deltas present and signature-accurate against real source; desktop suite green. NOT confirmed: the claimed module coverage (AF-8), and the cross-target `:build` serialization result, which I did not re-run — the parallel-build linkReleaseFramework OOM is recorded as a characterised pre-existing infra issue and is explicitly out of scope for this spec.",
+        "evidence": "state.json tasks['T-13'] = { status: done, needsHumanReview: true } | my own run of the 8 desktop suites (433/0/0/0)."
+      },
+      {
+        "id": "AF-20",
+        "severity": "info",
+        "area": "registry",
+        "about": "registry",
+        "ref": "registry/bugs.json",
+        "target": "none",
+        "recommendedTarget": "none",
+        "issue": "registry/bugs.json is EMPTY ([], 3 bytes). There are no recurring-bug patterns to report for this spec, and none were invented.",
+        "description": "Stated plainly so the gate does not read silence as 'not checked'. Separately, troubleshooting.json records only pipeline-mechanics entries (id-keyed upsert conflicts on the components store, resolved last-write-wins) — no product defects.",
+        "evidence": "ls -la .pipeline/sdd/docs/registry/bugs.json -> 3 bytes; content '[]' | .pipeline/sdd/docs/payload-preview/troubleshooting.json entries are category 'merge-conflict' only."
+      }
+    ],
+    "gaps": {
+      "unsatisfiedAC": [
+        "AC-15",
+        "AC-80"
+      ],
+      "unsatisfiedSC": [
+        "SC-23"
+      ],
+      "incompleteTasks": [
+        "T-5",
+        "T-9"
+      ]
+    },
+    "acceptanceCriteriaChecked": [
+      {
+        "id": "AC-13",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "evidence": "PromptAssemblyTest (4 passing: oneAnnotationAssemblesTheDocumentedBlockShapeWithNoCommentFallback, twoAnnotationsAssembleTheDocumentedBlockShapeWithMeasurementCommentPassedThroughVerbatim, noNodeMatchOmitsTheNodeIdSegmentWithoutBreakingTheLine, dimensionPairIsUnspacedTimesNeverTheSpacePaddedSizeLabel) + PayloadEstimateTest.tokenEstimateForTwoCropsAddsTwoHundredEighty et al. Rendering of the block, the estimate and the Edit affordance: MirrorPayloadTab.kt:300-325, preview-only (AF-16)."
+      },
+      {
+        "id": "AC-14",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "caveat": "AF-4",
+        "evidence": "CropWindowTest (8 passing hand-computed cases incl. all four clamp edges: leftEdgeClampZeroesSrcOffsetWhenXMinusPadIsNegative, topEdgeClampZeroesSrcOffsetWhenYMinusPadIsNegative, rightEdgeClampShrinksWindowAtFrameRightEdge, bottomEdgeClampShrinksWindowAtFrameBottomEdge). 3-column grid: CROP_COLUMNS = 3 with weighted Row + Spacer fillers (MirrorPayloadTab.kt:441-457). Outline baked in by the same Canvas as the blit (:510-532). Caption 'from frame <id>': CROP_FRAME_PREFIX = 'from frame ' + frozen.frameId at :436-440 — section-level, one tag for the grid, not per cell; defensible since all crops come from one pinned frame. Fit-vs-draw box mismatch: AF-4."
+      },
+      {
+        "id": "AC-15",
+        "satisfied": false,
+        "verificationMethod": "test",
+        "evidence": "FAILS. HierarchyOutlineTest has 6 passing tests over payloadHierarchyRows and HierarchyRow renders a monospace indented tree with MeasureTag badges — but the `last` derivation is wrong (AF-1), so the drawn guides break into floating segments for every node followed by a same-depth sibling, and the test that covers `last` asserts the wrong contract. Separately the `matched` default flip (AF-3) regressed existing call sites. No test exercises the rendered tree at all."
+      },
+      {
+        "id": "AC-16",
+        "satisfied": true,
+        "verificationMethod": "inspection",
+        "caveat": "AF-10",
+        "evidence": "INSPECTED. MirrorPayloadTab.kt:643-676 PayloadFooter: left Text = footerLabel(count), right Text = payloadSizeLabel(count), both straight from core/payload/PayloadEstimate.kt with zero re-derivation at the call site; `count = frozen.annotations.size` passed from MirrorPayloadTab.kt:246. footerLabel pins the literal 'frame.png · N crops · hierarchy.xml' (PayloadEstimate.kt:48-49, asserted character-exactly at PayloadEstimateTest:114-153 incl. a middle-dot-not-bullet-not-period check). 'Matches the actual payload' is only true in the single-source sense — see AF-10."
+      },
+      {
+        "id": "AC-72",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "evidence": "PromptAssemblyTest.dimensionPairIsUnspacedTimesNeverTheSpacePaddedSizeLabel asserts prompt.contains(\"48${TIMES}17\") AND assertFalse(prompt.contains(\" $TIMES \")). Adjudicated constraint independently confirmed: grep for 'sizeLabel' across the whole repo returns ZERO hits in PromptAssembly.kt and MirrorPayloadTab.kt (and zero hits anywhere in presentation-feature-mirror). Both producers interpolate the TIMES constant directly: PromptAssembly.kt:47,53 and MirrorPayloadTab.kt:535-536. Crop-caption rendering itself is preview-only."
+      },
+      {
+        "id": "AC-73",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "evidence": "PromptAssembly.kt:57 emits `annotation.comment.ifEmpty { NO_COMMENT }` verbatim inside quotes — there is no 'measured:' branch and no second measurement segment anywhere in the file. PromptAssemblyTest.twoAnnotations...MeasurementCommentPassedThroughVerbatim asserts the full expected string AND assertFalse(prompt.contains(\"measured:\")). Fully covered by automation, no UI half."
+      },
+      {
+        "id": "AC-74",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "evidence": "PayloadLabelsTest (6 passing) pins 'uiautomator · 42 nodes' and 'uiautomator · 0 nodes' character-exactly, plus hierarchyStatusStillHasExactlyFourShippedValues as a guard against a fifth status bypassing the closed `when`. 'Never triggers a dump' holds structurally, not by convention: payloadHierarchyRows(snapshot, frozenFrameSize, annotations) has no dump-capable collaborator in its signature, and MirrorPayloadTab imports nothing from core/device or the use-case layer — the hierarchy arrives as a parameter from MirrorHost (MirrorHost.kt:56,61) reading the already-cached MirrorViewModel.frozenHierarchy."
+      },
+      {
+        "id": "AC-75",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "caveat": "AF-11",
+        "evidence": "HierarchyOutlineTest.theBadgeLandsOnlyOnTheSnappedNodeAndNoneOfTheOthers (badge on item_a only, item_b badge == null), .anAnnotationWithNoMatchingNodeLeavesEveryRowUnbadged (SC-21 if-and-only-if direction), .twoAnnotationsSnappingToTheSameNodeKeepTheLowerIndex. The snap really is NodeSnap.snapTarget (HierarchyOutline.kt:65). 'Every other node renders in ink3 with no badge' is HierarchyRow.kt:125 `if (matched) ink else ink3` — correct here, but it is the same line that regressed other callers (AF-3). Badge-index coupling: AF-11."
+      },
+      {
+        "id": "AC-76",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "caveat": "AF-4",
+        "evidence": "The outline is drawn from `window.outlineRect.topLeft` / `.size` with no local arithmetic (MirrorPayloadTab.kt:527-532), and outlineRect is produced by cropWindow itself (CropWindow.kt:70-73). The adjudicated pad fix is present and non-literal: CropWindow.kt:56 `val pad = designPad * frameSize.width / designWidth`, independently pinned by padAtDesignWidthIsTheLiteralFourteenPixels (296-wide frame -> 14px) and padScalesToAboutFiftyOnePixelsOnFrameWidthTenEighty (1080-wide -> 51.0811px, 37px away from the unscaled bug). assertOutlineInsideDst runs on all 8 windows. Residual risk is containment in the DRAWN cell rather than in dstSize — AF-4."
+      },
+      {
+        "id": "AC-77",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "evidence": "Adjudicated shape confirmed: `if (!hasPayload(frozen))` is the FIRST statement of MirrorPayloadTab's body (MirrorPayloadTab.kt:200-210) with a literal `return`, so Prompt/Crops/Hierarchy/footer are never composed. hasPayload is internal, lives in core/payload/PayloadGate.kt, and carries `contract { returns(true) implies (frozen != null) }` (:31-35). PayloadGateTest covers all three reachable states incl. the non-obvious one (pinned frame, zero annotations, i.e. post-ClearStaged). The copy is pinned character-exactly in strings.xml mirror_payload_empty and matches the AC string literally."
+      },
+      {
+        "id": "AC-78",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "evidence": "PayloadEstimateTest, 18 passing. The rounding criterion is NOT vacuous: payloadSizeLabelForThreeCropsRoundsUpAcrossTheTenthsBoundary asserts payloadSizeLabel(3) == '2.0 MB' (1.6 + 0.36 = 1.96), which a truncating implementation fails — its own comment says so. 'Recompute synchronously' holds by inspection: tokenEstimate(frozen.annotations.size) is called inline with no remember (MirrorPayloadTab.kt:310), and footerLabel/payloadSizeLabel likewise (:645-671), so both recompose in the same frame as the state change. NFR-11's ~200ms is met by construction (O(1) arithmetic), per plan.performanceBudget; no benchmark was added and none is required."
+      },
+      {
+        "id": "AC-79",
+        "satisfied": true,
+        "verificationMethod": "test",
+        "uiHalf": "preview-only",
+        "evidence": "MirrorViewModelPayloadTest, 8 passing, covering the half that can be tested: editPromptSurvivesAnAnnotationAddAndADelete, editPromptSurvivesASessionLossAndReconnect, resumeLiveIsTheOnlyIntentThatDropsThePromptOverride, editPromptWithNoFrozenFrameIsANoOp. Reducer is MirrorViewModel.kt:628-633; override lives on FrozenFrame.promptOverride. The composable half — Edit toggles MultilineInput (the existing atom, reused) and `effective = frozen.promptOverride ?: generated` is what renders — is MirrorPayloadTab.kt:282,297,327-340 and is preview-only (AF-16)."
+      },
+      {
+        "id": "AC-80",
+        "satisfied": false,
+        "verificationMethod": "demo",
+        "requiresHumanConfirmation": true,
+        "evidence": "FAILS on inspection AND requires human confirmation. verificationMethod is demo, so this audit cannot pass it regardless; and AF-2 shows the no-hierarchy branch is shadowed by `rows.isNotEmpty()` in exactly the (Unavailable + non-empty snapshot) state MirrorViewModel produces on the documented uiautomator frame-size mismatch. PayloadLabelsTest does prove hierarchySourceLabel returns 'no hierarchy' for both Absent and Unavailable, and the Prompt/Crops/footer-still-render half is structurally sound (the three sections are siblings, not nested under the hierarchy branch). The declared primary evidence — the Unavailable preview pair — pins hierarchy = HierarchySnapshotModel.Empty and so cannot exhibit the defect."
+      }
+    ],
+    "scenariosChecked": [
+      {
+        "id": "SC-6",
+        "satisfied": false,
+        "requiresHumanConfirmation": true,
+        "evidence": "Happy-path end-to-end review of all four blocks. No automated end-to-end coverage exists and none is possible without a Compose UI-test harness (forbidden by DoD). Owed to HV-1. Note AF-1 and AF-4 would both be visible in this walkthrough."
+      },
+      {
+        "id": "SC-20",
+        "satisfied": true,
+        "requiresHumanConfirmation": true,
+        "evidence": "Logic half fully covered: PayloadGateTest's three cases + the literal early return at MirrorPayloadTab.kt:200-210. Rendering confirmation owed to HV-1 (the empty preview pair exists)."
+      },
+      {
+        "id": "SC-21",
+        "satisfied": true,
+        "requiresHumanConfirmation": true,
+        "evidence": "HierarchyOutlineTest.anAnnotationWithNoMatchingNodeLeavesEveryRowUnbadged covers 'no node carries that badge'; PromptAssemblyTest.noNodeMatchOmitsTheNodeIdSegmentWithoutBreakingTheLine covers the prompt side (and asserts no 'View (no match)' sentinel leaks in). 'The crop still renders using the annotation's own rect' holds by construction — cropWindow takes the rect and never consults the hierarchy. Device confirmation owed to HV-1."
+      },
+      {
+        "id": "SC-22",
+        "satisfied": true,
+        "requiresHumanConfirmation": true,
+        "evidence": "PromptAssemblyTest.oneAnnotationAssemblesTheDocumentedBlockShapeWithNoCommentFallback ('no comment' stand-in) + ...PassedThroughVerbatim with assertFalse(contains('measured:')). Fully covered by automation; device confirmation owed to HV-1 only as part of the bundle."
+      },
+      {
+        "id": "SC-23",
+        "satisfied": false,
+        "evidence": "FAILS — see AF-2. The 'dump failed or returned empty' sub-path is handled (snapshot null -> Empty -> rows empty -> explicit no-hierarchy line). The 'dump succeeded but its frame size disagrees' sub-path, which reduces the same Unavailable status, renders a full unbadged tree under a 'no hierarchy' readout instead."
+      },
+      {
+        "id": "SC-24",
+        "satisfied": true,
+        "requiresHumanConfirmation": true,
+        "evidence": "The 'add another annotation — the edited text is still there' step, which is the one the scenario was written to catch, is covered by MirrorViewModelPayloadTest.editPromptSurvivesAnAnnotationAddAndADelete. The click-to-editable-area steps are preview-only; owed to HV-1."
+      }
+    ],
+    "flags": [
+      {
+        "kind": "needsHumanReview",
+        "target": "T-12",
+        "detail": "Two recorded-not-fixed design divergences need a designer's ruling, not an engineer's: (1) the prompt body renders Theme.typography.monoData at 11sp where the design figure specifies 10.5px mono — no 10.5sp mono-with-tabular-figures token exists and adding one would be a re-skin; (2) the Crops 'from frame N' tag uses Theme.color.ink3 where the design's ink2 row for frame/agent labels implies ink2. Both are written into the token-mapping block at MirrorPayloadTab.kt:685-696. Additionally AF-5: three further divergences against plan.errorStates (empty-state ink2-vs-ink3, no-hierarchy-line ink2-vs-ink3, Dumping label ink3-vs-warnStillOff) were never entered in that table, so the 'one-pass mapping' is 2 of 5 complete."
+      },
+      {
+        "kind": "needsHumanReview",
+        "target": "T-13",
+        "detail": "A verification task cannot self-certify. What this audit independently re-verified and confirms: zero backtick test-fun names across the 7 new test files; the 4 byte-unchanged files (MirrorNotesTab.kt, SidePanelFrame.kt, SidebarTabs.kt, ShellTab.kt); MirrorUiState gained nothing; registry deltas match real source signatures; no new Koin binding; the desktop suite is green. What it does NOT confirm: the claimed '7 test-bearing modules / 407 tests' baseline, which omitted :data-device-impl (AF-8 — real figure is 8 modules / 433 tests, also green); and the serialized cross-target `:build`, which I did not re-run. The parallel-build linkReleaseFramework Java-heap OOM is accepted as a characterised PRE-EXISTING infra issue and is NOT attributed to this spec."
+      }
+    ],
+    "unresolvedFlags": [
+      {
+        "task": "T-12",
+        "flag": "needsHumanReview",
+        "reason": "Designer ruling owed on 2 recorded typography/colour divergences; plus 3 unrecorded plan-errorStates token divergences (AF-5)."
+      },
+      {
+        "task": "T-13",
+        "flag": "needsHumanReview",
+        "reason": "Verification task self-certification; its claimed module coverage was incomplete (AF-8)."
+      },
+      {
+        "task": "HV-1",
+        "flag": "needsHumanReview",
+        "reason": "Real-device manual demo over SC-6/SC-20..24 owed at this gate by explicit engineer decision. No AC is failed for lacking it. SC-6 and SC-23 have no automated end-to-end substitute."
+      }
+    ],
+    "regressionRun": {
+      "command": "./gradlew :data-device-api:desktopTest :data-device-impl:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :domain-usecase-impl:desktopTest :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :presentation-feature-mirror:desktopTest --rerun --console=plain",
+      "passed": true,
+      "newFailures": [],
+      "totals": {
+        "tests": 433,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "modules": 8
+      },
+      "perModule": {
+        "data-device-api": 61,
+        "data-device-impl": 26,
+        "data-preference-impl": 9,
+        "data-repository-impl": 50,
+        "domain-usecase-impl": 1,
+        "presentation-core-styling": 6,
+        "presentation-core-ui": 29,
+        "presentation-feature-mirror": 251
+      },
+      "honesty": "Run twice. The first invocation was discarded (a bad flag made Gradle print usage and exit 1 — no tests ran). For the second, the eight modules' build/test-results trees were deleted first to defeat incremental up-to-date checks. :presentation-feature-mirror:desktopTest — the only module this spec changed test code in — GENUINELY EXECUTED; the other seven resolved FROM-CACHE, i.e. Gradle's build cache matched their inputs byte-for-byte against a previously recorded green execution. All 8 TEST-*.xml sets were (re)written at 23:37:56 and were parsed from disk, not from any report.json. Cross-target :build (iosSimulatorArm64 run) was NOT re-executed by this audit.",
+      "output": "> Task :data-device-api:desktopTestProcessResources NO-SOURCE\n> Task :data-device-impl:desktopTestProcessResources NO-SOURCE\n> Task :data-preference-impl:desktopTestProcessResources NO-SOURCE\n> Task :data-repository-impl:desktopTestProcessResources NO-SOURCE\n> Task :domain-usecase-impl:desktopTestProcessResources NO-SOURCE\n> Task :presentation-core-styling:desktopTestProcessResources UP-TO-DATE\n> Task :presentation-core-ui:desktopTestProcessResources UP-TO-DATE\n> Task :presentation-feature-mirror:desktopTestProcessResources UP-TO-DATE\n> Task :domain-usecase-impl:desktopTest FROM-CACHE\n> Task :data-preference-impl:desktopTest FROM-CACHE\n> Task :presentation-core-styling:desktopTest FROM-CACHE\n> Task :data-repository-impl:desktopTest FROM-CACHE\n> Task :data-device-api:desktopTest FROM-CACHE\n> Task :presentation-core-ui:desktopTest FROM-CACHE\n> Task :data-device-impl:desktopTest FROM-CACHE\n> Task :presentation-feature-mirror:desktopTest\n\n[Incubating] Problems report is available at: file:///Users/andrew-malitchuk/StudioProjects/rectify-kmp/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 10.\n\nBUILD SUCCESSFUL in 951ms\n107 actionable tasks: 24 executed, 83 up-to-date\nEXIT=0\n\n--- parsed from */build/test-results/desktopTest/TEST-*.xml (mtime 23:37:56) ---\ndata-device-api        tests=61  failures=0 errors=0 skipped=0\ndata-device-impl       tests=26  failures=0 errors=0 skipped=0\ndata-preference-impl   tests=9   failures=0 errors=0 skipped=0\ndata-repository-impl   tests=50  failures=0 errors=0 skipped=0\ndomain-usecase-impl    tests=1   failures=0 errors=0 skipped=0\npresentation-core-styling tests=6   failures=0 errors=0 skipped=0\npresentation-core-ui   tests=29  failures=0 errors=0 skipped=0\npresentation-feature-mirror tests=251 failures=0 errors=0 skipped=0\nTOTAL 433 failures 0 errors 0 skipped 0"
+    },
+    "aggregateDiffFindings": [
+      {
+        "id": "AD-1",
+        "category": "inconsistent-pattern",
+        "location": "presentation-core-ui/.../kit/molecule/row/HierarchyRow.kt:125 + showcase/StyleguideScreen.kt:743-745",
+        "issue": "A new defaulted parameter on a public shared component changed existing callers' rendering. Additive in signature, not in behaviour. See AF-3."
+      },
+      {
+        "id": "AD-2",
+        "category": "inconsistent-pattern",
+        "location": "presentation-feature-mirror/.../core/payload/HierarchyOutline.kt:75",
+        "issue": "Tree-guide `last` predicate disagrees with the consuming component's drawn-guide contract and with the component's own reference usage. See AF-1."
+      },
+      {
+        "id": "AD-3",
+        "category": "dead-code",
+        "location": "presentation-feature-mirror/.../core/payload/PayloadEstimate.kt:24",
+        "issue": "PAYLOAD_FORMAT_VERSION: zero production readers, one tautological test, KDoc describing a nonexistent consumer. See AF-6."
+      },
+      {
+        "id": "AD-4",
+        "category": "dead-code",
+        "location": "presentation-feature-mirror/.../core/payload/CropWindow.kt:32",
+        "issue": "CropWindow.scale: zero production readers; dstSize already encodes it. See AF-7."
+      },
+      {
+        "id": "AD-5",
+        "category": "performance",
+        "location": "presentation-feature-mirror/.../source/mirror/MirrorPayloadTab.kt:409-422, 501-508",
+        "issue": "Not a regression but a correctness-of-fit issue with a layout cost: the crop fit box is a constant while the draw box is weighted, so at PanelMinWidth the blit and the outline overrun the Canvas and are clipped. See AF-4."
+      },
+      {
+        "id": "AD-6",
+        "category": "performance",
+        "location": "presentation-feature-mirror/.../source/mirror/MirrorPayloadTab.kt:218-226, 284-296, 414-422",
+        "issue": "NO regression found against plan.performanceBudget — recorded as a positive. All three derivations are inside keyed `remember`s whose key sets I verified cover every input they read: `rows` keys on (hierarchy, frozen.annotations) and reads frozen.deviceSize, which cannot change while annotations stay non-empty (a new freeze stages zero and hits the early return, disposing the slot); `generated` keys on (annotations, deviceLabel, deviceSize, hierarchy) — exactly what buildPrompt plus the rows-derived nodeIdFor closure read; `windows` keys on (annotations, deviceSize, cellWidth, cellHeight) — the adjudicated cell-size fix, so a panel drag re-fits instead of serving stale geometry. Nothing projects, assembles or crops inside a row loop or an unkeyed composable. The ~400-node LazyColumn is height-capped at 338.dp (13 rows), so only the visible window composes."
+      },
+      {
+        "id": "AD-7",
+        "category": "security",
+        "location": "whole diff",
+        "issue": "NO security finding. Confirmed against plan.security by inspection: nothing in the diff writes to disk, to preferences or to the database (no File/Settings/Dao reference in any new file); no network call; no logging of prompt text, comments or node ids (zero println/Logger/log calls in the 20 changed files). promptOverride lives on FrozenFrame and is destroyed with the frame — resumeLive() is the only path that drops it, verified by MirrorViewModelPayloadTest.resumeLiveIsTheOnlyIntentThatDropsThePromptOverride. Hierarchy node text stays in memory for the pinned frame's lifetime, which is the feature's own point."
+      },
+      {
+        "id": "AD-8",
+        "category": "inconsistent-pattern",
+        "location": "presentation-feature-mirror/.../core/payload/ (6 files)",
+        "issue": "The five new core/payload files are internally consistent — all declarations internal or private (grep for a public declaration in that directory returns zero), machine-text strings justified identically file to file, middle dot and TIMES reused rather than re-declared, and explicitApi() satisfied (explicit visibility + explicit return type throughout, incl. MirrorPayloadTab's `: Unit`). Recorded as a clean pass. Zero TODO / FIXME / XXX / HACK / 'ponytail:' markers in the added lines across the whole diff."
+      },
+      {
+        "id": "AD-9",
+        "category": "inconsistent-pattern",
+        "location": "plan.json errorStates vs MirrorPayloadTab.kt:203-208, 589-593, 618-623",
+        "issue": "Three colour-token divergences from plan.errorStates, none recorded in T-12's token mapping. See AF-5."
+      }
+    ],
+    "aggregateDiffReview": [
+      "Diff size reconciled independently: 20 files, +2534/-27 excluding .pipeline (git diff --stat sdd/measure-mode...HEAD) — matches the orchestrator's ~+2500/-27 claim.",
+      "Zero TODO / FIXME / XXX / HACK / 'ponytail:' / 'WAIVED:' markers in added lines.",
+      "Nothing public in presentation-feature-mirror/.../core/payload/ — package-layout.md's core/-is-internal-only rule holds; explicitApi() satisfied repo-wide in the diff.",
+      "Two real errors found, both in the Compose half nobody can test: AF-1 (broken tree guides, with a test asserting the wrong contract) and AF-2 (AC-80's no-hierarchy state shadowed in the state production actually emits).",
+      "Three warns of cross-cutting shape: AF-3 (a defaulted param changing existing callers' rendering), AF-4 (fit box constant vs draw box weighted), AF-5 (plan errorStates tokens not reconciled).",
+      "Two dead declarations: PAYLOAD_FORMAT_VERSION (AF-6, with a tautological test) and CropWindow.scale (AF-7).",
+      "No security, privacy or performance regression found — both checked affirmatively, see AD-6 and AD-7.",
+      "Adjudicated decisions re-confirmed against real source, all present and correct: hasPayload internal + kotlin.contracts + first-statement gate; cropWindow's scaled pad with no literal 14; T-8 passing cell size in pixels with cellWidth/cellHeight in the remember keys; MirrorPayloadTab's 4-arg signature called with all four from RectifyWindow.kt; MirrorHost's 4-arg lambda collecting frozenHierarchy with exactly one call site, no second ViewModel resolution, no new Koin binding; MirrorNotesTab.kt / SidePanelFrame.kt / SidebarTabs.kt / ShellTab.kt byte-unchanged; the three new fields on FrozenFrame with MirrorUiState unchanged; zero AnnotationFormat.sizeLabel calls; zero backtick test-fun names."
+    ],
+    "registryConsistency": {
+      "consistent": true,
+      "phantomEntries": [],
+      "missingEntries": [],
+      "issues": [
+        "components.json has 84 entries (was 83); the delta is exactly the added 'mirror-payload-tab'.",
+        "Every entry's `path` resolves to a file that exists on disk — zero phantom paths across all 84.",
+        "mirror-payload-tab props 'state: MirrorUiState, frame: ImageBitmap?, hierarchy: HierarchySnapshotModel, onIntent: (MirrorIntent) -> Unit, modifier: Modifier = Modifier' match MirrorPayloadTab.kt:194-199 exactly (5 params, declared order).",
+        "hierarchy-row props carry 'matched: Boolean = false' in the correct position and match HierarchyRow.kt:62-70 exactly (7 params).",
+        "mirror-host props carry the 4-arg content lambda '(MirrorUiState, ImageBitmap?, HierarchySnapshotModel, (MirrorIntent) -> Unit) -> Unit' and match MirrorHost.kt:52 exactly.",
+        "All six private section composables (PayloadPromptSection, PayloadCropsSection, PayloadCropCell, PayloadHierarchySection, PayloadFooter, PayloadSectionLabel) are correctly ABSENT from the registry, as is the plan's provisional 'CropThumb' name — which never shipped (the real composable is PayloadCropCell). Plan traceabilityMatrix still names 'CropThumb' for AC-14/AC-76; harmless naming drift in the plan, not a registry error.",
+        "INFO (AF-12): mirror-notes-tab's description is now stale — 'the only side-panel tab with real content' contradicts the mirror-payload-tab entry added in the same spec. RectifyWindow.kt's equivalent comment was updated; the registry entry was not.",
+        "registry/bugs.json is [] (empty) — no recurring-bug data for this spec, and none invented."
+      ]
+    },
+    "traceability": [
+      {
+        "ref": "AC-13",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "PromptAssemblyTest + PayloadEstimateTest cover the generation and the estimate; rendering preview-only (AF-16)."
+      },
+      {
+        "ref": "AC-14",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "CropWindowTest 8 hand-computed cases; 3-column grid + baked outline + 'from frame N' tag inspected in source; clipping risk AF-4; rendering preview-only."
+      },
+      {
+        "ref": "AC-15",
+        "verificationMethod": "test",
+        "satisfied": false,
+        "evidence": "AF-1: `last` predicate breaks the drawn tree guides and its test asserts the wrong contract; AF-3: matched-default regression. Rendering untested."
+      },
+      {
+        "ref": "AC-16",
+        "verificationMethod": "inspection",
+        "satisfied": true,
+        "evidence": "Inspected PayloadFooter — both labels read straight from core/payload with no re-derivation; footerLabel pinned character-exactly by test. Literal 'matches the actual payload' unmeetable, AF-10."
+      },
+      {
+        "ref": "AC-72",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "dimensionPairIsUnspacedTimesNeverTheSpacePaddedSizeLabel (positive + negative assertion); zero sizeLabel calls repo-wide; both producers interpolate TIMES directly."
+      },
+      {
+        "ref": "AC-73",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "comment emitted verbatim at PromptAssembly.kt:57, no 'measured:' branch exists; asserted positively and negatively by PromptAssemblyTest."
+      },
+      {
+        "ref": "AC-74",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "PayloadLabelsTest pins 'uiautomator · N nodes'; never-dumps holds by signature — no dump-capable collaborator reachable from payloadHierarchyRows or MirrorPayloadTab."
+      },
+      {
+        "ref": "AC-75",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "HierarchyOutlineTest proves badge-iff-snapTarget in both directions; ink3-for-the-rest is HierarchyRow.kt:125. Implicit badge/index coupling AF-11."
+      },
+      {
+        "ref": "AC-76",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "outlineRect consumed verbatim; scaled pad pinned at two frame widths 37px apart; assertOutlineInsideDst on all 8 windows. Cell-containment caveat AF-4."
+      },
+      {
+        "ref": "AC-77",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "hasPayload gate is the first statement with a literal return; PayloadGateTest covers all three states incl. post-ClearStaged; copy matches strings.xml character-for-character."
+      },
+      {
+        "ref": "AC-78",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "18 tests incl. the non-vacuous 1.96->'2.0 MB' rounding case; synchronous recompute by inspection (inline reads, no cache); NFR-11 met by construction per plan.performanceBudget."
+      },
+      {
+        "ref": "AC-79",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "MirrorViewModelPayloadTest 8 tests over the override's full lifecycle incl. survives-add-and-delete and resumeLive-is-the-only-drop; UI toggle preview-only."
+      },
+      {
+        "ref": "AC-80",
+        "verificationMethod": "demo",
+        "satisfied": false,
+        "requiresHumanConfirmation": true,
+        "evidence": "Demo-verified by definition, so not passable here; and AF-2 is a real inspection failure — the no-hierarchy branch is shadowed in the (Unavailable + non-empty snapshot) state the ViewModel actually emits."
+      },
+      {
+        "ref": "SC-6",
+        "verificationMethod": "demo",
+        "satisfied": false,
+        "requiresHumanConfirmation": true,
+        "evidence": "HV-1."
+      },
+      {
+        "ref": "SC-20",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "PayloadGateTest + early return; device confirmation owed to HV-1."
+      },
+      {
+        "ref": "SC-21",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "HierarchyOutlineTest + PromptAssemblyTest no-match cases; crop independence holds by construction."
+      },
+      {
+        "ref": "SC-22",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "PromptAssemblyTest verbatim-comment and no-'measured:' assertions."
+      },
+      {
+        "ref": "SC-23",
+        "verificationMethod": "demo",
+        "satisfied": false,
+        "evidence": "AF-2 — the frame-size-mismatch sub-path of Unavailable renders a full unbadged tree under a 'no hierarchy' readout."
+      },
+      {
+        "ref": "SC-24",
+        "verificationMethod": "test",
+        "satisfied": true,
+        "evidence": "editPromptSurvivesAnAnnotationAddAndADelete covers the no-auto-clear step; click-to-edit preview-only."
+      }
+    ],
+    "verdictLeaning": {
+      "recommendation": "changes-requested",
+      "rationale": "Two error-severity defects, both in the Compose half this repo structurally cannot test, both with a test or a preview that looks like coverage and is not: AF-1 (tree-guide `last` predicate wrong, test asserts the wrong contract, AC-15) and AF-2 (AC-80's no-hierarchy state unreachable in the state production actually emits, preview pins the inputs away from it, SC-23). Both are small, local fixes — a `<=` to a `<` in HierarchyOutline.kt:75 with its test corrected, and either reordering PayloadHierarchySection's `when` to test the status first or not publishing an unusable snapshot to frozenHierarchy. Everything else is green: 433/0/0/0 on a real run, every adjudicated decision confirmed against real source, registry consistent, no security or performance regression, no dead TODOs, and 11 of 13 ACs satisfied for the half automation can reach. The four must-survive items (HV-1 device demo, six preview-only UI halves, AC-80's preview-only primary evidence, T-12's two design divergences) are classified and carried forward unresolved as required, plus one more the pipeline had not recorded: three plan-errorStates colour divergences missing from T-12's mapping."
+    }
+  },
+  "survey": [
+    {
+      "question": "Stage 5 gate — two confirmed correctness errors (AF-1 tree guides, AF-2 AC-80 violated in a reachable state). How do you want to proceed?",
+      "options": [
+        "Fix both via CRs (Recommended)",
+        "Fix AF-1 only",
+        "Waive both"
+      ],
+      "answer": "Fix both via CRs (Recommended)",
+      "source": "user-edited"
+    },
+    {
+      "question": "HV-1 real-device demo over SC-6/SC-20..24, plus six ACs resting on @Preview pairs nobody has opened.",
+      "options": [
+        "Waive for now, record it (Recommended)",
+        "I'll do it now",
+        "Defer entirely to QA"
+      ],
+      "answer": "Waive for now, record it (Recommended)",
+      "source": "user-edited"
+    },
+    {
+      "question": "T-12's two design divergences (prompt body 11sp vs 10.5px; Crops tag ink3 vs ink2) plus AF-5's three plan.errorStates colour divergences.",
+      "options": [
+        "Accept as shipped (Recommended)",
+        "Fix the colours only",
+        "Fix all five"
+      ],
+      "answer": "Accept as shipped (Recommended)",
+      "source": "user-edited"
+    }
+  ],
+  "gate": {
+    "type": "human",
+    "approved": true,
+    "approvedBy": "user",
+    "decision": "comment"
+  }
+}
