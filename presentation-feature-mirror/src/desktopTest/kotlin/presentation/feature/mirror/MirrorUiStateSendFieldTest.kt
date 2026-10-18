@@ -8,9 +8,10 @@ import kotlin.test.assertEquals
  * `MirrorUiState` gains **exactly one** new field per task, and no earlier field is ever
  * renamed or dropped.
  *
- * Written for T-8's `send: SendPhase` (TAC-2) and re-baselined by F-8's T-9, which adds
- * `history: List<HistoryEntryModel>` — the only field in this class that carries bytes, and
- * the one place that decision has to stay visible. Re-baselining is the intended maintenance
+ * Written for T-8's `send: SendPhase` (TAC-2), re-baselined by F-8's T-9 for
+ * `history: List<HistoryEntryModel>` — the only field in this class that carries bytes — and
+ * again by F-9's T-7 for `verify: VerifyUiState?`, which deliberately carries none: its two
+ * bitmaps ride a separate `StateFlow`. Re-baselining is the intended maintenance
  * of this test: the invariant it guards is "one considered field at a time, nothing renamed",
  * not "this class is frozen at fifteen fields".
  *
@@ -41,10 +42,11 @@ class MirrorUiStateSendFieldTest {
         "measure",
         "hierarchyStatus",
         "send",
+        "history",
     )
 
     @Test
-    fun exactlyOneFieldIsAddedAndItIsNamedHistory() {
+    fun exactlyOneFieldIsAddedAndItIsNamedVerify() {
         val declaredFieldNames = MirrorUiState::class.java.declaredFields
             .map { it.name }
             .filterNot { it.startsWith("$") }
@@ -53,7 +55,7 @@ class MirrorUiStateSendFieldTest {
         val added = declaredFieldNames - fieldsBeforeThisTask
         val removed = fieldsBeforeThisTask - declaredFieldNames
 
-        assertEquals(setOf("history"), added, "expected exactly one new field named 'history'")
+        assertEquals(setOf("verify"), added, "expected exactly one new field named 'verify'")
         assertEquals(emptySet(), removed, "no pre-existing field may be removed or renamed")
     }
 }

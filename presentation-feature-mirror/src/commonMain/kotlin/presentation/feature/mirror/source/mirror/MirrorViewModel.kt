@@ -302,6 +302,13 @@ public class MirrorViewModel(
             MirrorIntent.LocateAdb -> locateAdb()
             is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
             is MirrorIntent.VerifyBatch -> verifyBatch(intent.batchId)
+            // Declared ahead of their handlers so the contract is complete in one place; the
+            // bodies land with the run (ExitVerify), the re-stage (SendFollowUp) and the
+            // override (MarkAllVerified). Inert, never a TODO() that would crash a user who
+            // got to the button first.
+            MirrorIntent.SendFollowUp -> Unit
+            MirrorIntent.MarkAllVerified -> Unit
+            MirrorIntent.ExitVerify -> Unit
         }
     }
 

@@ -32,7 +32,33 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",

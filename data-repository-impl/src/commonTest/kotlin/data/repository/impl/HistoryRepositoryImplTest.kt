@@ -4,6 +4,7 @@ import data.database.impl.source.datasource.HistoryDataSource
 import data.database.impl.source.entity.HistoryEntryEntity
 import data.database.impl.source.entity.HistoryEntryWithAnnotations
 import data.repository.impl.source.repository.HistoryRepositoryImpl
+import data.repository.impl.source.store.BatchFileReader
 import data.repository.impl.source.store.BatchFileStore
 import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.SentAnnotationModel
@@ -42,6 +43,9 @@ private class FakeHistoryDataSource(
     }
 }
 
+/** The write path never reads a file back; `get` has its own test. */
+private val noFiles = BatchFileReader { null }
+
 /**
  * TAC-4 / TAC-5 — the three branches [HistoryRepositoryImpl] actually owns: a store that
  * failed, a store that succeeded, and a read that blew up.
@@ -53,7 +57,7 @@ class HistoryRepositoryImplTest {
         val dataSource = FakeHistoryDataSource()
         val neverWrites = BatchFileStore { _, _ -> null }
 
-        HistoryRepositoryImpl(neverWrites, dataSource).record(batch())
+        HistoryRepositoryImpl(neverWrites, noFiles, dataSource).record(batch())
 
         assertEquals(1, dataSource.inserted.size, "a failed disk write must not cost us the row")
         val (entry, annotations) = dataSource.inserted.single()
@@ -73,7 +77,7 @@ class HistoryRepositoryImplTest {
             "/x/history/batch-1"
         }
 
-        HistoryRepositoryImpl(store, dataSource).record(batch())
+        HistoryRepositoryImpl(store, noFiles, dataSource).record(batch())
 
         val (entry, annotations) = dataSource.inserted.single()
         assertEquals("/x/history/batch-1", entry.dirPath)
@@ -101,7 +105,7 @@ class HistoryRepositoryImplTest {
         }
 
         val thumbnailOnly = batch().copy(frameBytes = null, hierarchyXml = null, annotations = emptyList())
-        HistoryRepositoryImpl(store, dataSource).record(thumbnailOnly)
+        HistoryRepositoryImpl(store, noFiles, dataSource).record(thumbnailOnly)
 
         assertTrue(!called, "no bytes means no empty directory on disk")
         assertNull(dataSource.inserted.single().entry.dirPath)
@@ -115,7 +119,7 @@ class HistoryRepositoryImplTest {
         val dataSource = FakeHistoryDataSource()
         val nonsensePath = BatchFileStore { _, _ -> "/this/directory/does/not/exist" }
 
-        HistoryRepositoryImpl(nonsensePath, dataSource).record(batch())
+        HistoryRepositoryImpl(nonsensePath, noFiles, dataSource).record(batch())
 
         assertEquals("/this/directory/does/not/exist/frame.png", dataSource.inserted.single().entry.framePath)
     }
@@ -124,7 +128,8 @@ class HistoryRepositoryImplTest {
     fun observeMapsStoredRowsNewestFirstAsTheDataSourceOrderedThem() = runTest {
         val dataSource = FakeHistoryDataSource(flowOf(listOf(row("b", 2L), row("a", 1L))))
 
-        val models = HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, dataSource).observe().first()
+        val repository = HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, noFiles, dataSource)
+        val models = repository.observe().first()
 
         assertEquals(listOf("b", "a"), models.map { it.id })
         assertEquals(listOf(BatchStatusModel.Sent, BatchStatusModel.Sent), models.map { it.status })
@@ -141,7 +146,8 @@ class HistoryRepositoryImplTest {
             override suspend fun updateStatus(id: String, status: String) = Unit
         }
 
-        val models = HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, exploding).observe().first()
+        val repository = HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, noFiles, exploding)
+        val models = repository.observe().first()
 
         assertEquals(emptyList(), models, "History has no error surface - it degrades to empty")
     }
@@ -150,7 +156,7 @@ class HistoryRepositoryImplTest {
     fun updateStatusPassesTheEnumNameDownAsAString() = runTest {
         val dataSource = FakeHistoryDataSource()
 
-        HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, dataSource)
+        HistoryRepositoryImpl(BatchFileStore { _, _ -> null }, noFiles, dataSource)
             .updateStatus("batch-1", BatchStatusModel.Fixed)
 
         assertEquals(listOf("batch-1" to "Fixed"), dataSource.statusUpdates)

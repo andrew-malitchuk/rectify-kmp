@@ -157,6 +157,11 @@ public fun MirrorStageContent(
                 )
             }
 
+            // The stage composable lands with the verify UI task. Nothing can reach this
+            // branch yet: the only thing that selects it is a non-null `state.verify`, which
+            // no reducer writes until the run is wired.
+            MirrorStage.Verify -> Unit
+
             MirrorStage.NoSignal -> NoSignalStage(
                 avds = state.avds,
                 selectedAvd = state.selectedAvd,
