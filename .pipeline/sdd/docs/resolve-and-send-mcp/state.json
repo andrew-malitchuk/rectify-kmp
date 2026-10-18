@@ -1,6 +1,6 @@
 {
   "spec": "resolve-and-send-mcp",
-  "currentStage": "backlog",
+  "currentStage": "execution",
   "stages": {
     "preparation": {
       "status": "done"
