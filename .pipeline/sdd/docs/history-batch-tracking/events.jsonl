@@ -38,3 +38,5 @@
 {"stage": "execution", "step": "wave-7", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T20:10:55Z", "spec": "history-batch-tracking"}
 {"stage": "execution", "step": "wave-7", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 90961, "at": "2026-10-18T20:15:49Z", "spec": "history-batch-tracking"}
 {"stage": "execution", "step": "wave-8", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T20:15:49Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-8", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 50971, "at": "2026-10-18T20:18:51Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-9", "agent": "sdd-build-docs-implement", "event": "start", "at": "2026-10-18T20:18:51Z", "spec": "history-batch-tracking"}
