@@ -1,0 +1,160 @@
+# resolve-and-send-mcp — T-3
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-3 |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-18T14:04:00Z |
+| updatedAt | 2026-10-18T14:04:38Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-18T14:04:38Z
+
+## Provenance
+
+### selfHash
+
+f3e7532bd785b3ac048c9e60d2d8603b28996647e97ff46a76d65fc47328b066
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 13736f4c3b002eb7483a12681dfff64471a26926e7be014daa6853d369d3d83b |
+
+## Data
+
+### taskId
+
+T-3
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- settings.gradle.kts
+- data-handoff-api/build.gradle.kts
+- data-handoff-api/CLAUDE.md
+- data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/envelope/AnnotationEnvelope.kt
+- data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/handoff/AnnotationHandoff.kt
+- data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt
+- data-handoff-api/src/desktopMain/kotlin/data/handoff/api/source/handoff/FileSlotFactory.kt
+- data-handoff-api/src/desktopTest/**
+
+### tdd
+
+#### testsFrozen
+
+true
+
+#### cycle
+
+green
+
+#### testsWrittenBy
+
+sdd-build-business-test (per task)
+
+#### implementedBy
+
+sdd-build-business-implement (batched wave-1)
+
+### testRun
+
+#### command
+
+./gradlew --continue --rerun-tasks :domain-core:desktopTest :data-repository-impl:desktopTest :data-handoff-api:desktopTest :presentation-feature-mirror:desktopTest
+
+#### passed
+
+true
+
+#### output
+
+```
+BUILD SUCCESSFUL in 7s (83 actionable tasks: 83 executed)
+domain-core: 1 tests, 0 failures
+data-repository-impl: 52 tests, 0 failures
+data-handoff-api: 14 tests, 0 failures
+presentation-feature-mirror: 318 tests, 0 failures
+```
+
+### implementation
+
+#### summary
+
+Images written to <root>/<sentAtMs>/<name> BEFORE latest.json.tmp -> Files.move(ATOMIC_MOVE, REPLACE_EXISTING); numeric sibling directories pruned after each publish; owner-only POSIX attributes where the filesystem reports a posix view; latest() returns null for absent AND corrupt slots; bare-name validation (/, \, .., blank -> IllegalArgumentException) on both resolve() and the write path; version is first in the serialized JSON via declaration order. Module stays Koin-free - no build-file or version-catalog change needed.
+
+#### filesChanged
+
+- settings.gradle.kts
+- data-handoff-api/build.gradle.kts
+- data-handoff-api/CLAUDE.md
+- data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/envelope/AnnotationEnvelope.kt
+- data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/handoff/AnnotationHandoff.kt
+- data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt
+- data-handoff-api/src/desktopMain/kotlin/data/handoff/api/source/handoff/FileSlotFactory.kt
+- data-handoff-api/src/desktopTest/**
+
+### validations
+
+| stage | passed | iterations | issues | note |
+| --- | --- | --- | --- | --- |
+| tests | true | 1 | [] |  |
+| cross-target-compile | true | 1 | [] | ./gradlew :data-handoff-api:compileTestKotlinIosArm64 :presentation-feature-mirror:compileTestKotlinIosArm64 :domain-core:compileTestKotlinIosArm64 :data-repository-impl:compileTestKotlinIosArm64 -> BUILD SUCCESSFUL. No illegal-character test names. |
+
+### troubleshooting
+
+
+### linkedAC
+
+- AC-18
+- AC-32
+- AC-81
+- FR-17
+- NFR-4
+- NFR-12
+
+### backlogUpdate
+
+#### taskId
+
+T-3
+
+#### status
+
+done
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason
