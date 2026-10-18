@@ -113,7 +113,7 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_mea
  * KDoc rules out authoring a second component for this: "the vertical ruler in the reference is
  * the same strip rotated by the host".
  */
-private const val VERTICAL_RULER_ROTATION_DEGREES = 270f
+private const val VERTICAL_RULER_ROTATION_DEGREES = 90f
 
 /**
  * Popover footprint used for **clamping** and for the crowding test, from the shared nominal
@@ -738,9 +738,15 @@ private fun BoxScope.DragGuides(
             .graphicsLayer {
                 transformOrigin = TransformOrigin(pivotFractionX = 0f, pivotFractionY = 0f)
                 rotationZ = VERTICAL_RULER_ROTATION_DEGREES
-                // Rotating about the top-left corner sweeps the strip above the frame;
-                // `size.width` is its own length, so this drops it back down the leading edge.
-                translationY = size.width
+                // 90f, NOT 270f. Both land the strip down the leading edge, but they run it in
+                // opposite directions, and only one of them agrees with the device's own axis.
+                // Rotating (x, y) by 90f about the top-left gives (-y, x): the strip's zero end
+                // stays at y = 0 (the TOP) and its far end runs downward, which is how device y
+                // actually grows. At 270f it is (y, -x) and the zero end lands at the BOTTOM, so
+                // the ruler reads 2000 at the top of a 2132 px frame.
+                // The sweep is into negative x instead of negative y, so the correction moves
+                // along x and uses the strip's own thickness, not its length.
+                translationX = size.height
             },
     )
 
