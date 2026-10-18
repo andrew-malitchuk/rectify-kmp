@@ -22,3 +22,5 @@
 {"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-18T22:26:39Z", "spec": "verify-and-rediff-loop"}
 {"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 138164, "at": "2026-10-18T22:33:15Z", "spec": "verify-and-rediff-loop"}
 {"stage": "backlog", "event": "end", "at": "2026-10-18T22:33:15Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "event": "start", "at": "2026-10-18T22:33:22Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T22:33:22Z", "spec": "verify-and-rediff-loop"}

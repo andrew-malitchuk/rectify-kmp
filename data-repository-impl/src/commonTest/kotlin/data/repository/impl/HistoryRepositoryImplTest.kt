@@ -30,6 +30,8 @@ private class FakeHistoryDataSource(
 
     override fun observeAll(): Flow<List<HistoryEntryWithAnnotations>> = rows
 
+    override suspend fun getBatch(id: String): HistoryEntryWithAnnotations? = null
+
     override suspend fun insert(resource: HistoryEntryWithAnnotations): Long {
         inserted += resource
         return inserted.size.toLong()
@@ -134,6 +136,7 @@ class HistoryRepositoryImplTest {
             override fun observeAll(): Flow<List<HistoryEntryWithAnnotations>> =
                 flow { throw IllegalStateException("table history_entry is gone") }
 
+            override suspend fun getBatch(id: String): HistoryEntryWithAnnotations? = null
             override suspend fun insert(resource: HistoryEntryWithAnnotations): Long = 0
             override suspend fun updateStatus(id: String, status: String) = Unit
         }

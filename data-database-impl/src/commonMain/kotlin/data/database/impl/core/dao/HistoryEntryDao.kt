@@ -31,6 +31,18 @@ internal interface HistoryEntryDao {
     @Query("SELECT * FROM history_entry ORDER BY sentAtMs DESC")
     fun observeAll(): Flow<List<HistoryEntryWithAnnotations>>
 
+    /**
+     * One batch with its annotations, or `null` when [id] names no row.
+     *
+     * `@Transaction` because the `@Relation` runs a second query for the children: without it
+     * a concurrent write could land between the two and return a parent with somebody else's
+     * annotation set. No `LIMIT` and no ordering clause — [id] is the primary key, so this is
+     * one row by definition; [observeAll]'s unbounded-scan shape must not be copied here.
+     */
+    @Transaction
+    @Query("SELECT * FROM history_entry WHERE id = :id")
+    suspend fun findById(id: String): HistoryEntryWithAnnotations?
+
     /** No-op when [id] is unknown. */
     @Query("UPDATE history_entry SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: String, status: String)

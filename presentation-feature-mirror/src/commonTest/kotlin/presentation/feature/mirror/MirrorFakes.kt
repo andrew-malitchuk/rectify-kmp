@@ -173,13 +173,28 @@ internal class FakeObserveMirrorStats(
  * frame got pinned — which is the whole of AC-47 — with no native dependency and no
  * `build.gradle.kts` edit.
  */
-internal class FakeFrameBitmap(override val width: Int, override val height: Int) : ImageBitmap {
+internal class FakeFrameBitmap(
+    override val width: Int,
+    override val height: Int,
+    private val pixel: (x: Int, y: Int) -> Int = ::gradientPixel,
+) : ImageBitmap {
     override val config: ImageBitmapConfig = ImageBitmapConfig.Argb8888
     override val colorSpace: ColorSpace = ColorSpaces.Srgb
     override val hasAlpha: Boolean = false
 
     override fun prepareToDraw(): Unit = Unit
 
+    /**
+     * Fills the caller's buffer from [pixel], honouring every argument.
+     *
+     * It used to be `= Unit`, which left every region read all-zero: a BEFORE/AFTER pair then
+     * compared equal whatever the test intended, and every pixel assertion passed vacuously
+     * (bugs.json#PP-TD-10). A fake that silently answers nothing is worse than no fake.
+     *
+     * Row `r` of the requested region starts at `bufferOffset + r * stride`, so a stride wider
+     * than the region leaves the gap between rows untouched -- exactly what the real
+     * implementation does.
+     */
     override fun readPixels(
         buffer: IntArray,
         startX: Int,
@@ -188,8 +203,22 @@ internal class FakeFrameBitmap(override val width: Int, override val height: Int
         height: Int,
         bufferOffset: Int,
         stride: Int,
-    ): Unit = Unit
+    ) {
+        for (row in 0 until height) {
+            val rowStart = bufferOffset + row * stride
+            for (column in 0 until width) {
+                buffer[rowStart + column] = pixel(startX + column, startY + row)
+            }
+        }
+    }
 }
+
+/**
+ * The default [FakeFrameBitmap] content: deterministic, opaque, and different at every
+ * coordinate, so two regions of the same frame never compare equal by accident.
+ */
+internal fun gradientPixel(x: Int, y: Int): Int =
+    (0xFF shl 24) or (((x * 7) and 0xFF) shl 16) or (((y * 11) and 0xFF) shl 8) or ((x + y) and 0xFF)
 
 /**
  * A decoder whose output differs in **both** axes per frame, so an assertion on the pinned

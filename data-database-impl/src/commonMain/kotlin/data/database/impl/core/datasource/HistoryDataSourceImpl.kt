@@ -12,6 +12,8 @@ internal class HistoryDataSourceImpl(
 
     override fun observeAll(): Flow<List<HistoryEntryWithAnnotations>> = dao.observeAll()
 
+    override suspend fun getBatch(id: String): HistoryEntryWithAnnotations? = dao.findById(id)
+
     override suspend fun insert(resource: HistoryEntryWithAnnotations): Long =
         dao.insert(resource.entry, resource.annotations)
 

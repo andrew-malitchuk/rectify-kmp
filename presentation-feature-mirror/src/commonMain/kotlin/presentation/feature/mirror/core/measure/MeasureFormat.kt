@@ -9,7 +9,7 @@ import presentation.feature.mirror.source.mirror.MeasureValue
 private const val DELTA = 'Δ'
 
 /** `·`, U+00B7 — the middle dot every measure string separates its segments with. */
-private const val SEPARATOR = " · "
+internal const val SEPARATOR: String = " · "
 
 /**
  * `⌥`, U+2325 — the glyph that marks a measure line as machine-written inside a user's note.

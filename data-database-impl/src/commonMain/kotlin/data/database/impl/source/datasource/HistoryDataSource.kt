@@ -20,6 +20,14 @@ public interface HistoryDataSource :
     AppendableDataSource<HistoryEntryWithAnnotations> {
 
     /**
+     * One batch with its annotations, or `null` when [id] names no row.
+     *
+     * Bespoke rather than `ReadableDataSource.getById`: that base is `Int`-keyed and a batch id
+     * is the `mintSessionId` string, so the generic read would not type-check, let alone work.
+     */
+    public suspend fun getBatch(id: String): HistoryEntryWithAnnotations?
+
+    /**
      * Moves the batch [id] to [status], the stored name of a `BatchStatusModel`.
      *
      * A string and not the enum: the domain type belongs on the other side of the repository.
