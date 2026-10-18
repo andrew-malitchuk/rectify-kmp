@@ -13,6 +13,7 @@ kotlin {
 
             implementation(projects.domainCore)
             implementation(projects.domainUsecaseApi)
+            implementation(projects.dataHandoffApi)
             implementation(projects.presentationCoreLocalisation)
             implementation(projects.presentationCoreStyling)
             implementation(projects.presentationCoreUi)

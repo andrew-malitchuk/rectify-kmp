@@ -210,6 +210,10 @@ public class MirrorViewModel(
             MirrorIntent.EndMeasure -> endMeasure()
             MirrorIntent.ClearStaged -> clearStaged()
             is MirrorIntent.EditPrompt -> editPrompt(intent.text)
+            // TODO(T-9): PLACEHOLDER — replace this branch with resolveAndSend(). The intent
+            //  landed with T-8's contract one wave ahead of its handler; doing nothing keeps
+            //  the `when` exhaustive without faking a send.
+            MirrorIntent.ResolveAndSend -> Unit
             MirrorIntent.ResumeLive -> resumeLive()
             MirrorIntent.Reconnect -> reconnect()
             MirrorIntent.RetryDiscovery -> retryDiscovery()
@@ -591,12 +595,23 @@ public class MirrorViewModel(
         }
     }
 
-    /** Empties the staged list. The frame stays pinned — only Resume Live unpins it (AC-48). */
+    /**
+     * Empties the staged list. The frame stays pinned — only Resume Live unpins it (AC-48).
+     *
+     * `promptOverride` goes with the annotations (bugs.json#PP-TD-2): it was written to describe
+     * the batch being cleared, and `EnvelopeAssembly` reads `promptOverride ?: buildPrompt(...)`
+     * for the text actually sent to the agent, so keeping it would ship a prompt describing
+     * annotations that no longer exist.
+     */
     private fun clearStaged() = intent {
         reduce {
             val frozen = state.frozen ?: return@reduce state
             state.copy(
-                frozen = frozen.copy(annotations = emptyList(), selectedIndex = null),
+                frozen = frozen.copy(
+                    annotations = emptyList(),
+                    selectedIndex = null,
+                    promptOverride = null,
+                ),
                 measure = null,
             )
         }

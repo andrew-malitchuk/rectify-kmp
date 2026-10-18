@@ -7,11 +7,11 @@ import presentation.feature.mirror.core.send.STEP_FROZEN
 import presentation.feature.mirror.core.send.STEP_SENT
 import presentation.feature.mirror.core.send.STEP_STREAMING
 import presentation.feature.mirror.core.send.STEP_STREAM_DROPPED
-import presentation.feature.mirror.core.send.SendPhase
 import presentation.feature.mirror.core.send.sendSteps
 import presentation.feature.mirror.core.send.sendTrailing
 import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MirrorSession
+import presentation.feature.mirror.source.mirror.SendPhase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

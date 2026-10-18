@@ -4,36 +4,7 @@ import presentation.core.ui.source.kit.molecule.status.StatusStep
 import presentation.core.ui.source.kit.molecule.status.StatusStepState
 import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MirrorSession
-
-/**
- * STUB owned by T-8 (wave 2) — see plan.json's "MirrorContract additions" entry
- * (`public enum class SendPhase { Idle, Preparing, Publishing, Sent, Failed }` with a public
- * `isInFlight: Boolean` getter, plus `MirrorUiState.send: SendPhase`). Declared `internal` here,
- * duplicating the five documented cases verbatim, only so T-4's tests compile ahead of T-8
- * landing the real type in `MirrorContract.kt`. T-8 should delete this declaration and repoint
- * every reference in `core/send/` at the real, `public` `SendPhase` — nothing here changes shape
- * when that happens, including [isInFlight].
- */
-internal enum class SendPhase {
-    /** Nothing in flight — the status overlay is hidden. */
-    Idle,
-
-    /** Encoding crops, assembling the envelope. */
-    Preparing,
-
-    /** Writing the handoff slot. */
-    Publishing,
-
-    /** Terminal success. */
-    Sent,
-
-    /** Terminal failure; frame and batch preserved (AS-31). */
-    Failed,
-    ;
-
-    /** Whether a send is actively running — [Preparing] or [Publishing]. */
-    val isInFlight: Boolean get() = this == Preparing || this == Publishing
-}
+import presentation.feature.mirror.source.mirror.SendPhase
 
 /** [StatusStep.label] for the pipeline's first step when the session is live or idle. */
 internal const val STEP_STREAMING: String = "Streaming"
