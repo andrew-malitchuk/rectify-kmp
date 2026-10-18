@@ -10,8 +10,10 @@ import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
+import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -44,6 +46,8 @@ public val presentationFeatureMirrorModule: Module = module {
             dumpHierarchy = get<DumpHierarchyUseCase>(),
             recordSentBatch = get<RecordSentBatchUseCase>(),
             observeHistory = get<ObserveHistoryUseCase>(),
+            getSentBatch = get<GetSentBatchUseCase>(),
+            updateBatchStatus = get<UpdateBatchStatusUseCase>(),
             handoff = get<AnnotationHandoff>(),
             encodeCrop = get<CropEncoder>(),
         )

@@ -14,6 +14,7 @@ import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
+import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.HistoryEntryModel
 import domain.core.source.model.history.SentBatchModel
 import domain.usecase.api.source.monad.Optional
@@ -26,8 +27,11 @@ import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.core.source.monad.Failure
+import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
+import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -365,6 +369,49 @@ internal class FakeRecordSentBatch(
     }
 }
 
+/**
+ * Hands back one recorded batch, or the `NotFound` the real use case raises when the row or
+ * its `frame.png` is gone.
+ *
+ * [manual] mirrors [FakeDumpHierarchy]'s gate so a test can observe
+ * [presentation.feature.mirror.source.mirror.VerifyPhase.Loading] while the read is still in
+ * flight, rather than racing a real suspension against `advanceUntilIdle()`.
+ */
+internal class FakeGetSentBatch(
+    private val batch: SentBatchModel? = null,
+    private val manual: Boolean = false,
+) : GetSentBatchUseCase {
+
+    val calls: MutableList<String> = mutableListOf()
+    private var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun invoke(batchId: String): Result<SentBatchModel> {
+        calls += batchId
+        if (manual) {
+            val deferred = CompletableDeferred<Unit>()
+            gate = deferred
+            deferred.await()
+        }
+        return batch?.let { Result.success(it) } ?: Result.failure(Failure.Logic.NotFound)
+    }
+
+    /** Releases a read parked behind [manual]. */
+    fun release() {
+        gate?.complete(Unit)
+    }
+}
+
+/** Records every status write, so "exactly once" and "never" are both directly assertable. */
+internal class FakeUpdateBatchStatus : UpdateBatchStatusUseCase {
+
+    val writes: MutableList<Pair<String, BatchStatusModel>> = mutableListOf()
+
+    override suspend fun invoke(batchId: String, status: BatchStatusModel): Optional {
+        writes += batchId to status
+        return Result.success(Unit)
+    }
+}
+
 /** A history stream the test owns: empty until [emit] puts rows on it. */
 internal class FakeObserveHistory(
     initial: List<HistoryEntryModel> = emptyList(),
@@ -407,6 +454,8 @@ internal fun mirrorViewModel(
     dumpHierarchy: DumpHierarchyUseCase = FakeDumpHierarchy(),
     recordSentBatch: RecordSentBatchUseCase = FakeRecordSentBatch(),
     observeHistory: ObserveHistoryUseCase = FakeObserveHistory(),
+    getSentBatch: GetSentBatchUseCase = FakeGetSentBatch(),
+    updateBatchStatus: UpdateBatchStatusUseCase = FakeUpdateBatchStatus(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
     handoff: AnnotationHandoff = FakeAnnotationHandoff(),
     encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
@@ -424,6 +473,8 @@ internal fun mirrorViewModel(
     dumpHierarchy = dumpHierarchy,
     recordSentBatch = recordSentBatch,
     observeHistory = observeHistory,
+    getSentBatch = getSentBatch,
+    updateBatchStatus = updateBatchStatus,
     decodeFrame = decodeFrame,
     handoff = handoff,
     encodeCrop = encodeCrop,
