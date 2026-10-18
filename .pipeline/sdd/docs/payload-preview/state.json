@@ -1,6 +1,6 @@
 {
   "spec": "payload-preview",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -19,6 +19,10 @@
     },
     "review": {
       "status": "done"
+    },
+    "reflection": {
+      "status": "skipped",
+      "reason": "Engineer declined reflection for this run. Also the fast tier defers it by default (config.$effort_tiers.fast.reflection = manual) and --reflect was not passed. Run /sdd-build-reflect-retrospective later to pick it up; the material is preserved in events.jsonl and bugs.json."
     }
   },
   "steps": {
