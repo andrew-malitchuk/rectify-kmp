@@ -16,6 +16,13 @@
     },
     "validation": {
       "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped",
+      "reason": "effort:fast — reflection deferred to manual; run /sdd-build-reflect-retrospective (batch across specs)"
     }
   },
   "steps": {
@@ -41,6 +48,9 @@
       "status": "done"
     },
     "verdict": {
+      "status": "done"
+    },
+    "review": {
       "status": "done"
     }
   },

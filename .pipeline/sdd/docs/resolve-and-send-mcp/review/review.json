@@ -1,0 +1,265 @@
+{
+  "spec": "resolve-and-send-mcp",
+  "stage": "review",
+  "step": "review",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-correctness-review",
+  "provenance": {
+    "selfHash": "63719c13fa5089363233d577c903cbd9a5aafb2007d36380e2b39d3790be4ea3",
+    "inputs": [
+      {
+        "artifact": "validation/verdict.json",
+        "hash": "d1af14cc4770f72c0bb2218d6cccd7f608673fe829187096c5bc3b51805e256f"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T17:08:53Z",
+  "updatedAt": "2026-10-18T17:15:24Z",
+  "data": {
+    "verdict": "approve-with-nits",
+    "summary": "Merged single-pass tech review of the CODE in the F-7 aggregate diff (119 files; the ~14k lines of .pipeline/ metadata were deliberately skipped except as review input). The feature is well built: the send handler keeps bytes off reduced state, EnvelopeAssembly reuses F-6's geometry and prompt seams instead of recomputing them, the slot write is images-then-ATOMIC_MOVE in the right order, Koin/Orbit/design-token/package-layout conventions hold, and the three Stage 5 CRs (AF-1, AF-4, AF-5) are genuinely fixed where they were applied. One blocking defect: AF-1 was patched at the call site rather than at the root, so three sibling accessors in McpDispatcher.handle still throw out of the stdio read loop on a structurally-malformed JSON-RPC line — verified empirically, not inferred. One major correctness gap (a send already in flight is re-enabled by staging another annotation, making the 'second concurrent send is not reachable' invariant false) and one major plan contradiction (a corrupt slot is reported to the agent as 'nothing sent yet', not as the tool error the plan's errorState requires). Everything else is minors and nits. The nine gate decisions, the eight accepted waivers and T-13's outstanding demo were not re-litigated. | POST-CR: the one blocking and both major findings were fixed on the integration branch and re-verified against the real installDist binary; the verdict is revised from request-changes to approve-with-nits. Five minors and six nits remain open as recorded tech debt.",
+    "blocking": [
+      "F-1"
+    ],
+    "major": [
+      "F-2",
+      "F-3"
+    ],
+    "minor": [
+      "F-4",
+      "F-5",
+      "F-6",
+      "F-7",
+      "F-8"
+    ],
+    "nits": [
+      "F-9",
+      "F-10",
+      "F-11",
+      "F-12",
+      "F-13",
+      "F-14"
+    ],
+    "changeRequests": [
+      {
+        "id": "F-1",
+        "target": "stage-6-cr",
+        "about": "Only the outer parse is guarded (line 70). Line 74 `request[\"method\"]?.jsonPrimitive?.content` and line 92 `request[\"params\"]?.jsonObject?.get(\"name\")?.jsonPrimitive?.content` are three unguarded cast accessors on attacker-shaped JSON. kotlinx-serialization's `jsonPrimitive`/`jsonObject` throw IllegalArgumentException on a type mismatch — verified by direct probe against kotlinx-serialization-json-jvm 1.11.0: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":{\"x\":1}}` yields 'Element class JsonObject ... is not a JsonPrimitive', and a non-object `params` yields 'is not a JsonObject'. The exception escapes handle(), and Main.kt:31 runs it bare inside `generateSequence(::readlnOrNull).forEach { ... }` with no try/catch, so one such line terminates the server process mid-session. This is the SAME root cause Stage 5's AF-1 found; the fix wrapped render()/resolve() at one call site (line 128) instead of the shared entry point, leaving every sibling path live. Plan errorStates require 'Malformed JSON-RPC line on stdin: respond with -32700 and keep reading. One bad frame must not end the session', and the audit recorded FR-56 as satisfied on exactly that claim. Fix is one line of surface: wrap handle()'s body in runCatching -> -32700/-32603, or use `(request[\"method\"] as? JsonPrimitive)?.content`. Add a protocol test for a non-primitive `method` and a non-object `params`.",
+        "status": "fixed-on-branch",
+        "resolution": "RESOLVED AT THE ROOT. handle() split into a thin outer guard plus a private dispatch(): non-throwing accessors (as? JsonObject / as? JsonPrimitive + isString) yield -32600 for a well-formed-JSON-but-wrong-shape request, -32700 stays for unparseable input, -32601 for an unknown tool, and an outer catch-all turns any escaping Throwable into -32603 while rethrowing CancellationException. Six malformed shapes probed against the real installDist binary (method as object/number, params as array, name as number, unparseable text, top-level array): every one answered on one line, the session survived each, exit 0 on EOF. The orchestrator independently re-ran the original reproducer. 7 new regression tests."
+      },
+      {
+        "id": "F-2",
+        "target": "stage-6-cr",
+        "about": "stageAnnotation() reduces `send = SendPhase.Idle` unconditionally, including while Preparing/Publishing is in flight. Nothing on the stage gates pointer input on `send.isInFlight` (grep: isInFlight appears only in SendGate, MirrorContract and RectifyWindow's button), so drawing one more annotation during the ~1s send flips the phase back to Idle, which re-enables both `Resolve & Send` and `Clear` mid-flight (canSend/canClear are `!send.isInFlight`) and contradicts AC-20's 'only re-enables after the toast confirms or the send fails'. Two consequences: (a) a second ResolveAndSend can be dispatched while the first is publishing — two concurrent publishes then share one `latest.json.tmp` and race the prune, see F-4; (b) even without a second click, the annotation staged during the send is silently discarded by the success reduce (line 845/850 clears the batch / nulls the frame) while the toast reports the pre-send count. Secondary, lower-probability path to the same invariant: Orbit's default container does not serialize intents, so two near-simultaneous dispatches can both pass the `canSend(state)` check at line 790 before either reduces Preparing. Minimum fix: make the Idle reset at line 462 conditional on `!state.send.isInFlight`.",
+        "status": "fixed-on-branch",
+        "resolution": "RESOLVED. stageAnnotation returns early while state.send.isInFlight, and the Idle reset became conditional on a terminal phase (evaluated INSIDE reduce, where Orbit's CAS loop sees the winning value - the pre-reduce read is a pre-image, as the file's own KDoc warns). DECISION: a drag during a send is DROPPED, not staged. Preserving it would require suppressing the success path's resume-to-live for that case alone - a bigger and more surprising change (toast but no live mirror back). Dropping at the source means nothing is ever SILENTLY lost: no annotation ever appears, so there is no illusion of a staged item that later vanishes. AC-20 is now true (nothing can re-enable Resolve & Send or Clear mid-send) and AC-21 is true (success clears exactly the batch that was sent, because the batch cannot change under the send). Regression test confirmed RED against the unmodified ViewModel before going green."
+      },
+      {
+        "id": "F-3",
+        "target": "stage-6-cr",
+        "about": "latest() wraps the read+decode in `runCatching { ... }.getOrNull()`, so a corrupt, truncated or unreadable latest.json is indistinguishable from an absent one. McpDispatcher then takes the `envelope == null` branch and answers the agent 'No annotation has been sent yet.' with isError=false. The plan's errorState requires the opposite: 'Server reads a corrupt or truncated slot ... returns a tool error with the parse message and never throws out of the read loop', and the task acceptance text repeats it ('corrupt/truncated slot -> isError true with the parse message'). As a side effect McpDispatcher.kt:112's 'Could not read the handoff slot' branch is dead for the only production AnnotationHandoff — it is reachable only from a throwing fake in tests. The divergence is argued in the implementation KDoc ('the interface has no second error channel') but was never waived; it is not in the eight accepted waivers. Either widen the contract (a sealed read result, or distinguish absent-vs-unreadable) or get the errorState amended. The user-visible cost today is an agent that silently proceeds as if no send happened.",
+        "status": "fixed-on-branch",
+        "resolution": "RESOLVED. latest() now distinguishes absent (returns null) from corrupt (throws, carrying the parse message), so McpDispatcher's 'Could not read the handoff slot' branch is live in production instead of dead. Verified against the real binary: a corrupt latest.json yields isError true with the parse message, and the session answers the following tools/list. The plan's errorState was treated as authoritative over T-3's abbreviated task wording. One pre-existing frozen test (FileSlotAnnotationHandoffCorruptTest) flipped from assertNull to assertFails plus a non-blank-message assertion; a third case was ADDED asserting an absent slot is still null, and FileSlotAnnotationHandoffTest.anAbsentSlotReturnsNullNeverThrows is untouched and green."
+      }
+    ],
+    "techDebt": [
+      "F-4 (minor) data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt:53 — ATOMIC_MOVE protects latest.json's contents but not the publish as a whole, and nothing serializes two publishes. Concurrent publish A/B: both write the same fixed `latest.json.tmp` path (line 53-54, interleaved content), then whichever moves first runs pruneSendDirectoriesExcept(its own dir) at line 61 and deleteRecursively's the other's send directory while that publish is still writing images into it — so the surviving slot can name a directory whose frame.png and crops no longer exist, and the loser's Files.move can fail with NoSuchFileException. Today the only caller is the gated ViewModel, which is why this is minor rather than major — but F-2 is a concrete path that opens the gate, and the KDoc ('the slot either holds the previous envelope or the new one') overstates what is guaranteed. A per-publish unique tmp name (`latest.json.<sentAtMs>.tmp`) plus a mutex or a FileLock in publish() closes it.",
+      "F-5 (minor) presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:809 — `runCatching` at line 809 catches Throwable, which includes CancellationException. If the ViewModel is cleared (or viewModelScope is otherwise cancelled) between Preparing and Publishing, the cancellation is reported through onFailure as a send failure: a Kermit warning claiming 'Resolve & Send failed' and a `reduce { send = Failed }` attempted on an already-cancelled scope. The practical damage is limited (the reduce itself re-throws at its suspension point and the host is going away anyway), but the log lies about the cause and the pattern hides any future cancellation that matters. Rethrow it: `.onFailure { if (it is CancellationException) throw it; ... }`. Same shape, lower stakes, in AwtCropEncoder.kt:29 (a cancelled encode is reported as a null crop, i.e. a degraded payload). Everything else about the timing seams checks out: `elapsed.markNow()` is monotonic and read once at line 859, `nowMs()` is the single wall-clock read feeding both sentAtMs and the send directory name, and the two never cross.",
+      "F-6 (minor) mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt:149 — render() inlines `envelope.hierarchyXml` verbatim (the full verbatim uiautomator rawDump threaded in by T-2) with no size check anywhere in the diff — grep for 'truncat' across the new code returns nothing. The plan states this twice, as a perf-budget target and as the mitigation for a 'med/high' risk row ('above it the XML truncates with an explicit marker rather than failing the call'), and it is not among the eight accepted waivers. A dense 1080x2400 dump can reach that order of magnitude, and the whole document rides as one stdout line. Cheap fix: truncate hierarchyXml at the budget in render() and append an explicit marker.",
+      "F-7 (minor) presentation-feature-mirror/src/desktopMain/kotlin/presentation/feature/mirror/core/crop/AwtCropEncoder.kt:30 — `frame.toAwtImage()` converts the ENTIRE frame to a BufferedImage on every encode() call, i.e. once per annotation, before getSubimage() throws all but the crop away — roughly 10 MB of transient ARGB raster per annotation at 1080x2400 (~30 MB of churn for the plan's three-annotation reference send) plus the copy time, on the critical path of the <=2s NFR-3 budget. Retained bytes are unaffected (the budget's '<= 2 HeldFrames' holds: currentHeld + currentFrozenHeld, and the conversions are garbage immediately), so this is throughput and GC pressure rather than a leak. The CropEncoder interface takes the bitmap per call, so the lazy fix is to memoize the converted image per frame identity inside AwtCropEncoder rather than to change the seam.",
+      "F-8 (minor) presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendProjection.kt:72 — Since AF-5 made the success path reduce SendPhase.Idle directly, nothing in production ever produces SendPhase.Sent — grep across main source sets shows it only in these two projection branches and in tests. The dead constant is cheap, but the prose around it is now wrong in three places a future reader will trust: SendProjection.kt:88-92 explains at length why 'SendPhase.Sent always wins over a dropped session' (a case that cannot occur), line 72/101 map a state that never arrives, and MirrorContent.kt:185-188 tells the reader the overlay 'includes the two TERMINAL phases ... so its last step reads Sent (green) or Sent (red)' when only the red one is reachable. The AC-19 waiver covers the missing animated progression; it does not cover KDoc that describes states the code can no longer enter. Either delete SendPhase.Sent or correct the three comments.",
+      "F-9 (nit) presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:661 — resolveAndSend() re-evaluates canSend(state) inside the reducer precisely so a stale dispatch cannot bypass the button; clearStaged() does not re-evaluate canClear and applies unconditionally. Harmless today (the envelope captures `frozen` by value before any suspension, so a Clear landing mid-send cannot corrupt the payload), but it is an asymmetry against TAC-2's own 'the guard a double-dispatch cannot bypass' framing, and F-2 is a path that makes the button reachable mid-flight.",
+      "F-10 (nit) data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt:79 — I tried to break resolve()'s guard and could not, so this is a documentation nit rather than a defect. asBareName() rejecting blank, '/', '\\\\' and '..' is sufficient for the stated threat: a POSIX absolute path carries '/', a Windows one carries '\\\\' or an illegal ':' (InvalidPathException, caught by the dispatcher), a NUL byte is an InvalidPathException, unicode look-alikes such as U+FF0F are not path separators on any supported filesystem, and envelope.sentAtMs is a Long so the directory component cannot be influenced. What the guard does NOT cover is a symlink planted inside the send directory — the composed file:// URI is never normalized or checked against root, and the server hands the URI to the agent without resolving it. That requires write access to a 0700 directory, so it is correctly out of the threat model, but the security note's absolute phrasing ('the server never follows a path outside its own handoff root') is stronger than what the code proves. One `normalize().startsWith(root)` assertion would make the claim literal.",
+      "F-11 (nit) data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt:49 — Only directories get explicit permissions (createOwnerOnlyDirectories). Files.write for the images and Files.writeString for latest.json.tmp both use the process umask, so the files are typically 0644 and latest.json keeps that mode through the ATOMIC_MOVE. In practice the 0700 directory bit is what protects them and it holds, because createDirectories applies the attribute to the root it creates on first publish. The gap is narrow: if ~/.rectify/handoff already exists with laxer permissions, createDirectories is a no-op on it and latest.json — which carries the whole prompt and the whole hierarchy dump — is left world-readable. The plan claims 'files rw-------'; the code never sets a file mode.",
+      "F-12 (nit) presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt:554 — MirrorSideEffect.SendComplete.count has no production reader: RectifyWindow's showSendComplete uses only summary and sessionId, and the count is already baked into the summary string by toastLabel. It is referenced only by tests. Keep it if a second host is expected to format its own toast, otherwise it is one more field to keep in sync.",
+      "F-13 (nit) mcp-application/src/main/kotlin/dev/rectify/io/mcp/source/entry/Main.kt:37 — writeFrame and logStderr are internal but live under source/entry; package-layout.md puts internal declarations in core/ and reserves source/ for the public surface. Only `main()` has to be in source/. Trivial, and the module has no explicitApi() to police it — noted for consistency with the rest of the repo, where this split is otherwise respected throughout the diff (core/send, core/crop, core/unsupported, core/slot all check out, and :data-handoff-api correctly has a core/ only because FileSlotAnnotationHandoff is internal).",
+      "F-14 (nit) data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt:61 — Answering the 'prune vs concurrent read' question explicitly: the prune can delete a send directory whose file:// refs an agent received from an earlier get_latest_annotation call and has not dereferenced yet, so a tool result can go stale between the reply and the agent opening frame.png. This is inherent to the gate-approved single-slot, one-send-retention design and is not a defect to fix in F-7 — but it is a contract an MCP consumer needs to know about ('refs are valid until the next send'), and neither mcp-application/CLAUDE.md nor the tool description says so. One sentence in the tool description would do it."
+    ],
+    "followUps": [
+      "Re-run :mcp-application:test after CR-1 with the two new adversarial protocol cases, and add one case asserting the read loop survives a line whose `id` is an object.",
+      "When F-2 is fixed, add a ViewModel test that stages an annotation while a send is in flight and asserts send stays Preparing/Publishing and canSend stays false.",
+      "Consider memoizing AwtCropEncoder's BufferedImage per frame before the NFR-3 manual measurement is taken, so the measured number reflects the shipping shape.",
+      "FU-CATCHALL — McpDispatcher's outer catch-all has no reachable trigger today (the tool path's own runCatching converts handoff/render faults into tool errors first), so it is covered by reasoning and binary probes rather than a unit test. Add one the moment a dispatch path is introduced outside that runCatching."
+    ],
+    "proposedSurvey": [
+      {
+        "id": "Q1",
+        "question": "CR-1 (blocking) fixes the MCP read loop dying on a structurally-malformed JSON-RPC line — the root cause Stage 5's AF-1 patched at only one call site. The other two majors (F-2 concurrent send reachable via staging mid-flight, F-3 corrupt slot reported as 'nothing sent yet') are real but need a design call. How do you want to proceed?",
+        "type": "single-select",
+        "options": [
+          "Fix CR-1 only, merge, and route F-2 and F-3 to the next spec",
+          "Fix CR-1 plus F-2 (one conditional in stageAnnotation) before merge, route F-3",
+          "Fix all three before merge",
+          "Merge as is and accept CR-1 as a waived risk (the server is only ever spawned by Claude Code)"
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "id": "F-1",
+        "dimension": "correctness",
+        "severity": "blocking",
+        "file": "mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt",
+        "line": 74,
+        "ruleOrACRef": "errorState:error (malformed JSON-RPC line on stdin) | TAC-4 | TAC-8 | SC-29",
+        "detail": "Only the outer parse is guarded (line 70). Line 74 `request[\"method\"]?.jsonPrimitive?.content` and line 92 `request[\"params\"]?.jsonObject?.get(\"name\")?.jsonPrimitive?.content` are three unguarded cast accessors on attacker-shaped JSON. kotlinx-serialization's `jsonPrimitive`/`jsonObject` throw IllegalArgumentException on a type mismatch — verified by direct probe against kotlinx-serialization-json-jvm 1.11.0: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":{\"x\":1}}` yields 'Element class JsonObject ... is not a JsonPrimitive', and a non-object `params` yields 'is not a JsonObject'. The exception escapes handle(), and Main.kt:31 runs it bare inside `generateSequence(::readlnOrNull).forEach { ... }` with no try/catch, so one such line terminates the server process mid-session. This is the SAME root cause Stage 5's AF-1 found; the fix wrapped render()/resolve() at one call site (line 128) instead of the shared entry point, leaving every sibling path live. Plan errorStates require 'Malformed JSON-RPC line on stdin: respond with -32700 and keep reading. One bad frame must not end the session', and the audit recorded FR-56 as satisfied on exactly that claim. Fix is one line of surface: wrap handle()'s body in runCatching -> -32700/-32603, or use `(request[\"method\"] as? JsonPrimitive)?.content`. Add a protocol test for a non-primitive `method` and a non-object `params`.",
+        "verified": false,
+        "resolution": "RESOLVED AT THE ROOT. handle() split into a thin outer guard plus a private dispatch(): non-throwing accessors (as? JsonObject / as? JsonPrimitive + isString) yield -32600 for a well-formed-JSON-but-wrong-shape request, -32700 stays for unparseable input, -32601 for an unknown tool, and an outer catch-all turns any escaping Throwable into -32603 while rethrowing CancellationException. Six malformed shapes probed against the real installDist binary (method as object/number, params as array, name as number, unparseable text, top-level array): every one answered on one line, the session survived each, exit 0 on EOF. The orchestrator independently re-ran the original reproducer. 7 new regression tests.",
+        "status": "fixed"
+      },
+      {
+        "id": "F-2",
+        "dimension": "correctness",
+        "severity": "major",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+        "line": 462,
+        "ruleOrACRef": "AC-20 | TAC-2 | MirrorContract.kt:436 ('a second concurrent send while isInFlight holds is not reachable')",
+        "detail": "stageAnnotation() reduces `send = SendPhase.Idle` unconditionally, including while Preparing/Publishing is in flight. Nothing on the stage gates pointer input on `send.isInFlight` (grep: isInFlight appears only in SendGate, MirrorContract and RectifyWindow's button), so drawing one more annotation during the ~1s send flips the phase back to Idle, which re-enables both `Resolve & Send` and `Clear` mid-flight (canSend/canClear are `!send.isInFlight`) and contradicts AC-20's 'only re-enables after the toast confirms or the send fails'. Two consequences: (a) a second ResolveAndSend can be dispatched while the first is publishing — two concurrent publishes then share one `latest.json.tmp` and race the prune, see F-4; (b) even without a second click, the annotation staged during the send is silently discarded by the success reduce (line 845/850 clears the batch / nulls the frame) while the toast reports the pre-send count. Secondary, lower-probability path to the same invariant: Orbit's default container does not serialize intents, so two near-simultaneous dispatches can both pass the `canSend(state)` check at line 790 before either reduces Preparing. Minimum fix: make the Idle reset at line 462 conditional on `!state.send.isInFlight`.",
+        "verified": false,
+        "resolution": "RESOLVED. stageAnnotation returns early while state.send.isInFlight, and the Idle reset became conditional on a terminal phase (evaluated INSIDE reduce, where Orbit's CAS loop sees the winning value - the pre-reduce read is a pre-image, as the file's own KDoc warns). DECISION: a drag during a send is DROPPED, not staged. Preserving it would require suppressing the success path's resume-to-live for that case alone - a bigger and more surprising change (toast but no live mirror back). Dropping at the source means nothing is ever SILENTLY lost: no annotation ever appears, so there is no illusion of a staged item that later vanishes. AC-20 is now true (nothing can re-enable Resolve & Send or Clear mid-send) and AC-21 is true (success clears exactly the batch that was sent, because the batch cannot change under the send). Regression test confirmed RED against the unmodified ViewModel before going green.",
+        "status": "fixed"
+      },
+      {
+        "id": "F-3",
+        "dimension": "correctness",
+        "severity": "major",
+        "file": "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+        "line": 74,
+        "ruleOrACRef": "errorState:error (corrupt or truncated slot) | SC-29",
+        "detail": "latest() wraps the read+decode in `runCatching { ... }.getOrNull()`, so a corrupt, truncated or unreadable latest.json is indistinguishable from an absent one. McpDispatcher then takes the `envelope == null` branch and answers the agent 'No annotation has been sent yet.' with isError=false. The plan's errorState requires the opposite: 'Server reads a corrupt or truncated slot ... returns a tool error with the parse message and never throws out of the read loop', and the task acceptance text repeats it ('corrupt/truncated slot -> isError true with the parse message'). As a side effect McpDispatcher.kt:112's 'Could not read the handoff slot' branch is dead for the only production AnnotationHandoff — it is reachable only from a throwing fake in tests. The divergence is argued in the implementation KDoc ('the interface has no second error channel') but was never waived; it is not in the eight accepted waivers. Either widen the contract (a sealed read result, or distinguish absent-vs-unreadable) or get the errorState amended. The user-visible cost today is an agent that silently proceeds as if no send happened.",
+        "verified": false,
+        "resolution": "RESOLVED. latest() now distinguishes absent (returns null) from corrupt (throws, carrying the parse message), so McpDispatcher's 'Could not read the handoff slot' branch is live in production instead of dead. Verified against the real binary: a corrupt latest.json yields isError true with the parse message, and the session answers the following tools/list. The plan's errorState was treated as authoritative over T-3's abbreviated task wording. One pre-existing frozen test (FileSlotAnnotationHandoffCorruptTest) flipped from assertNull to assertFails plus a non-blank-message assertion; a third case was ADDED asserting an absent slot is still null, and FileSlotAnnotationHandoffTest.anAbsentSlotReturnsNullNeverThrows is untouched and green.",
+        "status": "fixed"
+      },
+      {
+        "id": "F-4",
+        "dimension": "correctness",
+        "severity": "minor",
+        "file": "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+        "line": 53,
+        "ruleOrACRef": "decision 5 (temp-write + ATOMIC_MOVE)",
+        "detail": "ATOMIC_MOVE protects latest.json's contents but not the publish as a whole, and nothing serializes two publishes. Concurrent publish A/B: both write the same fixed `latest.json.tmp` path (line 53-54, interleaved content), then whichever moves first runs pruneSendDirectoriesExcept(its own dir) at line 61 and deleteRecursively's the other's send directory while that publish is still writing images into it — so the surviving slot can name a directory whose frame.png and crops no longer exist, and the loser's Files.move can fail with NoSuchFileException. Today the only caller is the gated ViewModel, which is why this is minor rather than major — but F-2 is a concrete path that opens the gate, and the KDoc ('the slot either holds the previous envelope or the new one') overstates what is guaranteed. A per-publish unique tmp name (`latest.json.<sentAtMs>.tmp`) plus a mutex or a FileLock in publish() closes it.",
+        "verified": false
+      },
+      {
+        "id": "F-5",
+        "dimension": "correctness",
+        "severity": "minor",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+        "line": 809,
+        "ruleOrACRef": "AC-20",
+        "detail": "`runCatching` at line 809 catches Throwable, which includes CancellationException. If the ViewModel is cleared (or viewModelScope is otherwise cancelled) between Preparing and Publishing, the cancellation is reported through onFailure as a send failure: a Kermit warning claiming 'Resolve & Send failed' and a `reduce { send = Failed }` attempted on an already-cancelled scope. The practical damage is limited (the reduce itself re-throws at its suspension point and the host is going away anyway), but the log lies about the cause and the pattern hides any future cancellation that matters. Rethrow it: `.onFailure { if (it is CancellationException) throw it; ... }`. Same shape, lower stakes, in AwtCropEncoder.kt:29 (a cancelled encode is reported as a null crop, i.e. a degraded payload). Everything else about the timing seams checks out: `elapsed.markNow()` is monotonic and read once at line 859, `nowMs()` is the single wall-clock read feeding both sentAtMs and the send directory name, and the two never cross.",
+        "verified": false
+      },
+      {
+        "id": "F-6",
+        "dimension": "performance",
+        "severity": "minor",
+        "file": "mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt",
+        "line": 149,
+        "ruleOrACRef": "performanceBudget: inline portion <= 512 KB, XML truncated with an explicit marker above it",
+        "detail": "render() inlines `envelope.hierarchyXml` verbatim (the full verbatim uiautomator rawDump threaded in by T-2) with no size check anywhere in the diff — grep for 'truncat' across the new code returns nothing. The plan states this twice, as a perf-budget target and as the mitigation for a 'med/high' risk row ('above it the XML truncates with an explicit marker rather than failing the call'), and it is not among the eight accepted waivers. A dense 1080x2400 dump can reach that order of magnitude, and the whole document rides as one stdout line. Cheap fix: truncate hierarchyXml at the budget in render() and append an explicit marker.",
+        "verified": false
+      },
+      {
+        "id": "F-7",
+        "dimension": "performance",
+        "severity": "minor",
+        "file": "presentation-feature-mirror/src/desktopMain/kotlin/presentation/feature/mirror/core/crop/AwtCropEncoder.kt",
+        "line": 30,
+        "ruleOrACRef": "performanceBudget: crop PNG encode <= 120 ms per annotation",
+        "detail": "`frame.toAwtImage()` converts the ENTIRE frame to a BufferedImage on every encode() call, i.e. once per annotation, before getSubimage() throws all but the crop away — roughly 10 MB of transient ARGB raster per annotation at 1080x2400 (~30 MB of churn for the plan's three-annotation reference send) plus the copy time, on the critical path of the <=2s NFR-3 budget. Retained bytes are unaffected (the budget's '<= 2 HeldFrames' holds: currentHeld + currentFrozenHeld, and the conversions are garbage immediately), so this is throughput and GC pressure rather than a leak. The CropEncoder interface takes the bitmap per call, so the lazy fix is to memoize the converted image per frame identity inside AwtCropEncoder rather than to change the seam.",
+        "verified": false
+      },
+      {
+        "id": "F-8",
+        "dimension": "maintainability",
+        "severity": "minor",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendProjection.kt",
+        "line": 72,
+        "ruleOrACRef": "AF-5 (Stage 5 CR)",
+        "detail": "Since AF-5 made the success path reduce SendPhase.Idle directly, nothing in production ever produces SendPhase.Sent — grep across main source sets shows it only in these two projection branches and in tests. The dead constant is cheap, but the prose around it is now wrong in three places a future reader will trust: SendProjection.kt:88-92 explains at length why 'SendPhase.Sent always wins over a dropped session' (a case that cannot occur), line 72/101 map a state that never arrives, and MirrorContent.kt:185-188 tells the reader the overlay 'includes the two TERMINAL phases ... so its last step reads Sent (green) or Sent (red)' when only the red one is reachable. The AC-19 waiver covers the missing animated progression; it does not cover KDoc that describes states the code can no longer enter. Either delete SendPhase.Sent or correct the three comments.",
+        "verified": false
+      },
+      {
+        "id": "F-9",
+        "dimension": "correctness",
+        "severity": "nit",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+        "line": 661,
+        "ruleOrACRef": "TAC-2",
+        "detail": "resolveAndSend() re-evaluates canSend(state) inside the reducer precisely so a stale dispatch cannot bypass the button; clearStaged() does not re-evaluate canClear and applies unconditionally. Harmless today (the envelope captures `frozen` by value before any suspension, so a Clear landing mid-send cannot corrupt the payload), but it is an asymmetry against TAC-2's own 'the guard a double-dispatch cannot bypass' framing, and F-2 is a path that makes the button reachable mid-flight.",
+        "verified": false
+      },
+      {
+        "id": "F-10",
+        "dimension": "security",
+        "severity": "nit",
+        "file": "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+        "line": 79,
+        "ruleOrACRef": "NFR-4 | security.privacy (TRUST BOUNDARY)",
+        "detail": "I tried to break resolve()'s guard and could not, so this is a documentation nit rather than a defect. asBareName() rejecting blank, '/', '\\\\' and '..' is sufficient for the stated threat: a POSIX absolute path carries '/', a Windows one carries '\\\\' or an illegal ':' (InvalidPathException, caught by the dispatcher), a NUL byte is an InvalidPathException, unicode look-alikes such as U+FF0F are not path separators on any supported filesystem, and envelope.sentAtMs is a Long so the directory component cannot be influenced. What the guard does NOT cover is a symlink planted inside the send directory — the composed file:// URI is never normalized or checked against root, and the server hands the URI to the agent without resolving it. That requires write access to a 0700 directory, so it is correctly out of the threat model, but the security note's absolute phrasing ('the server never follows a path outside its own handoff root') is stronger than what the code proves. One `normalize().startsWith(root)` assertion would make the claim literal.",
+        "verified": false
+      },
+      {
+        "id": "F-11",
+        "dimension": "security",
+        "severity": "nit",
+        "file": "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+        "line": 49,
+        "ruleOrACRef": "security.dataHandling ('owner-only POSIX permissions (rwx------, files rw-------)')",
+        "detail": "Only directories get explicit permissions (createOwnerOnlyDirectories). Files.write for the images and Files.writeString for latest.json.tmp both use the process umask, so the files are typically 0644 and latest.json keeps that mode through the ATOMIC_MOVE. In practice the 0700 directory bit is what protects them and it holds, because createDirectories applies the attribute to the root it creates on first publish. The gap is narrow: if ~/.rectify/handoff already exists with laxer permissions, createDirectories is a no-op on it and latest.json — which carries the whole prompt and the whole hierarchy dump — is left world-readable. The plan claims 'files rw-------'; the code never sets a file mode.",
+        "verified": false
+      },
+      {
+        "id": "F-12",
+        "dimension": "maintainability",
+        "severity": "nit",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+        "line": 554,
+        "ruleOrACRef": "FR-18 | FR-58",
+        "detail": "MirrorSideEffect.SendComplete.count has no production reader: RectifyWindow's showSendComplete uses only summary and sessionId, and the count is already baked into the summary string by toastLabel. It is referenced only by tests. Keep it if a second host is expected to format its own toast, otherwise it is one more field to keep in sync.",
+        "verified": false
+      },
+      {
+        "id": "F-13",
+        "dimension": "conventions",
+        "severity": "nit",
+        "file": "mcp-application/src/main/kotlin/dev/rectify/io/mcp/source/entry/Main.kt",
+        "line": 37,
+        "ruleOrACRef": ".claude/rules/package-layout.md",
+        "detail": "writeFrame and logStderr are internal but live under source/entry; package-layout.md puts internal declarations in core/ and reserves source/ for the public surface. Only `main()` has to be in source/. Trivial, and the module has no explicitApi() to police it — noted for consistency with the rest of the repo, where this split is otherwise respected throughout the diff (core/send, core/crop, core/unsupported, core/slot all check out, and :data-handoff-api correctly has a core/ only because FileSlotAnnotationHandoff is internal).",
+        "verified": false
+      },
+      {
+        "id": "F-14",
+        "dimension": "architecture",
+        "severity": "nit",
+        "file": "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+        "line": 61,
+        "ruleOrACRef": "security.dataHandling (retention bounded to exactly one send)",
+        "detail": "Answering the 'prune vs concurrent read' question explicitly: the prune can delete a send directory whose file:// refs an agent received from an earlier get_latest_annotation call and has not dereferenced yet, so a tool result can go stale between the reply and the agent opening frame.png. This is inherent to the gate-approved single-slot, one-send-retention design and is not a defect to fix in F-7 — but it is a contract an MCP consumer needs to know about ('refs are valid until the next send'), and neither mcp-application/CLAUDE.md nor the tool description says so. One sentence in the tool description would do it.",
+        "verified": false
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approved": true,
+    "approvedBy": "human"
+  },
+  "survey": [
+    {
+      "question": "Stage 6 PR-approval gate — approve the aggregate diff for resolve-and-send-mcp (119 files)? Verdict approve-with-nits; one blocking and two major findings fixed and re-verified against the real MCP binary; 11 minor/nit items recorded as debt; CR-OPEN-1 (T-13 manual demo) still outstanding.",
+      "options": [
+        "Approve (Recommended)",
+        "Approve and run Stage 7 reflection now",
+        "Request more fixes"
+      ],
+      "answer": "Approve (Recommended)",
+      "source": "user-edited"
+    }
+  ]
+}
