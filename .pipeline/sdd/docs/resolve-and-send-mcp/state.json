@@ -13,6 +13,9 @@
     },
     "execution": {
       "status": "done"
+    },
+    "validation": {
+      "status": "done"
     }
   },
   "steps": {
@@ -32,6 +35,12 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "audit": {
+      "status": "done"
+    },
+    "verdict": {
       "status": "done"
     }
   },
