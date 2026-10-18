@@ -8,3 +8,9 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-18T21:35:23Z", "spec": "verify-and-rediff-loop"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 72585, "at": "2026-10-18T21:39:01Z", "spec": "verify-and-rediff-loop"}
 {"stage": "preparation", "event": "end", "at": "2026-10-18T21:39:01Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "event": "start", "at": "2026-10-18T21:39:07Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "at": "2026-10-18T21:39:07Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 165047, "at": "2026-10-18T21:50:09Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-18T21:50:17Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 191359, "at": "2026-10-18T22:15:27Z", "spec": "verify-and-rediff-loop"}
+{"stage": "plan", "event": "end", "at": "2026-10-18T22:15:28Z", "spec": "verify-and-rediff-loop"}

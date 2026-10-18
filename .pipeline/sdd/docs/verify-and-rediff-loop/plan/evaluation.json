@@ -1,0 +1,44 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "stage": "plan",
+  "step": "evaluation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "orchestrator-fast-tier",
+  "provenance": {
+    "selfHash": "d47b64869659119a9cc99e38becab7a7d4630ea5f87f825614f1d79daf66170e"
+  },
+  "createdAt": "2026-10-18T21:50:17Z",
+  "updatedAt": "2026-10-18T21:50:17Z",
+  "data": {
+    "candidates": [
+      {
+        "id": "candidate-1",
+        "file": "candidates/candidate-1.json",
+        "score": 0,
+        "scores": {},
+        "rationale": "fast tier: N=1, no competitive judging ran"
+      }
+    ],
+    "selected": "candidate-1",
+    "corrections": [
+      {
+        "id": "C-1",
+        "area": "thresholds",
+        "text": "Verify the three VerifyThresholds constants are asserted behaviourally, never by literal value (bug-registry PP-TD-4/5), and that the parameterised-corpus tuning path is documented but not built."
+      },
+      {
+        "id": "C-2",
+        "area": "abort-paths",
+        "text": "Confirm the zero-candidate hierarchy abort and the no-live-session abort are distinct, user-legible errors and not silently folded into N Still-off verdicts."
+      }
+    ],
+    "selectionRationale": "Single candidate at fast effort tier; judge machinery skipped per orchestrator contract."
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator",
+    "approved": true,
+    "at": "2026-10-18T21:50:17Z"
+  }
+}

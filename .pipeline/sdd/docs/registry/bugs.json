@@ -70,5 +70,16 @@
     "area": "presentation-feature-mirror/core/discovery/DiscoveryProjection.kt",
     "title": "EmulatorModel.toRow sets no detail, unlike DeviceModel.toRow",
     "detail": "Information gap in the device picker as well as the prompt; AVD name and API level are known. Cross-spec: belongs to android-device-discovery-mirroring and its own gate. Does NOT replace RCR-2s formatting-boundary guard, which must stay because MirrorRow.detail defaults empty, selectedRowDetailWithoutTransport ends in orEmpty, and transport-stripping can legitimately empty a detail."
+  },
+  {
+    "id": "PP-TD-10",
+    "severity": "minor",
+    "area": "test-infrastructure",
+    "file": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt",
+    "summary": "FakeFrameBitmap.readPixels is implemented as = Unit, so it never fills the caller buffer.",
+    "detail": "Found during F-9 plan refine. The fake overrides the 7-arg ImageBitmap.readPixels but does nothing, leaving the IntArray all zeros. Any test that reads pixels through this fake sees a uniform black region, so a pixel-difference assertion passes vacuously - the test infrastructure silently weakens the assertion rather than failing. Harmless today because nothing reads pixels in tests; becomes actively misleading the moment F-9 lands its region diff. Fix: fill the buffer from a backing IntArray.",
+    "status": "open",
+    "foundIn": "verify-and-rediff-loop plan refine",
+    "specRef": "verify-and-rediff-loop"
   }
 ]

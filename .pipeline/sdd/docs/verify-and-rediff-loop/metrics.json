@@ -1,0 +1,44 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "updatedAt": "2026-10-18T21:39:01Z",
+  "sealed": false,
+  "agents": {
+    "sdd-build-discussion-aggregate": {
+      "tokens": 51295,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-requirements-clarify": {
+      "tokens": 64425,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-architecture-brainstorm": {
+      "tokens": 122121,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-preparation-compile": {
+      "tokens": 72585,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    }
+  },
+  "totals": {
+    "tokens": 310426,
+    "durationMs": 0,
+    "invocations": 4
+  }
+}
