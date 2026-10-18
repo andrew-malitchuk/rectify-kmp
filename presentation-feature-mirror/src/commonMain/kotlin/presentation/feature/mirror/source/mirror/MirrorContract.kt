@@ -366,9 +366,13 @@ public sealed interface MirrorIntent {
      * A no-op while the stage is live: the override belongs to [FrozenFrame], so there is
      * nothing to attach it to until a frame is pinned.
      *
-     * @property text Prompt as typed.
+     * @property text Prompt as typed, or `null` to drop the override and fall back to the
+     *   generated prompt. `null` is sent by one caller only — the Payload tab discarding an
+     *   editing session that was seeded against annotations which no longer exist, where the
+     *   text on screen is the machine's own previous output and keeping it would export a prompt
+     *   describing a payload that is gone.
      */
-    public data class EditPrompt(val text: String) : MirrorIntent
+    public data class EditPrompt(val text: String?) : MirrorIntent
 
     /** Unpin the frame and drop the staged list — back to the live mirror (AC-51). */
     public data object ResumeLive : MirrorIntent
@@ -543,8 +547,11 @@ public data class StagedAnnotation(
  *   stripped (`"Android 15 · USB"` → `"Android 15"`), stamped at freeze. Empty when there was
  *   no selected row to read.
  * @property promptOverride Prompt text the user typed for this frame, or `null` while the
- *   default prompt applies. Survives every annotation edit and a session loss; only
- *   [MirrorIntent.ResumeLive] drops it, by dropping the whole frame.
+ *   default prompt applies. Survives every annotation edit and a session loss; no reducer drops
+ *   it except [MirrorIntent.ResumeLive], which drops the whole frame. The Payload tab clears it
+ *   with `EditPrompt(null)` in one case — an open editor whose seed was invalidated by an
+ *   annotation edit, where the text on screen is stale machine output rather than anything the
+ *   user wrote.
  */
 public data class FrozenFrame(
     val deviceSize: IntSize,

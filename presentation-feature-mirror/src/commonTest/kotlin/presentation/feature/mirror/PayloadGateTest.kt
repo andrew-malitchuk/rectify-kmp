@@ -7,7 +7,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import presentation.feature.mirror.core.payload.HierarchyOutlineDisplay
 import presentation.feature.mirror.core.payload.hasPayload
+import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.hierarchyOutlineDisplay
+import presentation.feature.mirror.core.payload.promptSeedIsStale
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
 import presentation.feature.mirror.source.mirror.HierarchyStatus
@@ -114,6 +116,137 @@ class PayloadHierarchyDisplayTest {
         assertEquals(
             HierarchyOutlineDisplay.Nothing,
             hierarchyOutlineDisplay(HierarchyStatus.Dumping, rowCount = 0),
+        )
+    }
+}
+
+/**
+ * F-1 (RCR-1): an open prompt editor must not commit a seed that describes annotations that are
+ * gone.
+ *
+ * The editor seeds `MultilineInput` once per session — keyed on nothing that moves per keystroke,
+ * because `MultilineInput` re-keys its own buffer on `initialText` — and the input emits its
+ * whole buffer on the first keystroke. So a stale seed does not merely look wrong, it is
+ * committed as a `promptOverride` that never auto-clears, and the export then permanently
+ * describes 1 of 2 annotations.
+ *
+ * Every case below runs the **real** [buildPrompt] over two payload states rather than comparing
+ * hand-written strings: the question is whether the machine's output actually moved, and only
+ * `buildPrompt` knows that. Re-deriving the comparison here would assert against itself, which is
+ * how two of this spec's defects got past review.
+ */
+class PromptSeedStalenessTest {
+
+    private val deviceSize = IntSize(width = 1080, height = 2400)
+
+    private fun annotation(
+        index: Int,
+        width: Int = 840,
+        height: Int = 254,
+        comment: String = "",
+    ) = StagedAnnotation(
+        index = index,
+        rect = DeviceRect(left = 120, top = 420, right = 120 + width, bottom = 420 + height),
+        comment = comment,
+    )
+
+    /** The prompt the Payload tab would show for this state; no hierarchy, as before a dump. */
+    private fun generated(
+        annotations: List<StagedAnnotation>,
+        override: String? = null,
+        selectedIndex: Int? = null,
+    ) = buildPrompt(
+        FrozenFrame(
+            deviceSize = deviceSize,
+            annotations = annotations,
+            selectedIndex = selectedIndex,
+            deviceLabel = "Android 15",
+            promptOverride = override,
+        ),
+    ) { null }
+
+    @Test
+    fun stagingASecondAnnotationUnderAnOpenEditorMakesTheSeedStale() {
+        val seededAgainst = generated(listOf(annotation(1)))
+
+        assertTrue(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(listOf(annotation(1), annotation(2))),
+            ),
+        )
+    }
+
+    @Test
+    fun deletingTheOtherAnnotationUnderAnOpenEditorMakesTheSeedStale() {
+        val seededAgainst = generated(listOf(annotation(1), annotation(2)))
+
+        assertTrue(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(listOf(annotation(1))),
+            ),
+        )
+    }
+
+    @Test
+    fun aDeleteAndAStageThatLeaveTheCountUnchangedAreStillStale() {
+        // MUTATION guard: a staleness check written against the annotation count passes every
+        // other case here and fails this one. The survivors renumber, so one annotation swapped
+        // for another is a different payload at the same count.
+        val seededAgainst = generated(listOf(annotation(1)))
+
+        assertTrue(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(listOf(annotation(index = 1, width = 300, height = 96))),
+            ),
+        )
+    }
+
+    @Test
+    fun aCommentTypedOntoAStagedAnnotationMakesTheSeedStale() {
+        // The comment is a line of the prompt, so the editor's seed no longer matches what the
+        // payload would send even though the annotation set is the same size and the same rects.
+        val seededAgainst = generated(listOf(annotation(1)))
+
+        assertTrue(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(listOf(annotation(index = 1, comment = "contrast too low"))),
+            ),
+        )
+    }
+
+    @Test
+    fun typingIntoTheEditorLeavesTheSeedFresh() {
+        // T-7 REGRESSION guard, and the reason the comparison is against `generated` and not
+        // `effective`: every keystroke round-trips through `promptOverride`, so a check that read
+        // the override would fire on the user's own typing — closing the editor mid-word and
+        // re-keying the input's buffer, a worse bug than the stale seed.
+        val annotations = listOf(annotation(1))
+        val seededAgainst = generated(annotations)
+
+        assertFalse(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(annotations, override = "check the tap target here"),
+            ),
+        )
+    }
+
+    @Test
+    fun hoveringOrSelectingAnAnnotationLeavesTheSeedFresh() {
+        // The panel recomposes on hover and on selection; neither reaches the prompt, and an
+        // editor that closed on a mouse move would be unusable.
+        val annotations = listOf(annotation(1), annotation(2))
+        val seededAgainst = generated(annotations)
+
+        assertFalse(
+            promptSeedIsStale(
+                seededAgainst = seededAgainst,
+                generated = generated(annotations, selectedIndex = 2),
+            ),
         )
     }
 }

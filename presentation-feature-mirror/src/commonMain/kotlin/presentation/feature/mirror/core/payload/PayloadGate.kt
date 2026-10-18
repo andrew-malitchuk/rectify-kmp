@@ -80,3 +80,37 @@ internal fun hierarchyOutlineDisplay(
     rowCount > 0 -> HierarchyOutlineDisplay.Rows
     else -> HierarchyOutlineDisplay.Nothing
 }
+
+/**
+ * Whether an open prompt editor was seeded against a payload that has since changed (F-1).
+ *
+ * The Prompt block seeds `MultilineInput` once per editing session and deliberately **not** from
+ * the effective prompt: `MultilineInput` does `var text by remember(initialText)`, so a live key
+ * would re-key its internal state on every keystroke as the override round-trips back through
+ * [FrozenFrame.promptOverride]. The price of that stability is that staging, deleting or
+ * commenting an annotation while the editor is open leaves the text area holding a prompt that
+ * describes a frame which no longer exists — and because the input emits its whole buffer, the
+ * next keystroke commits that stale machine text verbatim as an override that never auto-clears
+ * (AC-79). The exported payload would then permanently describe 1 of 2 annotations: exactly the
+ * lie this tab exists to prevent.
+ *
+ * Compared against the **generated** prompt rather than the annotation list for two reasons.
+ * `buildPrompt` reads more than the annotations — the device label, the device size, and the
+ * hierarchy node ids, which land asynchronously when a dump completes and so can move under an
+ * open editor with the annotation list untouched; comparing the text cannot drift from
+ * `buildPrompt`'s real input set the way a hand-kept key list can. And it compares by value, so
+ * a fresh-but-equal `HierarchySnapshotModel` arriving on the next state emission does not read
+ * as a change and cannot close an editor for nothing.
+ *
+ * It does **not** read the override. That is the whole reason the keystroke round-trip cannot
+ * register here.
+ *
+ * @param seededAgainst The generated prompt as of the moment the editor opened.
+ * @param generated The generated prompt now.
+ * @return `true` when the session is describing a payload that is gone and must be discarded
+ *   rather than committed.
+ */
+internal fun promptSeedIsStale(
+    seededAgainst: String,
+    generated: String,
+): Boolean = seededAgainst != generated

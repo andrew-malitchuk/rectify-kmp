@@ -156,4 +156,38 @@ class PromptAssemblyTest {
         assertTrue(prompt.contains("48${TIMES}17"))
         assertFalse(prompt.contains(" $TIMES "))
     }
+
+    // RCR-2 / F-2: an emulator row carries no detail at all -- EmulatorModel.toRow never sets
+    // it, MirrorRow.detail defaults to "" and MirrorViewModel's lookup ends in .orEmpty() -- so
+    // deviceLabel is blank on a first-class path (the app boots AVDs on request). The label
+    // segment AND its separator are both dropped, the same way a null node id is dropped from an
+    // annotation head line, so the device line degrades to the bare resolution rather than to a
+    // leading-space dangling-dot " · 1080×2400". No placeholder and no invented device
+    // name: the rule that drops the design's " on the Cart screen." clause forbids fabricating
+    // data into a prompt sent to Claude, and a blank label is exactly nothing to say.
+    @Test
+    fun blankDeviceLabelDegradesTheDeviceLineToTheResolutionAlone() {
+        val frozen = FrozenFrame(
+            deviceSize = IntSize(1080, 2400),
+            deviceLabel = "",
+            annotations = listOf(
+                StagedAnnotation(index = 1, rect = DeviceRect(0, 0, 320, 180), comment = "Padding looks off"),
+            ),
+        )
+
+        val prompt = buildPrompt(frozen) { "ImageView#banner" }
+
+        val expected = """
+            Fix 1 UI issue.
+            1080×2400
+
+            #1 ImageView#banner · 320×180
+               "Padding looks off"
+
+            Attached: frame.png, 1 crops, hierarchy.xml
+        """.trimIndent()
+        assertEquals(expected, prompt)
+        val deviceLine = prompt.lines()[1]
+        assertFalse(deviceLine.startsWith(" ") || deviceLine.contains("·"))
+    }
 }
