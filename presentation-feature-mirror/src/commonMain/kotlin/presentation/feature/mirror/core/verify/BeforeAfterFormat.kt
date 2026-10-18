@@ -7,6 +7,8 @@ import presentation.feature.mirror.core.measure.plainValueLabel
 import presentation.feature.mirror.core.measure.sizeLabel
 import presentation.feature.mirror.core.measure.toDisplayUnit
 import presentation.feature.mirror.core.measure.unitOf
+import presentation.feature.mirror.source.mirror.FindingKind
+import presentation.feature.mirror.source.mirror.MeasureReadout
 import presentation.feature.mirror.source.mirror.MeasureSide
 
 /** `→`, U+2192 with a space either side — the design's before/after link. Never `->`. */
@@ -87,4 +89,80 @@ internal fun sizeBeforeAfterLabel(
     val display = { px: Int -> toDisplayUnit(px, densityDpi).first }
     return sizeLabel(display(beforeWidthPx), display(beforeHeightPx), unit) + ARROW +
         sizeLabel(display(afterWidthPx), display(afterHeightPx), unit)
+}
+
+/**
+ * The one result line of a verify row: the BEFORE finding's own measurement on both frames.
+ *
+ * The **BEFORE** readout picks the line, never the AFTER one. The row is about the complaint
+ * the annotation was filed over, and the good outcome is precisely the one where the AFTER
+ * side has no finding left to name — reading the kind off the AFTER side would silence the
+ * line exactly when it matters most.
+ *
+ * Falls back to [sizeBeforeAfterLabel] in the two cases where there is nothing better to say:
+ * no BEFORE finding at all (including every batch stored before the hierarchy was parsed back,
+ * whose BEFORE readout snaps to nothing), and a misalignment whose neighbour has no counterpart
+ * on the other frame. Both sides are measured at the same density — the fresh AFTER one, since
+ * the stored dump never carried its own.
+ *
+ * @param before The annotation measured against the hierarchy as it was SENT.
+ * @param after The same annotation measured against the freshly dumped hierarchy.
+ * @param densityDpi Device density, `0` when unknown.
+ */
+internal fun beforeAfterLine(
+    before: MeasureReadout,
+    after: MeasureReadout,
+    densityDpi: Int,
+): String = when (before.findingKind) {
+    FindingKind.TopMisalignment -> misalignmentLineOrNull(
+        side = MeasureSide.Top,
+        beforeNeighbourEdgePx = before.leftNeighbourTopPx,
+        beforeTargetEdgePx = before.targetRect.top,
+        afterNeighbourEdgePx = after.leftNeighbourTopPx,
+        afterTargetEdgePx = after.targetRect.top,
+        densityDpi = densityDpi,
+    )
+
+    FindingKind.LeftMisalignment -> misalignmentLineOrNull(
+        side = MeasureSide.Left,
+        beforeNeighbourEdgePx = before.topNeighbourLeftPx,
+        beforeTargetEdgePx = before.targetRect.left,
+        afterNeighbourEdgePx = after.topNeighbourLeftPx,
+        afterTargetEdgePx = after.targetRect.left,
+        densityDpi = densityDpi,
+    )
+
+    FindingKind.TouchTarget -> touchTargetBeforeAfterLabel(
+        beforeHeightPx = before.targetRect.height,
+        afterHeightPx = after.targetRect.height,
+        densityDpi = densityDpi,
+    )
+
+    null -> null
+} ?: sizeBeforeAfterLabel(
+    beforeWidthPx = before.targetRect.width,
+    beforeHeightPx = before.targetRect.height,
+    afterWidthPx = after.targetRect.width,
+    afterHeightPx = after.targetRect.height,
+    densityDpi = densityDpi,
+)
+
+/** [misalignmentBeforeAfterLabel], or `null` when either frame has no neighbour on that side. */
+private fun misalignmentLineOrNull(
+    side: MeasureSide,
+    beforeNeighbourEdgePx: Int?,
+    beforeTargetEdgePx: Int,
+    afterNeighbourEdgePx: Int?,
+    afterTargetEdgePx: Int,
+    densityDpi: Int,
+): String? {
+    if (beforeNeighbourEdgePx == null || afterNeighbourEdgePx == null) return null
+    return misalignmentBeforeAfterLabel(
+        side = side,
+        beforeNeighbourEdgePx = beforeNeighbourEdgePx,
+        beforeTargetEdgePx = beforeTargetEdgePx,
+        afterNeighbourEdgePx = afterNeighbourEdgePx,
+        afterTargetEdgePx = afterTargetEdgePx,
+        densityDpi = densityDpi,
+    )
 }

@@ -4,8 +4,6 @@ import data.database.impl.source.datasource.HistoryDataSource
 import data.database.impl.source.entity.HistoryAnnotationEntity
 import data.database.impl.source.entity.HistoryEntryEntity
 import data.database.impl.source.entity.HistoryEntryWithAnnotations
-import data.repository.impl.core.mapper.HierarchyDumpStdout
-import data.repository.impl.core.mapper.HierarchySnapshotMapper
 import data.repository.impl.source.repository.HistoryRepositoryImpl
 import data.repository.impl.source.store.BatchFileReader
 import data.repository.impl.source.store.BatchFileStore
@@ -19,8 +17,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * T-3 — the read path's four branches: a complete batch, no such row, no frame on disk, and a
- * hierarchy that is gone while the frame is not.
+ * T-3 — the read path's branches: a complete batch, no such row, no frame on disk, a hierarchy
+ * that is gone while the frame is not, and one that is there but will not parse.
  *
  * No database and no disk: the data source is a fake and [BatchFileReader] is a lambda, which
  * is the whole reason both seams exist (AS-29).
@@ -38,6 +36,7 @@ class HistoryRepositoryGetTest {
         assertContentEquals(FRAME_BYTES, model.frameBytes)
         assertContentEquals(THUMB_BYTES, model.thumbPng)
         assertEquals(DUMP, model.hierarchyXml)
+        assertEquals(2, assertNotNull(model.hierarchy).nodes.size)
         // Stored index order, whatever order the @Relation handed them back in.
         assertEquals(listOf("first", "second"), model.annotations.map { it.comment })
         assertEquals(listOf(10, 30), model.annotations.map { it.left })
@@ -46,13 +45,11 @@ class HistoryRepositoryGetTest {
     }
 
     @Test
-    fun storedHierarchyReparsesWithTheDocumentedZeroDensity() = runTest {
+    fun storedHierarchyComesBackParsedWithTheDocumentedZeroDensity() = runTest {
         val model = assertNotNull(repository(row()).get(BATCH_ID))
 
-        val snapshot = HierarchySnapshotMapper.toModel.map(
-            // The second half was never persisted — that IS the gap.
-            HierarchyDumpStdout(dump = assertNotNull(model.hierarchyXml), density = ""),
-        )
+        // Parsed HERE, not by the caller: presentation cannot reach the parser at all.
+        val snapshot = assertNotNull(model.hierarchy)
 
         assertEquals(2, snapshot.nodes.size, "the stored dump must still parse")
         assertEquals(1080, snapshot.frameWidthPx)
@@ -60,6 +57,24 @@ class HistoryRepositoryGetTest {
             0,
             snapshot.densityDpi,
             "density was never stored - 0 is the sentinel the AFTER dump fills in, never a guess",
+        )
+    }
+
+    @Test
+    fun aDumpThatParsesToNothingYieldsANullSnapshotWithoutLosingTheBatch() = runTest {
+        val truncated = BatchFileReader { path ->
+            when (path) {
+                FRAME_PATH -> FRAME_BYTES
+                else -> "<?xml version='1.0'?><hierarchy rotation=\"0\"".encodeToByteArray()
+            }
+        }
+
+        val model = assertNotNull(repository(row(), reader = truncated).get(BATCH_ID))
+
+        assertNotNull(model.hierarchyXml, "the raw bytes were read fine; only the parse failed")
+        assertNull(
+            model.hierarchy,
+            "an unparseable dump costs exactly what a missing one costs, it never throws",
         )
     }
 
@@ -91,6 +106,7 @@ class HistoryRepositoryGetTest {
             model.hierarchyXml,
             "a lost hierarchy degrades to per-annotation no-match, it does not lose the batch",
         )
+        assertNull(model.hierarchy)
     }
 
     private fun repository(

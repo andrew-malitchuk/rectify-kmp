@@ -1,6 +1,7 @@
 package domain.core.source.model.history
 
 import domain.core.source.model.base.Model
+import domain.core.source.model.device.HierarchySnapshotModel
 
 /**
  * Everything a just-sent batch needs to become durable: the row's own fields plus the bulk
@@ -14,7 +15,16 @@ import domain.core.source.model.base.Model
  * @property prompt The prompt as assembled into the envelope — never the UI's draft override.
  * @property frameBytes Full frame PNG, written to disk by the file store.
  * @property thumbPng Pre-scaled thumbnail PNG, stored inline on the row; `null` is tolerated.
- * @property hierarchyXml View-hierarchy dump, written to disk; may be hundreds of KB.
+ * @property hierarchyXml View-hierarchy dump, written to disk; may be hundreds of KB. This is
+ *   the WRITE side: it is the only form the send path has, since the envelope carries raw XML
+ *   and nothing in presentation may parse it.
+ * @property hierarchy The same dump already parsed, populated on the READ side only, by the
+ *   repository — the parser lives in the data layer and presentation must not import it.
+ *   `null` when no dump was stored, when it could not be read back, or when it parsed to no
+ *   nodes; a consumer degrades to per-annotation no-match exactly as it does for a missing
+ *   file. Kept ALONGSIDE [hierarchyXml] rather than replacing it because the two directions
+ *   genuinely differ: `record` can only be given the string, and rebuilding the string from a
+ *   snapshot would ship a document the device never emitted.
  * @property annotations The batch's annotations, in the order they were drawn.
  */
 public data class SentBatchModel(
@@ -25,6 +35,7 @@ public data class SentBatchModel(
     val frameBytes: ByteArray? = null,
     val thumbPng: ByteArray? = null,
     val hierarchyXml: String? = null,
+    val hierarchy: HierarchySnapshotModel? = null,
     val annotations: List<SentAnnotationModel> = emptyList(),
 ) : Model
 

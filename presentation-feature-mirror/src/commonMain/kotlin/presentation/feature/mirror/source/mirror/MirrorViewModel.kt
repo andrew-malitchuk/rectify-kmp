@@ -61,7 +61,7 @@ import presentation.feature.mirror.core.picker.nextSelectableIndex
 import presentation.feature.mirror.core.send.assembleEnvelope
 import presentation.feature.mirror.core.verify.changedRatio
 import presentation.feature.mirror.core.verify.regionPixels
-import presentation.feature.mirror.core.verify.sizeBeforeAfterLabel
+import presentation.feature.mirror.core.verify.beforeAfterLine
 import presentation.feature.mirror.core.verify.verdictOf
 import presentation.core.ui.source.kit.molecule.row.VerificationOutcome
 import presentation.feature.mirror.core.send.canSend
@@ -486,13 +486,19 @@ public class MirrorViewModel(
      * Every abort carries a named [VerifyError] with an EMPTY row list and writes no status —
      * a run that could not run must never be readable as a set of verdicts.
      *
-     * **Known gap — the BEFORE hierarchy is not projected.** `HistoryRepository.get` returns the
-     * stored dump as raw `hierarchyXml`, and the parser that turns it into a
-     * [HierarchySnapshotModel] lives in `data-device-api`, which presentation must not import.
-     * So the BEFORE side of [VerifyRow] is the rect the tester actually drew — which is what
-     * [VerifyRow.beforeRect] is documented to be anyway — and the AFTER side is the node it
-     * snaps to now. Closing this needs the parsed snapshot to come back ON the model from the
-     * repository, which is a data-layer change, not one this handler can make.
+     * **Both hierarchies are projected**, not just the AFTER one: `HistoryRepository.get`
+     * parses the stored dump in the data layer (where the parser legally lives) and hands it
+     * back as [SentBatchModel.hierarchy], so step 6 measures the annotation TWICE — once per
+     * frame — and [VerifyRow] carries node-to-node geometry on both sides. Only the AFTER
+     * measurement feeds `verdictOf`; the BEFORE one exists to say what the complaint measured
+     * when it was filed. A batch with no stored dump (or one stored before this existed) snaps
+     * to nothing on the BEFORE side, which degrades every row to the annotation's own rect and
+     * the size line — exactly the behaviour that shipped before.
+     *
+     * **Still a real gap — density.** The stored dump is `uiautomator dump` stdout alone, so
+     * the BEFORE snapshot's own `densityDpi` is the `0` sentinel. The fresh AFTER density is
+     * applied to both sides rather than labelling half the row in px; persisting it would cost
+     * a column, a `@Database` bump and a migration that could not help any row already on disk.
      */
     private fun verifyBatch(batchId: String) {
         // Cancelled HERE rather than inside the new run: a second Verify must not be able to
@@ -549,6 +555,12 @@ public class MirrorViewModel(
             return abortVerify(view, VerifyError.HierarchyUnusable)
         }
 
+        // Projected against the SAME frame size as the AFTER side, not against its own: step 3
+        // already proved both frames measure the same, so a stored dump in another coordinate
+        // space is as unmeasurable here as it is there. It is NOT an abort though — a BEFORE
+        // side that cannot be projected costs the row its before/after line and nothing else.
+        val beforeNodes = batch.hierarchy?.let { projectMeasureNodes(it, frameSize) }.orEmpty()
+
         view = view.copy(phase = VerifyPhase.Diffing, recapturedAtMs = nowMs())
         reduce { state.copy(verify = view) }
         verifyAfterHeld = after
@@ -561,6 +573,7 @@ public class MirrorViewModel(
                     index = index,
                     annotation = annotation,
                     nodes = nodes,
+                    beforeNodes = beforeNodes,
                     before = before,
                     after = after.bitmap,
                     frameSize = frameSize,
@@ -596,11 +609,15 @@ public class MirrorViewModel(
     }
 
     /**
-     * One annotation's verdict: the AFTER measurement, the region diff, and the AND-rule.
+     * One annotation's verdict: both measurements, the region diff, and the AND-rule.
      *
-     * [measure] is called once and gives both halves the verdict needs — `matched` is its node
-     * id not being the no-match sentinel, and the finding is the one `findingOf` already
-     * produced. Re-running either would be a second oracle free to disagree with the first.
+     * [measure] is called once PER FRAME and the two calls have different jobs. The AFTER one
+     * gives the verdict both halves it needs — `matched` is its node id not being the no-match
+     * sentinel, and the finding is the one `findingOf` already produced; re-running either
+     * would be a second oracle free to disagree with the first. The BEFORE one is display
+     * only: it says where the annotated node sat and what was wrong with it when the batch was
+     * sent, and it never reaches [verdictOf]. With no stored hierarchy it snaps to nothing and
+     * reports the annotation's own rect, which is what this row carried before.
      *
      * The SAME rect is read on both frames: it is the region the annotation is about, and the
      * question the pixels answer is whether anything in it moved at all.
@@ -609,6 +626,7 @@ public class MirrorViewModel(
         index: Int,
         annotation: SentAnnotationModel,
         nodes: List<MeasureNode>,
+        beforeNodes: List<MeasureNode>,
         before: ImageBitmap,
         after: ImageBitmap,
         frameSize: IntSize,
@@ -629,6 +647,15 @@ public class MirrorViewModel(
             frameSize = frameSize,
             densityDpi = densityDpi,
         )
+        val beforeReadout = measure(
+            annotation = rect,
+            index = index + 1,
+            nodes = beforeNodes,
+            frameSize = frameSize,
+            // The AFTER dump's density on the BEFORE frame too: the stored dump never carried
+            // one, and labelling the two halves of one line in different units is worse.
+            densityDpi = densityDpi,
+        )
         val beforePixels = before.regionPixels(rect, frameSize)
         val afterPixels = after.regionPixels(rect, frameSize)
         val changed = if (beforePixels == null || afterPixels == null) {
@@ -639,16 +666,11 @@ public class MirrorViewModel(
         return VerifyRow(
             index = index,
             comment = annotation.comment,
-            beforeRect = rect,
+            beforeRect = beforeReadout.targetRect,
             afterRect = readout.targetRect,
-            // The size line, not a misalignment or touch-target one: picking either of those
-            // needs the finding's KIND, and MeasureReadout exposes only its message. The size
-            // of the region is the one measurement that always exists on both sides.
-            resultLine = sizeBeforeAfterLabel(
-                beforeWidthPx = rect.width,
-                beforeHeightPx = rect.height,
-                afterWidthPx = readout.targetRect.width,
-                afterHeightPx = readout.targetRect.height,
+            resultLine = beforeAfterLine(
+                before = beforeReadout,
+                after = readout,
                 densityDpi = densityDpi,
             ),
             outcome = verdictOf(

@@ -3,6 +3,7 @@ package presentation.feature.mirror.core.measure
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import presentation.feature.mirror.source.mirror.DeviceRect
+import presentation.feature.mirror.source.mirror.FindingKind
 import presentation.feature.mirror.source.mirror.MeasureGuide
 import presentation.feature.mirror.source.mirror.MeasureReadout
 import presentation.feature.mirror.source.mirror.MeasureSide
@@ -73,6 +74,11 @@ internal fun measure(
         guides = guides,
         rail = rail,
         finding = finding?.message,
+        findingKind = finding?.kind,
+        // Both carried unconditionally, not only when the matching finding fired: the AFTER
+        // readout of a before/after line needs the edge exactly when it has NO finding left.
+        leftNeighbourTopPx = neighbours.left?.rect?.top,
+        topNeighbourLeftPx = neighbours.top?.rect?.left,
         unit = unit,
         noteLine = noteLine(nodeId = target.id, values = values, finding = finding?.message),
     )

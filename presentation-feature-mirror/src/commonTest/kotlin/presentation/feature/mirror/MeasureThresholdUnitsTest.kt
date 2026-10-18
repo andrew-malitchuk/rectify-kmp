@@ -1,10 +1,10 @@
 package presentation.feature.mirror
 
-import presentation.feature.mirror.core.measure.FindingKind
 import presentation.feature.mirror.core.measure.MeasureNeighbours
 import presentation.feature.mirror.core.measure.MeasureNode
 import presentation.feature.mirror.core.measure.findingOf
 import presentation.feature.mirror.source.mirror.DeviceRect
+import presentation.feature.mirror.source.mirror.FindingKind
 import presentation.feature.mirror.source.mirror.MeasureUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals

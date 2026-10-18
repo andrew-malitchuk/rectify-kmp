@@ -3,6 +3,8 @@ package data.repository.impl.source.repository
 import co.touchlab.kermit.Logger
 import data.database.impl.source.datasource.HistoryDataSource
 import data.database.impl.source.entity.HistoryEntryWithAnnotations
+import data.repository.impl.core.mapper.HierarchyDumpStdout
+import data.repository.impl.core.mapper.HierarchySnapshotMapper
 import data.repository.impl.core.mapper.HistoryEntryMapper
 import data.repository.impl.core.mapper.HistoryEntryMapper.toEntities
 import data.repository.impl.source.store.BatchFileReader
@@ -49,10 +51,18 @@ internal class HistoryRepositoryImpl(
      * BEFORE pixels has nothing to diff; the hierarchy is read second and is allowed to stay
      * `null`. Annotations are re-sorted on their stored index — the `@Relation` makes no
      * ordering promise, and the index is what the verdict rows are numbered by.
+     *
+     * The dump is also PARSED here, which is the only place it can be: the parser lives in
+     * `data-device-api` and presentation may not import it. Neither half can throw — the
+     * parser degrades unreadable input to no nodes, and no nodes becomes a `null` snapshot, so
+     * an unparseable dump costs exactly what a missing file costs. Density is `0`, the
+     * "unknown" sentinel: `wm density` was never persisted, and a verify run fills it in from
+     * the fresh AFTER dump rather than guessing one here.
      */
     override suspend fun get(batchId: String): SentBatchModel? {
         val (entry, annotations) = dataSource.getBatch(batchId) ?: return null
         val frameBytes = entry.framePath?.let { reader.read(it) } ?: return null
+        val hierarchyXml = entry.hierarchyPath?.let { reader.read(it) }?.decodeToString()
         return SentBatchModel(
             id = entry.id,
             sentAtMs = entry.sentAtMs,
@@ -60,7 +70,10 @@ internal class HistoryRepositoryImpl(
             prompt = entry.prompt,
             frameBytes = frameBytes,
             thumbPng = entry.thumbPng,
-            hierarchyXml = entry.hierarchyPath?.let { reader.read(it) }?.decodeToString(),
+            hierarchyXml = hierarchyXml,
+            hierarchy = hierarchyXml
+                ?.let { HierarchySnapshotMapper.toModel.map(HierarchyDumpStdout(it, density = "")) }
+                ?.takeIf { it.nodes.isNotEmpty() },
             annotations = annotations.sortedBy { it.index }.map { annotation ->
                 SentAnnotationModel(
                     left = annotation.left,

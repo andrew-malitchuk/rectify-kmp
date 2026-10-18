@@ -148,11 +148,32 @@ private fun snapshot(
     nodes: List<HierarchyNodeModel> = listOf(matchingNode()),
     frameWidthPx: Int = FRAME_WIDTH,
     frameHeightPx: Int = FRAME_HEIGHT,
+    densityDpi: Int = DENSITY_DPI,
 ): HierarchySnapshotModel = HierarchySnapshotModel(
     nodes = nodes,
     frameWidthPx = frameWidthPx,
     frameHeightPx = frameHeightPx,
-    densityDpi = DENSITY_DPI,
+    densityDpi = densityDpi,
+)
+
+/** Device px that measure [dp] at [DENSITY_DPI] — never a literal px height in a case below. */
+private fun devicePx(dp: Int): Int = dp * DENSITY_DPI / 160
+
+/** Height the annotated node had when the batch was sent, and the height it has now. */
+private const val BEFORE_HEIGHT_DP = 14
+private const val AFTER_HEIGHT_DP = 26
+
+/** The annotated node as it was SENT: tappable and well under the touch-target floor. */
+private fun shortTappableNode(): HierarchyNodeModel = matchingNode().copy(
+    isTappable = true,
+    bottom = matchingNode().top + devicePx(BEFORE_HEIGHT_DP),
+)
+
+/** The same node after the agent grew it — still inside [RECT]'s snap slack. */
+private fun grownTappableNode(): HierarchyNodeModel = matchingNode().copy(
+    isTappable = true,
+    top = RECT.top - 2,
+    bottom = RECT.top - 2 + devicePx(AFTER_HEIGHT_DP),
 )
 
 /**
@@ -370,6 +391,67 @@ class MirrorViewModelVerifyTest {
         assertEquals(listOf(0, 1), verify.rows.map { it.index }, "history order, 0-based")
         assertTrue(verify.rows.all { it.outcome == VerificationOutcome.StillOff })
         assertTrue(status.writes.isEmpty())
+    }
+
+    // -- CR-A: the BEFORE hierarchy is projected too ---------------------------------------------
+
+    @Test
+    fun aStoredBeforeHierarchyProducesTheFindingsOwnBeforeAfterLine() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot(listOf(grownTappableNode())))),
+            getSentBatch = FakeGetSentBatch(
+                sentBatch().copy(
+                    // Parsed by the repository, which is the only layer that may parse it. Its
+                    // own density is the 0 sentinel -- the stored dump never carried one.
+                    hierarchy = snapshot(listOf(shortTappableNode()), densityDpi = 0),
+                ),
+            ),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+
+        val row = assertNotNull(viewModel.currentState.verify).rows.single()
+        assertEquals(
+            "height $BEFORE_HEIGHT_DP" + "dp → $AFTER_HEIGHT_DP" + "dp · want 48dp",
+            row.resultLine,
+            "the touch-target line, not the size fallback the BEFORE-less path produces",
+        )
+        // Both sides are the snapped NODE now, not the hand-drawn rect they used to be.
+        assertEquals(devicePx(BEFORE_HEIGHT_DP), row.beforeRect.height)
+        assertEquals(devicePx(AFTER_HEIGHT_DP), row.afterRect.height)
+    }
+
+    @Test
+    fun aBatchWithNoStoredHierarchyKeepsTheDrawnRectAndTheSizeLine() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            // Every batch recorded before the dump was parsed back looks like this.
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = FakeUpdateBatchStatus(),
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+
+        val row = assertNotNull(viewModel.currentState.verify).rows.single()
+        assertEquals(RECT, row.beforeRect, "nothing to snap to means the annotation's own rect")
+        assertTrue(
+            '×' in row.resultLine,
+            "the size pair is still the fallback, not a fabricated finding: ${row.resultLine}",
+        )
     }
 
     // -- TAC-5: the terminal write ---------------------------------------------------------------

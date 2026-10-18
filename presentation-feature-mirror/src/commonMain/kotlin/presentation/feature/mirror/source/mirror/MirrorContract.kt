@@ -436,10 +436,14 @@ public enum class VerifyError {
  * @property index 0-based position in the sent batch, i.e. history's own order. (The envelope's
  *   1-based numbering belongs to the send path and is not reused here.)
  * @property comment What the tester wrote when the annotation was filed.
- * @property beforeRect The annotated rect as it was sent, in device pixels.
+ * @property beforeRect Where the matched node sat on the frame the annotation was drawn on, in
+ *   device pixels — the annotation's own rect when nothing matched, which is also every batch
+ *   whose hierarchy was never stored or can no longer be read.
  * @property afterRect Where the matched node sits now; equal to [beforeRect] when nothing moved.
  * @property resultLine The machine-produced BEFORE → AFTER measurement line, already formatted
- *   by `core/verify`. Never localised — it is numbers, like every other mono readout here.
+ *   by `core/verify` — the BEFORE finding's own measurement on both frames where there is one,
+ *   the node's size on each frame otherwise. Never localised — it is numbers, like every other
+ *   mono readout here.
  * @property outcome The verdict, from `verdictOf`.
  */
 public data class VerifyRow(
@@ -949,6 +953,25 @@ public enum class HierarchyStatus {
 }
 
 /**
+ * Which rule produced a measurement's single finding.
+ *
+ * Public, and on [MeasureReadout], because two consumers need the RULE rather than its message:
+ * the overlay draws an alignment rail for [TopMisalignment] and nothing else, and the verify
+ * row picks which BEFORE → AFTER line to format. Re-deriving either by matching on the message
+ * string would make a copy tweak a behaviour change.
+ */
+public enum class FindingKind {
+    /** The target's top edge is just off its left neighbour's. */
+    TopMisalignment,
+
+    /** The target's left edge is just off its top neighbour's. */
+    LeftMisalignment,
+
+    /** A tappable node is shorter than the touch-target floor. */
+    TouchTarget,
+}
+
+/**
  * One already-formatted row of the measuring panel.
  *
  * Formatted and not numeric: `×`, `Δ`, the unit suffix and the suppression rule are all decided
@@ -1007,6 +1030,14 @@ public data class MeasureGuide(
  *   means "these two edges should have lined up", which neither of the other findings says.
  * @property finding The single finding message, or `null` when there is nothing to report.
  *   Never more than one, by construction.
+ * @property findingKind Which rule produced [finding], `null` alongside it.
+ * @property leftNeighbourTopPx Top edge of the nearest LEFT neighbour, `null` when there is
+ *   none — the edge [FindingKind.TopMisalignment] is measured against. Carried separately from
+ *   [neighbourRects], which drops absent sides and is therefore positionally ambiguous, and
+ *   carried whether or not the finding fired: the AFTER side of a before/after line needs the
+ *   same edge precisely in the good case, where the finding is gone.
+ * @property topNeighbourLeftPx Left edge of the nearest TOP neighbour, the
+ *   [FindingKind.LeftMisalignment] counterpart of [leftNeighbourTopPx].
  * @property unit Unit every figure here is labelled in.
  * @property noteLine The `⌥` one-liner pasted into the annotation's note.
  */
@@ -1021,4 +1052,7 @@ public data class MeasureReadout(
     val finding: String?,
     val unit: MeasureUnit,
     val noteLine: String,
+    val findingKind: FindingKind? = null,
+    val leftNeighbourTopPx: Int? = null,
+    val topNeighbourLeftPx: Int? = null,
 )

@@ -1,5 +1,6 @@
 package presentation.feature.mirror.core.measure
 
+import presentation.feature.mirror.source.mirror.FindingKind
 import presentation.feature.mirror.source.mirror.MeasureUnit
 import kotlin.math.abs
 
@@ -42,18 +43,6 @@ internal const val TOUCH_TARGET_MIN_DP: Int = 32
  */
 internal fun displayDelta(fromPx: Int, toPx: Int, densityDpi: Int): Int =
     toDisplayUnit(abs(fromPx - toPx), densityDpi).first
-
-/** Which rule produced a [Finding] — the rail is drawn for [TopMisalignment] and nothing else. */
-internal enum class FindingKind {
-    /** The target's top edge is just off its left neighbour's. */
-    TopMisalignment,
-
-    /** The target's left edge is just off its top neighbour's. */
-    LeftMisalignment,
-
-    /** A tappable node is shorter than the touch-target floor. */
-    TouchTarget,
-}
 
 /**
  * The single finding reported for a measured node.
