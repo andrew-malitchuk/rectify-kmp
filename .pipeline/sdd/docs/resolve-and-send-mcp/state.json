@@ -10,6 +10,9 @@
     },
     "backlog": {
       "status": "done"
+    },
+    "execution": {
+      "status": "done"
     }
   },
   "steps": {
@@ -87,6 +90,17 @@
       "status": "done",
       "wave": 5,
       "worktreeBranch": "task/wave-5"
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 6,
+      "worktreeBranch": "task/terminal"
+    },
+    "T-13": {
+      "status": "blocked",
+      "wave": 6,
+      "worktreeBranch": "task/terminal",
+      "blockedReason": "manual end-to-end demo requires a real device and a real Claude Code session"
     }
   },
   "effort": "fast",

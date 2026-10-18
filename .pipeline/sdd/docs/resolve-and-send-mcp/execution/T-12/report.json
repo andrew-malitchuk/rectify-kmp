@@ -1,0 +1,93 @@
+{
+  "spec": "resolve-and-send-mcp",
+  "stage": "execution",
+  "step": "T-12",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-execute-tasks",
+  "provenance": {
+    "selfHash": "2d8cdf3e674d73507ec7cb85ece08ac1854f49bd690cf6bf6f754c918ae81969",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "13736f4c3b002eb7483a12681dfff64471a26926e7be014daa6853d369d3d83b"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T16:03:05Z",
+  "updatedAt": "2026-10-18T16:03:05Z",
+  "data": {
+    "taskId": "T-12",
+    "type": "docs",
+    "outcome": "success",
+    "touchedPaths": [
+      ".mcp.json.example",
+      "mcp-application/CLAUDE.md",
+      "data-handoff-api/CLAUDE.md",
+      "CLAUDE.md",
+      "mcp-application/build.gradle.kts"
+    ],
+    "implementation": {
+      "summary": "Wrote the checked-in .mcp.json.example naming the installDist launcher ./mcp-application/build/install/rectify-mcp/bin/rectify-mcp (valid JSON, no username or machine-specific path). Created mcp-application/CLAUDE.md with a 'Wiring this into Claude Code' section naming MCP_PROTOCOL_VERSION as the first check on a handshake failure and the resolved-handoff-root startup log line as the first check when the tool reports no annotation after a successful send, plus the bespoke-Gradle NFR-15 deviation rationale. Finalized data-handoff-api/CLAUDE.md with the module responsibility, the one-interface declared deviation and the Koin-free rationale. Added the two new modules to the root CLAUDE.md module list.",
+      "filesChanged": [
+        ".mcp.json.example",
+        "mcp-application/CLAUDE.md",
+        "data-handoff-api/CLAUDE.md",
+        "CLAUDE.md",
+        "mcp-application/build.gradle.kts"
+      ]
+    },
+    "testRun": {
+      "command": "python3 -m json.tool .mcp.json.example; ./gradlew :mcp-application:installDist",
+      "passed": true,
+      "output": "JSON parses clean; no 'andrew-malitchuk' or '/Users/' in the checked-in example. installDist green AFTER the build fix below; launcher produced at mcp-application/build/install/rectify-mcp/bin/rectify-mcp (+ .bat)."
+    },
+    "validations": [
+      {
+        "stage": "docs-accuracy",
+        "passed": true,
+        "iterations": 1,
+        "issues": [],
+        "note": "Root module list's two new entries match settings.gradle.kts. The documented launcher path was VERIFIED by actually running installDist and listing the produced binary, not assumed."
+      }
+    ],
+    "troubleshooting": [
+      {
+        "at": "T-12",
+        "issue": "BLOCKING BUILD DEFECT FOUND BY VERIFYING RATHER THAN ASSUMING: ./gradlew :mcp-application:installDist failed reproducibly with 'Entry lib/lifecycle-common-jvm-2.11.0.jar is a duplicate but no duplicate handling strategy has been set'. Root cause: LibraryConventionPlugin.configureCommonDependencies() unconditionally wires androidx-lifecycle-viewmodel AND androidx-lifecycle-runtimeCompose into EVERY library module's commonMain, including the pure-serialization :data-handoff-api. Two coordinates (androidx.lifecycle and org.jetbrains.androidx.lifecycle) each ship a same-named lifecycle-common-jvm jar, which collide in installDist's flat lib/ dir. :mcp-application is the first consumer of a library module that is not itself a Compose module, so the variant reconciliation that normally hides this never ran. This BLOCKED the entire T-13 manual demo, since installDist is how the server is launched.",
+        "resolution": "FIXED by the orchestrator in mcp-application/build.gradle.kts: the projects.dataHandoffApi dependency now excludes group androidx.lifecycle and org.jetbrains.androidx.lifecycle. installDist green; the runtime lib/ dir is now exactly 7 jars (stdlib, annotations, coroutines, serialization-core, serialization-json, data-handoff-api, mcp-application). This does not merely silence the duplicate - it RESTORES the pinned envelope+serialization classpath the spec's spawn-time budget assumes, which was demonstrably violated before.",
+        "severity": "warn"
+      },
+      {
+        "at": "T-12",
+        "issue": "PRE-EXISTING REPO DEBT, deliberately NOT fixed here (wide blast radius, out of F-7 scope): LibraryConventionPlugin's KDoc states 'Library modules intentionally omit Compose dependencies' while the same class adds androidx-lifecycle-runtimeCompose to every library module. Fixing it properly belongs in build-logic and affects every library module. Recorded for Stage 7 reflection.",
+        "resolution": "Flagged, not fixed",
+        "severity": "warn"
+      },
+      {
+        "at": "T-12",
+        "issue": "Root CLAUDE.md's 'Module Structure' section was never a full module list - it only ever named the five app-shell/build-logic modules and has never mentioned any data-*, domain-* or presentation-* module, including ones merged several specs ago. Only the two modules this task required were added; the broader staleness was left alone per instruction.",
+        "resolution": "Reported, not fixed",
+        "severity": "info"
+      }
+    ],
+    "linkedAC": [
+      "NFR-12",
+      "NFR-15"
+    ],
+    "backlogUpdate": {
+      "taskId": "T-12",
+      "status": "done"
+    },
+    "needsHumanReview": {
+      "required": true,
+      "reason": "A build-logic defect was found and fixed at the module level; the underlying LibraryConventionPlugin contradiction remains open."
+    }
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "sdd-build-execute-tasks",
+    "approved": true,
+    "at": "2026-10-18T16:03:05Z"
+  }
+}
