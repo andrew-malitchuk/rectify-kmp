@@ -167,4 +167,27 @@
     <string name="mirror_payload_prompt_edit">Edit</string>
     <!-- A11Y: the 4-letter label alone does not say what is edited. -->
     <string name="mirror_payload_prompt_edit_description">Edit the prompt sent to Claude</string>
+    <!-- Mirror - History tab (FR-26..FR-36 / AC-22 / AC-34 / AC-36 / AC-37). The meta line and
+         the footer are the design's own copy, with the machine parts (counts, time, short batch
+         id, session id) interpolated. The note count ships as two plain keys selected by a pure
+         function: the repo has no <plurals> resource and this does not introduce the first one. -->
+    <string name="mirror_history_empty">Nothing sent yet. Batches you send to Claude land here and survive a restart.</string>
+    <string name="mirror_history_group_today">Today</string>
+    <string name="mirror_history_group_yesterday">Yesterday</string>
+    <string name="mirror_history_group_older">Older</string>
+    <!-- note count * time sent * short batch id, e.g. "3 notes · 14:02 · #a41f". -->
+    <string name="mirror_history_meta">%1$s · %2$s · #%3$s</string>
+    <string name="mirror_history_meta_note_one">%1$d note</string>
+    <string name="mirror_history_meta_note_other">%1$d notes</string>
+    <!-- Shown only on a Fixed batch; opens the verify view. -->
+    <string name="mirror_history_verify">Verify</string>
+    <string name="mirror_history_status_sent">Sent</string>
+    <string name="mirror_history_status_in_progress">In progress</string>
+    <string name="mirror_history_status_fixed">Fixed</string>
+    <string name="mirror_history_status_verified">Verified</string>
+    <string name="mirror_history_status_followup">Follow-up sent</string>
+    <!-- Agent and session line under the list, sourced from the newest batch. -->
+    <string name="mirror_history_footer">claude · session %1$s</string>
+    <!-- A11Y: the thumbnail is a crop of the annotated region of the reported screen. -->
+    <string name="mirror_history_thumbnail_description">Screenshot of %1$s</string>
 </resources>
