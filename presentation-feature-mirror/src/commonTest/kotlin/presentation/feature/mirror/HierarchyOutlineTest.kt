@@ -58,12 +58,13 @@ class HierarchyOutlineTest {
 
         assertEquals(3, rows.size)
         val byId = rows.associateBy { it.nodeId }
-        // Both item_a and item_b are leaves -- each one's own column guide ends right there,
-        // regardless of sibling order (see depthAndLastAreDerivedFromDocumentOrderUnaffectedByAnnotations
-        // below for the case that actually distinguishes "leaf" from "last sibling"). Only root,
-        // which has children, carries last = false.
+        // `last` is HierarchyRow's guide contract, not "is this node a leaf": the guide in a row's
+        // own column must reach every row below that still draws in that column -- a child (which
+        // draws the column as one of its ancestor guides) or a following sibling (which draws its
+        // own branch there). root has a child, and item_a has the sibling item_b right below it, so
+        // both of their columns keep running; only item_b, with nothing below it at all, is `last`.
         assertEquals(PayloadNodeRow(nodeId = "root", depth = 0, last = false, badge = null, matched = false), byId["root"])
-        assertEquals(PayloadNodeRow(nodeId = "item_a", depth = 1, last = true, badge = 1, matched = true), byId["item_a"])
+        assertEquals(PayloadNodeRow(nodeId = "item_a", depth = 1, last = false, badge = 1, matched = true), byId["item_a"])
         assertEquals(PayloadNodeRow(nodeId = "item_b", depth = 1, last = true, badge = null, matched = false), byId["item_b"])
     }
 
@@ -112,14 +113,16 @@ class HierarchyOutlineTest {
     // own document order and depth field -- never touched by the badge/annotation pass.
     @Test
     fun depthAndLastAreDerivedFromDocumentOrderUnaffectedByAnnotations() {
-        // root(0) -> A(1, leaf) -> B(1, has child C) -> C(2, leaf) -> D(1, leaf, last overall).
+        // root(0) -> a(1, leaf) -> b(1, has child c) -> c(2, leaf) -> d(1, final sibling, has
+        // child e) -> e(2, leaf, last row overall).
         val root = node("root", 0, 0, 1080, 2400, depth = 0)
         val a = node("a", 0, 0, 100, 100, depth = 1)
         val b = node("b", 0, 100, 500, 900, depth = 1)
         val c = node("c", 10, 110, 490, 890, depth = 2)
-        val d = node("d", 0, 900, 1080, 1000, depth = 1)
+        val d = node("d", 0, 900, 1080, 1200, depth = 1)
+        val e = node("e", 10, 910, 1070, 1190, depth = 2)
         val snapshot = HierarchySnapshotModel(
-            nodes = listOf(root, a, b, c, d),
+            nodes = listOf(root, a, b, c, d, e),
             frameWidthPx = 1080,
             frameHeightPx = 2400,
             densityDpi = 420,
@@ -127,14 +130,17 @@ class HierarchyOutlineTest {
 
         val rows = payloadHierarchyRows(snapshot, frame, annotations = emptyList())
 
-        assertEquals(listOf("root", "a", "b", "c", "d"), rows.map { it.nodeId })
-        assertEquals(listOf(0, 1, 1, 2, 1), rows.map { it.depth })
-        // root and b both have a deeper node directly following them (still inside their own
-        // branch), so their own column's guide keeps going -- not last. a, c and d have nothing
-        // deeper following them, so each one's own guide ends right there -- last, regardless of
-        // whether a sibling still follows (c is immediately followed by sibling d, and is still
-        // `last` because that sibling is one level shallower, not a child of c).
-        assertEquals(listOf(false, true, false, true, true), rows.map { it.last })
+        assertEquals(listOf("root", "a", "b", "c", "d", "e"), rows.map { it.nodeId })
+        assertEquals(listOf(0, 1, 1, 2, 1, 2), rows.map { it.depth })
+        // One assertion per shape the guide contract distinguishes:
+        //   root -- child follows (deeper): the child draws root's column as an ancestor guide -> not last.
+        //   a    -- sibling follows (same depth): the sibling draws its own branch in that column -> not last.
+        //   b    -- child follows: same as root -> not last.
+        //   c    -- shallower node follows (depth 1 < 2): nothing below draws column 2 again -> last.
+        //   d    -- LAST of its siblings but HAS a child: being the final sibling is irrelevant,
+        //           e's ancestor guide runs down d's column -> not last.
+        //   e    -- nothing follows at all -> last.
+        assertEquals(listOf(false, false, false, true, false, true), rows.map { it.last })
     }
 
     // A frame-size mismatch makes `projectMeasureNodes` discard every candidate (see
