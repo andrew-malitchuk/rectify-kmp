@@ -1,6 +1,6 @@
 {
   "spec": "history-batch-tracking",
-  "updatedAt": "2026-10-18T20:57:22Z",
+  "updatedAt": "2026-10-18T21:15:52Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -130,11 +130,19 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 157742,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 2181367,
+    "tokens": 2339109,
     "durationMs": 0,
-    "invocations": 22
+    "invocations": 23
   }
 }

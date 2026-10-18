@@ -1,0 +1,190 @@
+{
+  "spec": "history-batch-tracking",
+  "stage": "review",
+  "step": "review",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-correctness-review",
+  "provenance": {
+    "selfHash": "9d152d3b7bc173f4fff239c0afcdc774e95700ca877ea3e4ec603f49b2112919",
+    "inputs": [
+      {
+        "artifact": "validation/verdict.json",
+        "hash": "624beffa9f111205a32675aac80dfec9a663ff1075d73b6f47e76a5117a95f07"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T21:09:16Z",
+  "updatedAt": "2026-10-18T21:09:22Z",
+  "data": {
+    "verdict": "approve-with-nits",
+    "reviewers": [
+      {
+        "dimension": "merged (correctness+architecture+conventions+performance+security+maintainability)",
+        "agent": "sdd-build-correctness-review",
+        "findingCount": 9
+      }
+    ],
+    "summary": "Single merged reviewer at fast tier over the 23 source files in development...HEAD. Layering above the repository boundary is correct, core/history is genuinely pure and tested, existing components reused rather than reinvented, and the AC-38 publish->persist->postSideEffect ordering is pinned by a test rather than a comment. Crop clamping, degenerate rects, the crop-name lookup and the rect/bitmap coordinate space were all attacked and hold. One real privacy regression plus eight smaller items.",
+    "findings": [
+      {
+        "id": "F-1",
+        "severity": "major",
+        "dimension": "security",
+        "file": "data-repository-impl/src/desktopMain/kotlin/data/repository/impl/core/store/FileSystemBatchFileStore.kt",
+        "line": 29,
+        "rule": "NFR-4",
+        "summary": "History archive written with the default umask while the sibling handoff slot in the same ~/.rectify root is deliberately owner-only (0700).",
+        "failureScenario": "On a shared Linux workstation (~ defaults to 0755) another user reads ~alice/.rectify/history/*/frame.png and strings ~alice/.rectify/rectify.db, obtaining every screenshot, hierarchy dump, annotation comment and prompt Alice ever sent - permanently, since there is no retention policy. The same data inside ~/.rectify/handoff is 0700 and refuses them.",
+        "status": "fixed",
+        "fixedIn": "2bb5cf4"
+      },
+      {
+        "id": "F-2",
+        "severity": "minor",
+        "dimension": "correctness",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+        "line": 964,
+        "rule": "AC-38",
+        "summary": "started.elapsedNow() read after the thumbnail encode and history write, inflating the reported send duration.",
+        "failureScenario": "The first send in a process pays the one-off Skiko native-library load plus a ~1MB frame.png write, the hierarchy XML write and the DB insert before the clock is read; a 0.3s publish is reported to the user as 'Sent 1 note in 0.9 s'.",
+        "status": "fixed",
+        "fixedIn": "2bb5cf4"
+      },
+      {
+        "id": "F-3",
+        "severity": "minor",
+        "dimension": "correctness",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHistoryTab.kt",
+        "line": 94,
+        "rule": "FR-28 / AC-22",
+        "summary": "groupHistory's remember is keyed on state.history only, so the clock is re-read only when the list instance changes.",
+        "failureScenario": "A tester sends three batches at 23:40 and leaves the panel open overnight (normal for a desktop QA tool); at 09:00 the header over all three still reads TODAY, correcting itself only when the next batch arrives or the app restarts.",
+        "status": "deferred",
+        "note": "Fix by also keying on the current local date from a one-per-minute ticker, preserving the single-clock-read purity."
+      },
+      {
+        "id": "F-4",
+        "severity": "minor",
+        "dimension": "performance",
+        "file": "data-database-impl/src/commonMain/kotlin/data/database/impl/core/dao/HistoryEntryDao.kt",
+        "line": 31,
+        "rule": "NFR-13",
+        "summary": "observeAll has no LIMIT and @Relation pulls every child row; the reduced-state justification argues emission frequency, not volume.",
+        "failureScenario": "At 500 batches x 3 annotations, every send and every app start materialises 500 entities (each carrying the full prompt string the read model discards) + 1500 child rows + 500 thumbnail BLOBs, and ~2-4MB stays parked in MirrorUiState.history for the process lifetime.",
+        "status": "deferred",
+        "note": "LIMIT 200 on the observe query, or drop prompt/thumbPng from the list projection and load the thumbnail per row."
+      },
+      {
+        "id": "F-5",
+        "severity": "minor",
+        "dimension": "architecture",
+        "file": "data-repository-impl/build.gradle.kts",
+        "line": 13,
+        "rule": ".claude/rules/database.md",
+        "summary": "First -impl -> -impl module edge in the repo; Room-annotated entities are now on the repository module's compile classpath and in its test fixtures.",
+        "failureScenario": "The Room backend is no longer swappable behind data-database-api. The leak stops at the repository - nothing Room-shaped reaches domain-usecase-impl or presentation - which is why this is minor.",
+        "status": "accepted",
+        "note": "Plan-approved at T-6; recorded, not re-litigated."
+      },
+      {
+        "id": "F-6",
+        "severity": "minor",
+        "dimension": "security",
+        "file": "data-repository-impl/src/desktopMain/kotlin/data/repository/impl/core/store/FileSystemBatchFileStore.kt",
+        "line": 12,
+        "rule": "PLAN-AS-6",
+        "summary": "Sanitiser regex keeps '.', so a batch id of '..' resolves to File(root, '..'); the comment and the test name both over-claim relative to the code.",
+        "failureScenario": "write('..', files) writes frame.png into ~/.rectify itself. Unreachable today because mintSessionId always emits <deviceId>-f<n>-<millis>, but the guard will be trusted later by a caller with a different id source.",
+        "status": "fixed",
+        "fixedIn": "2bb5cf4"
+      },
+      {
+        "id": "F-7",
+        "severity": "nit",
+        "dimension": "correctness",
+        "file": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/history/HistoryFormatting.kt",
+        "line": 131,
+        "rule": "AC-35 (cosmetic half)",
+        "summary": "When the union clamps at the left or top edge, the requested width is preserved rather than the pad.",
+        "failureScenario": "Union (0,0,100,100) on a 1080-wide frame gives pad 65.7 and left 0, but width stays 231, so the crop extends 131px right of the union instead of 65.7 - the thumbnail of any top-left-corner annotation is visibly off-centre. Appearance only; the rect never leaves the frame.",
+        "status": "deferred"
+      },
+      {
+        "id": "F-8",
+        "severity": "nit",
+        "dimension": "maintainability",
+        "file": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/HistoryEntryMapper.kt",
+        "line": 33,
+        "rule": "",
+        "summary": "cropFile(index) is 0-based while the envelope's cropFileName(index) is 1-based; the same image is crop-1.png in the handoff slot and crop-0.png under ~/.rectify/history/<id>/.",
+        "failureScenario": "Self-consistent within each side, but F-9's diff loop must know both conventions and will mismatch crops if it assumes one.",
+        "status": "deferred"
+      },
+      {
+        "id": "F-9",
+        "severity": "nit",
+        "dimension": "test-quality",
+        "file": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelResolveAndSendTest.kt",
+        "line": 215,
+        "rule": "",
+        "summary": "settleUntil can burn 5s of wall clock waiting out a one-off Skiko load; MirrorUiStateSendFieldTest keeps a now-stale class and file name.",
+        "failureScenario": "Slow, non-deterministic test time; the next person re-baselining the field test greps for the wrong name.",
+        "status": "deferred"
+      }
+    ],
+    "changeRequests": [
+      {
+        "id": "RCR-1",
+        "about": "F-1 owner-only permissions on the history archive and ~/.rectify",
+        "status": "resolved",
+        "resolvedIn": "2bb5cf4",
+        "target": "FileSystemBatchFileStore.kt + DatabaseBuilder.desktop.kt"
+      },
+      {
+        "id": "RCR-2",
+        "about": "F-2 hoist the elapsed read above the persist block",
+        "status": "resolved",
+        "resolvedIn": "2bb5cf4",
+        "target": "MirrorViewModel.kt"
+      },
+      {
+        "id": "RCR-3",
+        "about": "F-6 reject blank/./.. batch ids in the path guard",
+        "status": "resolved",
+        "resolvedIn": "2bb5cf4",
+        "target": "FileSystemBatchFileStore.kt"
+      }
+    ],
+    "techDebt": [
+      "F-3 stale Today header when the panel is left open across midnight",
+      "F-4 unbounded observe query and unbounded history in reduced state",
+      "F-5 data-repository-impl -> data-database-impl module edge",
+      "F-7 thumbnail off-centre when the union clamps at the left/top edge",
+      "F-8 crop file index 0-based in history vs 1-based in the handoff envelope",
+      "F-9 settleUntil wall-clock cost and the stale SendField test name",
+      "CR-4 no per-task report.json trail",
+      "CR-5 no Koin DI-graph test for the five new bindings"
+    ],
+    "survey": [
+      {
+        "question": "F-1: the history archive is written with the default umask while the ephemeral handoff slot in the same root is deliberately owner-only. How should this land?",
+        "options": [
+          "Fix F-1 on this branch before merge; merge F-2..F-9 as follow-ups",
+          "Merge as-is and track F-1 as a follow-up ticket",
+          "Request changes: hold until F-1, F-2 and F-3 are all fixed"
+        ],
+        "answer": "Fix F-1 on this branch before merge; merge F-2..F-9 as follow-ups",
+        "source": "ai-proposed",
+        "rationale": "F-1 turns pruned, owner-only data into a permanent world-readable copy of the tester's screen, and the fix reuses a helper this repo already has for exactly this reason. F-2 and F-6 were also one-liners and were fixed in the same pass."
+      }
+    ],
+    "approved": true
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-autonomous",
+    "approved": true,
+    "at": "2026-10-18T21:09:22Z"
+  }
+}

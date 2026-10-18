@@ -3,48 +3,48 @@
     "spec": "android-device-discovery-mirroring",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "drag-annotate-frozen-frame",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "error-handling-and-recovery",
     "currentStage": "done",
     "verdict": "",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "history-batch-tracking",
-    "currentStage": "review",
+    "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "measure-mode",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "payload-preview",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   },
   {
     "spec": "resolve-and-send-mcp",
     "currentStage": "review",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-18T20:57:22Z"
+    "updatedAt": "2026-10-18T21:15:52Z"
   }
 ]
