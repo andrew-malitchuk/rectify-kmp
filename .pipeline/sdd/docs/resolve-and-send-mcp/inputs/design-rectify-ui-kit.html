@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0} a{color:inherit;text-decoration:underline} a:hover{opacity:.7}</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <div style="display:flex; align-items:baseline; justify-content:space-between; padding-bottom:28px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-size:22px; font-weight:700; letter-spacing:-0.02em">Rectify UI Kit</span>
+      <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">v0.4</span>
+    </div>
+    <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; letter-spacing:0.08em; color:var(--ink3)">{{ themeLabel }}</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">01</span><span style="font-size:14px; font-weight:600">Color</span></div>
+    <div style="display:flex; flex-direction:column; gap:20px">
+      <sc-for list="{{ colorGroups }}" as="g" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">{{ g.name }}</span>
+          <div style="display:flex; flex-wrap:wrap; gap:12px">
+            <sc-for list="{{ g.items }}" as="c" hint-placeholder-count="4">
+              <div style="width:118px; display:flex; flex-direction:column; gap:6px">
+                <div style="height:48px; border-radius:8px; background:{{ c.v }}; box-shadow:inset 0 0 0 1px var(--line2)"></div>
+                <span style="font-size:12px; font-weight:500">{{ c.k }}</span>
+                <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ c.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">02</span><span style="font-size:14px; font-weight:600">Typography</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">Two families, 16 tokens. SF for people, mono for machines.</span></div>
+    <div style="display:flex; flex-direction:column; gap:22px">
+      <div style="display:flex; flex-direction:column; gap:14px; "><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Families</span>
+      <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px">
+        <div style="padding:18px; border-radius:10px; border:1px solid var(--line); display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-size:13px; font-weight:600">SF Pro Text</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">system-ui · UI & prose</span></div>
+          <div style="font-size:40px; font-weight:600; letter-spacing:-0.02em; line-height:1">Aa Rr</div>
+          <div style="display:flex; gap:16px; font-size:13px"><span style="font-weight:400">Regular 400</span><span style="font-weight:500">Medium 500</span><span style="font-weight:600">Semibold 600</span></div>
+          <span style="font-size:12px; color:var(--ink2); line-height:18px">Everything a person reads: titles, labels, comments, errors. Medium for emphasis, Semibold only for titles and headings. Bold is never used in the app.</span>
+        </div>
+        <div style="padding:18px; border-radius:10px; border:1px solid var(--line); display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:13px; font-weight:500">JetBrains Mono</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">fallback ui-monospace · data</span></div>
+          <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:40px; line-height:1">0O 1l ×Δ</div>
+          <div style="display:flex; gap:16px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px"><span style="font-weight:400">Regular 400</span><span style="font-weight:500">Medium 500</span></div>
+          <span style="font-size:12px; color:var(--ink2); line-height:18px">Everything a machine produced: ids, coordinates, sizes, commands, versions, timestamps, shortcuts, status. If you could paste it into a terminal, it's mono.</span>
+        </div>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:14px; padding-top:22px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Scale</span>
+      <div style="display:grid; grid-template-columns:104px 196px 168px minmax(0,1fr); column-gap:20px">
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">token</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">size / line · weight · track</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">use</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">specimen</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">title-l</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">20/26 · 600 · −.01em · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Screen title — picker</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:20px; line-height:26px; font-weight:600; letter-spacing:-0.01em; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Choose what to mirror</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">title-m</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">18/24 · 600 · −.01em · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Empty-state heading</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:18px; line-height:24px; font-weight:600; letter-spacing:-0.01em; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Waiting for an Android device</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">title-s</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">15/20 · 600 · −.01em · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Error / card heading</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:15px; line-height:20px; font-weight:600; letter-spacing:-0.01em; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">adb isn't on your PATH</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">body</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">13/19 · 400 · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Default UI text, menus</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:13px; line-height:19px; font-weight:400; letter-spacing:0; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Mirroring starts on its own as soon as adb sees one.</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">body-strong</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">13/19 · 500 · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Buttons, device names, toasts</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:13px; line-height:19px; font-weight:500; letter-spacing:0; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Resolve &amp; Send</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">comment</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">12.5/17 · 400 · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Annotation text, rows</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:12.5px; line-height:17px; font-weight:400; letter-spacing:0; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Price sits 6px below the title — align baselines</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">label</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">12.5/17 · 600 · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Panel headings</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:12.5px; line-height:17px; font-weight:600; letter-spacing:0; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Verification</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">secondary</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">12/18 · 400 · ink2</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Supporting copy, row meta</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:12px; line-height:18px; font-weight:400; letter-spacing:0; color:var(--ink2);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Android 15 · USB</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">small</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">11.5/15 · 500 · ink2</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">22px buttons, sub-actions</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:11.5px; line-height:15px; font-weight:500; letter-spacing:0; color:var(--ink2);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Edit</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">caption</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">11/15 · 500 · ink3</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Group headers in lists</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, sans-serif; font-size:11px; line-height:15px; font-weight:500; letter-spacing:0; color:var(--ink3);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Physical device</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">mono-data</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">11/16 · 400 · mono · ink</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Node ids, commands, chip meta</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; line-height:16px; font-weight:400; letter-spacing:0; color:var(--ink);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">TextView#item_price · 218×77</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">mono-meta</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">10.5/16 · 400 · mono · ink3</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Status line, payload, coords</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:16px; font-weight:400; letter-spacing:0; color:var(--ink3);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">scrcpy 2.4 · 1344×2992 · 58 fps</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">overline</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">10.5/14 · 400 · +.08em · mono · ink3</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Section labels · UPPERCASE</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:14px; font-weight:400; letter-spacing:0.08em; color:var(--ink3); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">PAYLOAD</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">mono-badge</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">10/12 · 500 · +.06em · mono · ink2</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Number badges, mode label</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; line-height:12px; font-weight:500; letter-spacing:0.06em; color:var(--ink2);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">LIVE · 58 FPS</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">mono-tag</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">9.5/13 · 500 · mono · #fff on signal</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Measure labels, hierarchy tags</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px; font-weight:500; padding:0 4px; border-radius:3px; background:var(--measure); color:#fff; width:max-content">Δ6dp</span></div>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:10px 0"></div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; font-weight:500; align-self:center">mono-ruler</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2); align-self:center">8.5/12 · 400 · mono · ink3</span>
+        <span style="font-size:12px; color:var(--ink2); align-self:center">Ruler numerals only</span>
+        <div style="display:flex; align-items:center; min-width:0"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; line-height:12px; font-weight:400; letter-spacing:0; color:var(--ink3);  white-space:nowrap; overflow:hidden; text-overflow:ellipsis">1000</span></div>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:14px; padding-top:22px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Text color roles</span>
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px">
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--line); display:flex; flex-direction:column; gap:6px"><span style="font-size:15px; font-weight:500; color:var(--ink)">Pixel 8 Pro</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:500">ink</span><span style="font-size:11.5px; color:var(--ink3)">Primary text, values</span></div><div style="padding:12px; border-radius:8px; border:1px solid var(--line); display:flex; flex-direction:column; gap:6px"><span style="font-size:15px; font-weight:500; color:var(--ink2)">Android 15 · USB</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:500">ink2</span><span style="font-size:11.5px; color:var(--ink3)">Secondary, supporting copy</span></div><div style="padding:12px; border-radius:8px; border:1px solid var(--line); display:flex; flex-direction:column; gap:6px"><span style="font-size:15px; font-weight:500; color:var(--ink3)">No comment yet</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:500">ink3</span><span style="font-size:11.5px; color:var(--ink3)">Meta, placeholders, overlines</span></div><div style="padding:12px; border-radius:8px; border:1px solid var(--line); display:flex; flex-direction:column; gap:6px"><span style="font-size:15px; font-weight:500; color:var(--red)">Stream dropped</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:500">signal</span><span style="font-size:11.5px; color:var(--ink3)">Only on state: error, Δ, live</span></div>
+      </div>
+      <div style="display:flex; gap:12px; align-items:stretch">
+        <div style="flex:1; padding:12px; border-radius:8px; background:var(--pop); display:flex; flex-direction:column; gap:4px">
+          <span style="font-size:12.5px; color:#f4f4f5">Price sits 6px below the title</span>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:rgba(255,255,255,.42)">218×77 @ 1035,862</span>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:oklch(0.74 0.13 255)">⌥ top Δ6dp vs item_title</span>
+        </div>
+        <div style="flex:2; display:flex; flex-direction:column; justify-content:center; gap:4px; font-size:12px; color:var(--ink2); line-height:18px">
+          <span>On the always-dark popover: text <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">#f4f4f5</span>, meta white at 42%, measure note lifted to <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">L 0.74</span> for contrast.</span>
+          <span>Text on red, green, amber or blue fills is always white, at 9.5–10px mono Medium.</span>
+        </div>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:14px; padding-top:22px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Formatting</span>
+      <div style="display:grid; grid-template-columns:104px 196px 168px minmax(0,1fr); column-gap:20px; row-gap:0">
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">what</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">do</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">don't</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">rule</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Dimensions</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">1344×2992</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">1344x2992, 1344 X 2992</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">× (U+00D7), no spaces in tight meta; spaces allowed while dragging (545 × 254)</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Position</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">218×77 @ 1035,862</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">(1035, 862)</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">size first, then @ x,y</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Delta</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">top Δ6dp · expected 0</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">6 px off</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">Δ + value + unit, no space before unit</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Units</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">24dp · 17pt · 1344 px</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">24 DP</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">dp on Android, pt on iOS, px only for raw device pixels</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Separator</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">Android 15 · USB</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">Android 15 - USB</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">middle dot with spaces between peers</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Path</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">›</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">></span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">single › between pipeline steps</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Time</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">14:02:31.204</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">2:02 PM</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">24h; milliseconds only on frame stamps</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Shortcut</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">⌘↩  ⌥</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">Cmd+Enter</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">macOS glyphs, mono, 60% inside buttons</span>
+        <div style="grid-column:1 / -1; height:1px; background:var(--line); margin:8px 0"></div>
+        <span style="font-size:12px; font-weight:500">Ellipsis</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">Locate adb…</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); text-decoration:line-through; text-decoration-color:var(--red)">Locate adb...</span>
+        <span style="font-size:12px; color:var(--ink2); line-height:17px">… (U+2026) when an action opens a picker or is in progress</span>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:14px; padding-top:22px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Rules</span>
+      <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px 32px; font-size:12px; line-height:18px; color:var(--ink2)">
+        <span><span style="color:var(--ink); font-weight:500">Sentence case everywhere.</span> UPPERCASE only for mono overlines and the live/frozen mode label.</span>
+        <span><span style="color:var(--ink); font-weight:500">Tracking:</span> −1% on 15px+ titles, +8% on overlines, +6% on mode labels, 0 elsewhere.</span>
+        <span><span style="color:var(--ink); font-weight:500">Truncate, never wrap, in chrome.</span> Toolbar, chips, status line, ids, hierarchy rows: one line with an ellipsis at the end.</span>
+        <span><span style="color:var(--ink); font-weight:500">Wrap prose.</span> Comments, error bodies and empty-state copy use text-wrap: pretty with a max of ~60ch.</span>
+        <span><span style="color:var(--ink); font-weight:500">Numbers in mono,</span> even inside SF sentences: "Sent <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">3</span> annotations" is fine as SF; coordinates and ids never are.</span>
+        <span><span style="color:var(--ink); font-weight:500">Minimums:</span> 10px for anything read, 9.5px for tags on fills, 8.5px only on rulers.</span>
+        <span><span style="color:var(--ink); font-weight:500">Errors say what to do.</span> Title states the fact, body gives one next action, the footer is the raw diagnostic in mono-meta.</span>
+        <span><span style="color:var(--ink); font-weight:500">No marketing voice.</span> No exclamation marks, no "Oops", no emoji. Use verbs on buttons: Boot, Retry, Send.</span>
+      </div></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">03</span><span style="font-size:14px; font-weight:600">Spacing · Radius · Elevation</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:48px">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <sc-for list="{{ spaces }}" as="s" hint-placeholder-count="8">
+          <div style="display:flex; align-items:center; gap:10px"><span style="width:22px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ s.n }}</span><div style="width:{{ s.w }}; height:10px; border-radius:2px; background:var(--measure)"></div></div>
+        </sc-for>
+      </div>
+      <div style="display:flex; gap:14px; align-items:flex-end">
+        <sc-for list="{{ radii }}" as="r" hint-placeholder-count="6">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px"><div style="width:48px; height:48px; border-radius:{{ r.v }}; border:1.5px solid var(--ink2)"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">{{ r.n }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex; gap:20px; align-items:flex-end">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px"><div style="width:84px; height:56px; border-radius:10px; background:var(--surface); border:1px solid var(--line)"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">flat · list</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px"><div style="width:84px; height:56px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow)"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">raised · toast/card</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px"><div style="width:84px; height:56px; border-radius:10px; background:var(--pop); border:1px solid var(--popLine); box-shadow:0 10px 28px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.2)"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">popover</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">04</span><span style="font-size:14px; font-weight:600">Buttons</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">3 variants × 6 states × 6 sizes, plus compositions.</span></div>
+    <div style="display:flex; flex-direction:column; gap:28px">
+      <div style="display:flex; flex-direction:column; gap:12px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">States</span>
+      <div style="display:grid; grid-template-columns:96px repeat(6, minmax(0,1fr)); gap:14px 12px; align-items:center">
+        <span></span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Rest</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Hover</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Pressed</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Focus</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Disabled</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">Busy</span>
+        <span style="font-size:12px; font-weight:500">Primary</span><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Send</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primaryHover); color:var(--onPrimary); ">Send</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primaryPress); color:var(--onPrimary); ">Send</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); box-shadow:0 0 0 1px var(--bg), 0 0 0 3.5px var(--focus); ">Send</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--seg); color:var(--ink3); ">Send</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--seg); color:var(--ink2); "><span style="width:10px; height:10px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--ink2); border-right-color:transparent"></span>Sending…</div></div>
+        <span style="font-size:12px; font-weight:500">Secondary</span><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); ">Boot</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--hover); color:var(--ink); border:1px solid var(--line2); ">Boot</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--seg); color:var(--ink); border:1px solid var(--line2); ">Boot</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); box-shadow:0 0 0 1px var(--bg), 0 0 0 3.5px var(--focus); ">Boot</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink3); border:1px solid var(--line); ">Boot</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); color:var(--ink3); "><span style="width:10px; height:10px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--ink3); border-right-color:transparent"></span>Booting…</div></div>
+        <span style="font-size:12px; font-weight:500">Ghost</span><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Clear</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--hover); color:var(--ink); ">Clear</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--seg); color:var(--ink); ">Clear</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); box-shadow:0 0 0 1px var(--bg), 0 0 0 3.5px var(--focus); ">Clear</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink3); opacity:.6; ">Clear</div></div><div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); color:var(--ink3); "><span style="width:10px; height:10px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--ink3); border-right-color:transparent"></span>Retrying…</div></div>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding-top:20px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Sizes</span>
+      <div style="display:grid; grid-template-columns:60px 150px minmax(0,1fr) 170px; gap:12px 16px; align-items:center">
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">height</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">use</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">example</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">pad · radius · type</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">22</span><span style="font-size:12px; color:var(--ink2)">inline row action</span><div style="display:flex; gap:8px; align-items:center"><div style="height:22px; box-sizing:border-box; padding:0 9px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:11.5px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Verify</div><div style="height:22px; box-sizing:border-box; padding:0 9px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:11.5px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Copy</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">9px · r6 · 11.5/500</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">24</span><span style="font-size:12px; color:var(--ink2)">list / toast action</span><div style="display:flex; gap:8px; align-items:center"><div style="height:24px; box-sizing:border-box; padding:0 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Boot</div><div style="height:24px; box-sizing:border-box; padding:0 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Open session</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">10px · r6 · 12/500</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">26</span><span style="font-size:12px; color:var(--ink2)">overlay & banner</span><div style="display:flex; gap:8px; align-items:center"><div style="height:26px; box-sizing:border-box; padding:0 11px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Reconnect</div><div style="height:26px; box-sizing:border-box; padding:0 11px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); ">← Back to live</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">11px · r6 · 12/500</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">28</span><span style="font-size:12px; color:var(--ink2)">toolbar · default</span><div style="display:flex; gap:8px; align-items:center"><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Resolve & Send</div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Clear</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">12px · r7 · 13/500</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">30</span><span style="font-size:12px; color:var(--ink2)">dialog & error card</span><div style="display:flex; gap:8px; align-items:center"><div style="height:30px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Locate adb…</div><div style="height:30px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Retry</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">14px · r7 · 13/500</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">32</span><span style="font-size:12px; color:var(--ink2)">page CTA</span><div style="display:flex; gap:8px; align-items:center"><div style="height:32px; box-sizing:border-box; padding:0 16px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:8px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Start mirroring</div><div style="height:32px; box-sizing:border-box; padding:0 16px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:8px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); ">Back</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">16px · r8 · 13/500</span>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding-top:20px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Compositions</span>
+      <div style="display:flex; flex-wrap:wrap; gap:28px 32px; align-items:flex-start">
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); padding:0 8px 0 12px">Resolve &amp; Send<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">primary + shortcut</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--seg); color:var(--ink3); padding:0 8px 0 12px">Resolve &amp; Send<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">disabled until 1 annotation</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="display:flex; gap:8px"><div style="height:30px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Locate adb…</div><div style="height:30px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); ">Retry</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">action pair · primary + ghost</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="display:flex; gap:8px"><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px; font-weight:400; padding:0 10px; gap:10px">Pixel_7_API_34<span style="font-size:9px; color:var(--ink3)">▼</span></div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); padding:0 14px">Boot</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">select + action</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="height:26px; box-sizing:border-box; padding:0 11px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); color:var(--ink2); font-weight:400">← Back to live</div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">back / navigation</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; width:272px"><div style="width:272px; display:flex; flex-direction:column; gap:6px"><div style="height:30px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); width:100%">Send follow-up · 1<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span></div><div style="height:28px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap; width:max-content; background:transparent; color:var(--ink2); width:100%; font-weight:400">Mark all as verified</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">full-width footer stack</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><span style="font-size:11.5px; color:var(--ink2); text-decoration:underline; text-decoration-color:var(--line2); text-underline-offset:3px">Edit</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">text action</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="height:22px; box-sizing:border-box; padding:0 9px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:11.5px; font-weight:500; white-space:nowrap; width:max-content; background:var(--surface); color:var(--ink); border:1px solid var(--line2); border-radius:5px; font-size:11px; font-weight:400; color:var(--ink2); padding:0 8px; background:transparent">Copy</div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">mini · in code block</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="padding:8px; border-radius:10px; background:var(--pop); border:1px solid var(--popLine); display:flex; gap:6px; width:max-content"><div style="width:22px; height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:rgba(255,255,255,.55)">✕</div><div style="width:22px; height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; background:rgba(255,255,255,.1); color:#ffffff">✕</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">icon · delete · rest / hover</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; "><div style="display:flex; align-items:center; gap:8px; height:32px; padding:0 4px 0 12px; border-radius:9px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow)"><span style="font-size:12px">Stream dropped</span><div style="height:24px; box-sizing:border-box; padding:0 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; width:max-content; background:var(--primary); color:var(--onPrimary); ">Reconnect</div></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap">in toast</span></div>
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding-top:20px; border-top:1px solid var(--line)"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Rules</span>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:12px; line-height:18px; color:var(--ink2); max-width:760px">
+        <span>One primary per surface. In the toolbar it's always Resolve &amp; Send.</span>
+        <span>The primary is ink, not accent — red stays reserved for annotations, blue for measure.</span>
+        <span>A shortcut sits inside the button at 60% opacity when one exists. Labels are verbs, sentence case, with no icons other than ← and ▼.</span>
+      </div></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">05</span><span style="font-size:14px; font-weight:600">Toolbar controls</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="display:flex; padding:2px; gap:2px; background:var(--seg); border-radius:7px">
+          <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; background:var(--segOn); box-shadow:0 1px 2px rgba(0,0,0,.12); font-weight:500">Android</div>
+          <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; color:var(--ink2)">iOS</div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">platform switch</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:8px; height:28px; padding:0 10px; border-radius:7px; border:1px solid var(--line2); background:var(--surface); width:max-content">
+            <div style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }}"></div>
+            <span style="font-weight:500">{{ c.name }}</span>
+            <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">{{ c.meta }}</span>
+            <span style="color:var(--ink3); font-size:9px; margin-left:2px">▼</span>
+          </div>
+        </sc-for>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">device chip · ready / warn / lost / none</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="display:flex; gap:16px">
+          <sc-for list="{{ counters }}" as="c" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink2)"><div style="min-width:20px; height:20px; padding:0 6px; box-sizing:border-box; border-radius:10px; background:{{ c.bg }}; color:{{ c.fg }}; display:flex; align-items:center; justify-content:center; font-weight:500">{{ c.n }}</div>staged</div>
+          </sc-for>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">counter · empty / staged / sent</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="display:flex; gap:2px">
+          <div style="height:26px; padding:0 9px; display:flex; align-items:center; gap:6px; border-radius:6px; background:var(--seg); font-size:12px; font-weight:500">Annotations<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:400; color:var(--ink3)">3</span></div>
+          <div style="height:26px; padding:0 9px; display:flex; align-items:center; border-radius:6px; color:var(--ink3); font-size:12px; font-weight:500">Payload</div>
+          <div style="height:26px; padding:0 9px; display:flex; align-items:center; gap:6px; border-radius:6px; color:var(--ink3); font-size:12px; font-weight:500">History<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:400">1</span></div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">sidebar tabs</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="display:flex; gap:6px; align-items:center">
+          <span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 4px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink2)">⌥</span>
+          <span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 4px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink2)">⌘</span>
+          <span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 4px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink2)">↩</span>
+          <span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 5px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink2)">esc</span>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">key caps</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">06</span><span style="font-size:14px; font-weight:600">Annotation marks</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">Over the device frame. Red is reserved for annotations.</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:20px">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:30px; top:28px; width:120px; height:56px; box-sizing:border-box; border:1.5px dashed var(--red); background:var(--redFill)">
+            <div style="position:absolute; right:-1.5px; bottom:-22px; height:17px; padding:0 6px; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; display:flex; align-items:center; white-space:nowrap">545 × 254</div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">drawing · dashed + size</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:30px; top:36px; width:120px; height:56px; box-sizing:border-box; border:1.5px solid var(--red); background:oklch(0.63 0.22 27 / 0.08); border-radius:3px">
+            <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">2</div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">pinned</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:30px; top:36px; width:120px; height:56px; box-sizing:border-box; border:1.5px solid var(--red); background:oklch(0.63 0.22 27 / 0.16); border-radius:3px">
+            <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">2</div>
+            <div style="position:absolute; left:-5px; top:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid var(--red)"></div>
+            <div style="position:absolute; right:-5px; top:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid var(--red)"></div>
+            <div style="position:absolute; left:-5px; bottom:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid var(--red)"></div>
+            <div style="position:absolute; right:-5px; bottom:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid var(--red)"></div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">selected · handles</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2); overflow:hidden">
+          <div style="position:absolute; inset:0; background:rgba(12,12,14,0.42); clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 30%, 30px 30%, 30px 77%, 150px 77%, 150px 30%, 0 30%)"></div>
+          <div style="position:absolute; left:30px; top:36px; width:120px; height:56px; box-sizing:border-box; border:1.5px solid var(--red); border-radius:3px"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">frozen · outside dims 42%</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:30px; top:36px; width:120px; height:56px; box-sizing:border-box; border:1.5px solid var(--ok); background:oklch(0.66 0.15 152 / 0.10); border-radius:3px">
+            <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:var(--ok); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">✓</div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">sent / verified fixed</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:180px; height:120px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:30px; top:36px; width:120px; height:56px; box-sizing:border-box; border:1.5px solid var(--warn); background:oklch(0.74 0.15 70 / 0.14); border-radius:3px">
+            <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:var(--warn); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">!</div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">verified · still off</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:380px; height:120px; border-radius:6px; background:var(--stage); box-shadow:0 0 0 1px var(--line2); overflow:hidden">
+          <div style="position:absolute; left:0; top:0; width:150px; height:120px; background:#faf8f5"></div>
+          <div style="position:absolute; left:40px; top:30px; width:90px; height:40px; box-sizing:border-box; border:1.5px solid var(--red); background:oklch(0.63 0.22 27 / 0.08); border-radius:3px"></div>
+          <div style="position:absolute; left:125.5px; top:45.5px; width:9px; height:9px; box-sizing:border-box; border-radius:50%; background:var(--red); border:1.5px solid #fff"></div>
+          <div style="position:absolute; left:130px; top:50px; width:32px; height:1px; background:var(--red)"></div>
+          <div style="position:absolute; left:162px; top:50px; width:1px; height:28px; background:var(--red)"></div>
+          <div style="position:absolute; left:162px; top:78px; width:24px; height:1px; background:var(--red)"></div>
+          <div style="position:absolute; left:186px; top:60px; width:176px; height:36px; box-sizing:border-box; padding:0 8px; border-radius:9px; background:var(--pop); border:1px solid var(--popLine); display:flex; align-items:center; gap:6px; color:#f4f4f5; font-size:11.5px; white-space:nowrap; overflow:hidden"><div style="width:16px; height:16px; flex:none; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; display:flex; align-items:center; justify-content:center">1</div>Price sits 6px below…</div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">leader line → gutter popover (crowded rects, elbows stagger 8px)</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:260px; height:120px; border-radius:6px; background:var(--stage); box-shadow:0 0 0 1px var(--line2); overflow:hidden">
+          <div style="position:absolute; left:28px; top:6px; width:226px; height:18px; box-sizing:border-box; border-bottom:1px solid var(--line2)">
+            <sc-for list="{{ ruler }}" as="k" hint-placeholder-count="0">
+              <div style="position:absolute; left:{{ k.p }}; bottom:0; width:1px; height:{{ k.len }}; background:var(--ink3); opacity:.7"></div>
+            </sc-for>
+            <span style="position:absolute; left:3px; top:1px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; color:var(--ink3)">0</span>
+            <span style="position:absolute; left:113px; top:1px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; color:var(--ink3)">500</span>
+            <div style="position:absolute; left:60px; width:70px; bottom:-1px; height:3px; background:var(--red)"></div>
+            <span style="position:absolute; left:60px; top:0; padding:0 3px; border-radius:3px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; line-height:12px">272</span>
+          </div>
+          <div style="position:absolute; left:6px; top:28px; width:18px; height:86px; box-sizing:border-box; border-right:1px solid var(--line2)"></div>
+          <div style="position:absolute; left:28px; top:28px; right:6px; bottom:6px; background:#faf8f5; border-radius:3px"></div>
+          <div style="position:absolute; left:88px; top:46px; width:70px; height:40px; box-sizing:border-box; border:1.5px solid var(--red); border-radius:3px"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">rulers · device px, extent in red</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">07</span><span style="font-size:14px; font-weight:600">Comment popover</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">Always dark, in both themes, so it reads over any app UI.</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start">
+      <sc-for list="{{ pops }}" as="p" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="position:relative; width:248px; margin-top:6px">
+            <div style="position:absolute; top:-4px; left:16px; width:10px; height:10px; background:var(--pop); transform:rotate(45deg); border-radius:2px; border-left:1px solid var(--popLine); border-top:1px solid var(--popLine)"></div>
+            <div style="position:relative; display:flex; flex-direction:column; gap:5px; padding:6px; border-radius:10px; background:var(--pop); border:1px solid var(--popLine); box-shadow:0 10px 28px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.2)">
+              <div style="display:flex; align-items:center; gap:6px">
+                <div style="width:18px; height:18px; flex:none; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">{{ p.n }}</div>
+                <div style="flex:1; min-width:0; height:26px; box-sizing:border-box; padding:0 8px; border-radius:6px; border:1px solid {{ p.border }}; box-shadow:{{ p.ring }}; background:var(--field); color:{{ p.fg }}; font-size:12.5px; display:flex; align-items:center; white-space:nowrap; overflow:hidden">{{ p.text }}</div>
+                <div style="width:22px; height:22px; flex:none; border-radius:5px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.55); font-size:11px">✕</div>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0 2px 0 26px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:rgba(255,255,255,.42)"><span>218×77 @ 1035,862</span><span>{{ p.hint }}</span></div>
+              <sc-if value="{{ p.note }}" hint-placeholder-val="{{ false }}"><div style="padding:0 2px 1px 26px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:oklch(0.74 0.13 255)">⌥ {{ p.note }}</div></sc-if>
+            </div>
+          </div>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">{{ p.cap }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">08</span><span style="font-size:14px; font-weight:600">Measurement</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">Blue is reserved for ⌥ measure.</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="position:relative; width:300px; height:150px; border-radius:6px; background:#faf8f5; box-shadow:0 0 0 1px var(--line2)">
+          <div style="position:absolute; left:20px; top:40px; width:110px; height:20px; outline:1px dashed var(--measure); opacity:.7"></div>
+          <div style="position:absolute; left:190px; top:46px; width:80px; height:20px; outline:1px solid var(--measure)"></div>
+          <div style="position:absolute; left:130px; top:56px; width:60px; height:1px; background:var(--measure)"></div>
+          <div style="position:absolute; left:160px; top:56px; transform:translate(-50%,-50%); padding:0 4px; border-radius:3px; background:var(--measure); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px">60</div>
+          <div style="position:absolute; left:230px; top:66px; width:1px; height:50px; background:var(--measure)"></div>
+          <div style="position:absolute; left:230px; top:91px; transform:translate(-50%,-50%); padding:0 4px; border-radius:3px; background:var(--measure); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px">50</div>
+          <div style="position:absolute; left:20px; top:40px; width:250px; height:0; border-top:1px dashed var(--red)"></div>
+          <div style="position:absolute; left:20px; top:24px; padding:0 4px; border-radius:3px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px">Δ6dp</div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">target solid · neighbours dashed · gap labels · Δ misalignment</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="width:228px; box-sizing:border-box; padding:12px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; align-items:center; gap:8px"><span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 4px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink2)">⌥</span><span style="font-weight:600">Measuring</span><div style="flex:1"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">#1</span></div>
+          <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--measure)">TextView#item_price</div>
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <sc-for list="{{ mrows }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--ink2)">{{ r.k }}</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">{{ r.v }}</span></div>
+            </sc-for>
+          </div>
+          <div style="padding:7px 8px; border-radius:6px; background:oklch(0.63 0.22 27 / 0.1); color:var(--red); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:15px">top Δ6dp vs item_title · expected 0</div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">measure card</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">09</span><span style="font-size:14px; font-weight:600">Status &amp; feedback</span></div>
+    <div style="display:flex; flex-direction:column; gap:20px">
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <sc-for list="{{ statusRows }}" as="row" hint-placeholder-count="5">
+          <div style="height:28px; display:flex; align-items:center; gap:10px; padding:0 14px; border-radius:6px; background:var(--chrome); border:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3); white-space:nowrap">
+            <sc-for list="{{ row.steps }}" as="s" hint-placeholder-count="4">
+              <sc-if value="{{ s.notFirst }}" hint-placeholder-val="{{ false }}"><span style="opacity:.5">›</span></sc-if>
+              <div style="display:flex; align-items:center; gap:6px; color:{{ s.fg }}"><div style="width:6px; height:6px; border-radius:50%; background:{{ s.dot }}"></div>{{ s.label }}</div>
+            </sc-for>
+            <div style="flex:1"></div><span>{{ row.cap }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start">
+        <div style="display:flex; align-items:center; gap:10px; padding:7px 8px 7px 10px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); white-space:nowrap">
+          <div style="width:18px; height:18px; border-radius:50%; background:var(--ok); color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center">✓</div>
+          <span style="font-weight:500">Sent 3 annotations to Claude Code</span>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">1.4 s</span>
+          <div style="height:24px; padding:0 10px; display:flex; align-items:center; border-radius:6px; color:var(--ink2); font-size:12px">Open session</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:8px 8px 8px 14px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); white-space:nowrap">
+          <div style="width:7px; height:7px; border-radius:50%; background:var(--red)"></div>
+          <span style="font-weight:500">Stream dropped</span>
+          <span style="color:var(--ink2)">Annotations kept.</span>
+          <div style="height:26px; padding:0 12px; display:flex; align-items:center; border-radius:6px; background:var(--primary); color:var(--onPrimary); font-weight:500; font-size:12px">Reconnect</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px">
+        <sc-for list="{{ modes }}" as="md" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; letter-spacing:0.06em; color:var(--ink2); white-space:nowrap"><div style="width:6px; height:6px; border-radius:50%; background:{{ md.dot }}"></div>{{ md.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">10</span><span style="font-size:14px; font-weight:600">Errors</span><span style="font-size:12px; color:var(--ink3); line-height:17px; padding-top:6px">Problem → one primary action → exact command → diagnostic.</span></div>
+    <div style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start">
+      <div style="width:460px; box-sizing:border-box; padding:24px; border-radius:14px; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:16px">
+        <div style="display:flex; gap:14px; align-items:flex-start">
+          <div style="width:28px; height:28px; flex:none; border-radius:50%; background:oklch(0.74 0.15 70 / 0.16); color:var(--warn); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px">!</div>
+          <div style="display:flex; flex-direction:column; gap:5px; padding-top:3px">
+            <div style="font-size:15px; font-weight:600; letter-spacing:-0.01em">adb isn't on your PATH</div>
+            <div style="color:var(--ink2); line-height:19px; text-wrap:pretty">Install platform-tools, or point Rectify at an adb you already have.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 10px 9px 12px; border-radius:8px; background:var(--codeBg); border:1px solid var(--line)">
+          <span style="color:var(--ink3); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px">$</span>
+          <span style="flex:1; min-width:0; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px">brew install --cask android-platform-tools</span>
+          <div style="height:22px; padding:0 8px; display:flex; align-items:center; border-radius:5px; border:1px solid var(--line2); font-size:11px; color:var(--ink2)">Copy</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding-left:42px">
+          <div style="height:30px; padding:0 14px; display:flex; align-items:center; border-radius:7px; background:var(--primary); color:var(--onPrimary); font-weight:500">Locate adb…</div>
+          <div style="height:30px; padding:0 12px; display:flex; align-items:center; border-radius:7px; color:var(--ink2)">Retry</div>
+        </div>
+        <div style="padding:10px 0 0 42px; border-top:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">which adb → not found · $ANDROID_HOME unset</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; gap:10px">
+          <div style="width:28px; height:28px; border-radius:50%; background:oklch(0.74 0.15 70 / 0.16); color:var(--warn); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px">!</div>
+          <div style="width:28px; height:28px; border-radius:50%; background:var(--seg); color:var(--ink2); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px">?</div>
+          <div style="width:28px; height:28px; border-radius:50%; background:oklch(0.63 0.22 27 / 0.14); color:var(--red); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px">✕</div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">glyph · fixable / choice / failed</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; padding:28px 0; border-top:1px solid var(--line)">
+    <div style="display:flex; flex-direction:column; gap:4px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">11</span><span style="font-size:14px; font-weight:600">Lists &amp; rows</span></div>
+    <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px; align-items:start">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="border-radius:10px; background:var(--surface); border:1px solid var(--line2); overflow:hidden">
+          <div style="padding:7px 14px; font-size:11px; font-weight:500; color:var(--ink3); border-bottom:1px solid var(--line)">Physical device</div>
+          <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--hover); border-bottom:1px solid var(--line)">
+            <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:5px solid var(--ink); background:var(--surface)"></div>
+            <span style="font-weight:500">Pixel 8 Pro</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">37281FDH…</span><div style="flex:1"></div><span style="font-size:12px; color:var(--ink2)">USB</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; border-bottom:1px solid var(--line)">
+            <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--line2)"></div>
+            <span style="font-weight:500">Pixel_7_API_34</span><div style="flex:1"></div><div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink2)"><div style="width:6px; height:6px; border-radius:50%; background:var(--ok)"></div>Running</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:9px 14px">
+            <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--line2)"></div>
+            <span style="font-weight:500; color:var(--ink2)">Pixel_Fold_API_35</span><div style="flex:1"></div>
+            <div style="height:24px; padding:0 10px; display:flex; align-items:center; border-radius:6px; border:1px solid var(--line2); font-size:12px; font-weight:500">Boot</div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">source list · selected / running / shut down</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="padding:6px; border-radius:10px; background:var(--bg); border:1px solid var(--line); display:flex; flex-direction:column; gap:2px">
+          <div style="display:flex; gap:10px; padding:9px 8px; border-radius:7px; background:var(--hover)">
+            <div style="width:18px; height:18px; flex:none; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">1</div>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <div style="font-size:12.5px; line-height:17px">Price sits 6px below the title — align baselines</div>
+              <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">218×77 @ 1035,862</div>
+              <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--measure)">⌥ top Δ6dp vs item_title · expected 0</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; padding:9px 8px; border-radius:7px">
+            <div style="width:18px; height:18px; flex:none; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">2</div>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <div style="font-size:12.5px; line-height:17px; color:var(--ink3)">No comment yet</div>
+              <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">436×154 @ 354,1003</div>
+            </div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">annotation row · selected / empty</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="padding:6px; border-radius:10px; background:var(--bg); border:1px solid var(--line); display:flex; flex-direction:column; gap:2px">
+          <sc-for list="{{ hist }}" as="h" hint-placeholder-count="4">
+            <div style="display:flex; gap:10px; padding:8px; border-radius:7px">
+              <div style="width:44px; height:44px; flex:none; border-radius:6px; background:var(--stage); box-shadow:inset 0 0 0 1px var(--line)"></div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:12.5px; line-height:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ h.title }}</div>
+                <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ h.meta }}</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:3px">
+                  <div style="height:20px; padding:0 8px; box-sizing:border-box; border-radius:10px; border:1px solid var(--line2); display:flex; align-items:center; gap:5px; font-size:11px; font-weight:500; color:var(--ink2); white-space:nowrap"><div style="width:6px; height:6px; border-radius:50%; background:{{ h.tone }}"></div>{{ h.status }}</div>
+                  <div style="flex:1"></div>
+                  <sc-if value="{{ h.verify }}" hint-placeholder-val="{{ false }}"><div style="height:22px; padding:0 9px; border-radius:6px; background:var(--primary); color:var(--onPrimary); font-size:11.5px; font-weight:500; display:flex; align-items:center">Verify</div></sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">history row · status pills</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div style="padding:6px; border-radius:10px; background:var(--bg); border:1px solid var(--line); display:flex; flex-direction:column; gap:2px">
+            <sc-for list="{{ vrows }}" as="r" hint-placeholder-count="2">
+              <div style="display:flex; gap:10px; padding:9px 8px">
+                <div style="width:18px; height:18px; flex:none; border-radius:4px; background:{{ r.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center">{{ r.icon }}</div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                  <div style="font-size:12.5px; line-height:17px">{{ r.c }}</div>
+                  <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2)">{{ r.result }}</div>
+                  <div style="font-size:11px; font-weight:500; color:{{ r.col }}">{{ r.verdict }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">verification row · fixed / still off</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div style="display:flex; flex-direction:column; gap:8px; padding:12px 14px; border-radius:10px; border:1px solid var(--line)">
+            <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--ink2)">Frame</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink2)">1344×2992 PNG</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--ink2)">Hierarchy</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--warn)">dumping…</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--ink2)">Hierarchy</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ok)">412 nodes ✓</span></div>
+          </div>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">key / value · neutral / busy / done</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <div style="display:flex; flex-direction:column; padding:10px 12px; border-radius:8px; background:var(--codeBg); border:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:17px">
+            <span style="white-space:pre; color:var(--ink3)">  │ └ CartItemView[1]</span>
+            <div style="display:flex; align-items:center; gap:6px"><span style="flex:1; white-space:pre">  │   ├ TextView#item_price</span><span style="padding:0 4px; border-radius:3px; background:var(--red); color:#fff; font-size:9.5px; line-height:13px">#1</span></div>
+            <div style="display:flex; align-items:center; gap:6px"><span style="flex:1; white-space:pre">  │   └ QtyStepper#qty</span><span style="padding:0 4px; border-radius:3px; background:var(--red); color:#fff; font-size:9.5px; line-height:13px">#2</span></div>
+          </div>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3)">hierarchy · matched nodes tagged</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:3800},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const RED = 'oklch(0.63 0.22 27)', OK = 'oklch(0.66 0.15 152)', WARN = 'oklch(0.74 0.15 70)', MEAS = 'oklch(0.6 0.2 255)';
+const BASE = { '--measure': MEAS, '--red': RED, '--redFill': 'oklch(0.63 0.22 27 / 0.10)', '--ok': OK, '--warn': WARN };
+const THEMES = {
+  light: { '--bg': '#f6f6f5', '--chrome': '#ededeb', '--surface': '#ffffff', '--stage': '#e7e7e4', '--stageDot': 'rgba(0,0,0,.07)', '--ink': '#1a1a1c', '--ink2': '#5b5b61', '--ink3': '#8b8b91', '--line': 'rgba(0,0,0,.08)', '--line2': 'rgba(0,0,0,.14)', '--hover': 'rgba(0,0,0,.045)', '--seg': 'rgba(0,0,0,.06)', '--segOn': '#ffffff', '--pop': '#18191c', '--popLine': 'rgba(255,255,255,.06)', '--field': 'rgba(255,255,255,.08)', '--primary': '#1a1a1c', '--primaryHover': '#36363a', '--primaryPress': '#000000', '--focus': 'oklch(0.6 0.2 255 / 0.55)', '--onPrimary': '#ffffff', '--codeBg': 'rgba(0,0,0,.035)', '--shadow': '0 1px 2px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.08)' },
+  dark: { '--bg': '#1e1e20', '--chrome': '#262628', '--surface': '#2b2b2e', '--stage': '#151517', '--stageDot': 'rgba(255,255,255,.055)', '--ink': '#f1f1f2', '--ink2': '#a3a3aa', '--ink3': '#707077', '--line': 'rgba(255,255,255,.07)', '--line2': 'rgba(255,255,255,.13)', '--hover': 'rgba(255,255,255,.05)', '--seg': 'rgba(255,255,255,.07)', '--segOn': '#4a4a4e', '--pop': '#2c2d31', '--popLine': 'rgba(255,255,255,.1)', '--field': 'rgba(255,255,255,.07)', '--primary': '#f1f1f2', '--primaryHover': '#ffffff', '--primaryPress': '#cfcfd3', '--focus': 'oklch(0.7 0.17 255 / 0.6)', '--onPrimary': '#151517', '--codeBg': 'rgba(255,255,255,.04)', '--shadow': '0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35)' }
+};
+const step = (labels, active, opts = {}) => labels.map((label, i) => {
+  let fg = 'var(--ink3)', dot = i < active ? 'var(--ink3)' : 'var(--line2)';
+  if (i === active) { fg = 'var(--ink)'; dot = [RED, 'var(--ink)', WARN, OK][i]; }
+  if (opts.failed && i === 0) { fg = RED; dot = RED; }
+  return { label, fg, dot, notFirst: i > 0 };
+});
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme === 'dark' ? 'dark' : 'light';
+    const T = THEMES[theme];
+    const pick = ks => ks.map(k => ({ k: k.replace('--', ''), v: T[k] }));
+    const S = ['Streaming', 'Frozen', 'Dumping hierarchy', 'Sent'];
+    return {
+      rootStyle: { ...BASE, ...T, width: '1240px', boxSizing: 'border-box', padding: '40px 48px 24px', borderRadius: '12px', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, sans-serif', fontSize: '13px', WebkitFontSmoothing: 'antialiased', boxShadow: theme === 'dark' ? '0 0 0 1px rgba(0,0,0,.6), 0 30px 70px rgba(0,0,0,.3)' : '0 0 0 0.5px rgba(0,0,0,.22), 0 30px 70px rgba(0,0,0,.12)' },
+      themeLabel: theme.toUpperCase(),
+      colorGroups: [
+        { name: 'Surfaces', items: pick(['--bg', '--chrome', '--stage', '--surface', '--pop']) },
+        { name: 'Ink', items: pick(['--ink', '--ink2', '--ink3', '--primary', '--primaryHover', '--primaryPress', '--onPrimary', '--focus']) },
+        { name: 'Lines & fills', items: pick(['--line', '--line2', '--hover', '--seg', '--codeBg']) },
+        { name: 'Signal · same in both themes', items: [{ k: 'annotate', v: RED }, { k: 'sent / fixed', v: OK }, { k: 'warn / still off', v: WARN }, { k: 'measure', v: MEAS }] }
+      ],
+      spaces: [2, 4, 6, 8, 10, 12, 14, 16, 24, 32].map(n => ({ n: String(n), w: n * 4 + 'px' })),
+      radii: [['3', '3px'], ['5', '5px'], ['7', '7px'], ['10', '10px'], ['14', '14px'], ['full', '50%']].map(([n, v]) => ({ n, v })),
+      chips: [
+        { name: 'Pixel 8 Pro', meta: 'USB', dot: OK },
+        { name: 'iPhone 15 Pro', meta: 'Shutdown', dot: WARN },
+        { name: 'Pixel 8 Pro', meta: 'reconnecting', dot: RED },
+        { name: 'No device', meta: '', dot: 'var(--ink3)' }
+      ],
+      counters: [{ n: '0', bg: 'var(--seg)', fg: 'var(--ink3)' }, { n: '3', bg: RED, fg: '#fff' }, { n: '3', bg: OK, fg: '#fff' }],
+      ruler: Array.from({ length: 10 }, (_, i) => ({ p: i * 22 + 'px', len: i % 5 === 0 ? '8px' : '4px' })),
+      pops: [
+        { n: '1', text: "What's wrong here?", fg: 'rgba(255,255,255,.4)', border: RED, ring: '0 0 0 2px oklch(0.63 0.22 27 / 0.3)', hint: '⏎ save', note: null, cap: 'new · focused' },
+        { n: '2', text: 'Stepper is 24dp tall; hit target 48dp', fg: '#f4f4f5', border: 'rgba(255,255,255,.1)', ring: 'none', hint: '', note: null, cap: 'filled' },
+        { n: '1', text: 'Price sits lower than the title', fg: '#f4f4f5', border: 'rgba(255,255,255,.1)', ring: 'none', hint: '', note: 'top Δ6dp vs item_title', cap: 'with measured finding' }
+      ],
+      mrows: [{ k: 'Size', v: '48×17dp' }, { k: 'Top', v: '9dp' }, { k: 'Right', v: '20dp' }, { k: 'Bottom', v: '49dp' }, { k: 'Left', v: '62dp' }],
+      statusRows: [
+        { steps: step(S, 0), cap: 'live' },
+        { steps: step(S, 1), cap: 'frozen' },
+        { steps: step(S, 2), cap: 'sending' },
+        { steps: step(['Streaming', 'Frozen', 'Dumping hierarchy', 'Sent to Claude Code'], 3), cap: 'sent' },
+        { steps: step(['Stream dropped', 'Frozen', 'Dumping hierarchy', 'Sent'], 1, { failed: true }), cap: 'failed' }
+      ],
+      modes: [{ dot: RED, label: 'LIVE · 58 FPS' }, { dot: 'var(--ink2)', label: 'FROZEN · FRAME 18422' }, { dot: WARN, label: 'DUMPING…' }, { dot: OK, label: 'SENT' }],
+      hist: [
+        { title: 'Price sits 6px below the title', meta: '3 notes · 14:02', status: 'Fixed', tone: OK, verify: true },
+        { title: 'Checkout button off the margin', meta: '1 note · 13:47', status: 'In progress', tone: WARN },
+        { title: 'Promo placeholder clipped', meta: '1 note · 12:10', status: 'Verified', tone: 'var(--ink3)' },
+        { title: 'Total row reads lighter', meta: '2 notes · yesterday', status: 'Follow-up sent', tone: RED }
+      ],
+      vrows: [
+        { c: 'Price sits 6px below the title', result: 'top Δ6dp → 0dp', col: OK, icon: '✓', verdict: 'Fixed' },
+        { c: 'Stepper hit target', result: 'height 24dp → 32dp · want 48dp', col: WARN, icon: '!', verdict: 'Still off' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

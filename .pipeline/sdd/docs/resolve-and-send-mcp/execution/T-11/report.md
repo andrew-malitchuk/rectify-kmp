@@ -1,0 +1,159 @@
+# resolve-and-send-mcp — T-11
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-11 |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-18T14:32:15Z |
+| updatedAt | 2026-10-18T14:32:15Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-18T14:32:15Z
+
+## Provenance
+
+### selfHash
+
+852addd13f09be066c1a20540dec82b4a4ca164b15c2a9f3a43e8e0e71a3ab55
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 13736f4c3b002eb7483a12681dfff64471a26926e7be014daa6853d369d3d83b |
+
+## Data
+
+### taskId
+
+T-11
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- settings.gradle.kts
+- mcp-application/build.gradle.kts
+- mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt
+- mcp-application/src/main/kotlin/dev/rectify/io/mcp/source/entry/Main.kt
+- mcp-application/src/test/**
+
+### tdd
+
+#### testsFrozen
+
+true
+
+#### cycle
+
+green
+
+#### testsWrittenBy
+
+sdd-build-business-test (per task)
+
+#### implementedBy
+
+sdd-build-business-implement (batched wave-2)
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest :mcp-application:test :data-handoff-api:desktopTest --rerun-tasks
+
+#### passed
+
+true
+
+#### output
+
+```
+BUILD SUCCESSFUL in 12s (66 actionable tasks executed)
+presentation-feature-mirror:desktopTest 328 tests 0 failures
+mcp-application:test 19 tests 0 failures
+data-handoff-api:desktopTest 14 tests 0 failures
+total 361
+```
+
+### implementation
+
+#### summary
+
+McpDispatcher.handle is a pure suspend String -> String? over the injected AnnotationHandoff. Outer frame always serialized with compact Json (the inner document uses prettyPrint but rides as an escaped string value, satisfying the one-line stdout guard). Any method starting notifications/ returns null. main stays suspend fun main() with generateSequence(::readlnOrNull); writeFrame is the only stdout site; logStderr logs the resolved handoff root once. Root is passed explicitly to fileSlotAnnotationHandoff(root) so the logged path is provably the path read.
+
+#### filesChanged
+
+- settings.gradle.kts
+- mcp-application/build.gradle.kts
+- mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt
+- mcp-application/src/main/kotlin/dev/rectify/io/mcp/source/entry/Main.kt
+- mcp-application/src/test/**
+
+### validations
+
+| stage | passed | iterations | issues | note |
+| --- | --- | --- | --- | --- |
+| tests | true | 1 | [] |  |
+| cross-target-compile | true | 1 | [] | ./gradlew :presentation-feature-mirror:compileTestKotlinIosArm64 :presentation-feature-mirror:compileAndroidMain -> BUILD SUCCESSFUL. Correct Android task is compileAndroidMain (compileKotlinAndroidDebug does not exist here). Worktree needed a gitignored local.properties (sdk.dir) copied from the main checkout. |
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| T-11 | Accepted deviation from the task prose, which specified runBlocking: main is a suspend fun main() instead, because kotlinx-coroutines-core is only a transitive RUNTIME dep of :data-handoff-api and never on :mcp-application's compile classpath. Adding it would violate the 'envelope + serialization only' constraint that the server's spawn-time budget rests on. :desktop-application's own Main.kt avoids coroutine imports for the identical reason. Tests use a ~15-line stdlib-only runSuspendBlocking bridge rather than pulling in kotlinx-coroutines-test. | Accepted - the binding constraint outranks the illustrative prose | info |
+| T-11 | explicitApi() is NOT in effect for :mcp-application. Verified empirically: it is called inside LibraryConventionPlugin, FeatureConventionPlugin and ApplicationConventionPlugin only, never at the root; :desktop-application (also plain-JVM, no convention plugin) likewise lacks it. | Documented finding | info |
+
+### linkedAC
+
+- AC-18
+- AC-32
+- AC-81
+- FR-17
+- NFR-4
+- NFR-12
+- NFR-15
+
+### backlogUpdate
+
+#### taskId
+
+T-11
+
+#### status
+
+done
+
+### needsHumanReview
+
+#### required
+
+false
+
+#### reason

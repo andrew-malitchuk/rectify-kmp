@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rectify": {
+      "command": "./mcp-application/build/install/rectify-mcp/bin/rectify-mcp",
+      "args": []
+    }
+  }
+}

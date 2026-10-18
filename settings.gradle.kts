@@ -32,12 +32,14 @@ dependencyResolutionManagement {
 include(":compose-application")
 include(":aos-application")
 include(":desktop-application")
+include(":mcp-application")
 
 // common
 include(":common-core")
 
 // data
 include(":data-core")
+include(":data-handoff-api")
 include(":data-device-api")
 include(":data-device-impl")
 include(":data-preference-api")

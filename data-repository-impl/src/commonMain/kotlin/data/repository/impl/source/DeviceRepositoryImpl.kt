@@ -340,7 +340,18 @@ internal class DeviceRepositoryImpl(
             log.d { "wm density failed, reporting an unknown density: ${failure.message}" }
             ""
         }
-        return HierarchySnapshotMapper.toModel.map(HierarchyDumpStdout(dump = dump, density = density))
+        val snapshot =
+            HierarchySnapshotMapper.toModel.map(HierarchyDumpStdout(dump = dump, density = density))
+        // A dump that yielded neither a node nor a density is "nothing at all", and
+        // HierarchySnapshotModel.Empty is that sentinel - it must stay reachable through this
+        // repository even though the mapper now threads the raw stdout verbatim. Keeping the
+        // raw text of a dump nothing could be parsed from would only hand a caller an error
+        // message to forward as a hierarchy.
+        return if (snapshot.nodes.isEmpty() && snapshot.densityDpi == 0) {
+            HierarchySnapshotModel.Empty
+        } else {
+            snapshot
+        }
     }
 
     /**

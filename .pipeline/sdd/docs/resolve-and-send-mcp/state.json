@@ -1,0 +1,135 @@
+{
+  "spec": "resolve-and-send-mcp",
+  "currentStage": "review",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done"
+    },
+    "validation": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped",
+      "reason": "effort:fast — reflection deferred to manual; run /sdd-build-reflect-retrospective (batch across specs)"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "audit": {
+      "status": "done"
+    },
+    "verdict": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1"
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 2,
+      "worktreeBranch": "task/wave-2"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 3,
+      "worktreeBranch": "task/wave-3"
+    },
+    "T-9": {
+      "status": "done",
+      "wave": 4,
+      "worktreeBranch": "task/wave-4"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 5,
+      "worktreeBranch": "task/wave-5"
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 6,
+      "worktreeBranch": "task/terminal"
+    },
+    "T-13": {
+      "status": "blocked",
+      "wave": 6,
+      "worktreeBranch": "task/terminal",
+      "blockedReason": "manual end-to-end demo requires a real device and a real Claude Code session"
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  }
+}

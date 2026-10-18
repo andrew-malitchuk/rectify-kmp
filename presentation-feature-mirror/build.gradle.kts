@@ -6,6 +6,7 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.kermit)
             implementation(libs.orbit.core)
             implementation(libs.orbit.viewmodel)
             implementation(libs.orbit.compose)
@@ -13,6 +14,7 @@ kotlin {
 
             implementation(projects.domainCore)
             implementation(projects.domainUsecaseApi)
+            implementation(projects.dataHandoffApi)
             implementation(projects.presentationCoreLocalisation)
             implementation(projects.presentationCoreStyling)
             implementation(projects.presentationCoreUi)

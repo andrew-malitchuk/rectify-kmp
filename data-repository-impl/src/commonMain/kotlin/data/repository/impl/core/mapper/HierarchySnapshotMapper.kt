@@ -60,6 +60,9 @@ internal object HierarchySnapshotMapper {
                 frameWidthPx = root?.let { it.right - it.left } ?: 0,
                 frameHeightPx = root?.let { it.bottom - it.top } ?: 0,
                 densityDpi = parseWmDensity(stdout.density) ?: 0,
+                // Verbatim, including the adb trailer: a consumer forwarding the hierarchy has
+                // to ship what the device emitted, and the parsed nodes cannot reproduce it.
+                rawDump = stdout.dump,
             )
         }
 

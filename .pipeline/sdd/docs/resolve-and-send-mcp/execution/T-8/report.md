@@ -1,0 +1,163 @@
+# resolve-and-send-mcp — T-8
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | execution |
+| step | T-8 |
+| status | done |
+| producedBy | sdd-build-business-implement |
+| schemaVersion | 1 |
+| createdAt | 2026-10-18T14:32:15Z |
+| updatedAt | 2026-10-18T14:32:15Z |
+
+## Gate
+
+### type
+
+auto
+
+### approvedBy
+
+sdd-build-business-implement
+
+### approved
+
+true
+
+### at
+
+2026-10-18T14:32:15Z
+
+## Provenance
+
+### selfHash
+
+1371c1aab55a0a9367cedc770d970813fdfd314bde14025dce68a29f9368cab0
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| backlog/backlog.json | 13736f4c3b002eb7483a12681dfff64471a26926e7be014daa6853d369d3d83b |
+
+## Data
+
+### taskId
+
+T-8
+
+### type
+
+business-logic
+
+### outcome
+
+success
+
+### touchedPaths
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendProjection.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendGate.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/SendPhaseTest.kt
+- presentation-feature-mirror/src/desktopTest/kotlin/presentation/feature/mirror/MirrorUiStateSendFieldTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorSideEffectSendCompleteTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/SendGateOperatesOnRealContractStateTest.kt
+
+### tdd
+
+#### testsFrozen
+
+true
+
+#### cycle
+
+green
+
+#### testsWrittenBy
+
+sdd-build-business-test (per task)
+
+#### implementedBy
+
+sdd-build-business-implement (batched wave-2)
+
+### testRun
+
+#### command
+
+./gradlew :presentation-feature-mirror:desktopTest :mcp-application:test :data-handoff-api:desktopTest --rerun-tasks
+
+#### passed
+
+true
+
+#### output
+
+```
+BUILD SUCCESSFUL in 12s (66 actionable tasks executed)
+presentation-feature-mirror:desktopTest 328 tests 0 failures
+mcp-application:test 19 tests 0 failures
+data-handoff-api:desktopTest 14 tests 0 failures
+total 361
+```
+
+### implementation
+
+#### summary
+
+SendPhase.isInFlight implemented as this == Preparing || this == Publishing. MirrorUiState gains exactly one field (send: SendPhase = Idle). MirrorIntent.ResolveAndSend and MirrorSideEffect.SendComplete(count, summary, sessionId) added. Wave 1's two stand-in types deleted and repointed at the real contract; canSend's body is byte-identical, only its parameter type changed.
+
+#### filesChanged
+
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendProjection.kt
+- presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendGate.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/SendPhaseTest.kt
+- presentation-feature-mirror/src/desktopTest/kotlin/presentation/feature/mirror/MirrorUiStateSendFieldTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorSideEffectSendCompleteTest.kt
+- presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/SendGateOperatesOnRealContractStateTest.kt
+
+### validations
+
+| stage | passed | iterations | issues | note |
+| --- | --- | --- | --- | --- |
+| tests | true | 1 | [] |  |
+| cross-target-compile | true | 1 | [] | ./gradlew :presentation-feature-mirror:compileTestKotlinIosArm64 :presentation-feature-mirror:compileAndroidMain -> BUILD SUCCESSFUL. Correct Android task is compileAndroidMain (compileKotlinAndroidDebug does not exist here). Worktree needed a gitignored local.properties (sdk.dir) copied from the main checkout. |
+
+### troubleshooting
+
+| at | issue | resolution | severity |
+| --- | --- | --- | --- |
+| T-8 | BACKLOG SEQUENCING DEFECT, caught at execution and not by the sequencer or the Stage 3 validator: adding MirrorIntent.ResolveAndSend to the sealed interface in WAVE 2 makes MirrorViewModel.kt's exhaustive when non-exhaustive, but the handler branch belongs to T-9 in WAVE 4. commonMain fails to compile, so waves 2 and 3 were both unbuildable as sequenced. Resolved inside wave 2 by a deliberate greppable placeholder branch: 'MirrorIntent.ResolveAndSend -> Unit' with a TODO(T-9) comment. T-9 MUST replace it rather than append. | Placeholder branch added; T-9 must replace. Recorded for Stage 5 and Stage 7 reflection. | warn |
+| T-8 | Sanctioned import-only test edits: SendGateTest.kt (2 import lines) and SendProjectionTest.kt (1 import line) repointed from the deleted core.send stand-ins to the real source.mirror types. No assertion, test name or body touched. | Authorized in advance by the orchestrator | info |
+
+### linkedAC
+
+- AC-17
+- AC-19
+- AC-20
+- FR-16
+- FR-18
+
+### backlogUpdate
+
+#### taskId
+
+T-8
+
+#### status
+
+done
+
+### needsHumanReview
+
+#### required
+
+true
+
+#### reason
+
+A backlog sequencing defect was patched with a placeholder branch that T-9 must replace.

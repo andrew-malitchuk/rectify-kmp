@@ -56,6 +56,7 @@ import presentation.core.ui.source.kit.molecule.row.HierarchyRow
 import presentation.feature.mirror.core.annotation.TIMES
 import presentation.feature.mirror.core.payload.CropWindow
 import presentation.feature.mirror.core.payload.PayloadNodeRow
+import presentation.feature.mirror.core.payload.attachedHierarchyXml
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
 import presentation.feature.mirror.core.payload.footerLabel
@@ -240,6 +241,13 @@ public fun MirrorPayloadTab(
                 frozen = frozen,
                 hierarchy = hierarchy,
                 rows = rows,
+                // The same verdict `EnvelopeAssembly` ships on, so the previewed prompt and the
+                // sent prompt agree about the hierarchy instead of both guessing (AF-4).
+                hierarchyAttached = attachedHierarchyXml(
+                    platform = state.platform,
+                    status = state.hierarchyStatus,
+                    hierarchy = hierarchy,
+                ).isNotEmpty(),
                 onIntent = onIntent,
             )
             PayloadCropsSection(frozen = frozen, frame = frame)
@@ -279,6 +287,10 @@ public fun MirrorPayloadTab(
  * @param hierarchy The frame's view hierarchy; a `remember` key — [rows] is its projection.
  * @param rows The outline rows, carrying the annotation -> node mapping the prompt names nodes
  *   from. Already computed by the caller, so the prompt does no snapping of its own.
+ * @param hierarchyAttached Whether a send right now would carry the hierarchy XML — read from
+ *   the send path's own [attachedHierarchyXml], so the prompt previewed here is the prompt sent.
+ *   The crop count is left at its default (every staged annotation): nothing is encoded until
+ *   the send runs, and a crop that then fails to encode drops out of the sent trailer.
  * @param onIntent Intent sink.
  */
 @Composable
@@ -286,6 +298,7 @@ private fun PayloadPromptSection(
     frozen: FrozenFrame,
     hierarchy: HierarchySnapshotModel,
     rows: List<PayloadNodeRow>,
+    hierarchyAttached: Boolean,
     onIntent: (MirrorIntent) -> Unit,
 ) {
     var isEditing by remember(frozen.frameId) { mutableStateOf(false) }
@@ -295,13 +308,14 @@ private fun PayloadPromptSection(
         frozen.deviceLabel,
         frozen.deviceSize,
         hierarchy,
+        hierarchyAttached,
     ) {
         // The snap is already done: `PayloadNodeRow.badge` IS the annotation index that landed
         // on that node, so the resolver is the inverse of the rows rather than a second
         // projectMeasureNodes/snapTarget pass. `StagedAnnotation.index` is contiguous and
         // renumbered on delete (see its KDoc), which is exactly how badges are numbered.
         // Linear per annotation, and annotations are a handful.
-        buildPrompt(frozen) { annotation ->
+        buildPrompt(frozen, hierarchyAttached = hierarchyAttached) { annotation ->
             rows.firstOrNull { row -> row.badge == annotation.index }?.nodeId
         }
     }

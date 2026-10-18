@@ -1,0 +1,36 @@
+{"stage": "preparation", "event": "start", "at": "2026-10-18T10:20:32Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "start", "at": "2026-10-18T10:21:07Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "end", "tokens": 68371, "at": "2026-10-18T10:29:55Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "start", "at": "2026-10-18T10:30:03Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "end", "tokens": 83761, "at": "2026-10-18T10:36:32Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "start", "at": "2026-10-18T10:36:37Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "end", "tokens": 140416, "at": "2026-10-18T10:55:07Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-18T10:55:12Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 74609, "at": "2026-10-18T11:03:59Z", "spec": "resolve-and-send-mcp"}
+{"stage": "preparation", "event": "end", "at": "2026-10-18T11:03:59Z", "spec": "resolve-and-send-mcp"}
+{"stage": "plan", "event": "start", "at": "2026-10-18T11:04:09Z", "spec": "resolve-and-send-mcp"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 258439, "at": "2026-10-18T11:19:34Z", "spec": "resolve-and-send-mcp"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-18T11:19:34Z", "spec": "resolve-and-send-mcp"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 242133, "at": "2026-10-18T11:50:14Z", "spec": "resolve-and-send-mcp"}
+{"stage": "plan", "event": "end", "at": "2026-10-18T11:50:14Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "event": "start", "at": "2026-10-18T11:50:47Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 144821, "at": "2026-10-18T11:57:35Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-18T11:57:35Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 80780, "at": "2026-10-18T12:03:17Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-18T12:03:17Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 123100, "at": "2026-10-18T13:32:37Z", "spec": "resolve-and-send-mcp"}
+{"stage": "backlog", "event": "end", "at": "2026-10-18T13:32:37Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "event": "start", "at": "2026-10-18T13:32:53Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-1", "agent": "sdd-build-business-test", "event": "start", "at": "2026-10-18T13:33:51Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-2", "agent": "sdd-build-business-test", "event": "start", "at": "2026-10-18T13:33:51Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-3", "agent": "sdd-build-business-test", "event": "start", "at": "2026-10-18T13:33:51Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-4", "agent": "sdd-build-business-test", "event": "start", "at": "2026-10-18T13:33:51Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-1", "agent": "sdd-build-business-implement", "event": "end", "tokens": 36606, "at": "2026-10-18T14:06:04Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-2", "agent": "sdd-build-business-implement", "event": "end", "tokens": 36606, "at": "2026-10-18T14:06:04Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-3", "agent": "sdd-build-business-implement", "event": "end", "tokens": 36606, "at": "2026-10-18T14:06:04Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "step": "T-4", "agent": "sdd-build-business-implement", "event": "end", "tokens": 36606, "at": "2026-10-18T14:06:04Z", "spec": "resolve-and-send-mcp"}
+{"stage": "execution", "event": "end", "at": "2026-10-18T16:03:23Z", "spec": "resolve-and-send-mcp"}
+{"stage": "validation", "event": "start", "at": "2026-10-18T16:03:45Z", "spec": "resolve-and-send-mcp"}
+{"stage": "validation", "event": "end", "tokens": 151692, "at": "2026-10-18T16:46:22Z", "spec": "resolve-and-send-mcp"}
+{"stage": "review", "event": "start", "at": "2026-10-18T16:46:30Z", "spec": "resolve-and-send-mcp"}
+{"stage": "review", "event": "end", "tokens": 132797, "at": "2026-10-18T17:15:24Z", "spec": "resolve-and-send-mcp"}

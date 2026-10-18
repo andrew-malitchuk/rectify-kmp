@@ -6,6 +6,11 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
+// Aliased: these properties carry the same names as the functions they delegate to, and an
+// alias says which one is being called without the reader having to know Kotlin's overload
+// resolution order.
+import presentation.feature.mirror.core.send.canClear as canClearGate
+import presentation.feature.mirror.core.send.canSend as canSendGate
 
 /** Which heading a picker row sits under. */
 public enum class MirrorRowGroup {
@@ -169,6 +174,37 @@ public data class MirrorDropBanner(
 )
 
 /**
+ * Lifecycle of a Resolve & Send attempt (AC-17, AC-19, AC-20, AC-21, FR-16, FR-18, FR-58).
+ *
+ * A value-equal enum and nothing more: every byte the send pipeline touches (crops, the
+ * assembled envelope) stays off [MirrorUiState] for the same reason frame bytes do — see that
+ * class's own KDoc. [isInFlight] is the one piece of behaviour riding on this type, since three
+ * independent call sites (the composable's button, the reducer's own guard, and the hoisted
+ * `⌘↩` shortcut holder) all need the exact same "is a send already running" predicate.
+ */
+public enum class SendPhase {
+    /** Nothing in flight — the status overlay is hidden. */
+    Idle,
+
+    /** Encoding crops, assembling the envelope. */
+    Preparing,
+
+    /** Writing the handoff slot. */
+    Publishing,
+
+    /** Terminal success. */
+    Sent,
+
+    /** Terminal failure; frame and batch preserved (AS-31). */
+    Failed,
+    ;
+
+    /** Whether a send is actively running — [Preparing] or [Publishing] only. */
+    public val isInFlight: Boolean
+        get() = this == Preparing || this == Publishing
+}
+
+/**
  * The mirror surface's reduced state.
  *
  * Carries **no frame bytes**: pixels arrive up to ten times a second and a `ByteArray`-bearing
@@ -198,6 +234,8 @@ public data class MirrorDropBanner(
  *   itself is **not** here: it is a few hundred nodes per dump, read only by the measuring
  *   arithmetic and never rendered directly, so it lives on [MirrorViewModel.frozenHierarchy]
  *   beside the bitmaps. Only this four-state verdict is reduced.
+ * @property send Lifecycle of the current (or last) Resolve & Send attempt. A value-equal enum,
+ *   exactly like [hierarchyStatus] — no byte-bearing value ever rides on this property.
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -215,6 +253,7 @@ public data class MirrorUiState(
     val frozen: FrozenFrame? = null,
     val measure: MeasureReadout? = null,
     val hierarchyStatus: HierarchyStatus = HierarchyStatus.Absent,
+    val send: SendPhase = SendPhase.Idle,
 ) {
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
@@ -245,6 +284,22 @@ public data class MirrorUiState(
      * instead.
      */
     public val canResumeLive: Boolean get() = frozen != null && session !is MirrorSession.Lost
+
+    /**
+     * Whether Resolve & Send may be offered (AC-17/AC-20, TAC-1).
+     *
+     * A one-line delegate to `core/send`'s [presentation.feature.mirror.core.send.canSend],
+     * which stays the single definition of the predicate — the reducer's own guard and these
+     * two properties therefore cannot drift. The delegate exists because the predicate lives in
+     * `core/` (internal by `package-layout.md`) and its loudest reader, the desktop toolbar in
+     * `:compose-application`, is in another module.
+     */
+    public val canSend: Boolean get() = canSendGate(state = this)
+
+    /**
+     * Whether Clear may be offered (TAC-2) — same batch, same in-flight window as [canSend].
+     */
+    public val canClear: Boolean get() = canClearGate(state = this)
 
     /**
      * What the stage shows.
@@ -374,6 +429,14 @@ public sealed interface MirrorIntent {
      */
     public data class EditPrompt(val text: String?) : MirrorIntent
 
+    /**
+     * Resolve the staged annotations against the pinned frame and publish the handoff payload
+     * (AC-17, AC-19, FR-16, FR-18). Guarded by `canSend` (`core/send/SendGate.kt`) at every
+     * dispatch site — the composable's button, the reducer, and the hoisted `⌘↩` shortcut holder
+     * — so a second concurrent send while [SendPhase.isInFlight] holds is not reachable.
+     */
+    public data object ResolveAndSend : MirrorIntent
+
     /** Unpin the frame and drop the staged list — back to the live mirror (AC-51). */
     public data object ResumeLive : MirrorIntent
 
@@ -475,6 +538,23 @@ public sealed interface MirrorSideEffect {
      * @property action Which action failed, for the message.
      */
     public data class RecoveryFailed(val action: RecoveryAction) : MirrorSideEffect
+
+    /**
+     * A Resolve & Send attempt finished publishing (AC-17, AC-19, AC-20, AC-21).
+     *
+     * A side effect and not a reduced flag for the same reason [LocateAdb] is one: only the host
+     * can show a toast and touch the clipboard. Carries everything the host needs so it never has
+     * to query the ViewModel back for it.
+     *
+     * @property count How many annotations were resolved into the payload.
+     * @property summary Short human-readable summary line for the toast.
+     * @property sessionId Identifier of the published handoff session, for the clipboard copy.
+     */
+    public data class SendComplete(
+        val count: Int,
+        val summary: String,
+        val sessionId: String,
+    ) : MirrorSideEffect
 }
 
 /**
@@ -547,8 +627,11 @@ public data class StagedAnnotation(
  *   stripped (`"Android 15 · USB"` → `"Android 15"`), stamped at freeze. Empty when there was
  *   no selected row to read.
  * @property promptOverride Prompt text the user typed for this frame, or `null` while the
- *   default prompt applies. Survives every annotation edit and a session loss; no reducer drops
- *   it except [MirrorIntent.ResumeLive], which drops the whole frame. The Payload tab clears it
+ *   default prompt applies. Survives every annotation edit and a session loss. Two reducers drop
+ *   it: [MirrorIntent.ResumeLive], which drops the whole frame, and [MirrorIntent.ClearStaged],
+ *   which keeps the frame but clears the override along with the annotations it described
+ *   (bugs.json#PP-TD-2 — an override that outlived its annotations would otherwise be sent to
+ *   the agent as the payload's prompt). The Payload tab clears it
  *   with `EditPrompt(null)` in one case — an open editor whose seed was invalidated by an
  *   annotation edit, where the text on screen is stale machine output rather than anything the
  *   user wrote.
