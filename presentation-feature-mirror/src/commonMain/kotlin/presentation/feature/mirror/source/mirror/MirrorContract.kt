@@ -6,6 +6,11 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
+// Aliased: these properties carry the same names as the functions they delegate to, and an
+// alias says which one is being called without the reader having to know Kotlin's overload
+// resolution order.
+import presentation.feature.mirror.core.send.canClear as canClearGate
+import presentation.feature.mirror.core.send.canSend as canSendGate
 
 /** Which heading a picker row sits under. */
 public enum class MirrorRowGroup {
@@ -279,6 +284,22 @@ public data class MirrorUiState(
      * instead.
      */
     public val canResumeLive: Boolean get() = frozen != null && session !is MirrorSession.Lost
+
+    /**
+     * Whether Resolve & Send may be offered (AC-17/AC-20, TAC-1).
+     *
+     * A one-line delegate to `core/send`'s [presentation.feature.mirror.core.send.canSend],
+     * which stays the single definition of the predicate — the reducer's own guard and these
+     * two properties therefore cannot drift. The delegate exists because the predicate lives in
+     * `core/` (internal by `package-layout.md`) and its loudest reader, the desktop toolbar in
+     * `:compose-application`, is in another module.
+     */
+    public val canSend: Boolean get() = canSendGate(state = this)
+
+    /**
+     * Whether Clear may be offered (TAC-2) — same batch, same in-flight window as [canSend].
+     */
+    public val canClear: Boolean get() = canClearGate(state = this)
 
     /**
      * What the stage shows.

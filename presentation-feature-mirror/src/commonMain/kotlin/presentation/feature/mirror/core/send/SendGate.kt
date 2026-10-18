@@ -24,3 +24,20 @@ import presentation.feature.mirror.source.mirror.SendPhase
  */
 internal fun canSend(state: MirrorUiState): Boolean =
     state.frozen != null && state.stagedCount > 0 && !state.send.isInFlight
+
+/**
+ * Whether `MirrorIntent.ClearStaged` may be dispatched right now (T-10, TAC-2).
+ *
+ * Distinct from [canSend]: it does not require [MirrorUiState.frozen] on its own (though in
+ * practice [MirrorUiState.stagedCount] already implies a frozen frame — `stagedCount` is derived
+ * from `frozen?.annotations?.size`), and its only consumer is the toolbar's `Clear` ghost button,
+ * which reads it through [MirrorUiState.canClear]. It still shares [SendPhase.isInFlight] with [canSend] because wiping the
+ * staged batch out from under a send already assembling that same batch's envelope is the one
+ * thing TAC-2 exists to forbid — "Clear is disabled for the same in-flight window Resolve & Send
+ * is".
+ *
+ * @param state Reduced mirror state.
+ * @return `true` only when at least one annotation is staged and no send is already running.
+ */
+internal fun canClear(state: MirrorUiState): Boolean =
+    state.stagedCount > 0 && !state.send.isInFlight
