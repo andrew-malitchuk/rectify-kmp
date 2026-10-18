@@ -190,11 +190,13 @@ private fun HistoryEntryRow(entry: HistoryEntryModel, onIntent: (MirrorIntent) -
 /**
  * The agent/session line (AC-37), sourced from the newest batch.
  *
- * Shows the same four-character tag the newest row's meta line prints, not the raw session id:
- * the id is `<deviceId>-f<frameId>-<epochMillis>`, which ellipsises away in a narrow panel and
- * tells the reader nothing the row does not. Printing the row's own tag makes the footer
- * checkable by eye against the row above it. The project path the design shows is omitted —
- * `AnnotationEnvelope` carries no path field.
+ * **Correction of record, same shape as FR-30's:** FR-35 / AC-37 say this line shows the
+ * `sessionId`, and what ships is [shortBatchId] of it — the four-character tag. The design
+ * contract (`inputs/design-history-tab.md`) prints `claude · ~/code/shopkit · session 7f3a`,
+ * a four-character tag, while the raw id is `<deviceId>-f<frameId>-<epochMillis>`, which only
+ * ellipsises away in a narrow panel and tells the reader nothing the row does not. The tag
+ * also matches the row's own `#a41f` meta tag, so footer and row read as the same batch. The
+ * project path the design shows is omitted — `AnnotationEnvelope` carries no path field.
  *
  * Hidden entirely when nothing has been sent; the empty state returns before this is reached.
  */

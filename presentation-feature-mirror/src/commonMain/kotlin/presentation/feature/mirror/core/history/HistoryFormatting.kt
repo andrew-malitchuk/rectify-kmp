@@ -150,9 +150,19 @@ internal fun statusTone(status: BatchStatusModel): StatusPillTone = when (status
     BatchStatusModel.FollowUpSent -> StatusPillTone.Alert
 }
 
-/** The History tab's badge count — batches the agent is still working on. */
+/** How many batches the agent is still working on. */
 internal fun inProgressCount(entries: List<HistoryEntryModel>): Int =
     entries.count { it.status == BatchStatusModel.InProgress }
+
+/**
+ * The History tab's badge, or `null` when there is no badge to paint (AC-34).
+ *
+ * `SidebarTabs` renders any non-null count, so a present zero paints a literal `"0"` in the
+ * strip. Omitting at zero is therefore a decision, not a formatting detail, and it lives here
+ * — testable — rather than as an `if` in the shell window, which has no test wiring.
+ */
+internal fun historyBadgeCount(entries: List<HistoryEntryModel>): Int? =
+    inProgressCount(entries).takeIf { it > 0 }
 
 /**
  * Singular/plural key for the meta line's note count.

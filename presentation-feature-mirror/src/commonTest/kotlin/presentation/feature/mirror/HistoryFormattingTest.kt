@@ -9,6 +9,7 @@ import kotlinx.datetime.toInstant
 import presentation.core.ui.source.kit.atom.pill.StatusPillTone
 import presentation.feature.mirror.core.history.HistoryBucket
 import presentation.feature.mirror.core.history.groupHistory
+import presentation.feature.mirror.core.history.historyBadgeCount
 import presentation.feature.mirror.core.history.inProgressCount
 import presentation.feature.mirror.core.history.metaTime
 import presentation.feature.mirror.core.history.noteCountKey
@@ -176,6 +177,19 @@ class HistoryFormattingTest {
         assertEquals(2, inProgressCount(entries))
         assertEquals(0, inProgressCount(entries.filter { it.status != BatchStatusModel.InProgress }))
         assertEquals(0, inProgressCount(emptyList()))
+    }
+
+    @Test
+    fun historyBadgeCountIsNullAtZeroAndTheCountOtherwise() {
+        val entries = listOf(
+            entry("a", at(day = 10, hour = 9), BatchStatusModel.InProgress),
+            entry("b", at(day = 10, hour = 10), BatchStatusModel.Fixed),
+            entry("c", at(day = 10, hour = 11), BatchStatusModel.InProgress),
+        )
+
+        assertEquals(2, historyBadgeCount(entries))
+        assertNull(historyBadgeCount(entries.filter { it.status != BatchStatusModel.InProgress }))
+        assertNull(historyBadgeCount(emptyList()))
     }
 
     @Test

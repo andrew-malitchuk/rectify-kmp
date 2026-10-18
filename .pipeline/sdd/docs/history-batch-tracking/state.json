@@ -1,6 +1,6 @@
 {
   "spec": "history-batch-tracking",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -9,6 +9,9 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -97,6 +100,11 @@
       "status": "done",
       "wave": 9,
       "updatedAt": "2026-10-18T20:23:02Z"
+    },
+    "T-14": {
+      "status": "done",
+      "wave": 10,
+      "updatedAt": "2026-10-18T20:32:32Z"
     }
   },
   "effort": "fast",

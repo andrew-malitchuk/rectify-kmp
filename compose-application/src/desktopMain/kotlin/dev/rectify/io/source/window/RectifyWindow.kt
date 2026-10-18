@@ -429,13 +429,12 @@ internal fun RectifyShellContent(
         state = state,
         sidePanel = sidePanel,
         // The tab counts and the toolbar badge read the same number by construction.
-        // AC-34: SidebarTabs renders any non-null count, so a zero would paint a literal "0"
-        // in the strip — the History key is absent, not zero, when nothing is in progress.
+        // AC-34's omit-at-zero rule lives in `core/history`'s historyBadgeCount, which is
+        // testable; this module has no test wiring, so it only put-or-omits what it is given.
         tabCounts = buildMap {
             put(ShellTab.Notes, mirror.stagedCount)
             put(ShellTab.Payload, mirror.stagedCount)
-            val inProgress = mirror.inProgressCount
-            if (inProgress > 0) put(ShellTab.History, inProgress)
+            mirror.historyBadgeCount?.let { put(ShellTab.History, it) }
         },
         onPanelWidthCommit = onPanelWidthCommit,
         stage = {

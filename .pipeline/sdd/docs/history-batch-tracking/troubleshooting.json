@@ -1,0 +1,9 @@
+[
+  {
+    "at": "2026-10-18T20:51:36Z",
+    "category": "merge-conflict",
+    "issue": "id-keyed upsert conflict on 'database' in store 'features' (last-write-wins)",
+    "resolution": "last-write-wins",
+    "severity": "warn"
+  }
+]
