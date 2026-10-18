@@ -14,6 +14,8 @@ import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
+import domain.core.source.model.history.HistoryEntryModel
+import domain.core.source.model.history.SentBatchModel
 import domain.usecase.api.source.monad.Optional
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
 import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
@@ -24,11 +26,14 @@ import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
+import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
@@ -309,6 +314,43 @@ internal class FakeCropEncoder(private val bytes: ByteArray? = ByteArray(1)) : C
 }
 
 /**
+ * Records every batch history was asked to keep, and can be made to fail like the real use
+ * case does — as a `Failure`-carrying `Result`, never as a throw.
+ *
+ * [recordedAt] is how a test proves the ORDERING the whole persist design rests on: it is the
+ * number of `SendComplete` effects already posted when the write happened, so `0` means the
+ * batch was recorded before the toast.
+ */
+internal class FakeRecordSentBatch(
+    private val failure: Throwable? = null,
+    private val sideEffectCount: () -> Int = { 0 },
+) : RecordSentBatchUseCase {
+
+    val recorded: MutableList<SentBatchModel> = mutableListOf()
+    val recordedAt: MutableList<Int> = mutableListOf()
+
+    override suspend fun invoke(batch: SentBatchModel): Optional {
+        recorded += batch
+        recordedAt += sideEffectCount()
+        return failure?.let { Result.failure(it) } ?: Result.success(Unit)
+    }
+}
+
+/** A history stream the test owns: empty until [emit] puts rows on it. */
+internal class FakeObserveHistory(
+    initial: List<HistoryEntryModel> = emptyList(),
+) : ObserveHistoryUseCase {
+
+    private val entries = MutableStateFlow(initial)
+
+    override fun invoke(): Flow<List<HistoryEntryModel>> = entries
+
+    fun emit(next: List<HistoryEntryModel>) {
+        entries.value = next
+    }
+}
+
+/**
  * A [TimeSource] whose every mark reports a FIXED [elapsedNow] — T-9's determinism seam so a test
  * never has to assert against how long the test process actually took to run.
  */
@@ -334,6 +376,8 @@ internal fun mirrorViewModel(
     restartAdbServer: RestartAdbServerUseCase = FakeRestartAdbServer(),
     setAdbPath: SetAdbPathUseCase = FakeSetAdbPath(),
     dumpHierarchy: DumpHierarchyUseCase = FakeDumpHierarchy(),
+    recordSentBatch: RecordSentBatchUseCase = FakeRecordSentBatch(),
+    observeHistory: ObserveHistoryUseCase = FakeObserveHistory(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
     handoff: AnnotationHandoff = FakeAnnotationHandoff(),
     encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
@@ -349,6 +393,8 @@ internal fun mirrorViewModel(
     restartAdbServer = restartAdbServer,
     setAdbPath = setAdbPath,
     dumpHierarchy = dumpHierarchy,
+    recordSentBatch = recordSentBatch,
+    observeHistory = observeHistory,
     decodeFrame = decodeFrame,
     handoff = handoff,
     encodeCrop = encodeCrop,

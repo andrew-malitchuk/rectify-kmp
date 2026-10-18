@@ -4,6 +4,8 @@ import domain.core.source.model.device.DeviceModel
 import domain.core.source.model.device.DeviceStateModel
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorFrameModel
+import domain.core.source.model.history.BatchStatusModel
+import domain.core.source.model.history.HistoryEntryModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -123,6 +125,25 @@ class MirrorViewModelResolveAndSendTest {
         repeat(10) {
             advanceUntilIdle()
             withContext(Dispatchers.Default) { delay(1) }
+        }
+        advanceUntilIdle()
+    }
+
+    /**
+     * Drains both clocks until [done] holds, for at most a few real seconds.
+     *
+     * [settle]'s fixed ten-iteration budget is right for the send itself but not for the
+     * history write behind it: the thumbnail on that path runs the first `cropAndScale` of the
+     * process, and the very first `ImageBitmap(w, h)` loads Skiko's native library — hundreds
+     * of milliseconds, paid once per JVM. With a fixed budget these tests would pass or fail
+     * depending on whether `ThumbnailBitmapTest` happened to run first, which is worse than
+     * slow. Waiting on the condition itself costs nothing when the work is already done.
+     */
+    private suspend fun TestScope.settleUntil(done: () -> Boolean) {
+        repeat(1_000) {
+            advanceUntilIdle()
+            if (done()) return
+            withContext(Dispatchers.Default) { delay(5) }
         }
         advanceUntilIdle()
     }
@@ -353,4 +374,152 @@ class MirrorViewModelResolveAndSendTest {
                 "the published batch must be exactly the one the send started with",
             )
         }
+
+    // -- F-8 T-9: history is written after the send and can never fail it (AC-38) --------------
+
+    /**
+     * The guarantee the whole ordering decision exists to provide: a batch the agent received
+     * stays received even when the database refuses it. The write is logged and dropped — it
+     * reaches neither [SendPhase] nor a side effect.
+     */
+    @Test
+    fun aFailingHistoryWriteLeavesTheSendSuccessfulAndStillPostsSendComplete() =
+        runTest(mainDispatcher) {
+            val mirroring = FakeStartMirroring()
+            val handoff = FakeAnnotationHandoff()
+            val record = FakeRecordSentBatch(failure = IllegalStateException("database is gone"))
+            val viewModel = mirrorViewModel(
+                discovery = scriptedPhoneDiscovery(),
+                mirroring = mirroring,
+                decodeFrame = sizedFrameDecoder(),
+                handoff = handoff,
+                recordSentBatch = record,
+            )
+            val effects = mutableListOf<MirrorSideEffect>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.container.sideEffectFlow.collect { effects += it }
+            }
+            freezeAndStage(viewModel, mirroring, listOf(RECT_1))
+
+            viewModel.handleIntent(MirrorIntent.ResolveAndSend)
+            settleUntil { effects.filterIsInstance<MirrorSideEffect.SendComplete>().isNotEmpty() }
+
+            assertEquals(1, record.recorded.size, "the failing write was never attempted")
+            assertEquals(1, handoff.published.size, "the send itself must have gone through")
+            assertEquals(
+                SendPhase.Idle,
+                viewModel.currentState.send,
+                "a failed history write must never reach SendPhase",
+            )
+            assertEquals(
+                1,
+                effects.filterIsInstance<MirrorSideEffect.SendComplete>().size,
+                "a failed history write must not withhold the success toast",
+            )
+            assertNull(viewModel.currentState.frozen, "the successful send must still clear")
+        }
+
+    /** The record is written BEFORE the toast, which is what makes the ordering observable. */
+    @Test
+    fun theBatchIsRecordedBeforeSendCompleteIsPosted() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val effects = mutableListOf<MirrorSideEffect>()
+        val record = FakeRecordSentBatch(sideEffectCount = { effects.size })
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            decodeFrame = sizedFrameDecoder(),
+            recordSentBatch = record,
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.container.sideEffectFlow.collect { effects += it }
+        }
+        freezeAndStage(viewModel, mirroring, listOf(RECT_1))
+
+        viewModel.handleIntent(MirrorIntent.ResolveAndSend)
+        settleUntil { record.recorded.isNotEmpty() }
+
+        assertEquals(listOf(0), record.recordedAt, "history was written after the toast")
+    }
+
+    /**
+     * PLAN-AS-12 / `bugs.json#PP-TD-2`: the persisted prompt is the ENVELOPE's.
+     *
+     * The state cannot even supply one by the time the write happens — the success path has
+     * already cleared `frozen` — so a handler that read `MirrorUiState.promptOverride` would
+     * persist a blank prompt. Asserting equality with the published envelope is what pins the
+     * provenance rather than the value.
+     */
+    @Test
+    fun thePersistedPromptIsTheEnvelopesNotTheStates() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val handoff = FakeAnnotationHandoff()
+        val record = FakeRecordSentBatch()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            decodeFrame = sizedFrameDecoder(),
+            handoff = handoff,
+            recordSentBatch = record,
+        )
+        freezeAndStage(viewModel, mirroring, listOf(RECT_1))
+        viewModel.handleIntent(MirrorIntent.EditPrompt("check the empty-state copy"))
+        advanceUntilIdle()
+
+        viewModel.handleIntent(MirrorIntent.ResolveAndSend)
+        settleUntil { record.recorded.isNotEmpty() }
+
+        val persisted = record.recorded.single()
+        assertEquals("check the empty-state copy", persisted.prompt)
+        assertEquals(
+            handoff.published.single().prompt,
+            persisted.prompt,
+            "history must record what the agent received, never what the editor held",
+        )
+        assertNull(
+            viewModel.currentState.frozen,
+            "the state had no prompt left to read at persist time -- that is the point",
+        )
+        assertEquals(
+            handoff.published.single().sessionId,
+            persisted.id,
+            "the record is keyed by the session id the agent was given",
+        )
+    }
+
+    /** The collector started at container init puts the use case's rows into state (SC-16). */
+    @Test
+    fun historyFromTheUseCaseReachesState() = runTest(mainDispatcher) {
+        val entry = HistoryEntryModel(
+            id = "batch-1",
+            sentAtMs = 1_700_000_000_000L,
+            status = BatchStatusModel.Sent,
+            title = "the CTA is off by 4dp",
+            annotationCount = 2,
+        )
+        val history = FakeObserveHistory()
+        val viewModel = mirrorViewModel(discovery = scriptedPhoneDiscovery(), observeHistory = history)
+        subscribe(viewModel)
+        advanceUntilIdle()
+        assertEquals(emptyList(), viewModel.currentState.history, "history starts empty")
+
+        history.emit(listOf(entry))
+        advanceUntilIdle()
+
+        assertEquals(listOf(entry), viewModel.currentState.history)
+    }
+
+    /** F-9's stub is a real intent: it reaches the ViewModel, logs, and changes nothing. */
+    @Test
+    fun verifyBatchIsAnInertStubRatherThanACrash() = runTest(mainDispatcher) {
+        val viewModel = mirrorViewModel(discovery = scriptedPhoneDiscovery())
+        subscribe(viewModel)
+        advanceUntilIdle()
+        val before = viewModel.currentState
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch("batch-1"))
+        settle()
+
+        assertEquals(before, viewModel.currentState)
+    }
 }

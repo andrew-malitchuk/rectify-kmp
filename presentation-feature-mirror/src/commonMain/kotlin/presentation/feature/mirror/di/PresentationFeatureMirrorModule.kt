@@ -10,6 +10,8 @@ import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
+import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -40,6 +42,8 @@ public val presentationFeatureMirrorModule: Module = module {
             restartAdbServer = get<RestartAdbServerUseCase>(),
             setAdbPath = get<SetAdbPathUseCase>(),
             dumpHierarchy = get<DumpHierarchyUseCase>(),
+            recordSentBatch = get<RecordSentBatchUseCase>(),
+            observeHistory = get<ObserveHistoryUseCase>(),
             handoff = get<AnnotationHandoff>(),
             encodeCrop = get<CropEncoder>(),
         )

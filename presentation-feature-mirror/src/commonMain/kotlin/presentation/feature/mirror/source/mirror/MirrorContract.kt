@@ -6,6 +6,7 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
+import domain.core.source.model.history.HistoryEntryModel
 // Aliased: these properties carry the same names as the functions they delegate to, and an
 // alias says which one is being called without the reader having to know Kotlin's overload
 // resolution order.
@@ -236,6 +237,13 @@ public enum class SendPhase {
  *   beside the bitmaps. Only this four-state verdict is reduced.
  * @property send Lifecycle of the current (or last) Resolve & Send attempt. A value-equal enum,
  *   exactly like [hierarchyStatus] — no byte-bearing value ever rides on this property.
+ * @property history Every recorded batch, newest first — the single source for both the
+ *   History list and its badge count. The one byte-bearing value that IS reduced, and the
+ *   exception is measured, not casual: a row's [domain.core.source.model.history.HistoryEntryModel.thumbPng]
+ *   is a few KB and arrives once per send, not ten times a second like a frame, so the identity
+ *   comparison a `ByteArray` forces costs one extra state emission per database change rather
+ *   than per rendered frame. The list is rendered with `key = { it.id }`, so an unchanged row is
+ *   not recomposed by that emission.
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -254,6 +262,7 @@ public data class MirrorUiState(
     val measure: MeasureReadout? = null,
     val hierarchyStatus: HierarchyStatus = HierarchyStatus.Absent,
     val send: SendPhase = SendPhase.Idle,
+    val history: List<HistoryEntryModel> = emptyList(),
 ) {
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
@@ -465,6 +474,19 @@ public sealed interface MirrorIntent {
      * the note landing on a different annotation after a delete renumbered the list.
      */
     public data object EndMeasure : MirrorIntent
+
+    /**
+     * Ask the agent to verify a batch the user believes is fixed (FR-32 / AC-36 / SC-8).
+     *
+     * A stub this release: the handler logs the id and nothing else. F-9 owns the actual
+     * re-capture and diff; F-8 ships only the affordance, so the Verify button on a
+     * [domain.core.source.model.history.BatchStatusModel.Fixed] row has a real intent to fire
+     * rather than a placeholder that would crash.
+     *
+     * @property batchId [domain.core.source.model.history.HistoryEntryModel.id] of the row the
+     *   button sits on.
+     */
+    public data class VerifyBatch(val batchId: String) : MirrorIntent
 
     /** Restart the discovery collection — the error card's "Retry" (AC-26, AC-53). */
     public data object RetryDiscovery : MirrorIntent
