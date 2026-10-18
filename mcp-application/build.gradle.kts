@@ -12,7 +12,17 @@ kotlin {
 }
 
 dependencies {
-    implementation(projects.dataHandoffApi) // resolves the jvm("desktop") variant, as :desktop-application already proves
+    // :data-handoff-api is a library-convention module, and LibraryConventionPlugin wires
+    // androidx-lifecycle-viewmodel + androidx-lifecycle-runtimeCompose into EVERY library
+    // module's commonMain. This server needs neither, and the two lifecycle coordinates
+    // (androidx.lifecycle and org.jetbrains.androidx.lifecycle) both ship a
+    // lifecycle-common-jvm jar, which collides in installDist's flat lib/ dir. Excluding
+    // them here both fixes that and restores the pinned envelope+serialization classpath
+    // the spawn-time budget assumes.
+    implementation(projects.dataHandoffApi) { // resolves the jvm("desktop") variant, as :desktop-application already proves
+        exclude(group = "androidx.lifecycle")
+        exclude(group = "org.jetbrains.androidx.lifecycle")
+    }
     implementation(libs.kotlinx.serialization.json)
     // kotlin.test is wired once in the Library/Feature convention plugins; this module has
     // neither, so it must declare its own. Sanctioned exception, see testing.md.

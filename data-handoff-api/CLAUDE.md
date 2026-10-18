@@ -61,4 +61,12 @@ ever confuse the two roles. The KDoc on each member says which side calls it.
 ./gradlew :data-handoff-api:desktopTest
 ```
 
-See T-12 for the deeper documentation pass this file is a placeholder for.
+## Platform coverage
+
+`AnnotationHandoff` (the interface) is `commonMain`; `FileSlotAnnotationHandoff` and
+`fileSlotAnnotationHandoff()` are `desktopMain`-only — this module has no `androidMain` or
+`iosMain` source set at all. The Android/iOS implementation
+(`UnsupportedAnnotationHandoff`, a no-op that answers `latest() = null` and throws on
+`publish`/`resolve`) deliberately lives in `presentation-feature-mirror`, not here, so this
+module never needs a Koin-bearing `expect`/`actual` pair of its own — see that module's
+`core/unsupported/` and `CLAUDE.md`.
