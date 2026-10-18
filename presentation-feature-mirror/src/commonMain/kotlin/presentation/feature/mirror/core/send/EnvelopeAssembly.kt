@@ -7,6 +7,8 @@ import data.handoff.api.source.envelope.EnvelopeDevice
 import data.handoff.api.source.envelope.HandoffImage
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.PlatformModel
+import presentation.feature.mirror.core.payload.FRAME_FILE_NAME
+import presentation.feature.mirror.core.payload.attachedHierarchyXml
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
 import presentation.feature.mirror.core.payload.payloadHierarchyRows
@@ -15,9 +17,6 @@ import presentation.feature.mirror.source.mirror.FrozenFrame
 import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.StagedAnnotation
 import kotlin.math.roundToInt
-
-/** Bare file name of the attached full frame, referenced from [AnnotationEnvelope.framePath]. */
-internal const val FRAME_FILE_NAME: String = "frame.png"
 
 /** Bare file name of annotation [index]'s crop, referenced from [EnvelopeAnnotation.cropPath]. */
 private fun cropFileName(index: Int): String = "crop-$index.png"
@@ -80,15 +79,10 @@ internal suspend fun assembleEnvelope(
     deviceId: String?,
     version: Int,
 ): Pair<AnnotationEnvelope, List<HandoffImage>> {
-    // Android-only (AS-29) and only for a verdict that says a real dump is held. An Empty
-    // snapshot carries `rawDump == ""`, so a stale Ready verdict over it degrades for free
-    // rather than through a second branch.
-    val hierarchyXml =
-        if (platform == PlatformModel.Android && hierarchyStatus == HierarchyStatus.Ready) {
-            hierarchy.rawDump
-        } else {
-            ""
-        }
+    // Android-only (AS-29) and only for a verdict that says a real dump is held -- the rule
+    // itself lives in core/payload so the Payload tab's preview branches on the same answer
+    // (AF-4); duplicating it here is how the prompt started promising an absent hierarchy.
+    val hierarchyXml = attachedHierarchyXml(platform, hierarchyStatus, hierarchy)
 
     val images = mutableListOf(HandoffImage(name = FRAME_FILE_NAME, bytes = frameBytes))
     val annotations = frozen.annotations.map { annotation ->
@@ -117,7 +111,14 @@ internal suspend fun assembleEnvelope(
             widthPx = frozen.deviceSize.width,
             heightPx = frozen.deviceSize.height,
         ),
-        prompt = frozen.promptOverride ?: buildPrompt(frozen, nodeIdResolver(frozen, hierarchy)),
+        prompt = frozen.promptOverride ?: buildPrompt(
+            frozen = frozen,
+            // What was ATTACHED, not what was staged: an annotation whose encode returned null
+            // contributed no HandoffImage and must not be counted in the trailer (AF-4).
+            cropCount = annotations.count { it.cropPath != null },
+            hierarchyAttached = hierarchyXml.isNotEmpty(),
+            nodeIdFor = nodeIdResolver(frozen, hierarchy),
+        ),
         hierarchyXml = hierarchyXml,
         hierarchyAvailable = hierarchyXml.isNotEmpty(),
         framePath = FRAME_FILE_NAME,

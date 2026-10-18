@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.runTest
 import presentation.feature.mirror.core.payload.PAYLOAD_FORMAT_VERSION
 import presentation.feature.mirror.core.payload.buildPrompt
 import presentation.feature.mirror.core.payload.cropWindow
-import presentation.feature.mirror.core.send.FRAME_FILE_NAME
+import presentation.feature.mirror.core.payload.FRAME_FILE_NAME
 import presentation.feature.mirror.core.send.assembleEnvelope
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
@@ -152,7 +152,13 @@ class EnvelopeAssemblyTest {
             version = PAYLOAD_FORMAT_VERSION,
         )
 
-        assertEquals(buildPrompt(frozen) { null }, envelope.prompt)
+        // AF-4: every encode above returned null and the hierarchy is Absent, so the prompt
+        // the envelope must reproduce is the one that promises neither -- the staged-count
+        // default would claim a crop this envelope does not carry.
+        assertEquals(
+            buildPrompt(frozen, cropCount = 0, hierarchyAttached = false) { null },
+            envelope.prompt,
+        )
     }
 
     // -- TAC-3: annotation count and rects survive assembly unchanged ---------------------------

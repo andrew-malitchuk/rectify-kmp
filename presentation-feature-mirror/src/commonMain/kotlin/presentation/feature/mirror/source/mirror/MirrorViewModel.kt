@@ -853,7 +853,12 @@ public class MirrorViewModel(
                 postSideEffect(
                     MirrorSideEffect.SendComplete(
                         count = count,
-                        summary = toastLabel(count, started.elapsedNow().inWholeMilliseconds),
+                        summary = toastLabel(
+                            count = count,
+                            elapsedMs = started.elapsedNow().inWholeMilliseconds,
+                            // Off the published envelope, never re-derived (AF-4).
+                            hierarchyAttached = envelope.hierarchyAvailable,
+                        ),
                         sessionId = envelope.sessionId,
                     ),
                 )
