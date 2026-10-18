@@ -78,6 +78,16 @@ public enum class StatusIndicatorState {
     /** Annotations have been handed off. */
     Sent,
 
+    /**
+     * Something is wrong and the user is the one who has to act — no tool, no device, or an
+     * ambiguous choice.
+     *
+     * Distinct from [Offline], which means nothing is happening and nothing is required. The
+     * design gives these states a WARN dot for exactly that reason: grey reads as idle, and
+     * "adb isn't on your PATH" is not idle, it is waiting on a person.
+     */
+    Blocked,
+
     /** The stream died unexpectedly. */
     Dropped,
 
@@ -89,6 +99,9 @@ public enum class StatusIndicatorState {
 private fun StatusIndicatorState.defaultLabel(): String = when (this) {
     StatusIndicatorState.Live -> "LIVE"
     StatusIndicatorState.Frozen -> "FROZEN"
+    // Callers always pass a specific reason for this one, so the fallback is deliberately
+    // generic rather than guessing which of no-tool, no-device or too-many it is.
+    StatusIndicatorState.Blocked -> "BLOCKED"
     // Ellipsis, not three dots — the style guide reserves … for work in progress.
     StatusIndicatorState.Dumping -> "DUMPING…"
     StatusIndicatorState.Sent -> "SENT"
@@ -108,6 +121,7 @@ private fun StatusIndicatorState.dotColor(): Color = when (this) {
     StatusIndicatorState.Frozen -> Theme.color.ink
     StatusIndicatorState.Dumping -> Theme.color.warnStillOff
     StatusIndicatorState.Sent -> Theme.color.sentFixed
+    StatusIndicatorState.Blocked -> Theme.color.warnStillOff
     StatusIndicatorState.Dropped -> Theme.color.annotate
     StatusIndicatorState.Offline -> Theme.color.ink3
 }
@@ -127,6 +141,7 @@ private fun StatusIndicatorPreview() {
             StatusIndicator(state = StatusIndicatorState.Dumping)
             StatusIndicator(state = StatusIndicatorState.Sent)
             StatusIndicator(state = StatusIndicatorState.Dropped)
+            StatusIndicator(state = StatusIndicatorState.Blocked)
             StatusIndicator(state = StatusIndicatorState.Offline)
         }
     }

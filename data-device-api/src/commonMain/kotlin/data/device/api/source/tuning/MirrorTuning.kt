@@ -41,6 +41,30 @@ public object MirrorTuning {
     /** Timeout for a deviceless host command, in milliseconds. */
     public const val HostCommandTimeoutMs: Long = 3_000L
 
+    /**
+     * Watchdog for an explicit `adb start-server`, in milliseconds.
+     *
+     * This is a WATCHDOG, not a calibration. Unlike [CaptureFloorMs] — whose KDoc above
+     * documents an unmeasured number and the hardware harness that would settle it — the cost
+     * this one covers IS measured, and the number is not an estimate of it. It is an upper
+     * bound on "something is wrong", deliberately far above the real cost so that no machine
+     * has to be guessed at.
+     *
+     * The measurement, from `.pipeline/sdd/docs/error-handling-and-recovery/inputs/
+     * reproduced-defect-adb-cold-start.md`: a cold `adb start-server` (each run preceded by
+     * `adb kill-server`) took **3.03 s on all three runs, identical to the hundredth of a
+     * second**. That reproducibility is the point — it is a fixed internal delay inside adb's
+     * fork-server path, not variable work whose spread would have to be modelled. A warm
+     * daemon answers in 0.01 s. So 15 s carries ~5x headroom over the only cost there is.
+     *
+     * **Do not tune this down toward 3.03 s.** The defect being fixed is exactly that:
+     * [HostCommandTimeoutMs] is 3000 ms, the daemon start is 3030 ms, so the old budget missed
+     * deterministically on every attempt and `destroyForcibly` killed the daemon mid-start —
+     * a livelock, not slowness. Trimming the headroom here re-creates it on the first machine
+     * that is 1% slower.
+     */
+    public const val DaemonStartTimeoutMs: Long = 15_000L
+
     /** Device discovery poll interval, in milliseconds. */
     public const val DiscoveryPollMs: Long = 2_000L
 

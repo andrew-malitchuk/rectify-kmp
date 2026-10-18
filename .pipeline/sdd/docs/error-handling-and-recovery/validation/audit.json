@@ -1,0 +1,373 @@
+{
+  "iteration": 1,
+  "findings": [
+    {
+      "id": "AF-1",
+      "severity": "error",
+      "about": "task",
+      "ref": "T-13",
+      "issue": "RetryDiscovery is still an inert intent. The handler is a literal no-op, so AC-26's secondary action and AC-53's primary action are dead buttons. The carry-forward's prescribed exit check is defeated rather than satisfied: `grep -n '\\-> Unit' MirrorViewModel.kt` prints nothing ONLY because the no-op moved out of the `when` branch and into a named function body (`= Unit`). The check passes while the exact defect it was written to catch survives. No test anywhere dispatches MirrorIntent.RetryDiscovery (repo-wide grep: dispatch sites are MirrorErrorStage.kt:96 and :124 only).",
+      "evidence": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:364 `    private fun retryDiscovery() = Unit`. Dispatched from MirrorErrorStage.kt:96 (ToolMissing secondary 'Retry') and MirrorErrorStage.kt:124 (PollFailed primary 'Retry'). FAILURE SCENARIO: adb is absent, the ToolMissing card renders, the user clicks 'Retry' -> zero observable effect: no state transition, no side effect, no process, nothing scheduled. Any apparent recovery is the repository's pre-existing 2 s poll, which runs identically if the button is never pressed. FR-37 ('every error card's recovery action performs real work rather than waiting out the 2 s poll') is unsatisfied.",
+      "recommendedTarget": "T-13"
+    },
+    {
+      "id": "AF-2",
+      "severity": "error",
+      "about": "task",
+      "ref": "T-24",
+      "issue": "T-24 and T-25 were never implemented and are not flagged anywhere (no note, no event, no report). AdbPathChooser.kt does not exist, RectifyWindow.kt was not touched by this spec, and MirrorHost's `onSideEffect` is left at its no-op default by the single call site. MirrorSideEffect.LocateAdb is therefore posted into a discard, and MirrorIntent.AdbPathChosen has no production dispatcher at all - only MirrorRecoveryActionsTest.kt:99 constructs it. AC-26's primary action and SC-17 are dead UI in the shipped app.",
+      "evidence": "`find . -name 'AdbPathChooser*' -not -path '*/build/*'` -> no results. compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt:152 `MirrorHost { mirror, frame, onMirrorIntent ->` - trailing-lambda `content` only, so MirrorHost.kt:35 `onSideEffect: (MirrorSideEffect) -> Unit = {}` stays the default. MirrorViewModel.kt:387-388 posts MirrorSideEffect.LocateAdb; MirrorHost.kt:42 forwards it to that empty lambda. `git diff 52dc9e0~1..HEAD --stat` lists no MirrorHost.kt, no RectifyWindow.kt, no AdbPathChooser.kt. FAILURE SCENARIO: adb missing -> ToolMissing card -> user clicks 'Locate adb...' -> no file dialog ever opens, no error, nothing. The preference path, use case, DI wiring and ToolResolver seam (T-19/T-20/T-21) are all correct and tested, but nothing can reach them from the UI.",
+      "recommendedTarget": "T-24"
+    },
+    {
+      "id": "AF-3",
+      "severity": "error",
+      "about": "diff",
+      "ref": "T-13",
+      "issue": "The only two tests that prove the recovery actions do real work pass by GLOBAL TEST POLLUTION, not on their own merit. MirrorRecoveryActionsTest's setUp calls only `Dispatchers.setMain(...)` and never `useTestDispatcherForOrbit(...)`, unlike its three sibling ViewModel test classes. Orbit's eventLoopDispatcher/intentLaunchingDispatcher therefore stay on real thread pools unless a sibling class has already reconfigured them process-wide through `Orbit.configureDefaults`. In a full desktop run a sibling happens to run first, so the tests go green; run alone, or on Kotlin/Native, they fail. This is a vacuous proof of FR-37 in the strict sense: the assertion holds because of state another test file set.",
+      "evidence": "Isolated run: `./gradlew :presentation-feature-mirror:desktopTest --tests \"presentation.feature.mirror.MirrorRecoveryActionsTest\" --rerun-tasks` -> `MirrorRecoveryActionsTest[desktop] > restartAdbReallyRestartsTheDaemonAndThenRepolls[desktop] FAILED` / `2 tests completed, 1 failed` / `BUILD FAILED in 1m 4s`. iosSimulatorArm64 (full `:presentation-feature-mirror:build`): `Expected <[restarts=1]>, actual <[restarts=0]>` and `Expected <[stored=[/opt/homebrew/bin/adb]]>, actual <[stored=[]]>`. Helper that is missing from the class: presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt:~219 `useTestDispatcherForOrbit`, called by MirrorViewModelSessionTest.kt, MirrorViewModelDiscoveryTest.kt and MirrorViewModelAnnotationTest.kt but NOT by MirrorRecoveryActionsTest.kt:51.",
+      "recommendedTarget": "T-13"
+    },
+    {
+      "id": "AF-4",
+      "severity": "error",
+      "about": "diff",
+      "ref": "T-29",
+      "issue": "The cross-target guard in plan.json's definitionOfDone is RED. `compileTestKotlinIosArm64` is green for all seven touched modules (I re-ran it with --rerun-tasks, not UP-TO-DATE), but the DoD also requires 'a full :build on the two presentation modules', and that build fails: 81 tests run on iosSimulatorArm64, 2 fail (the AF-3 pair). The handed-over regression command covers `desktopTest` only, which hides this entirely. `./gradlew check` is therefore red on this branch.",
+      "evidence": "`./gradlew :presentation-core-ui:build :presentation-core-styling:build :presentation-feature-mirror:build` -> `81 tests completed, 2 failed` / `> Task :presentation-feature-mirror:allTests FAILED`. Report: presentation-feature-mirror/build/reports/tests/iosSimulatorArm64Test/index.html. Separately in the same invocation `> Task :presentation-feature-mirror:linkReleaseFrameworkIosSimulatorArm64 FAILED` with `Daemon will be stopped at the end of the build after running out of JVM heap space` (max heap 4 GiB) - that one is environmental, not a code defect, and re-runs clean in isolation; the two test failures are not.",
+      "recommendedTarget": "T-29"
+    },
+    {
+      "id": "AF-5",
+      "severity": "warn",
+      "about": "ac",
+      "ref": "AC-28",
+      "issue": "The MultipleDevices card is still unreachable in AC-28's own scenario, and GAPS-for-later-waves.md section 2 explicitly made proving otherwise T-14's job. `isPickerOpen` defaults to true, `applyDiscovery(Found)` never closes it, and `errorCard()` stands down for Found while the picker is open. T-14 narrowed the picker guard for ToolMissing and PollFailed (which fixed two of the three dead kinds) but left Found yielding unconditionally and proved no reachable path for the card. Every projection test forces `isPickerOpen = false`, so the AC-28 test proves the projection, not reachability.",
+      "evidence": "MirrorContract.kt:199 `val isPickerOpen: Boolean = true,`; DiscoveryProjection.kt:49-53 (the Found branch sets rows only, no isPickerOpen); DiscoveryErrorProjection.kt:69 `if (isPickerOpen && discovery is DiscoveryModel.Found) return null`; DiscoveryErrorProjectionTest.kt:85 `MirrorUiState().applyDiscovery(discovery).copy(isPickerOpen = false)`. FAILURE SCENARIO: cold start with three handsets attached (AC-28/SC-12 verbatim) -> Detecting -> Found -> picker owns the stage -> the card AC-28 describes never renders. The only paths that do reach it are (a) a prior NoDeviceFound escalation closed the picker and devices then appear, or (b) the user committed a selection, pressed Esc, and stopped the session. Neither is AC-28's scenario and neither is asserted.",
+      "recommendedTarget": "T-14"
+    },
+    {
+      "id": "AF-6",
+      "severity": "warn",
+      "about": "ac",
+      "ref": "AC-29",
+      "issue": "AC-29's clause \"'Resolve & Send' remains clickable\" cannot be satisfied and is not flagged by any execution note. The button is hard-disabled at every call site in the repository - pre-existing placeholder state from F-1/F-2, untouched by this spec. The rest of AC-29 (banner copy, 'Reconnect', annotations pinned and editable while disconnected) is satisfied and test-covered.",
+      "evidence": "compose-application/.../RectifyWindow.kt:273 `AppButton(text = \"Resolve & Send\", onClick = {}, shortcut = \"\\u2318\\u21b5\", enabled = false)`; same at presentation-core-ui/.../RectifyWindowShell.kt:118 and .../ShellToolbar.kt:113. plan.json's definitionOfDone anticipated this (\"the deferred 'Resolve & Send' button [is] recorded in openQuestions\") but no execution-side note records it as an AC-29 shortfall. FAILURE SCENARIO: stream drops with annotations staged; the banner and Reconnect behave correctly, but the user cannot act on the staged work because the one button AC-29 promises stays clickable is disabled in every state of the app.",
+      "recommendedTarget": "T-16"
+    },
+    {
+      "id": "AF-7",
+      "severity": "warn",
+      "about": "ac",
+      "ref": "AC-54",
+      "issue": "AC-54's own verification clause ('this test is run against the pre-fix code first and demonstrated to fail before the fix lands') and SC-15 are not met. Honestly recorded, not hidden - the pre-fix tree was gone when the finishing agent arrived. The substitute is a permanent mutation guard rather than a transcript, which I independently re-verified.",
+      "evidence": "execution/GAPS-for-later-waves.md section 1; execution/TEST-NAME-MAP.md ('pre-fix RED **not captured**'). Substitute verified by me: mutating `reconnect()` to `reduce { state.copy(session = MirrorSession.Streaming(lost.deviceId), frozen = null) }` -> `MirrorViewModelAnnotationTest > reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame FAILED`, reverted byte-exact and green. The behavioural half of AC-54 is genuinely satisfied; only the RED-first provenance clause is open.",
+      "recommendedTarget": "T-11"
+    },
+    {
+      "id": "AF-8",
+      "severity": "warn",
+      "about": "task",
+      "ref": "T-16",
+      "issue": "The two uncovered gates from T-16-coverage-honest.md are STILL uncovered - reconfirmed by a real mutation run, not by reading the note. Both mutations applied simultaneously leave the whole mirror suite green. The consequence is the one the note states: the NFR-6 fix this entire spec exists to deliver is itself unguarded, and a future edit can reinstate the exact violation with all 231 tests passing.",
+      "evidence": "MirrorAnnotationStage.kt:286 `dimmed = frozen != null && marks.isNotEmpty(),` -> `dimmed = frozen != null,` AND MirrorAnnotationStage.kt:321 `if (canResumeLive) {` -> `if (true) {`, then `./gradlew :presentation-feature-mirror:desktopTest --rerun-tasks` -> `BUILD SUCCESSFUL in 4s / 53 actionable tasks: 53 executed`. Zero tests fail. File restored byte-exact afterwards. The note's own remedy (option 2: hoist both gates into the pure projection layer, where commonTest can reach them) needs no new infrastructure and is the cheap fix.",
+      "recommendedTarget": "T-16"
+    },
+    {
+      "id": "AF-9",
+      "severity": "warn",
+      "about": "task",
+      "ref": "T-7",
+      "issue": "T-7 claims mutation proof for which no artifact exists. DeviceDiscoveryPollingTest.kt carries no MUTATION or RED clause in any KDoc, there is no T-7 record under execution/, yet TEST-NAME-MAP.md asserts 'Every entry below was run and, unless noted, mutation-proven' and commit 4269a73 says 'the escalation ladder, implemented and proven'. plan.json's definitionOfDone: 'claimed mutation verification without a run is a plan violation'. I ran the prescribed mutations myself and every one was killed, so the COVERAGE is real and strong - what is missing is the record. T-16 shows the standard this spec set for itself (T-16-coverage-honest.md records both its passing and its failing mutations); T-7 did not meet it.",
+      "evidence": "`grep -n 'MUTATION\\|RED\\|pre-fix' data-repository-impl/src/commonTest/kotlin/data/repository/impl/DeviceDiscoveryPollingTest.kt` -> no matches. `ls .pipeline/sdd/docs/error-handling-and-recovery/execution/` -> no T-7 record, and no execution/<task-id>/report.json for any task. My own mutation run (all killed, each reverted byte-exact) is recorded in this audit's traceability entries for AC-53 and FR-36.",
+      "recommendedTarget": "T-7"
+    },
+    {
+      "id": "AF-10",
+      "severity": "warn",
+      "about": "diff",
+      "ref": "T-23",
+      "issue": "Two KDoc claims and two test names over-promise exactly what GAP-fr37-immediate-repoll.md admits is missing. `presentation-core-ui/CLAUDE.md`'s copy-agrees-with-behaviour rule is the precedent this spec invoked to rewrite the err-multi body; it applies to a test name and a KDoc for the same reason - both are read as proof of behaviour that does not exist.",
+      "evidence": "MirrorViewModel.kt:390-399 KDoc: 'Stores the path the dialog returned and immediately re-probes.' Body (MirrorViewModel.kt:400-402) is `intent { setAdbPath(path) }` - no detectTools(), no re-poll. Test name `aChosenAdbPathIsStoredAndTheProbeRunsAgain` asserts only `stored=[/opt/homebrew/bin/adb]` (MirrorRecoveryActionsTest.kt:102-105); nothing about a probe. Test name `restartAdbReallyRestartsTheDaemonAndThenRepolls` asserts only `restarts=1`; the 'AndThenRepolls' half is both unasserted and untrue (see AF-1). MirrorRecoveryActionsTest.kt's class KDoc also claims 'FR-37 - every recovery action does real work', while RetryDiscovery is not exercised there at all.",
+      "recommendedTarget": "T-23"
+    },
+    {
+      "id": "AF-11",
+      "severity": "warn",
+      "about": "diff",
+      "ref": "T-13",
+      "issue": "Both wired recovery handlers discard the use case result, so a FAILED recovery is silent. DeviceRepositoryImpl's own KDoc states the opposite guarantee: 'Either half failing throws, so the use case reports a `Failure` rather than a button that silently did nothing.' The ViewModel drops that Failure - no side effect, no state change, no diagnostic.",
+      "evidence": "MirrorViewModel.kt:377-379 `private fun restartAdb() = intent { restartAdbServer() }` and :400-402 `private fun adbPathChosen(path: String) = intent { setAdbPath(path) }` - neither inspects the returned `Optional` (compare :434 `bootEmulator(avdName).onFailure { postSideEffect(MirrorSideEffect.BootFailed(avdName)) }`, which does). Repository claim at data-repository-impl/.../DeviceRepositoryImpl.kt:211-216. FAILURE SCENARIO: adb resolves but `kill-server` exits non-zero (stale socket owned by another user, SELinux/perm denial). The user presses 'Restart adb' repeatedly; the card never changes and never says why, which is indistinguishable from the inert button FR-37 forbids.",
+      "recommendedTarget": "T-13"
+    },
+    {
+      "id": "AF-12",
+      "severity": "info",
+      "about": "registry",
+      "ref": "state.json",
+      "issue": "No machine-readable task status exists for this spec, so nothing in the pipeline's own records could have been reconciled against reality - this audit is entirely tree-derived. state.json is stale at the Stage-3 boundary (`currentStage: \"backlog\"`, no `tasks` array, no statuses, no needsHumanReview/failed/blocked flags), there is no execution/<task-id>/report.json for any of the 32 tasks, and events.jsonl carries 11 entries of which none is a task-completion or task-flag event. The blocked tasks T-8/T-18 are recorded only in prose (HARDWARE-BLOCKED.md). `.pipeline/sdd/docs/registry/*` does not exist in this repo (known and expected).",
+      "evidence": "`.pipeline/sdd/docs/error-handling-and-recovery/state.json` ends at `steps.plan-refine`; `ls execution/` returns ten .md/.txt notes and zero report.json; `wc -l events.jsonl` -> 11, all of type start/end/note.",
+      "recommendedTarget": "T-28"
+    },
+    {
+      "id": "AF-13",
+      "severity": "info",
+      "about": "diff",
+      "ref": "T-21",
+      "issue": "An uncommitted working-tree change would be lost on merge: data-device-impl/CLAUDE.md carries this spec's ToolResolver user-path documentation and the updated test count, and is not on the integration branch. Its content is accurate - I verified both claims.",
+      "evidence": "`git status --porcelain` -> ` M data-device-impl/CLAUDE.md`. Claims verified: 24 desktopTest tests in data-device-impl (JUnit XML count: 24), and the ~6.5 s real-child daemon test (`startServerOutlivesTheHostBudgetAndKillServerDoesNot`, measured time=\"6.588\").",
+      "recommendedTarget": "T-21"
+    },
+    {
+      "id": "AF-14",
+      "severity": "info",
+      "about": "diff",
+      "ref": "T-12",
+      "issue": "Dead field assignment: `multipleDevices()` sets `canBootEmulator` on the MultipleDevices card, but MirrorErrorStage's MultipleDevices branch never reads it (correctly - the design gives err-multi no secondary action). Two lines of state computed and never consumed.",
+      "evidence": "presentation-feature-mirror/.../core/discovery/DiscoveryErrorProjection.kt:120 `canBootEmulator = avds.isNotEmpty(),` inside `multipleDevices()`; MirrorErrorStage.kt:130-155 (the MirrorErrorKind.MultipleDevices branch) passes no secondary label and never references card.canBootEmulator.",
+      "recommendedTarget": "T-12"
+    },
+    {
+      "id": "AF-15",
+      "severity": "info",
+      "about": "task",
+      "ref": "T-28",
+      "issue": "plan.json's definitionOfDone and performanceBudget both say '196 pre-existing desktop tests'; the real number is 195. This is not a defect - T-28 found and documented the off-by-one itself (a stale duplicate test-results directory inflated the first capture) - but the plan text was never corrected, so a reader comparing 231 against 196 computes the wrong delta.",
+      "evidence": "execution/T-28-baseline.md:9 `TOTAL 195 tests | failures 0 | skipped 0` and :26-35 ('Correction: this baseline was first recorded as 196 ... **195 is the real number**'). execution/baseline-tests.txt: 195 lines. My run: 231 tests, 36 new, 0 lost.",
+      "recommendedTarget": "T-28"
+    },
+    {
+      "id": "AF-16",
+      "severity": "info",
+      "about": "diff",
+      "ref": "T-21",
+      "issue": "Named performance ceiling, recorded so it is not rediscovered as a bug: once a user has set an explicit adb path, ToolResolver bypasses its probe cache in BOTH directions, so every 2 s discovery poll pays an extra `adb --version` child process forever. The bidirectional bypass is correct (the one-directional version resurrects a deleted override from the cache, and that bug was found by a mutation that passed), and the cost is paid only by users who opted in. plan.json's performanceBudget caps spawns per FAILED poll only, so this is unbudgeted rather than over budget.",
+      "evidence": "data-device-impl/src/commonMain/kotlin/data/device/impl/core/tool/ToolResolver.kt:63-68 (`if (overrides.isEmpty()) mutex.withLock { resolved[kind] }?.let { return it }` plus the matching write guard) and the in-file `ponytail:` comment naming the ceiling. Blank/unset paths are correctly excluded by `userPath()?.takeIf(String::isNotBlank)`, so the default user pays nothing.",
+      "recommendedTarget": "T-21"
+    }
+  ],
+  "gaps": {
+    "unsatisfiedAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53", "AC-54"],
+    "unsatisfiedSC": ["SC-12", "SC-13", "SC-15", "SC-16", "SC-17"],
+    "incompleteTasks": ["T-8", "T-13", "T-18", "T-24", "T-25", "T-26", "T-29"]
+  },
+  "unresolvedFlags": [
+    {
+      "task": "T-8",
+      "flag": "blocked",
+      "reason": "OPEN GAP, NOT A WAIVER - no decision was made to accept a risk, the work could not be attempted. SC-16 cold-daemon recovery end to end, H1, H2 orphan audit all require a physically attached Android device; `adb devices` is empty and `system_profiler SPUSBDataType` finds no Google device. The Pixel 8 (38031FDJH00JVF) that every measurement in this spec rests on has been unplugged. Recorded in execution/HARDWARE-BLOCKED.md with reproduction commands. The virtual-time suite is the authority for correctness by deliberate architectural design (data-device-api/CLAUDE.md), so this blocks a class of confirmation, not the correctness claim."
+    },
+    {
+      "task": "T-18",
+      "flag": "blocked",
+      "reason": "OPEN GAP, NOT A WAIVER - same cause as T-8. SC-13 physical unplug/replug with annotations staged, H3, H4. Specifically unconfirmed: that a real mid-session unplug reaches `.catch { onSessionLost(device) }`, and that ProcessRunner's orphan reaping works against real adb children (unverified since that module was written)."
+    },
+    {
+      "task": "T-24",
+      "flag": "failed",
+      "reason": "Silently skipped - no report, no note, no event, no state flag, and the wave-6 commit does not exist. Discovered only by reading the tree (AF-2). This is the most serious process failure in the run: an unimplemented task left no trace anywhere in the pipeline's records."
+    },
+    {
+      "task": "T-25",
+      "flag": "failed",
+      "reason": "Silently skipped, same as T-24 (AF-2). AdbPathChooser.kt was never written and RectifyWindow.kt:152 was never wired, so there is no file dialog on any platform."
+    },
+    {
+      "task": "T-26",
+      "flag": "blocked",
+      "reason": "Cannot be attempted: it verifies the SC-17 / H5 'Locate adb' FileDialog round trip, and the dialog does not exist (T-25, AF-2). Blocked by a missing dependency rather than by hardware."
+    },
+    {
+      "task": "T-13",
+      "flag": "needsHumanReview",
+      "reason": "Landed with a known, documented latency shortfall (GAP-fr37-immediate-repoll.md) that the audit finds is actually a total shortfall: retryDiscovery() does nothing at all (AF-1), and the only tests covering its two siblings pass by test pollution (AF-3). The decision to withdraw the discovery nonce rather than risk F-2's confirmed gate is defensible; shipping 'Retry' as a visible button with no handler is the defect FR-37 was written to forbid, and needs a human call at the gate."
+    },
+    {
+      "task": "T-29",
+      "flag": "failed",
+      "reason": "The final sweep's cross-target guard did not actually pass. Its other three clauses do (ProcessBuilder audit prints exactly one path; no dead mirror_error_*/mirror_banner_*/mirror_status_* keys; compileTestKotlinIosArm64 green for all seven modules with --rerun-tasks), but `:presentation-feature-mirror:build` is red (AF-4)."
+    }
+  ],
+  "regressionRun": {
+    "command": "./gradlew :presentation-core-styling:desktopTest :presentation-core-ui:desktopTest :presentation-feature-mirror:desktopTest :data-preference-impl:desktopTest :data-repository-impl:desktopTest :data-device-api:desktopTest :data-device-impl:desktopTest --rerun-tasks",
+    "passed": true,
+    "output": "REAL RUN, verbatim tail: \"> Task :presentation-feature-mirror:desktopTest\\n> Task :data-device-impl:desktopTest\\n\\n[Incubating] Problems report is available at: file:///Users/andrew-malitchuk/StudioProjects/rectify-kmp/build/reports/problems/problems-report.html\\n\\nBUILD SUCCESSFUL in 10s\\n98 actionable tasks: 98 executed\\nConfiguration cache entry reused.\\nEXIT=0\"\n\nJUnit XML aggregate over all seven modules' build/test-results/desktopTest: tests 231, skipped 0, failures 0, errors 0. Per module: data-device-api 41, data-device-impl 24, data-repository-impl 41, data-preference-impl 9, presentation-feature-mirror 81, presentation-core-ui 29, presentation-core-styling 6.\n\nCLAIM VERIFIED - 231 tests, 0 failures, and ZERO baseline tests lost. Name-by-name diff of the 195 fully-qualified names in execution/baseline-tests.txt against the names extracted from the fresh XML: LOST = 0, NEW = 36. A vanished test would have shown here; none did.\n\nCROSS-TARGET: compileTestKotlinIosArm64 re-run with --rerun-tasks (not UP-TO-DATE) is green for all seven modules - presentation-feature-mirror, presentation-core-ui, presentation-core-styling, data-device-api, data-repository-impl, data-preference-impl all compile; data-device-impl is NO-SOURCE because its tests are desktop-only by design (ProcessRunner/ToolResolver are desktopMain).\n\nBUT THE SUITE IS NOT GREEN EVERYWHERE - see newFailures. The mandated command above covers desktopTest only. A full `:presentation-feature-mirror:build` runs the same commonTest sources on iosSimulatorArm64 and FAILS: \"81 tests completed, 2 failed\" / \"> Task :presentation-feature-mirror:allTests FAILED\". Both failures are new in this spec and both reproduce on desktop when the class is run in isolation, which is the real diagnosis (AF-3): MirrorRecoveryActionsTest never calls useTestDispatcherForOrbit, so it only passes when a sibling test class has already reconfigured Orbit's dispatchers process-wide.\n\nAlso in that build, separately and environmentally: \"> Task :presentation-feature-mirror:linkReleaseFrameworkIosSimulatorArm64 FAILED\" with \"Daemon will be stopped at the end of the build after running out of JVM heap space\" (configured max heap 4 GiB). Not a code defect; re-runs clean on its own daemon.",
+    "newFailures": [
+      "presentation.feature.mirror.MirrorRecoveryActionsTest.restartAdbReallyRestartsTheDaemonAndThenRepolls[iosSimulatorArm64] FAILED - kotlin.AssertionError: Expected <[restarts=1]>, actual <[restarts=0]>",
+      "presentation.feature.mirror.MirrorRecoveryActionsTest.aChosenAdbPathIsStoredAndTheProbeRunsAgain[iosSimulatorArm64] FAILED - kotlin.AssertionError: Expected <[stored=[/opt/homebrew/bin/adb]]>, actual <[stored=[]]>",
+      "presentation.feature.mirror.MirrorRecoveryActionsTest.restartAdbReallyRestartsTheDaemonAndThenRepolls[desktop] FAILED when the class is run in isolation (--tests filter): 2 tests completed, 1 failed, BUILD FAILED"
+    ]
+  },
+  "aggregateDiffFindings": [
+    {
+      "id": "AD-1",
+      "category": "dead-code",
+      "location": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:364 + compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt:152",
+      "issue": "Two user-facing affordances with no implementation behind them, both reachable by a real click in the shipped desktop app: 'Retry' (handler is `= Unit`) and 'Locate adb...' (side effect posted into MirrorHost's default no-op onSideEffect). 5244 lines were added in this spec; these are the only two places where the UI promises something the code cannot do. See AF-1, AF-2."
+    },
+    {
+      "id": "AD-2",
+      "category": "inconsistent-pattern",
+      "location": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorRecoveryActionsTest.kt:49-54",
+      "issue": "One of four ViewModel test classes omits the module's own `useTestDispatcherForOrbit` harness call. The pattern is established in MirrorFakes.kt with a KDoc explaining exactly why it is mandatory ('Orbit defaults both dispatchers to real thread pools ... without this the reducer runs off the test scheduler and advanceUntilIdle() returns before any state has changed'), and the three sibling classes follow it. The omission is invisible in a full-suite run because Orbit.configureDefaults is process-global - the sibling classes fix it for this one. Any test class relying on another class's global setup is order-dependent by construction."
+    },
+    {
+      "id": "AD-3",
+      "category": "inconsistent-pattern",
+      "location": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:377,400 vs :434",
+      "issue": "Result handling is inconsistent across the ViewModel's use-case calls. `boot()` inspects the Optional and posts BootFailed on failure; the two new recovery handlers discard theirs. Same layer, same monad, opposite treatment, and the silent half is the one on an error-recovery path. See AF-11."
+    },
+    {
+      "id": "AD-4",
+      "category": "security",
+      "location": "data-device-impl/src/commonMain/kotlin/data/device/impl/core/tool/ToolResolver.kt:56-70",
+      "issue": "NO DEFECT FOUND - recorded because it is the spec's one trust boundary and I checked it adversarially. A user-chosen path arrives from outside the program and is executed. It is validated by REUSE of the single `isExecutableFile` predicate (`File(path).isFile && canExecute()`) that every ordered candidate passes through, not by a second validator that could drift; a missing path, a directory or a non-executable file falls through to the ordered list instead of erroring. No raw-argv or raw-String escape hatch was added to data-device-api (its CLAUDE.md forbids it, and `git diff` confirms HostCommand gained only parameterless cases). `grep -rln ProcessBuilder --include=\"*.kt\" . | grep -v /build/` still prints exactly one path. Four ToolResolverTest cases cover the valid-wins, unusable-falls-through, cache-bypass-on-clear and adb-only paths."
+    },
+    {
+      "id": "AD-5",
+      "category": "performance",
+      "location": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt:176-221",
+      "issue": "NO REGRESSION FOUND - the plan's 'extra process spawns per failed poll: 0 for a parse error or a non-zero exit, exactly 1 for a timeout' budget holds, and I proved it by mutation rather than by reading (see traceability FR-36). The withdrawn pre-emptive start-server is genuinely absent, so no poll pays the 15 s watchdog speculatively. The one unbudgeted cost is the per-poll `adb --version` an opted-in user path adds (AF-16)."
+    },
+    {
+      "id": "AD-6",
+      "category": "inconsistent-pattern",
+      "location": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorErrorStage.kt:46",
+      "issue": "`private val ErrorCardWidth: Dp = 460.dp` is a raw .dp literal, which plan.json's definitionOfDone forbids ('No literal Color(0x...), raw .dp or hardcoded TextStyle introduced'). Judged acceptable, not reported as a defect: it is a named private constant with a KDoc arguing the existing `NoticeMaxWidth` precedent (a reading measure the design states outright, not a step on the 4/8 dp scale), and the design does say width:460px. Recorded so the gate sees it was checked rather than missed."
+    }
+  ],
+  "registryConsistency": {
+    "consistent": true,
+    "phantomEntries": [],
+    "missingEntries": [],
+    "note": "`.pipeline/sdd/docs/registry/*` does not exist in this repository (expected and confirmed by the orchestrator), so there is nothing to be inconsistent with - no phantom entries and no missing entries by construction. The closest analogue that DOES exist, the module CLAUDE.md files, was checked instead: data-device-impl/CLAUDE.md's new claims are accurate but uncommitted (AF-13), and no other touched module's CLAUDE.md was updated or needed to be."
+  },
+  "traceability": [
+    {
+      "ref": "AC-26",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "PARTIAL. The card itself is correct and proven: `DiscoveryErrorProjectionTest.toolMissingProjectsTheInstallCommandCard` passes, MirrorErrorStage.kt:88-100 renders the install command in a CommandBlock with primary 'Locate adb...' (mirror_error_action_locate_adb) and secondary 'Retry', and the footer joins every probedPaths entry plus the envHint. Reachability verified by reading the routing: ToolMissing does NOT yield to the open picker (DiscoveryErrorProjection.kt:69 narrows the guard to Found), so the card renders on a first run with adb absent. BOTH ACTIONS ARE DEAD, which is why this is unsatisfied: 'Locate adb...' posts a side effect nobody consumes (AF-2, T-24/T-25 never implemented) and 'Retry' calls `retryDiscovery() = Unit` (AF-1). Mutation-verified strength of what IS covered: dropping probedPaths from the diagnostic builder fails T5 as the plan's clause says."
+    },
+    {
+      "ref": "AC-27",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "BEHAVIOUR CORRECT, VERIFICATION UNSOUND. The behaviour genuinely holds: MirrorIntent.RestartAdb -> RestartAdbServerUseCaseImpl -> DeviceRepositoryImpl.restartAdbServer() -> killServer() then startServer(), and the card shows ADB_RESTART_COMMAND = 'adb kill-server && adb devices', the design's own command. The label does not lie. `noDeviceFoundProjectsVersionLastPollAndAttachedCount` proves the footer (version, poll age, attached count) and 'Boot emulator instead' is hidden rather than disabled when no AVD is known. BUT the only test proving the primary action does real work, `restartAdbReallyRestartsTheDaemonAndThenRepolls`, FAILS in isolation on desktop and FAILS on iosSimulatorArm64 (AF-3), so under `verificationMethod: test` there is no reliably passing test covering it. The repository half IS solidly proven - mutation `restartAdbServer` start-before-kill killed `restartAdbServer kills the daemon before starting it`."
+    },
+    {
+      "ref": "AC-28",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "UNREACHABLE IN ITS OWN SCENARIO (AF-5). The projection is right and tested - `threeDevicesProjectOneRowPerDeviceAndATopDevicePrimary` asserts one row per device, the unauthorised row present-and-not-selectable, and primaryDeviceId = the first selectable row; MirrorErrorStage.kt:157-200 renders them through SourceListRow with `enabled = row.selectable`, inline under the card rather than as a modal, each row clicking straight through HighlightRow+Commit. But the card cannot render on a cold start with three devices attached: isPickerOpen defaults true, applyDiscovery(Found) never closes it, and errorCard() stands down for Found while the picker is open. The test forces `isPickerOpen = false` (DiscoveryErrorProjectionTest.kt:85), so it proves the projection and not the AC. GAPS-for-later-waves.md section 2 made proving reachability T-14's explicit obligation; T-14 fixed ToolMissing and PollFailed and left this one."
+    },
+    {
+      "ref": "AC-29",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "ALL BUT ONE CLAUSE SATISFIED. Copy is the design verbatim, checked character by character against inputs/design-error-states.md CORRECTION 1: 'Stream dropped' / 'Your %1$d annotations are kept on the frozen frame.' / 'Reconnect' (strings.xml), rendered through FeedbackBar at MirrorAnnotationStage.kt:335-345 as `surface` with only the dot carrying red, top-centre per the design's geometry. Non-blocking and over the frozen frame. `streamDropBannerReportsTheStagedCount` and `dropBannerIsNullWhileTheSessionIsStreaming` pass; mutating annotationCount to a constant 0 kills the first (verified). `annotationsStayEditableWhileTheSessionIsLost` proves the staged list stays usable while disconnected. UNSATISFIED CLAUSE: \"'Resolve & Send' remains clickable\" - that button is `enabled = false` at all three call sites in the repo and always has been (AF-6)."
+    },
+    {
+      "ref": "AC-53",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "CARD CORRECT, PRIMARY ACTION DEAD. `pollFailedProjectsItsOwnCardDistinctFromNoDeviceFound` passes and the distinction is real at every layer: a separate MirrorErrorKind.PollFailed, ErrorKind.Failed rather than Fixable, no command block (nothing to re-run but the poll), title/body that say adb stopped responding rather than that the bench is empty, diagnostic '<tool> poll failed - <reason>'. Rows are deliberately NOT cleared behind it. Reachable with the picker open. But its primary action is 'Retry' -> `retryDiscovery() = Unit` (AF-1), so the one thing the user can do about a failed poll does nothing."
+    },
+    {
+      "ref": "AC-54",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "BEHAVIOUR PROVEN, PROVENANCE CLAUSE OPEN (AF-7). `reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame` passes and is non-vacuous - I mutated `reconnect()` to clear `frozen` and it went red, reverted byte-exact and green. The implementation is right for the right reason: reconnect() touches neither currentFrozenFrame nor state.frozen and re-arms the transport purely by writing sessionDeviceId, reading the id back out of MirrorSession.Lost. `resumeLiveClearsTheFrozenFrameAndAnnotations` (F-4's existing test) still guards AC-51's opposite behaviour. The AC's own clause 'run against the pre-fix code first and demonstrated to fail' was NOT met; the pre-fix tree was gone, which is recorded rather than glossed."
+    },
+    {
+      "ref": "AC-55",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "INSPECTION JUDGED HONEST, and requires human confirmation at the gate as an inspection AC. execution/T-27-inspection-notes.md names every actionable surface and the shipped component behind it (AppButton for primary/secondary, SourceListRow for rows, CommandBlock's Copy, FeedbackBar's Reconnect), and its structural claim is independently checkable and true: `grep` finds no focusProperties, no clearAndSetSemantics and no FocusRequester anywhere in MirrorErrorStage.kt - it composes shipped kit atoms and nothing else, in reading order. Its refusal to write a test is the correct call and not an excuse: the only harness-free test available would assert that the components are AppButtons, which passes even when focus is broken, and the repo deliberately has no Compose UI-test harness (.claude/rules/testing.md). NOTE the one real caveat it does not draw out: AC-55 asks that every action be activatable, and two of them do nothing when activated (AF-1, AF-2) - reachable but inert."
+    },
+    {
+      "ref": "AC-56",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "INSPECTION JUDGED HONEST, and the strongest piece of work in the spec. Requires human confirmation at the gate. Claims checked one by one rather than taken: (1) 'one new colour token, same value in both palettes' - LightColor.kt:26 and DarkColor.kt:27 both `overlayScrim = Color(0xFF0C0C0E)`, the design's literal rgb(12,12,14), consumed at AnnotationOverlay.kt:97 with SCRIM_ALPHA 0.42 exactly as inputs/design-error-states.md CORRECTION 2 specifies; (2) 'StatusIndicatorState.Blocked introduced no colour' - it reuses `warnStillOff`, confirmed in the diff; (3) 'exempt by name, not silently skipped' - PaletteContrastTest now carries `every declared colour token is either swept or explicitly exempt`, reading token names out of ThemeColor's own toString(), with overlayScrim and stageDot the two named EXEMPT_TOKENS entries and a reason given for each; (4) 'light and dark preview pairs per card state' - TRUE, I checked specifically because it is the kind of claim that is usually half-true: MirrorErrorStageSample (MirrorErrorStage.kt:205-272) composes ALL FOUR card kinds in one column, rendered by MirrorErrorStagePreview (Light) and MirrorErrorStageDarkPreview (Dark). A human looking at a picture is, as the note says, the honest description of the rendering half."
+    },
+    {
+      "ref": "NFR-6",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "SATISFIED BUT UNGUARDED (AF-8). The fix is real and correct: canResumeLive = `frozen != null && session !is MirrorSession.Lost` (MirrorContract.kt:237) withholds the affordance rather than changing ResumeLive's behaviour, which is what keeps F-4's confirmed AC-51 intact, and Reconnect is offered in its place. The pure half is mutation-proven - dropping the Lost clause kills `resumeLiveIsNotOfferedWhileTheSessionIsLost` (verified by me). The COMPOSABLE half is not: mutating MirrorAnnotationStage.kt:321 `if (canResumeLive)` to `if (true)` reinstates the exact NFR-6 violation this spec exists to remove and the entire 231-test suite stays green. The spec's own remedy (hoist the gate into the pure projection layer) costs nothing and needs no new infrastructure."
+    },
+    {
+      "ref": "NFR-8",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "Same basis as AC-55, and its one assertable half is genuinely asserted: an unusable row is not selectable, covered by `threeDevicesProjectOneRowPerDeviceAndATopDevicePrimary` (the unauthorised device is present with selectable = false) and enforced at render by SourceListRow's `enabled = row.selectable`, which drops the click handler rather than merely dimming."
+    },
+    {
+      "ref": "NFR-9",
+      "verificationMethod": "inspection",
+      "satisfied": true,
+      "evidence": "PaletteContrastTest's existing sweep plus the new token-coverage test (6 tests in presentation-core-styling, all passing) plus the light/dark preview pairs. See AC-56."
+    },
+    {
+      "ref": "FR-36",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "THE ESCALATION LADDER IS GENUINELY CORRECT AND GENUINELY COVERED - this is the claim I attacked hardest and it held. I applied six mutations to DeviceRepositoryImpl.kt / DeviceCommandException.kt and every single one was killed, each file restored byte-exact afterwards:\n(a) delete `if (!failure.isTimeout()) throw failure` in listDevicesEscalating (heal on ANY failure) -> `a non-timeout failure spawns nothing and is reported as it is` FAILED. So a parse error or a non-zero exit really does spawn ZERO processes.\n(b) remove healDaemon's escalation to restartAdbServer() -> `a start-server that times out escalates to kill-server then start-server` + `a daemon that will not come back reports the real reason and keeps polling` FAILED. So a timed-out startServer really does escalate to killServer-then-startServer.\n(c) swap restartAdbServer's order to start-then-kill -> `restartAdbServer kills the daemon before starting it` + two more FAILED.\n(d) remove healDaemon's own timeout guard -> `a start-server that fails for another reason is not treated as a wedge` FAILED.\n(e) turn the second listDevices attempt into a 3x retry loop -> `a failed poll is reported and the next tick polls again` + `a failed poll does not advance the empty poll escalation` FAILED. So there really is exactly ONE escalation per poll and no loop.\n(f) reduce isTimeout() to `exitCode == null` -> `timeoutFailureIsDistinguishedFromAParseFailure` FAILED (data-device-api).\nStructural checks that back this up: TIMEOUT_REASON_PREFIX has exactly one producer (ProcessRunner.kt:85, built from the constant, not hand-typed) and one consumer (isTimeout), so rewording cannot silently disarm the ladder; the withdrawn pre-emptive start-server is genuinely absent from the code, not just from the KDoc; healDaemon's inner exception propagates out through poll() to the loop's catch, so a second failure becomes PollFailed and the next tick starts over. Carry-forward 2 was also honoured properly - DeviceDiscoveryPollingTest.kt:468 builds the watchdog text from DeviceCommandException.TIMEOUT_REASON_PREFIX, and MirrorViewModelDiscoveryTest.kt:172-177 deliberately uses a NON-watchdog reason with a comment explaining that presentation renders reasons and never classifies them. THE ONLY GAP IS THE RECORD, NOT THE COVERAGE (AF-9): no mutation or RED run for these tests is written down anywhere, while TEST-NAME-MAP.md and commit 4269a73 both claim they were proven."
+    },
+    {
+      "ref": "FR-37",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "THE SPEC'S OWN ANTI-DEAD-BUTTON REQUIREMENT IS THE ONE IT MISSED. Of the five intents the carry-forward note listed as inert and required to be replaced by real handlers: Reconnect is real and proven; RestartAdb is real but its only proof is order-dependent (AF-3); LocateAdb posts a side effect into a discard (AF-2); AdbPathChosen has no production dispatcher at all (AF-2); RetryDiscovery is still a literal no-op (AF-1). The prescribed exit check - `grep -n '\\-> Unit' MirrorViewModel.kt` must print nothing - PASSES, because the no-op was relocated from a `when` branch into `private fun retryDiscovery() = Unit`. The check was satisfied without the defect being fixed, which is the single most important thing this audit found."
+    },
+    {
+      "ref": "SC-10",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "The install-command card does render for adb-not-on-PATH, including on a first run with the picker open (the T-14 guard narrowing is what made this reachable, and `errorCardIsNullWhileThePickerIsOpenOrASessionOwnsTheStage` is mutation-proven: restoring the unconditional `if (isPickerOpen) return null` kills it). The scenario as written - the card appears - holds. Its actions do not work (AF-1, AF-2); that is scored against AC-26."
+    },
+    {
+      "ref": "SC-11",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "The kill-server card renders for NoDeviceFound, with the design's own command, and applyDiscovery closes the picker for that state so nothing competes for the stage. Covered by `noDeviceFoundProjectsVersionLastPollAndAttachedCount`."
+    },
+    {
+      "ref": "SC-12",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "The inline list is correct but is not what a user sees when they connect multiple devices - the picker is (AF-5)."
+    },
+    {
+      "ref": "SC-13",
+      "verificationMethod": "demo",
+      "satisfied": false,
+      "evidence": "REQUIRES HUMAN/HARDWARE CONFIRMATION - T-18 blocked, no device attached. The virtual-time equivalent passes (`reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame`, `annotationsStayEditableWhileTheSessionIsLost`, `sessionLostWhileFrozenKeepsTheAnnotations`), which by this project's deliberate design is the authority for correctness; what is unconfirmed is that a real mid-session unplug reaches `.catch { onSessionLost(device) }` at all. Open gap, not a waiver."
+    },
+    {
+      "ref": "SC-14",
+      "verificationMethod": "test",
+      "satisfied": true,
+      "evidence": "PollFailed renders distinctly from NoDeviceFound at every layer (kind, glyph tone, title, body, footer, presence of a command block), and the status line agrees with the card beside it - `theStatusDotMatchesTheCardItSitsBeside` is mutation-proven (changing ToolMissing's dot from Blocked to Offline kills it)."
+    },
+    {
+      "ref": "SC-15",
+      "verificationMethod": "test",
+      "satisfied": false,
+      "evidence": "The NFR-6 regression test was never demonstrated failing against pre-fix code; the pre-fix tree was already gone (AF-7). Mutation M8 reproduces the identical failure shape permanently, which is stronger as a guard and weaker as provenance, and TEST-NAME-MAP.md says so plainly rather than describing M8 as the pre-fix run."
+    },
+    {
+      "ref": "SC-16",
+      "verificationMethod": "demo",
+      "satisfied": false,
+      "evidence": "REQUIRES HUMAN/HARDWARE CONFIRMATION - T-8 blocked, no device attached. The ladder is proven under virtual time with six killed mutations (see FR-36); what is unconfirmed is a real 3.03 s cold fork being recovered by the real ladder, and ProcessRunner's orphan reaping against real adb children. Reproduction commands are written down in HARDWARE-BLOCKED.md. Open gap, not a waiver."
+    },
+    {
+      "ref": "SC-17",
+      "verificationMethod": "demo",
+      "satisfied": false,
+      "evidence": "CANNOT BE DEMONSTRATED - there is no file dialog to round-trip through. T-25 never wrote AdbPathChooser.kt and T-24 never wired MirrorHost's side-effect seam, so T-26's verification has nothing to verify (AF-2). The data-layer half beneath it is complete and proven: AdbPathPreferenceSourceTest (4 tests, key `pref_adb_path`, round trip through MapSettings) and ToolResolverTest (5 tests: valid user path wins and is recorded in probedPaths, an unusable one falls through to the ordered candidates, the cache is bypassed in both directions, and only adb consults the override)."
+    }
+  ]
+}

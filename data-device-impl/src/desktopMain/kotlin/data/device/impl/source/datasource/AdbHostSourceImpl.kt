@@ -31,4 +31,28 @@ internal class AdbHostSourceImpl(
         )
         return parseAdbDevices(output.decodeToString())
     }
+
+    /**
+     * Unlike [listDevices], a missing `adb` throws here: the caller is recovering from a
+     * failed poll, and a silent no-op would look like a successful repair.
+     *
+     * [MirrorTuning.DaemonStartTimeoutMs], not `HostCommandTimeoutMs` — the measured 3.03 s
+     * cold fork does not fit the 3 s host budget, and this is precisely where it is paid.
+     */
+    override suspend fun startServer() {
+        val path = tools.requirePath(ToolKind.Adb)
+        ProcessRunner.run(
+            argv = buildHostArgv(path, HostCommand.StartServer),
+            timeoutMs = MirrorTuning.DaemonStartTimeoutMs,
+        )
+    }
+
+    /** The ordinary host budget: this closes a local socket, it does not fork anything. */
+    override suspend fun killServer() {
+        val path = tools.requirePath(ToolKind.Adb)
+        ProcessRunner.run(
+            argv = buildHostArgv(path, HostCommand.KillServer),
+            timeoutMs = MirrorTuning.HostCommandTimeoutMs,
+        )
+    }
 }

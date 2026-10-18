@@ -1,0 +1,341 @@
+{
+  "summary": "Error Handling & Stream Recovery (F-3) wires F-2's three typed discovery-failure states (ToolMissing, NoDeviceFound, PollFailed) and the multiple-devices case into the already-shipped ErrorCard/CommandBlock/SourceListRow kit components (FR-23/FR-32/FR-34), adds the non-blocking stream-drop banner via the existing FeedbackBar molecule (FR-24), and fixes two pieces of shipped-code behaviour rather than greenfield work: F-4's merged onSessionLost path currently routes through resumeLive and clears staged annotations and the frozen frame on every involuntary disconnect, violating NFR-6 (fixed by FR-33's path split); and a reproduced-on-hardware livelock where a cold adb daemon's ~3.05s fork time exceeds the 3.000s HostCommandTimeoutMs budget, so every poll kills adb mid-fork and discovery never recovers on a cold machine (fixed by a new budgeted HostCommand.StartServer step, to be minted as FR-36 in the plan stage). Six binding decisions close both Stage-1 human gates (clarify.json, brainstorm.json), both already closed autonomously per explicit operator delegation with source `ai-proposed` recorded in each artifact's survey[] — this deliverable does not reopen either gate.",
+  "problemStatement": "Three distinct gaps, none cosmetic: (1) F-2 deliberately left ToolMissing/NoDeviceFound/PollFailed unrendered, so a tester sees nothing actionable when adb is missing, no device is found, or adb itself fails mid-poll; (2) F-4's session-loss path reuses the user-initiated Resume Live code path, so an involuntary USB disconnect silently destroys unsent annotations the moment a cable wiggles, in direct violation of NFR-6; (3) on any machine where the adb daemon is not already warm, Rectify livelocks on first launch and never discovers a device at all — reproduced on the attached Pixel 8 (38031FDJH00JVF): 41 consecutive timeouts, zero successes, recovering only when a human started the daemon from a shell. All three must be fixed for the >=95% first-attempt connect target the PRD is built around; a card that cannot be rendered, a disconnect that destroys work, and a livelock that never resolves are the inverse of that target.",
+  "confirmedRequirements": {
+    "functional": [
+      {
+        "id": "FR-23",
+        "text": "Render ErrorCard instances for DiscoveryModel's typed discovery-failure states: ToolMissing (FR-23a / AC-26), NoDeviceFound (FR-23b / AC-27), and multiple-devices-connected (FR-23c / AC-28) — wiring only, zero new kit primitives. ID collides with an unrelated FR-23 minted by app-shell-window-layout's clarify.json; this spec's FR-23 is the PRD-canonical id for the structured error card and takes precedence per the approved PRD — see traceNotes."
+      },
+      {
+        "id": "FR-24",
+        "text": "On a mid-session stream drop, show a non-blocking floating banner over the stale (frozen) mirror: 'Stream dropped' / 'Your N annotations are kept on the frozen frame', primary action 'Reconnect'; staged annotations stay pinned and 'Resolve & Send' remains usable while disconnected. ID collides with an unrelated FR-24 minted by android-device-discovery-mirroring's clarify.json; this spec's FR-24 is the PRD-canonical id for the stream-drop banner and takes precedence per the approved PRD — see traceNotes."
+      },
+      {
+        "id": "FR-32",
+        "text": "Render DiscoveryModel.PollFailed as its own ErrorCard state, distinct from NoDeviceFound — its KDoc explicitly distinguishes 'nothing learned' (poll itself failed/timed out) from 'nothing attached' (bench confirmed empty). Title/body/footer convey the tool-level failure and its reason string; primary action 'Retry'. Decision 1 (binding)."
+      },
+      {
+        "id": "FR-33",
+        "text": "Split F-4's session-termination handling into two distinct code paths: involuntary disconnect (onSessionLost) must not invoke resumeLive's clear-annotations/clear-frozen-frame logic. Instead it transitions to a 'disconnected, frame and annotations preserved' sub-state that FR-24's banner renders over. The user-initiated Resume Live control (F-4's AC-51) keeps its existing clear-and-return-to-live behavior unchanged. Decision 2 (binding)."
+      },
+      {
+        "id": "FR-34",
+        "text": "The multiple-devices-connected card's inline device list uses SourceListRow with every usable row enabled (F-2's enabled parameter) and clickable to mirror that device directly; the card's primary action is a convenience shortcut equivalent to clicking the top-listed row, not a separate flow or modal. Decision 3 (binding)."
+      },
+      {
+        "id": "FR-35",
+        "text": "The stream-drop banner's 'Reconnect' action re-attempts the capture/transport session against the same sessionDeviceId; on success the stage returns to live, the banner dismisses, and all staged annotations remain intact; on repeated failure the banner persists rather than silently disappearing. No new retry/backoff timeout — relies on the existing observeFrames .catch { onSessionLost } loop."
+      },
+      {
+        "id": "FR-36 (to be minted in plan stage)",
+        "text": "Cold-daemon livelock fix: add HostCommand.StartServer to the closed command set, run it as an explicitly budgeted step (new MirrorTuning.DaemonStartTimeoutMs, ~15s watchdog, NOT a calibration) before the first discovery poll and again after any timeout-failed poll; ListDevices keeps its existing 3s HostCommandTimeoutMs budget. Decision 4 (binding). This id is not yet minted — carried forward as an open item for Stage 2 per brainstorm.json's openDecisions; preparation does not renumber or pre-mint it."
+      }
+    ],
+    "nonFunctional": [
+      {
+        "id": "NFR-6",
+        "category": "reliability",
+        "text": "Stream-drop handling must preserve all staged annotations and the frozen frame without loss across a disconnect/reconnect cycle. CURRENTLY VIOLATED by merged F-4 code: onSessionLost's downstream path reaches resumeLive's clear logic. FR-33 is the fix."
+      },
+      {
+        "id": "NFR-8",
+        "category": "a11y",
+        "text": "Device picker, annotation popovers, and error-card actions are fully keyboard-navigable (arrow keys/Enter for pickers, Enter/Escape for popovers, Tab/Enter for error-card and banner actions)."
+      },
+      {
+        "id": "NFR-9",
+        "category": "ux",
+        "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes."
+      }
+    ]
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-26",
+      "text": "Given adb is not found on PATH (DiscoveryModel.ToolMissing), then an ErrorCard renders with the platform install command in a copyable CommandBlock, primary action 'Locate adb…', secondary action 'Retry', and a footer line listing the probed paths and $ANDROID_HOME state.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "Decision 5 (binding): 'Locate adb…' gets the full path — a new preference holding the user's adb path, ToolResolver probing it first via its existing isExecutable predicate, and a desktop-only java.awt.FileDialog opened from a MirrorSideEffect. This is the only genuinely new feature in an otherwise wiring-only spec; it did not exist anywhere in the repo before this spec."
+    },
+    {
+      "id": "AC-27",
+      "text": "Given no Android device is detected after repeated polls (DiscoveryModel.NoDeviceFound), then an ErrorCard renders with the kill-server command, primary action 'Restart adb', secondary action 'Boot emulator instead', and a footer line showing tool version, last-poll age, and attached count.",
+      "priority": "must",
+      "verificationMethod": "test"
+    },
+    {
+      "id": "AC-28",
+      "text": "Given 3 devices are connected simultaneously, then an ErrorCard renders an inline SourceListRow list of all attached devices (not a modal), every usable row enabled and clickable to mirror that device directly (an unauthorized device still renders, disabled, per F-2's A11Y-6), with the card's primary action labeled 'Mirror <top device>' as a one-click shortcut to the first-listed device.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "Decision 3 (binding). Only verifiable end-to-end with multiple physical/emulated devices simultaneously — the attached Pixel 8 alone does not cover this case unless AVDs are also booted."
+    },
+    {
+      "id": "AC-29",
+      "text": "Given a stream drops mid-session with staged annotations present, then a non-blocking banner appears over the stale (frozen) mirror reading 'Stream dropped' / 'Your N annotations are kept on the frozen frame', with a primary 'Reconnect' action; 'Resolve & Send' remains clickable and every staged annotation remains pinned and unchanged while disconnected.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "'Resolve & Send' does not exist yet (F-6/F-7 scope); the honest surrogate verified here is that annotation editing (comment/select/delete) and the staged-annotation count remain fully usable while session is Lost — the literal button is recorded as deferred, not silently satisfied. Now physically verifiable by unplugging the attached Pixel 8's USB cable mid-session with annotations staged."
+    },
+    {
+      "id": "AC-53",
+      "text": "Given adb itself fails or times out mid-poll (DiscoveryModel.PollFailed), then an ErrorCard renders distinct from the NoDeviceFound card — title/body convey a tool-level failure (not an empty device bench), footer shows the tool name and failure reason, primary action 'Retry'.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "Decision 1 (binding). Must ship alongside FR-36's livelock fix (decision 4) — without it this card's Retry action can never succeed on a cold-daemon machine, which would ship a card that lies."
+    },
+    {
+      "id": "AC-54",
+      "text": "Given staged annotations and a frozen frame exist, when the session is lost involuntarily (onSessionLost, not a user-initiated Resume Live click) and later reconnects, then every staged annotation and the frozen frame are bit-for-bit unchanged before and after the cycle; this test is run against the pre-fix code first and demonstrated to fail (annotations/frame cleared) before the fix lands, per this chain's prior vacuous-test incident.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "Decision 2 (binding) plus the explicit chain-wide constraint: the Reconnect intent does not exist pre-fix, so the red run drives the only pre-fix route back to live (MirrorIntent.ResumeLive after loss); the mutation that must turn a post-fix green test red again is routing MirrorIntent.Reconnect through resumeLive()."
+    },
+    {
+      "id": "AC-55",
+      "text": "Given any ErrorCard instance (AC-26/27/28/53) or the stream-drop banner (AC-29), then every primary/secondary/copy/row action is reachable via Tab and activatable via Enter/Space without a pointer.",
+      "priority": "must",
+      "verificationMethod": "test",
+      "verificationNote": "Decision 6 (binding): no Compose UI-test harness exists in this repo and none is introduced by this spec. AC-55 is recorded as a structural argument (AppButton/SourceListRow are ordinary focusable Compose clickables) rather than an executable assertion — stated explicitly here, not quietly satisfied."
+    },
+    {
+      "id": "AC-56",
+      "text": "Given the light and dark themes, then ErrorCard (all four states) and the stream-drop banner meet the project's existing contrast baseline (same method as presentation-core-styling's PaletteContrastTest), with no state relying on a signal color that differs between themes.",
+      "priority": "should",
+      "verificationMethod": "test",
+      "verificationNote": "No new color token is introduced by this spec, so PaletteContrastTest's existing sweep already covers ErrorCard and FeedbackBar. Recording this fact rather than adding a new contrast assertion that cannot fail avoids this chain's third vacuous test."
+    }
+  ],
+  "scope": {
+    "in": [
+      "Wiring F-2's ToolMissing/NoDeviceFound/PollFailed typed states into the shipped ErrorCard/CommandBlock (FR-23, FR-32)",
+      "Wiring the multiple-devices-connected inline device list via SourceListRow (FR-23c/FR-34/AC-28)",
+      "Stream-drop banner via the existing FeedbackBar molecule (FR-24/AC-29)",
+      "FR-33's path split: involuntary disconnect (onSessionLost) never reaches resumeLive's clear logic; new MirrorIntent.Reconnect; derived MirrorUiState.canResumeLive gates the Resume Live affordance off while disconnected",
+      "Cold-adb-daemon livelock fix: new HostCommand.StartServer + MirrorTuning.DaemonStartTimeoutMs watchdog, policy owned by DeviceRepositoryImpl's poll loop (to be FR-36 at plan time)",
+      "'Locate adb…' full implementation: adb-path preference, ToolResolver override probe, desktop java.awt.FileDialog (AC-26)",
+      "Pure Compose-free projection types (MirrorErrorCard/MirrorErrorKind, DiscoveryErrorProjection) as the assertable surface for all `test`-verified ACs",
+      "mirror_error_* / mirror_banner_* localisation keys, each with a real call site"
+    ],
+    "out": [
+      "Measurement/measure-mode (F-5), payload preview (F-6), MCP send (F-7), capture/annotation history (F-8), iOS (F-10)",
+      "Closing SEC-1 (F-2's unvalidated GetProp free text into adb shell) — stays open; this spec must not become GetProp's first production caller",
+      "New visual primitives — every element is assembled from ErrorCard/CommandBlock/SourceListRow/AppButton/StatusIndicator/DeviceChip/FeedbackBar, all already shipped",
+      "Design comps for AC-28 and FR-24 — none exist; both are derived from shipped components with invented values recorded as named constants, not pixel-measured",
+      "Introducing a Compose UI-test harness (runComposeUiTest/ui-test-junit4) — explicitly deferred to its own future spec (decision 6)",
+      "Building a literal 'Resolve & Send' button (F-6/F-7 scope) — AC-29 verifies the nearest shipped equivalent instead",
+      "Any retry/backoff cadence for the banner's Reconnect beyond 'persist on repeated failure' — no SLA specified upstream, no new tuning constant added",
+      "Reopening F-2's device-picker modal as a second surface for the multi-device case — errorCard() must return null whenever the picker is open (brainstorm openDecisions)"
+    ]
+  },
+  "constraints": [
+    {
+      "type": "test-integrity",
+      "text": "This chain has already shipped ONE VACUOUS TEST that passed against deleted code (F-4's session-loss test). Every test this spec plans must carry a stated, named mutation that demonstrably turns it red — this is explicit in the test matrix (T1..T9 in brainstorm.json's implementationSteps), not implied. AC-54's and the daemon-livelock regression test's red run must be demonstrated against pre-fix/merged code first, per events.jsonl's nfr-violation-found and defect-reproduced notes and inputs/reproduced-defect-adb-cold-start.md's 'Test that must be shown failing first' section."
+    },
+    {
+      "type": "trace-id-collision",
+      "text": "Three trace-ID collisions exist portfolio-wide, recorded in clarify.json's traceNotes and carried forward verbatim, unrenumbered: (1) SC-10/SC-11 vs F-4 (F-4's clarify.json bound these to 'Escape dismisses, delete removes' / 'Resume live after annotating'; this spec's PRD uses SC-10..SC-13 for error scenarios — both specs keep their own ids, Stage 5 must treat them as spec-scoped, not globally unique). (2) FR-23 vs app-shell-window-layout (unrelated: 'signal colors render identically in light/dark'). (3) FR-24 vs android-device-discovery-mirroring (unrelated: 'v1 screenshot-polling mirror transport'). All three are pre-existing — earlier specs minted the same numbers independently, before this spec existed. Do not renumber anything in either direction."
+    },
+    {
+      "type": "hardware-availability",
+      "text": "A real Pixel 8 (38031FDJH00JVF, Android 16, USB) is attached to the machine this spec runs on. Items previously waived in this chain as 'unverifiable without hardware' are now verifiable: the cold-daemon livelock fix end-to-end (adb kill-server + launch), ProcessRunner's real timeout/orphan/drain behaviour under a live adb, AC-29/AC-54 physically (unplug USB mid-session with staged annotations, confirm banner + preservation + Reconnect), the USB re-enumeration serial-change edge case on replug, and real footer values for AC-26/AC-27 (probedPaths, adb version, last-poll age, attached count). AC-28's 3-device case remains unverifiable on this one handset alone unless AVDs are also booted alongside it."
+    },
+    {
+      "type": "tech",
+      "text": "No literal Color(0x...), raw .dp, or hardcoded TextStyle at any new call site; invented values (banner geometry, daemon-start watchdog) are named constants or Theme tokens."
+    },
+    {
+      "type": "tech",
+      "text": "commonTest names: plain camelCase only — a backtick name with a comma/apostrophe/colon compiles on the JVM but fails compileTestKotlinIosArm64 (already broke the repo build once, per F-1)."
+    },
+    {
+      "type": "tech",
+      "text": "withTimeoutOrNull only, never withTimeout, for any reconnect-retry or daemon-start logic — resultLauncher's existing CancellationException handling depends on this."
+    },
+    {
+      "type": "tech",
+      "text": "Every new user-facing string gets an actually-referenced mirror_*-style localisation key; no dead keys (F-4's T-12 precedent)."
+    },
+    {
+      "type": "business",
+      "text": "Keep the existing 196 desktop tests green; this spec adds tests, it does not destabilize the suite. Run per-module (Kotlin daemon capped at 3GB), then a cross-target build (compileTestKotlinIosArm64) before declaring done."
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "AS-14",
+      "text": "PollFailed gets its own distinct ErrorCard state rather than folding into NoDeviceFound (decision 1 / FR-32)."
+    },
+    {
+      "id": "AS-15",
+      "text": "F-4's resumeLive (user-initiated Resume Live button, AC-51) keeps clearing annotations/frame unchanged; only the involuntary onSessionLost path is rerouted away from it (decision 2 / FR-33)."
+    },
+    {
+      "id": "AS-16",
+      "text": "AC-28's device list rows are individually clickable/enabled to mirror that device directly, with the primary button as a convenience shortcut to the top row, not a separate confirm step (decision 3 / FR-34)."
+    },
+    {
+      "id": "AS-17",
+      "text": "The banner's 'N annotations' count reads the same staged-annotation list F-4 already exposes to the toolbar's CounterBadge/stagedCounter slot — no new counting logic."
+    }
+  ],
+  "dependencies": [
+    {
+      "on": "F-2 (android-device-discovery-mirroring)",
+      "note": "DiscoveryModel's ToolMissing/NoDeviceFound/PollFailed typed states; SourceListRow's enabled parameter for AC-28; ToolResolver's isExecutable predicate reused for AC-26's path validation."
+    },
+    {
+      "on": "F-4 (drag-annotate-frozen-frame)",
+      "note": "MirrorViewModel.onSessionLost/resumeLive, the Orbit staged-annotation state, and the separate frozen-bitmap StateFlow that FR-33 must stop routing through resumeLive's clear path on involuntary disconnect. MirrorSession.Lost(deviceId) already carries the id FR-35's Reconnect needs."
+    },
+    {
+      "on": "presentation-core-ui kit",
+      "note": "ErrorCard, CommandBlock, SourceListRow, AppButton, StatusIndicator, DeviceChip, FeedbackBar — all reused as-is, zero new primitives."
+    },
+    {
+      "on": "data-device-api / data-device-impl / data-repository-impl",
+      "note": "New HostCommand.StartServer case, AdbHostSource.startServer(), and the daemon-start policy in DeviceRepositoryImpl's poll loop — pulls three data-layer modules into a spec otherwise framed as presentation wiring; explicit risk, see openRisks."
+    },
+    {
+      "on": "data-preference-impl",
+      "note": "New preference for AC-26's user-chosen adb path; multiplatform-settings-test gives a hardware-free round-trip test."
+    },
+    {
+      "on": "attached hardware",
+      "note": "Pixel 8 (38031FDJH00JVF, Android 16, USB) — see hardware-availability constraint."
+    }
+  ],
+  "chosenApproach": "Three loosely-coupled fixes in three layers that deliberately share no code path: (1) DATA LAYER — add HostCommand.StartServer to the closed command set, run it through the existing single ProcessRunner spawn site under a new MirrorTuning.DaemonStartTimeoutMs watchdog (not a calibration), with the policy of *when* to call it (before the first poll, and after any timeout-failed poll) living in DeviceRepositoryImpl's poll loop so it is testable under virtual time with no hardware. (2) PRESENTATION STATE — one new MirrorIntent.Reconnect that reads the device id out of the existing MirrorSession.Lost(deviceId) and resumes streaming without touching currentFrozenFrame or state.frozen; resumeLive() is left byte-for-byte unchanged so F-4's AC-51 survives; a derived MirrorUiState.canResumeLive hides the work-destroying Resume Live button while disconnected. (3) PRESENTATION PROJECTION — a pure, Compose-free DiscoveryErrorProjection.errorCard() maps DiscoveryModel states to a MirrorErrorCard value type (kind/command/diagnostic/rows/primaryDeviceId), rendered by a new stateless MirrorErrorStage through the already-shipped ErrorCard/SourceListRow; the stream-drop banner reuses FeedbackBar's existing Preview verbatim. This makes every `test`-verified AC assertable in commonTest without a UI-test harness, at the honest cost of AC-55/AC-56's rendering half being a structural argument rather than an assertion.",
+  "rationale": "Each of the six decisions was chosen because the alternative either reintroduced the exact bug class it exists to fix, contradicted the codebase's own documented semantics, or guessed a per-machine constant where a structural fix was available: PollFailed gets its own card because F-2's KDoc explicitly separates its meaning from NoDeviceFound's and ErrorCard supports a new branch at zero new-primitive cost; the disconnect/resumeLive split is the smallest change that makes the two user intents (deliberate discard vs involuntary loss) structurally impossible to conflate again, which is how the NFR-6 violation happened in the first place; AC-28's clickable-rows design matches the PRD's explicit 'not a modal' instruction and reuses F-2's already-built SourceListRow.enabled; the daemon-start watchdog is the only option where the new number is a bound on 'something is wrong' rather than a per-machine guess (raising HostCommandTimeoutMs fails on the next slower host and also slows every other command's failure reporting); 'Locate adb…' gets the full native-dialog implementation because the cheap half (preference + resolver override) is identical in cost to a half-measure, and the comp's wording plainly implies a chooser; and the pure-projection verification strategy is the only one that makes the `test`-labelled ACs genuinely assertable today without the scope explosion and desktop-focus-traversal rabbit hole of introducing a UI-test harness mid-spec.",
+  "architectureOverview": "DATA: HostCommand.StartServer (DeviceArgv.kt) -> AdbHostSource.startServer()/AdbHostSourceImpl runs it through ProcessRunner under MirrorTuning.DaemonStartTimeoutMs; DeviceRepositoryImpl.observeDiscovery's poll loop calls it once before the first poll and again after any TIMEOUT-classified poll failure (not a parse error), then continues polling ListDevices at its existing 3s budget. PRESENTATION STATE: MirrorIntent.Reconnect + MirrorViewModel.reconnect() re-open the capture loop on MirrorSession.Lost's carried deviceId; resumeLive() is untouched; MirrorUiState.canResumeLive = frozen != null && session !is Lost gates the UI. A failed reconnect re-enters the existing observeFrames().catch { onSessionLost(device) }, putting state back to Lost with no new retry/backoff machinery — FR-35's persistence requirement falls out for free. PRESENTATION PROJECTION: a new pure file core/discovery/DiscoveryErrorProjection.kt exposes MirrorUiState.errorCard(): MirrorErrorCard?, a Compose-free value type (kind, command, diagnostic, rows, primaryDeviceId) consumed by a new stateless MirrorErrorStage composable that renders ErrorCard (+ SourceListRow for AC-28), centred on the dotted stage per comps 04/05, with light/dark @Preview pairs and stringResource-resolved copy. The stream-drop banner is an existing FeedbackBar instance dropped into MirrorAnnotationStage's existing overlay Box, gated on session is MirrorSession.Lost, with a named alignment constant and the staged-annotation count string.",
+  "techStack": [
+    {
+      "area": "Error/diagnostic UI",
+      "choice": "Existing ErrorCard + CommandBlock + SourceListRow, driven by a pure MirrorErrorCard spec",
+      "reason": "Zero new primitives and the spec type is what makes `test`-verified ACs possible without a UI harness."
+    },
+    {
+      "area": "Stream-drop banner",
+      "choice": "Existing FeedbackBar in the existing overlay Box",
+      "reason": "Its shipped preview is literally the required banner; authoring a new organism would rebuild what exists."
+    },
+    {
+      "area": "Session state",
+      "choice": "Orbit MVI, one new intent (Reconnect) + one new derived property (canResumeLive)",
+      "reason": "Matches the module's established shape; annotations already live in reduced state and pixels already live outside it."
+    },
+    {
+      "area": "Reconnect retry",
+      "choice": "None — user-driven only, relying on the existing .catch -> Lost loop",
+      "reason": "Answers the open 'retry cadence' question with no new tuning constant and nothing to tune wrong."
+    },
+    {
+      "area": "Daemon start",
+      "choice": "New HostCommand case + a watchdog budget, run through ProcessRunner",
+      "reason": "The sanctioned extension point for the closed command set; keeps the single-spawn-site invariant intact."
+    },
+    {
+      "area": "Tests",
+      "choice": "kotlin.test in commonTest + kotlinx-coroutines-test virtual time; no new dependency",
+      "reason": "testing.md wires kotlin.test once via the convention plugins; the poll-loop and ViewModel harnesses already exist."
+    },
+    {
+      "area": "File chooser",
+      "choice": "java.awt.FileDialog in desktopMain, reached via a MirrorSideEffect",
+      "reason": "Native platform feature; keeps commonMain free of java.* and the feature module free of a new dependency."
+    },
+    {
+      "area": "Strings",
+      "choice": "mirror_* keys in presentation-core-localisation, resolved in the content layer",
+      "reason": "Kit components take copy as parameters and never depend on localisation; no dead keys (F-4 T-12 precedent)."
+    }
+  ],
+  "openRisks": [
+    {
+      "text": "The daemon-start fix pulls three data-layer modules into a spec scoped as presentation wiring; deferring it instead ships AC-53's PollFailed card with a 'Retry' button that can never succeed on a cold machine.",
+      "likelihood": "high",
+      "impact": "high",
+      "mitigation": "Decision 4 (binding) keeps the fix in scope. If a future stage defers it anyway, AC-53 must ship with a recorded waiver naming the livelock, not silently."
+    },
+    {
+      "text": "AC-54's 'demonstrated failing first' is awkward because the Reconnect intent does not exist pre-fix, so the final test cannot be run against merged code verbatim.",
+      "likelihood": "high",
+      "impact": "medium",
+      "mitigation": "Red run drives the only pre-fix route (MirrorIntent.ResumeLive after loss); reproducible mutation for future readers: point Reconnect at resumeLive() and the test must go red."
+    },
+    {
+      "text": "'Locate adb…' is the only genuinely new feature in a spec framed as wiring and spans a preference, a resolver change, and a desktop dialog — risk of blowing the effort estimate if discovered late.",
+      "likelihood": "medium",
+      "impact": "high",
+      "mitigation": "Scoped now (decision 5); full path chosen and priced in Stage 1 rather than Stage 3."
+    },
+    {
+      "text": "Touching MirrorAnnotationStage's overlay Box (banner + the Resume Live gate) risks F-4's drag/popover behaviour and its tests.",
+      "likelihood": "medium",
+      "impact": "medium",
+      "mitigation": "Both changes are additive siblings inside the existing Box; run presentation-feature-mirror:desktopTest before and after and diff the pass list."
+    },
+    {
+      "text": "A new commonTest name containing a comma/apostrophe/colon passes desktopTest and breaks compileTestKotlinIosArm64 — has already broken this repo's build once.",
+      "likelihood": "medium",
+      "impact": "medium",
+      "mitigation": "Plain camelCase names only; run the iOS compile-test targets before declaring done."
+    },
+    {
+      "text": "The multi-device ErrorCard and the shipped DevicePickerPanel become two competing surfaces for the same decision; a user could see both or oscillate between them.",
+      "likelihood": "medium",
+      "impact": "medium",
+      "mitigation": "errorCard() returns null whenever isPickerOpen is true, settling the trigger structurally (brainstorm openDecisions)."
+    },
+    {
+      "text": "DaemonStartTimeoutMs is read by a later maintainer as a measured cold-start duration and 'tuned down' to match their machine, reintroducing the livelock.",
+      "likelihood": "medium",
+      "impact": "high",
+      "mitigation": "KDoc states watchdog-not-calibration explicitly, pointing to inputs/reproduced-defect-adb-cold-start.md's measurements."
+    },
+    {
+      "text": "The banner's N-annotation string ellipsizes in FeedbackBar's maxLines = 1 detail slot at narrow stage widths, so AC-29's copy is present in the tree but unreadable on screen.",
+      "likelihood": "medium",
+      "impact": "low",
+      "mitigation": "Shorten the copy ('3 annotations kept') before touching the shipped component; verify in the light/dark @Preview pair."
+    },
+    {
+      "text": "'Every row enabled' (AC-28/FR-34) taken literally would make an unauthorized device clickable, contradicting F-2's A11Y-6.",
+      "likelihood": "low",
+      "impact": "medium",
+      "mitigation": "Read AC-28 as 'every usable row'; assert the unauthorized row renders disabled."
+    }
+  ],
+  "openQuestions": [
+    "Exact retry/backoff cadence for the banner's Reconnect action beyond 'persist on repeated failure' is left to implementation; no SLA was specified upstream (resolved design-wise as 'none' — see techStack, but recorded here as it remains unspecified by the PRD itself).",
+    "SEC-1 (F-2's unvalidated GetProp) remains open; revisit only if a later spec needs device properties.",
+    "Exact copy for PollFailed's title/body is not specified upstream (no design comp); implementation should pick plain language distinguishing 'adb itself failed' from 'no device found' and record the string as a named mirror_* key.",
+    "Whether the cold-daemon fix needs its own FR id: recommendation (brainstorm.json openDecisions) is to mint FR-36 at plan time, kept distinct from FR-32 (a rendering requirement) since the livelock fix is a behavioural one — conflating them would make an AC-53 waiver unreadable if ever needed.",
+    "How 'timed out' vs 'genuinely failed' on DeviceCommandException (both carry exitCode == null) should be represented so the daemon-restart trigger fires only on timeouts: recommendation is a single matcher in the repository against the existing timeout message shape, promoted to a typed field only if a second call site needs the distinction.",
+    "Stream-drop banner scope when nothing is frozen (dropped while live, zero annotations): recommendation is banner-only-over-a-frozen-frame, matching AC-29 verbatim; today's NoSignal + StatusIndicatorState.Dropped behaviour already covers the live-drop case and is out of this spec's scope.",
+    "When exactly the multiple-devices ErrorCard should appear relative to the existing DevicePickerPanel: recommendation is only when the picker is closed and >1 usable device is attached with no active session, with errorCard() returning null whenever isPickerOpen is true.",
+    "MirrorTuning.CaptureFloorMs remains unmeasured; the attached Pixel 8 makes its documented 5-step measurement harness runnable for the first time — out of scope for F-3, recorded as newly-unblocked rather than re-waived as unverifiable-without-hardware."
+  ],
+  "readyForPlan": true,
+  "proposedSurvey": [],
+  "artifacts": {
+    "input": "input.json",
+    "clarify": "clarify.json",
+    "brainstorm": "brainstorm.json"
+  },
+  "survey": [
+    {
+      "question": "This Preparation deliverable consolidates input.json, clarify.json (6 trace IDs resolved, 3 survey answers) and brainstorm.json (3 survey answers) for error-handling-and-recovery (F-3) into one sign-off-ready package: 8 acceptance criteria (AC-26/27/28/29/53/54/55/56), 6 functional requirements (FR-23/24/32/33/34/35, plus FR-36 flagged for minting at plan time), 3 NFRs (NFR-6/8/9), and the 6 binding decisions listed above (PollFailed's own card, the disconnect/resumeLive split, AC-28's clickable rows, the daemon-start watchdog fix, the full 'Locate adb…' implementation, and the pure-projection verification strategy). Both Stage-1 gates are closed with source ai-proposed per explicit operator delegation; three portfolio-wide trace-ID collisions and the vacuous-test constraint are carried forward unrenumbered. Does this consolidated package unlock Stage 2 (Plan)?",
+      "options": [
+        "A) Confirmed as compiled — proceed to Stage 2 (Plan) with readyForPlan=true.",
+        "B) Hold — re-open one or more of the six binding decisions before proceeding.",
+        "C) Hold — scope needs adjustment (e.g. split the cold-daemon fix into its own spec, per the recorded risk) before proceeding."
+      ],
+      "answer": "A) Confirmed as compiled — proceed to Stage 2 (Plan) with readyForPlan=true.",
+      "source": "ai-proposed",
+      "rationale": "All six underlying decisions were already closed by the orchestrator taking the recommended option under explicit operator delegation (source: ai-proposed in both clarify.json and brainstorm.json survey[] arrays); this step performs no new design work, only consolidation. Every open item that remains (FR-36 minting, the timeout-vs-failure matcher, banner scope when nothing is frozen, the multi-device/picker trigger) is recorded as a non-blocking openQuestion with a stated recommendation, feeding Stage 2 rather than blocking it. Holding here would only be warranted by a genuinely new objection to one of the six already-closed decisions, which this compilation step is not positioned to raise on its own authority. || Autonomous run: operator explicitly delegated every gate decision and asked not to be involved. Closed on the agent's recommended option; rationale recorded here for post-hoc review."
+    }
+  ]
+}

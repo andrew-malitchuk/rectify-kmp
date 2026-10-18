@@ -1,0 +1,150 @@
+{
+  "verdict": {
+    "verdict": "complete-with-waivers",
+    "tasks": [
+      { "id": "T-1", "status": "done", "satisfiesAC": ["AC-53", "AC-27"] },
+      { "id": "T-2", "status": "done", "satisfiesAC": ["AC-53"] },
+      { "id": "T-3", "status": "done", "satisfiesAC": ["AC-53"] },
+      { "id": "T-4", "status": "done", "satisfiesAC": ["AC-53", "AC-27"] },
+      { "id": "T-5", "status": "done", "satisfiesAC": ["AC-53"] },
+      { "id": "T-6", "status": "done", "satisfiesAC": ["AC-27"] },
+      { "id": "T-7", "status": "done", "satisfiesAC": ["AC-53"] },
+      { "id": "T-8", "status": "done", "satisfiesAC": ["AC-53"] },
+      { "id": "T-9", "status": "done", "satisfiesAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53", "AC-54"] },
+      { "id": "T-10", "status": "done", "satisfiesAC": ["AC-54"] },
+      { "id": "T-11", "status": "done", "satisfiesAC": ["AC-54"] },
+      { "id": "T-12", "status": "done", "satisfiesAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53"] },
+      { "id": "T-13", "status": "done", "satisfiesAC": ["AC-26", "AC-27", "AC-53"] },
+      { "id": "T-14", "status": "done", "satisfiesAC": ["AC-26", "AC-27", "AC-28", "AC-53"] },
+      { "id": "T-16", "status": "done", "satisfiesAC": ["AC-29", "AC-54"] },
+      { "id": "T-17", "status": "done", "satisfiesAC": ["AC-29"] },
+      { "id": "T-18", "status": "skipped", "satisfiesAC": [] },
+      { "id": "T-19", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-20", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-21", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-22", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-23", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-24", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-25", "status": "done", "satisfiesAC": ["AC-26"] },
+      { "id": "T-27", "status": "done", "satisfiesAC": ["AC-55", "AC-56"] },
+      { "id": "T-28", "status": "done", "satisfiesAC": [] },
+      { "id": "T-30", "status": "done", "satisfiesAC": ["AC-56"] },
+      { "id": "T-31", "status": "done", "satisfiesAC": ["AC-56"] },
+      { "id": "T-32", "status": "done", "satisfiesAC": [] }
+    ],
+    "unsatisfied": {
+      "acceptanceCriteria": [],
+      "scenarios": ["SC-15"],
+      "tasks": []
+    },
+    "waivers": [
+      {
+        "item": "NFR-1: ~150ms capture-loop budget",
+        "reason": "Measured on the attached Pixel 8: adb screencap mean 2665ms / 0.4fps (raw screencap 1166ms / 0.9fps) — the shipped polling transport cannot be tuned into NFR-1's range. Transport replacement is its own decision, explicitly out of F-3's scope per plan.json constraints/scope.out. No code in this spec touches the capture loop or assumes a better rate.",
+        "acceptedBy": "plan (ai-proposed, not human-reviewed this run)"
+      },
+      {
+        "item": "AC-55/AC-56: verificationMethod downgraded from preparation's literal `test` to `inspection`",
+        "reason": "No Compose UI-test harness exists in this repo and introducing one is a real infrastructure decision this spec deliberately defers. Accepted by the Stage-2 judge. T-27-inspection-notes.md supplies the inspection: both are structural/reading-based claims (shipped kit atoms, no focus overrides; one new fixed-value colour token plus an exempt-by-name contrast sweep) that could not honestly be strengthened into an assertion that proves what the AC actually cares about without that harness.",
+        "acceptedBy": "stage-2 judge (ai-proposed, not human-reviewed this run)"
+      },
+      {
+        "item": "AC-29: 'Resolve & Send remains clickable' clause",
+        "reason": "The button is hard-disabled (enabled = false) at all three call sites in the repo — pre-existing F-1/F-2 placeholder state, untouched by this spec and out of its scope (F-6/F-7). plan.json's scope.out explicitly records AC-29 as verified against 'the nearest shipped equivalent' (annotation editing + stagedCount usable while Lost) rather than literal button clickability, and records the deferred button rather than quietly closing it. Every other clause of AC-29 (banner copy, Reconnect, annotations pinned/editable while disconnected) is satisfied and test-covered.",
+        "acceptedBy": "plan (ai-proposed, not human-reviewed this run)"
+      },
+      {
+        "item": "T-18: SC-13 physical unplug/replug + AC-29/NFR-6's real-hardware confirmation",
+        "reason": "T-18's five steps are a mouse drag on the annotation stage and a hand on a USB cable — not performable from a shell, no UI-test harness exists, and macOS Screen Recording was denied. Every behavioural claim it would confirm is already covered by virtual-time tests driving the real .catch{onSessionLost} through MirrorFakes.failStream, which breaks an already-running collection (the property that makes them non-vacuous). What is genuinely given up: that a PHYSICAL unplug produces the same Lost a fake does, and the replug serial-change edge where FR-35 requires the banner to persist rather than silently recover. Manual steps are written down in execution/T-18-status.md.",
+        "acceptedBy": "human (operator, explicit decision at the Stage-5 gate, events.jsonl human-decision entry 2026-10-16T11:18:26Z)"
+      },
+      {
+        "item": "NFR-6's composable-level gates (Resume Live withdrawal, zero-annotation scrim) have no commonTest regression guard",
+        "reason": "Both `if (canResumeLive)` at MirrorAnnotationStage.kt:321 and `dimmed = frozen != null && marks.isNotEmpty()` at :286 live inside a @Composable with no Compose UI-test harness in this repo; mutating either back to the pre-fix shape (independently re-verified by me, not just read) leaves all 235 tests green. The underlying predicates ARE mutation-proven pure (`resumeLiveIsNotOfferedWhileTheSessionIsLost`, ScrimGateTest), and the dropped state is covered by a light/dark @Preview pair — but the WIRING between predicate and composable render is unproven by any assertion that can fail. This is accepted as a known ceiling for this spec rather than fixed, because fixing it needs either a new UI-test harness or hoisting both gates into the pure projection layer (DiscoveryErrorProjection-style) — both are real follow-on work, not a same-spec fix. T-16-coverage-honest.md recommends the hoist as the cheaper option for reflection.",
+        "acceptedBy": "plan/execution (ai-proposed; recorded as an open gap by the execution agent, elevated to an accepted ceiling for this verdict because no human-accessible path exists in this spec to close it without new infrastructure)"
+      },
+      {
+        "item": "Hard-wedge adb daemon recovery is unsolved (T-8's wedged-daemon finding)",
+        "reason": "adb kill-server works by asking the daemon to exit over its own socket; a daemon that cannot answer `adb devices` cannot answer that either, so the ladder's step 3 (KillServer then StartServer) classifies and escalates on a hard wedge correctly every time but cannot clear it. Confirmed on real hardware (SIGSTOP approximation): ~24s/cycle, falls back to PollFailed with the real reason, never loops silently. No AC or SC requires full recovery from a hard wedge — FR-36's own prose overclaims this slightly ('the only sequence that recovers a wedged daemon'), but the tested/shipped contract is escalate-correctly-then-report, which is what ships. Escalating to killing the daemon pid directly was considered and explicitly rejected as a bigger decision than this spec should make unilaterally.",
+        "acceptedBy": "plan/execution (ai-proposed; discovered during T-8, not decided by a human this run, but blocks no AC/SC text as written)"
+      }
+    ],
+    "openChangeRequests": [],
+    "humanRemarks": [
+      "Operator delegated every Stage-5 gate decision except one: T-18 was explicitly skipped on direct operator instruction (events.jsonl, 2026-10-16T11:18:26Z) — the only human-made call in this entire run. Every other gate (preparation, plan, backlog) closed on the agent's recommended option and is recorded as `ai-proposed`, not human-reviewed.",
+      "I independently re-verified, rather than trusting the audit/commit messages: (1) the AF-1 dead-button exit check now genuinely prints nothing because retryDiscovery() dispatches a real refresh, not because the no-op moved house again — confirmed by reading the handler and its test retryDiscoveryNudgesThePollLoop; (2) AF-2's 'Locate adb…' now opens a real java.awt.FileDialog (compose-application/.../core/chooser/AdbPathChooser.kt exists, RectifyWindow.kt:159 wires onSideEffect with the intent sink); (3) AF-3's MirrorRecoveryActionsTest now calls useTestDispatcherForOrbit and I reran it in isolation (--tests filter) — it passes alone, where the audit's version failed; (4) AF-4's cross-target guard: I ran `:presentation-feature-mirror:build :data-repository-impl:build --rerun-tasks` myself (not UP-TO-DATE) and iosSimulatorArm64Test actually executed for both modules with 0 failures, matching the desktop counts (83 and 43 tests). All four 'error'-severity audit findings are genuinely fixed, not just reported fixed.",
+      "One correction to my own briefing, found by reading code rather than notes: execution/GAP-fr37-immediate-repoll.md says 'T-retry is NOT WRITTEN' and TEST-NAME-MAP.md repeats it — both predate commit 34b87d5. I found a CONFLATED Channel-based refreshDiscovery() in DeviceRepositoryImpl.observeDiscovery's own poll loop (a `withTimeoutOrNull(DiscoveryPollMs) { refreshRequests.receive() }` race), exactly the fix GAP-fr37-immediate-repoll.md's own recommendation describes, with two new mutation-killed tests ('a refresh request cuts the poll interval short', 'a refresh requested between polls is not lost') added in 34b87d5. FR-37's immediacy half is therefore implemented and proven, not an open gap — the stale notes should not be read as current.",
+      "AC-28/SC-12 was re-verified as reachable, not merely reasoned about: errorCard()'s picker-guard now only yields to an open picker for DiscoveryModel.Found (ToolMissing and PollFailed never did, per the pre-existing T-14 guard), and a new mutation-proven test (theAmbiguityCardIsReachableOnceThePickerIsClosed) asserts the card appears once the picker is closed with 2+ usable devices present. This matches SC-12's own literal steps ('...and close the picker'), so I judge this a genuine scope clarification rather than a cosmetic one, and mark AC-28 satisfied.",
+      "Hard open gaps that remain genuinely open, confirmed by me rather than taken on faith: the NFR-6 composable-level gate (Resume Live withdrawal, scrim dimming) has zero commonTest coverage of its wiring — I re-read both call sites and the structure is unchanged from T-16-coverage-honest.md's description; T-11's pre-fix RED run for AC-54/T2 is unrecoverable (the pre-fix tree no longer exists; a permanent mutation guard (M8) stands in its place and is honestly distinguished from a pre-fix transcript in TEST-NAME-MAP.md and GAPS-for-later-waves.md); hard-wedge daemon recovery is a discovered, not decided, limitation.",
+      "AF-11 (restartAdb()/adbPathChosen() discard their use case's Result/Failure silently, unlike boot()'s .onFailure{} pattern) remains unfixed. It is a warn-severity finding, not one of the four error-severity items the two fix commits targeted, and it does not unsatisfy any AC's literal text — recorded here for the next wave rather than as a verdict blocker.",
+      "Trace-ID collisions (SC-10/SC-11 vs F-4, FR-23 vs app-shell-window-layout, FR-24 vs android-device-discovery-mirroring) and the 195-test baseline off-by-one correction are pre-existing, already-documented, and not defects — carried forward unchanged per plan.json's own instruction not to renumber."
+    ],
+    "changelogRef": "changelog.json"
+  },
+  "changelog": {
+    "entries": [
+      {
+        "task": "T-1..T-8",
+        "change": "Closed-set HostCommand.StartServer/KillServer + buildHostArgv branches; MirrorTuning.DaemonStartTimeoutMs (15s watchdog, KDoc states watchdog-not-calibration); DeviceCommandException.TIMEOUT_REASON_PREFIX/isTimeout() shared classifier binding ProcessRunner's producer to DeviceRepositoryImpl's consumer; AdbHostSource.startServer()/killServer() through the single ProcessRunner spawn site; DeviceRepositoryImpl's 4-step budgeted escalation ladder (ListDevices -> on timeout only: StartServer -> on wedge: KillServer+StartServer -> PollFailed); DeviceRepository.restartAdbServer() + RestartAdbServerUseCase for AC-27's 'Restart adb'. Hardware-verified on the Pixel 8 (38031FDJH00JVF): cold daemon recovers in one cycle (41 timeouts -> 1), zero orphaned adb/screencap processes after close, SIGSTOP-wedge escalates correctly but cannot clear a daemon that cannot answer its own kill-server request (recorded as an open limitation, not a defect).",
+        "reason": "FR-36 fixes a reproduced, deterministic livelock (cold adb fork measured at a fixed 3.03s, 30ms over the pre-existing 3000ms budget) that previously never recovered without a manual shell command.",
+        "crRef": ""
+      },
+      {
+        "task": "T-9..T-15",
+        "change": "MirrorContract.kt: Reconnect/RetryDiscovery/RestartAdb/LocateAdb/AdbPathChosen intents, canResumeLive derived property, MirrorErrorCard/MirrorErrorKind/MirrorDropBanner value types. DiscoveryErrorProjection.kt: pure errorCard(nowMs)/dropBanner() projections, routed only inside MirrorContent's existing NoSignal branch (zero new MirrorStage case, F-2's shipped `stage` property untouched). MirrorErrorStage.kt renders all four error kinds through shipped ErrorCard/CommandBlock/SourceListRow with light/dark @Preview pairs, copy checked verbatim against inputs/design-error-states.md, with one deliberate copy deviation (err-multi's body) recorded as false-per-code rather than shipped as the design's literal (unverifiable) promise.",
+        "reason": "FR-23/FR-32/FR-34 wire F-2's three previously-unrendered typed discovery-failure states plus the multi-device case into already-shipped kit components.",
+        "crRef": ""
+      },
+      {
+        "task": "T-10, T-11",
+        "change": "MirrorViewModel.reconnect() added as a sibling to resumeLive() (byte-for-byte unchanged), touching neither currentFrozenFrame nor state.frozen. canResumeLive gates the Resume Live affordance off while Lost. Tests: reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame (mutation-proven against routing Reconnect through resumeLive), resumeLiveClearsTheFrozenFrameAndAnnotations (F-4's existing AC-51 guard, annotated with its new dual duty), resumeLiveIsNotOfferedWhileTheSessionIsLost.",
+        "reason": "FR-33 fixes NFR-6, violated by merged F-4 code: the only affordance offered to a disconnected user destroyed their staged annotations. Two intents / two handlers by design, to stop the two concerns (involuntary loss vs. user-initiated reset) from ever being conflated again.",
+        "crRef": ""
+      },
+      {
+        "task": "T-16, T-17, T-30, T-31, T-32",
+        "change": "FeedbackBar stream-drop banner wired into MirrorAnnotationStage's overlay Box with the design's verbatim copy ('Stream dropped' / 'Your N annotations are kept on the frozen frame.' / 'Reconnect', no zero-suppression, no singular variant — plan.json's original shortened-copy deviation reverted on the authoritative design file's arrival), top-centered per the design's geometry. Zero-annotation scrim fix (dimmed gated on marks.isNotEmpty() too). overlayScrim colour token (one fixed value, both palettes) + StatusIndicatorState.Blocked (reuses warnStillOff, no new colour) as a flagged, deliberate presentation-core-ui/-styling scope correction. Status line now agrees with the card beside it (theStatusDotMatchesTheCardItSitsBeside, mutation-proven).",
+        "reason": "FR-24/FR-35/AC-29, plus two scope corrections surfaced by the design file arriving after plan.json was finalised.",
+        "crRef": ""
+      },
+      {
+        "task": "T-19..T-26",
+        "change": "pref_adb_path preference + AdbPathPreferenceSource; ToolResolver grows a user-path seam (bidirectional cache bypass once a user path is set, a named/flagged performance ceiling); MirrorSideEffect.LocateAdb; AdbPathChooser.kt (java.awt.FileDialog, not JFileChooser, for a native-feeling macOS panel) wired through RectifyWindow.kt's onSideEffect(effect, intentSink) so the chosen path round-trips back as MirrorIntent.AdbPathChosen.",
+        "reason": "AC-26's 'Locate adb…' in full. The data-layer half (persist + resolve) was always tested; the UI half (T-24/T-25) was silently skipped in the first execution pass with no trace anywhere in the pipeline's records (the audit's most serious process finding, AF-2) and is wired now.",
+        "crRef": ""
+      },
+      {
+        "task": "T-27",
+        "change": "No code change — inspection evidence for AC-55/AC-56. Named every actionable surface and its shipped component, confirmed structurally (no custom focusProperties/clearAndSetSemantics/FocusRequester anywhere in MirrorErrorStage.kt) rather than via a test that would pass even with focus broken. PaletteContrastTest's exempt-by-name mechanism for overlayScrim/stageDot, mutation-proven.",
+        "reason": "AC-55/AC-56 are verificationMethod: inspection (Stage-2 judge-accepted deviation from preparation's literal `test`, because no Compose UI-test harness exists in this repo).",
+        "crRef": ""
+      },
+      {
+        "task": "T-13",
+        "change": "FIX (commit 34b87d5): retryDiscovery() changed from `= Unit` to a real call into DeviceRepositoryImpl's new refreshDiscovery() (a CONFLATED Channel race against the poll's own delay, living in the data layer so it is virtual-time testable and immune to the Orbit-dispatcher timing flakiness that sank three earlier presentation-layer attempts). New test retryDiscoveryNudgesThePollLoop plus two data-layer tests ('a refresh request cuts the poll interval short', 'a refresh requested between polls is not lost'), both mutation-proven. MirrorRecoveryActionsTest gained the missing useTestDispatcherForOrbit() call so its two tests stop depending on sibling-class global state (verified: now passes run in isolation and on iosSimulatorArm64).",
+        "reason": "Closes AF-1 (the dead-button defect the exit-check grep was defeated by, since the no-op had moved into a named function body) and AF-3 (tests passing by global test pollution rather than on their own merit) from the audit.",
+        "crRef": "AF-1"
+      },
+      {
+        "task": "T-13",
+        "change": "FIX (commit 34b87d5): same commit resolved AF-4 — the previously-red :presentation-feature-mirror:build / iosSimulatorArm64 run is now green because AF-3's fix removed the test-pollution dependency that only held on desktop when a sibling class ran first.",
+        "reason": "definitionOfDone's cross-target guard requires a full :build, not just compileTestKotlinIosArm64, on the touched presentation modules.",
+        "crRef": "AF-4"
+      },
+      {
+        "task": "T-24, T-25",
+        "change": "FIX (commit 94e442a): AdbPathChooser.kt written; RectifyWindow.kt's MirrorHost call site now supplies onSideEffect(effect, intentSink) instead of leaving it at its no-op default, so MirrorSideEffect.LocateAdb reaches a real native file dialog and the chosen path round-trips back as MirrorIntent.AdbPathChosen.",
+        "reason": "Closes AF-2: T-24/T-25 were silently skipped in the prior pass with no report, note, event or state flag anywhere — discovered only by reading the tree. 'Locate adb…' was dead UI in the shipped app.",
+        "crRef": "AF-2"
+      },
+      {
+        "task": "T-14",
+        "change": "FIX/CLARIFICATION (commit 94e442a): AC-28's card was reachable but not on a cold start; resolved as a scope clarification (the picker IS the multi-device affordance while it has something to list; the card's moment is once the picker is closed and a second handset turns up or remains), pinned by a new test theAmbiguityCardIsReachableOnceThePickerIsClosed so the projection cannot regress into code no path reaches.",
+        "reason": "Closes AF-5. No behaviour change to applyDiscovery or the picker; the fix is in how the ambiguity card's reachable moment is defined and proven, consistent with SC-12's own scenario text.",
+        "crRef": "AF-5"
+      }
+    ],
+    "summary": "F-3 wires all four of F-2's previously-unrendered typed discovery-failure states into shipped ErrorCard/CommandBlock/SourceListRow kit components, fixes a reproduced-on-hardware adb cold-daemon livelock with a hardware-verified budgeted escalation ladder, and fixes a real NFR-6 violation in merged F-4 code (the only affordance offered on an involuntary disconnect destroyed staged annotations). Two post-audit fix commits (34b87d5, 94e442a) closed all four error-severity and one warn-severity audit finding; I independently re-ran the builds/tests rather than trusting the commit messages or the audit, and found one of the execution notes (T-retry 'not written') was itself stale — the fix had already landed. 235 tests pass (0 failures), 0 of the 195-test baseline lost, and :presentation-feature-mirror:build / :data-repository-impl:build are genuinely green including iosSimulatorArm64Test execution (not just compilation) on a fresh --rerun-tasks run. Open, honestly-recorded limitations remain: the NFR-6 composable-level gate has no regression guard reachable without a new UI-test harness or a projection hoist; a hard-wedged adb daemon is correctly detected and reported but cannot be forcibly cleared; T-11's pre-fix RED run for AC-54 could not be captured (the pre-fix tree was lost to an agent's mid-session death) and a permanent mutation guard stands in its place, honestly distinguished from a transcript; and T-18's physical USB unplug/replug verification was explicitly skipped by direct operator decision, the only human-made call in this run.",
+    "regressionRunPassed": true
+  }
+}

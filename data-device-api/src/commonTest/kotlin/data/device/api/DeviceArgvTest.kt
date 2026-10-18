@@ -31,6 +31,8 @@ class DeviceArgvTest {
     private val everyHostCommand = listOf(
         HostCommand.AdbVersion,
         HostCommand.ListDevices,
+        HostCommand.StartServer,
+        HostCommand.KillServer,
         HostCommand.EmulatorVersion,
         HostCommand.ListAvds,
         HostCommand.BootAvd(requireNotNull(AvdName.of("Pixel_7_API_34"))),
@@ -91,11 +93,19 @@ class DeviceArgvTest {
     fun `buildHostArgv renders each host variant`() {
         assertEquals(listOf(adb, "--version"), buildHostArgv(adb, HostCommand.AdbVersion))
         assertEquals(listOf(adb, "devices", "-l"), buildHostArgv(adb, HostCommand.ListDevices))
+        assertEquals(listOf(adb, "start-server"), buildHostArgv(adb, HostCommand.StartServer))
+        assertEquals(listOf(adb, "kill-server"), buildHostArgv(adb, HostCommand.KillServer))
         assertEquals(listOf("emu", "-version"), buildHostArgv("emu", HostCommand.EmulatorVersion))
         assertEquals(listOf("emu", "-list-avds"), buildHostArgv("emu", HostCommand.ListAvds))
         assertEquals(
             listOf("emu", "-avd", "Pixel_7_API_34"),
             buildHostArgv("emu", HostCommand.BootAvd(requireNotNull(AvdName.of("Pixel_7_API_34")))),
         )
+    }
+
+    @Test
+    fun `buildHostArgv appends nothing beyond the daemon subcommand`() {
+        assertEquals(2, buildHostArgv(adb, HostCommand.StartServer).size)
+        assertEquals(2, buildHostArgv(adb, HostCommand.KillServer).size)
     }
 }

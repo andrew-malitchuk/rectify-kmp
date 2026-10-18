@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -33,6 +34,10 @@ import presentation.core.ui.source.kit.organism.picker.PickerDeviceTrailing
 import presentation.core.ui.source.kit.organism.picker.PickerPlatform
 import presentation.core.ui.source.kit.organism.stage.NoSignalStage
 import presentation.feature.mirror.core.stats.formatStatusLine
+import kotlin.time.Clock
+import presentation.feature.mirror.core.discovery.errorCard
+import presentation.feature.mirror.core.discovery.indicatorDot
+import presentation.feature.mirror.core.discovery.dropBanner
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_close
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_start
@@ -51,6 +56,8 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_sec
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_source_summary
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_detecting
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_latency_placeholder
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_no_device_attached
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_awaiting_choice
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_poll_failed
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_polling_hint
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_tool_missing
@@ -87,8 +94,24 @@ public fun MirrorStageContent(
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Resolved ahead of the stage `when`, not inside its NoSignal branch. The plan said
+    // NoSignal-only for the smallest blast radius, but of the four discovery states only
+    // NoDeviceFound closes the picker - F-2 keeps it open for ToolMissing and PollFailed, and
+    // those are confirmed ACs - so NoSignal-only routing left AC-26, AC-53 and AC-28's cards
+    // unreachable. The projection itself stands down for `Found`, where the picker is the real
+    // affordance, so the picker still keeps the stage wherever it has something to show.
+    // ONE clock read and ONE projection per pass, shared downstream. It was being computed
+    // three times — here, again inside indicatorLabel(), and a third time inside
+    // indicatorDot() — with two different wall-clock reads for what is conceptually one
+    // decision about one frame. The projection does string joins and list filters, so that was
+    // unbounded duplicate work on every recomposition, and worse, the status line could
+    // disagree with the card beside it purely because it asked a moment later.
+    val nowMs = Clock.System.now().toEpochMilliseconds()
+    val card = remember(state, nowMs) { state.errorCard(nowMs) }
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        when (state.stage) {
+        if (card != null) {
+            MirrorErrorStage(card = card, onIntent = onIntent)
+        } else when (state.stage) {
             MirrorStage.Picker -> MirrorPicker(state = state, onIntent = onIntent)
 
             MirrorStage.IosDeferred -> Text(
@@ -116,6 +139,8 @@ public fun MirrorStageContent(
                     frame = frame,
                     deviceName = state.selectedDeviceName.orEmpty(),
                     frozen = state.frozen,
+                    canResumeLive = state.canResumeLive,
+                    banner = state.dropBanner(),
                     onIntent = onIntent,
                 )
             }
@@ -148,6 +173,13 @@ public fun MirrorStageContent(
  */
 @Composable
 public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier) {
+    // One clock read and one projection for this composable too. The dot and the label both
+    // need the card, and asking twice let them disagree about the same frame purely because
+    // one asked a moment later. `MirrorStageContent` has its own read: these are separate
+    // render scopes, and threading a parameter down from the window layer would widen a public
+    // API to save a list filter.
+    val nowMs = Clock.System.now().toEpochMilliseconds()
+    val card = remember(state, nowMs) { state.errorCard(nowMs) }
     val line = formatStatusLine(
         stats = state.stats,
         toolName = ADB,
@@ -159,7 +191,7 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS + Theme.spacing.spacingXS),
     ) {
-        StatusIndicator(state = state.indicatorState(), label = state.indicatorLabel())
+        StatusIndicator(state = state.indicatorState(card), label = state.indicatorLabel(card))
         if (line.isNotEmpty()) {
             Text(text = line, style = Theme.typography.monoMeta, color = Theme.color.ink2, maxLines = 1)
         }
@@ -173,15 +205,11 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
  * but the pixels on screen are pinned, and a LIVE dot over a still frame is a lie. This is the
  * first production caller of the shipped-but-unused [StatusIndicatorState.Frozen].
  */
-private fun MirrorUiState.indicatorState(): StatusIndicatorState = when {
-    frozen != null -> StatusIndicatorState.Frozen
-    session is MirrorSession.Streaming -> StatusIndicatorState.Live
-    session is MirrorSession.Lost -> StatusIndicatorState.Dropped
-    else -> StatusIndicatorState.Offline
-}
+private fun MirrorUiState.indicatorState(card: MirrorErrorCard?): StatusIndicatorState =
+    indicatorDot(card)
 
 @Composable
-private fun MirrorUiState.indicatorLabel(): String = when {
+private fun MirrorUiState.indicatorLabel(card: MirrorErrorCard?): String = when {
     // Machine state, not prose — uppercased from the enum exactly as the LIVE label is.
     frozen != null -> StatusIndicatorState.Frozen.name.uppercase()
     session is MirrorSession.Streaming -> StatusIndicatorState.Live.name.uppercase()
@@ -189,6 +217,23 @@ private fun MirrorUiState.indicatorLabel(): String = when {
     // A failed poll is its own label: "waiting for device" would claim adb answered.
     discovery is DiscoveryModel.PollFailed -> stringResource(Res.string.mirror_status_poll_failed)
     discovery is DiscoveryModel.Detecting -> stringResource(Res.string.mirror_status_detecting)
+    // The design pairs each error card with its own status line. Without these two the bar
+    // kept saying "Waiting for device…" beside a card explaining that adb saw nothing, or
+    // that three devices were attached and it needed a choice.
+    // COR-5. The count is READ, not hardcoded. attachedCount is the number of attached but
+    // unusable devices, so a single unauthorised handset made the card footer say "1 attached"
+    // while the line beside it said "0 attached" — the exact contradiction T-32 existed to
+    // remove, reintroduced two commits later by a literal in a string resource.
+    discovery is DiscoveryModel.NoDeviceFound ->
+        stringResource(
+            Res.string.mirror_status_no_device_attached,
+            (discovery as DiscoveryModel.NoDeviceFound).attachedCount,
+        )
+    card?.kind == MirrorErrorKind.MultipleDevices ->
+        stringResource(
+            Res.string.mirror_status_awaiting_choice,
+            rows.count { it.group == MirrorRowGroup.Physical && it.selectable },
+        )
     else -> stringResource(Res.string.mirror_status_waiting)
 }
 

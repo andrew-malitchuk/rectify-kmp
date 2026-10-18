@@ -15,6 +15,25 @@ private const val TEXT_MINIMUM: Double = 4.5
 /** WCAG 2.2 SC 1.4.11 AA, non-text UI components and graphical objects. */
 private const val NON_TEXT_MINIMUM: Double = 3.0
 
+/**
+ * Tokens deliberately absent from the sweep, each for a stated structural reason — not an
+ * oversight, and asserted as such by `every declared colour token is either swept or
+ * explicitly exempt`.
+ *
+ * - `stageDot` and `overlayScrim` are decorative and have **no palette surface behind them**.
+ *   The dot grid is texture on the stage; the scrim is painted over mirrored device pixels of
+ *   unknown colour. The sweep's method is to composite a token over the surfaces it is actually
+ *   drawn on (A11Y-2), and for these there are none — a row would measure a pairing the app
+ *   never paints. `overlayScrim`'s 0.42 alpha also lives in `presentation-core-ui`, so this
+ *   module could not composite it correctly even if a surface existed.
+ * - `primaryHover` / `primaryPress` are measured as backgrounds under `onPrimary`, so they are
+ *   covered by those rows rather than needing their own.
+ */
+private val EXEMPT_TOKENS: Set<String> = setOf(
+    "stageDot",
+    "overlayScrim",
+)
+
 /** Baselines are recorded to two decimals; this absorbs that rounding and nothing more. */
 private const val BASELINE_TOLERANCE: Double = 0.01
 
@@ -67,6 +86,12 @@ private fun MutableList<Pairing>.frozen(label: String, fg: Color, bg: Color, bas
  *   text minimum. This is why `ink3` is swept as incidental/meta ink at 3:1, not at 4.5:1.
  * - **SC 1.4.11, purely decorative graphic** — `StageSurface`'s dotted grid carries no
  *   information, so its composited dot colour is not a measured pairing at all.
+ * - **Not a foreground at all** — `overlayScrim` is a dimming veil, not text and not a UI-component
+ *   boundary, so neither SC 1.4.3 nor SC 1.4.11 applies to it as a foreground. It is also the one
+ *   token with no palette surface behind it: it is painted over mirrored device pixels of unknown
+ *   colour, and its 0.42 alpha lives at the `presentation-core-ui` call site, not in the token. Any
+ *   `overlayScrim over <surface>` row would therefore be a fabricated pairing the shell never
+ *   paints, so it is exempted by name here rather than frozen at a meaningless baseline.
  *
  * DEVIATION from the gate's Tier 1 list, flagged rather than hidden: the gate also named the
  * composited `line` and `line2` hairlines at 3:1. That threshold is arithmetically unreachable
@@ -90,6 +115,38 @@ class PaletteContrastTest {
     fun `every pairing in both palettes is measured - none silently skipped`() {
         assertEquals(56, lightPairings().size)
         assertEquals(56, darkPairings().size)
+    }
+
+    /**
+     * Makes the test above's promise real: every token declared on [ThemeColor] is either swept
+     * or named in [EXEMPT_TOKENS], so adding a colour can never slip past the sweep in silence.
+     *
+     * The frozen pairing count alone did not do this. It asserts the *list length*, so a new
+     * token could be added to [ThemeColor], never measured, and this file would stay green while
+     * claiming "none silently skipped" — which is exactly how `stageDot` and `overlayScrim` came
+     * to be unmeasured. A test whose name over-promises is the same defect class this project
+     * keeps finding: it cannot fail for the reason it says it can.
+     *
+     * Token names come from the data class's own `toString()` rather than reflection, which
+     * `commonTest` does not have on every target. `Color`'s `toString()` is positional, so the
+     * `name=` pattern matches only [ThemeColor]'s own properties and never a nested value.
+     */
+    @Test
+    fun `every declared colour token is either swept or explicitly exempt`() {
+        val declared = Regex("""(\w+)=""")
+            .findAll(attributeLightColorPalette.toString())
+            .map { it.groupValues[1] }
+            .toSet()
+        assertTrue(declared.size >= 20, "token names did not parse out of toString: \$declared")
+
+        val swept = (lightPairings() + darkPairings()).flatMap { it.label.split(' ', '-') }.toSet()
+        val unaccounted = declared.filter { it !in swept && it !in EXEMPT_TOKENS }
+
+        assertTrue(
+            unaccounted.isEmpty(),
+            "these ThemeColor tokens are neither measured nor exempt: \$unaccounted — add a " +
+                "pairing, or add the token to EXEMPT_TOKENS with the reason it cannot be measured",
+        )
     }
 
     @Test
@@ -116,24 +173,31 @@ class PaletteContrastTest {
         )
     }
 
+    /**
+     * Collects every violation before failing, rather than aborting on the first.
+     *
+     * A palette edit typically moves a whole family of pairings at once — five dark alpha
+     * tokens means twenty rows. Failing on the first one hides the other nineteen and turns a
+     * single fix into a run-edit-run loop, so the report lists them all with their measured
+     * values ready to paste back as baselines.
+     */
     private fun assertPolicyHolds(palette: String, pairings: List<Pairing>) {
-        pairings.forEach { pairing ->
-            val measured = contrastRatio(pairing.foreground, pairing.background)
-            val minimum = pairing.minimum
-            if (minimum != null) {
-                assertTrue(
-                    measured >= minimum,
-                    "$palette: ${pairing.label} measured ${measured.format()}:1, " +
-                        "below the required $minimum:1",
-                )
+        val violations = buildList {
+            pairings.forEach { pairing ->
+                val measured = contrastRatio(pairing.foreground, pairing.background)
+                val minimum = pairing.minimum
+                if (minimum != null && measured < minimum) {
+                    add("$palette: ${pairing.label} measured ${measured.format()}:1, below the required $minimum:1")
+                }
+                if (measured < pairing.baseline - BASELINE_TOLERANCE) {
+                    add(
+                        "$palette: ${pairing.label} regressed to ${measured.format()}:1 from the " +
+                            "recorded baseline ${pairing.baseline}:1 - update the baseline only deliberately",
+                    )
+                }
             }
-            assertTrue(
-                measured >= pairing.baseline - BASELINE_TOLERANCE,
-                "$palette: ${pairing.label} regressed to ${measured.format()}:1 from the " +
-                    "recorded baseline ${pairing.baseline}:1 - update the baseline only " +
-                    "deliberately",
-            )
         }
+        assertTrue(violations.isEmpty(), violations.joinToString(prefix = "\n", separator = "\n"))
     }
 
     private fun Double.format(): String = ((this * 100).toInt() / 100.0).toString()
@@ -272,26 +336,28 @@ private fun darkPairings(): List<Pairing> = buildList {
     // endregion
 
     // region Alpha overlays, composited over every surface they are drawn on (A11Y-2).
-    frozen("line over bg", c.line over c.bg, c.bg, baseline = 1.26) // WAIVED: 1.26:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over chrome", c.line over c.chrome, c.chrome, baseline = 1.27) // WAIVED: 1.27:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over stage", c.line over c.stage, c.stage, baseline = 1.22) // WAIVED: 1.22:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line over surface", c.line over c.surface, c.surface, baseline = 1.28) // WAIVED: 1.28:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over bg", c.line2 over c.bg, c.bg, baseline = 1.56) // WAIVED: 1.56:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over chrome", c.line2 over c.chrome, c.chrome, baseline = 1.58) // WAIVED: 1.58:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over stage", c.line2 over c.stage, c.stage, baseline = 1.51) // WAIVED: 1.51:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("line2 over surface", c.line2 over c.surface, c.surface, baseline = 1.57) // WAIVED: 1.57:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
-    frozen("hover over bg", c.hover over c.bg, c.bg, baseline = 1.13) // WAIVED: 1.13:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over chrome", c.hover over c.chrome, c.chrome, baseline = 1.13) // WAIVED: 1.13:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over stage", c.hover over c.stage, c.stage, baseline = 1.11) // WAIVED: 1.11:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("hover over surface", c.hover over c.surface, c.surface, baseline = 1.14) // WAIVED: 1.14:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over bg", c.seg over c.bg, c.bg, baseline = 1.18) // WAIVED: 1.18:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over chrome", c.seg over c.chrome, c.chrome, baseline = 1.20) // WAIVED: 1.20:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over stage", c.seg over c.stage, c.stage, baseline = 1.16) // WAIVED: 1.16:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("seg over surface", c.seg over c.surface, c.surface, baseline = 1.19) // WAIVED: 1.19:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    // Dark alphas are the design's own (.07/.13/.05/.07/.04), not the light palette's values
+    // that were previously copied here - hence baselines below differ from lightPairings().
+    frozen("line over bg", c.line over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.22:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over chrome", c.line over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over stage", c.line over c.stage, c.stage, baseline = 1.20) // WAIVED: 1.20:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line over surface", c.line over c.surface, c.surface, baseline = 1.24) // WAIVED: 1.24:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over bg", c.line2 over c.bg, c.bg, baseline = 1.48) // WAIVED: 1.48:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over chrome", c.line2 over c.chrome, c.chrome, baseline = 1.50) // WAIVED: 1.50:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over stage", c.line2 over c.stage, c.stage, baseline = 1.44) // WAIVED: 1.44:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("line2 over surface", c.line2 over c.surface, c.surface, baseline = 1.50) // WAIVED: 1.50:1 < 3:1 - AC-40/NFR-11 waived, see DEVIATION above.
+    frozen("hover over bg", c.hover over c.bg, c.bg, baseline = 1.14) // WAIVED: 1.14:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over chrome", c.hover over c.chrome, c.chrome, baseline = 1.15) // WAIVED: 1.15:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over stage", c.hover over c.stage, c.stage, baseline = 1.12) // WAIVED: 1.12:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("hover over surface", c.hover over c.surface, c.surface, baseline = 1.16) // WAIVED: 1.16:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over bg", c.seg over c.bg, c.bg, baseline = 1.22) // WAIVED: 1.22:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over chrome", c.seg over c.chrome, c.chrome, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over stage", c.seg over c.stage, c.stage, baseline = 1.19) // WAIVED: 1.19:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("seg over surface", c.seg over c.surface, c.surface, baseline = 1.23) // WAIVED: 1.23:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     frozen("codeBg over bg", c.codeBg over c.bg, c.bg, baseline = 1.10) // WAIVED: 1.10:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     frozen("codeBg over chrome", c.codeBg over c.chrome, c.chrome, baseline = 1.11) // WAIVED: 1.11:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("codeBg over stage", c.codeBg over c.stage, c.stage, baseline = 1.08) // WAIVED: 1.08:1 < 3:1 - no boundary, SC 1.4.11 n/a.
-    frozen("codeBg over surface", c.codeBg over c.surface, c.surface, baseline = 1.10) // WAIVED: 1.10:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("codeBg over stage", c.codeBg over c.stage, c.stage, baseline = 1.09) // WAIVED: 1.09:1 < 3:1 - no boundary, SC 1.4.11 n/a.
+    frozen("codeBg over surface", c.codeBg over c.surface, c.surface, baseline = 1.12) // WAIVED: 1.12:1 < 3:1 - no boundary, SC 1.4.11 n/a.
     // endregion
 
     // region pop - no onPop token by gate decision (Q3-A); measured against Color.White.

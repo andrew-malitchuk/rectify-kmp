@@ -1,0 +1,115 @@
+{
+  "criteria": ["coverage", "architecture", "reuse-accuracy", "traceability", "risk", "test-strategy", "consistency"],
+  "criteriaWeights": { "coverage": 1, "architecture": 2, "reuse-accuracy": 1, "traceability": 1, "risk": 1.5, "test-strategy": 2, "consistency": 1 },
+  "weightingNote": "Per the orchestrator's instructions, test non-vacuity, correctness-against-code, and blast-radius are weighted highest. These map onto 'test-strategy' (x2), 'architecture' (x2, carries blast-radius), and 'risk' (x1.5, carries correctness-against-code risk ownership) in the generic criteria set below. 'total' is the weighted sum (max 95).",
+
+  "preDecisions": [
+    {
+      "topic": "CORRECTION-nfr-6-mechanism.md compliance (binding decision #2's corrected scope)",
+      "finding": "All three candidates independently verified the correction from the code: onSessionLost (MirrorViewModel.kt:182-185) already preserves currentFrozenFrame/state.frozen; the real NFR-6 violation is MirrorAnnotationStage.kt:292-298's unconditional Resume Live affordance plus the total absence of a Reconnect path. All three (a) add MirrorIntent.Reconnect with a handler that touches neither currentFrozenFrame nor state.frozen, (b) leave resumeLive() byte-for-byte unchanged (protecting F-4's AC-51, each with its own regression-guard test: A's T5, B's T5, C's T3), (c) add a derived canResumeLive/gate so Resume Live is not OFFERED while Lost, and (d) correctly drive their AC-54 red-demonstrating test through MirrorIntent.ResumeLive while Lost (A's T4/S6, B's T4/step6, C's T2/step7) rather than through onSessionLost alone — none of the three ships the chain's second vacuous test. All three pass this gating check; none is disqualified on it."
+    },
+    {
+      "topic": "No new MirrorStage enum case (blast-radius claim verification)",
+      "finding": "All three genuinely avoid adding a MirrorStage case, but the routing points differ in consequence as the brief flagged. A and B insert one `if (errorCard() != null) MirrorErrorStage(...) else when (state.stage) {...}` AHEAD of the existing when — safety rests entirely on errorCard()'s own early-return guards (tested: A's T12, B's T11/T12) ever being correct; a bug in that projection could in principle preempt ANY stage, not just NoSignal. C instead consults errorCard() ONLY inside the existing `MirrorStage.NoSignal ->` branch of the unchanged when (AS-18), so even a hypothetical projection bug is structurally confined to the NoSignal case and can never preempt Streaming/Frozen/picker rendering — a provably smaller blast radius by construction, not just by test coverage. This is a genuine, non-cosmetic architectural difference and is scored under 'architecture'."
+    },
+    {
+      "topic": "Open point 1 — A's proposal to downgrade AC-56 from `test` to `inspection`",
+      "decision": "ACCEPT.",
+      "reasoning": "preparation.json's own verificationNote for AC-56 already states the fact a new test would rest on: no new colour token is introduced by this spec, so presentation-core-styling's PaletteContrastTest sweep already covers every token ErrorCard/FeedbackBar compose. An assertion that cannot fail is indistinguishable from no assertion and would be this chain's third vacuous test (after F-4's session-loss test and the near-miss this spec itself corrected mid-draft). All three candidates independently converge on this (A explicitly proposes it; B and C both silently set AC-56's verificationMethod to `inspection` without flagging it as a question). Recording the existing-sweep fact plus the light/dark @Preview pair is the correct, honest evidence. Additionally: B and C also downgrade AC-55 (keyboard reachability) from `test` to `inspection`, which A does not do (A keeps the field literally `test` while noting in prose it is a structural argument). The B/C treatment is more honest — a field that says `test` while the note says 'not actually asserted' is a latent inconsistency that invites exactly the kind of false confidence this chain's test-integrity constraint exists to prevent. Recommend the winning candidate's AC-55 verificationMethod also read `inspection` (not `test`)."
+    },
+    {
+      "topic": "Open point 2 — C's question: is AC-27's 'Restart adb' acceptable when it maps to start-server + re-poll rather than kill-server?",
+      "decision": "WIDEN THE CLOSED SET — add HostCommand.KillServer (graft B's mechanism).",
+      "reasoning": "Reject 'accept the gap' and reject 'change the copy.' The comp (05) pairs the primary action 'Restart adb' with a CommandBlock literally reading `adb kill-server && adb devices` — the copy and the command block both say the same thing, and presentation-core-ui/CLAUDE.md's rule that copy must agree with behaviour cuts directly against shipping a button labelled 'Restart adb' that does not restart adb. More importantly, in the AC-27/NoDeviceFound state adb has already resolved and the daemon has, in the overwhelming common case, already been successfully started by this spec's own FR-36 fix — so a StartServer-only 'restart' is a near-total no-op in exactly the state the button exists for (it degrades to 'poll ~2s sooner'), which is precisely the decorative-Retry-over-a-no-op anti-pattern the brief calls out as disqualifying-adjacent. HostCommand.KillServer is the same shape of change FR-36 already made (a parameterless data object case added to the already-sanctioned closed set, routed through the single ProcessRunner, zero raw-argv risk) and is cheap to test (an argv test plus a repository-level test asserting restartAdbServer() calls killServer() then startServer() in that order, with a named mutation that swaps or drops a step). B already implements this correctly (HostCommand.KillServer, DeviceRepository.restartAdbServer(), RestartAdbServerUseCase) and is grafted into the corrections below."
+    },
+    {
+      "topic": "Open point 3 — B's flagged AS-19: does the AC-27 ErrorCard supersede NoSignalStage for DiscoveryModel.NoDeviceFound (a decision preparation did not pre-close)?",
+      "decision": "ACCEPT — yes, it supersedes NoSignalStage for every typed discovery-failure state, not just NoDeviceFound.",
+      "reasoning": "This is not scope drift; it is the entire point of FR-23/AC-26/27/28/53. preparation.json's problemStatement says the status quo — 'a tester sees nothing actionable when adb is missing, no device is found, or adb itself fails mid-poll' — is the bug being fixed, and NoSignalStage's passive, action-free rendering IS that 'nothing actionable' screen. Comp 05 is explicitly the designed replacement for exactly the NoDeviceFound case. NoSignalStage must stay reachable for the genuinely-no-error Detecting/Found-with-picker-closed case (F-2's AC-4), which all three candidates preserve by construction (errorCard() returns null outside the four typed-failure kinds). All three candidates already implement this consequence; C's routing (inside the existing NoSignal branch) makes the precedence the safest of the three and is the one being carried forward. No correction needed beyond confirming the decision in the record so Stage 4/5 do not flag it as drift."
+    }
+  ],
+
+  "scores": [
+    {
+      "candidate": "candidate-a",
+      "byCriterion": { "coverage": 7, "architecture": 8, "reuse-accuracy": 9, "traceability": 9, "risk": 7, "test-strategy": 7, "consistency": 9 },
+      "total": 74.5,
+      "rationale": "The most concise and disciplined of the three (602 lines vs. B's 1470 and C's 1756), with the cleanest traceability matrix and the strictest file:line reuse citations. Correctly implements the corrected FR-33 mechanism (Reconnect + canResumeLive + banner(), resumeLive() untouched, AC-54's red run driven through ResumeLive) and the FR-36 daemon-start fix identically in substance to B and C, including the valuable DeviceCommandException.isTimeout + shared TIMEOUT_REASON_PREFIX constant pattern (a genuinely stronger anti-drift mechanism than B's or C's 'one matcher plus a comment naming the producer line' — a constant shared by both producer and consumer cannot silently desync the way a comment-only convention can). It is also the only candidate to add a zero-count banner string (mirror_banner_kept_none) as a DISTINCT key with its own risk note, rather than silently suppressing the detail line at zero.",
+      "strengths": [
+        "Cleanest, most concise plan; easiest to execute without re-deriving anything",
+        "DeviceCommandException.isTimeout + shared TIMEOUT_REASON_PREFIX constant is a genuinely better anti-drift mechanism than the other two candidates' 'one matcher, one comment' approach — worth grafting into the winner",
+        "Correctly implements the FR-33 correction (Reconnect/canResumeLive/banner(), resumeLive untouched, AC-54 driven through ResumeLive pre-fix) with equal rigor to B and C",
+        "Explicit AC-56 downgrade proposal with sound reasoning, matched by B and C independently"
+      ],
+      "weaknesses": [
+        "MATERIAL GAP: mints MirrorIntent.Retry and MirrorIntent.RestartAdb in its dataModel (line 228) but never specifies either handler's behavior anywhere in components, implementationPlan, or testStrategy — AC-26's secondary 'Retry', AC-27's primary 'Restart adb', and AC-53's primary 'Retry' are left as literal unspecified intents with zero tests. This is exactly the 'Retry button over a no-op' risk the brief calls disqualifying-adjacent, left silently unaddressed rather than honestly flagged (contrast with C, which at least records the same category of gap as an open question).",
+        "Does not add HostCommand.KillServer or any equivalent, and (per the gap above) never discusses what 'Restart adb' should functionally do at all",
+        "'if ahead of the when' routing relies entirely on the projection's own correctness for blast-radius safety, rather than C's structurally-confined routing"
+      ]
+    },
+    {
+      "candidate": "candidate-b",
+      "byCriterion": { "coverage": 9, "architecture": 7, "reuse-accuracy": 8, "traceability": 7, "risk": 8, "test-strategy": 8, "consistency": 7 },
+      "total": 73,
+      "rationale": "The functionally most complete candidate: it is the only one that actually implements a real adb-daemon restart for AC-27 (HostCommand.KillServer + DeviceRepository.restartAdbServer() + RestartAdbServerUseCase) rather than leaving it unspecified (A) or explicitly deferring it (C), and it correctly separates plain 'Retry' (re-poll only, used by AC-26's secondary and AC-53's primary) from 'RestartAdb' (kill-server + start-server + re-poll, used only by AC-27's primary) — a more semantically correct design than C's single undifferentiated RetryDiscovery intent once a real kill-server exists. It also correctly implements the FR-33 correction and AC-54's red run identically to A and C. Its weaknesses are organizational: FR-37 bundles three unrelated concerns (the adb-path chooser chain, the kill/start-server restart chain, and the plain-retry chain) under one id, which is the exact kind of conflation FR-36's own stated rationale (keep FR-32 and FR-36 distinct so a waiver stays readable) argues against; it silently changes AC-55's verificationMethod (defensible, matches C, but contradicts A's record and is not flagged as a deviation from preparation.json's literal field); and it is the largest, most sprawling plan of the three without a correspondingly larger set of genuinely new ideas over C.",
+      "strengths": [
+        "Only candidate to fully and correctly implement AC-27's 'Restart adb' as a real daemon restart (HostCommand.KillServer), matching the comp's copy-behaviour agreement — this is the single most valuable idea to graft into the winner",
+        "Cleanly separates plain Retry from RestartAdb semantics rather than conflating all three card actions into one intent",
+        "Correctly implements the FR-33 correction and AC-54's pre-fix red run with the same rigor as A and C",
+        "Explicit, well-reasoned AS-19 call-out (ErrorCard supersedes NoSignalStage for NoDeviceFound) that correctly flags a decision preparation left implicit"
+      ],
+      "weaknesses": [
+        "FR-37 bundles three unrelated concerns (adb-path chooser, kill/start-server restart, plain retry) under one id — a traceability/hygiene smell, and ironic given FR-36's own text argues against exactly this kind of conflation",
+        "Same 'if ahead of the when' routing as A — relies on projection correctness for blast-radius safety rather than C's structurally-confined routing",
+        "Largest plan (1470 lines) without a proportionate increase in genuinely new ideas over C's narrower, equally rigorous treatment",
+        "Silently changes AC-55's verificationMethod field from preparation's literal `test` without calling it out as a deviation (C does the same, but is otherwise more explicit about every other deviation it takes)"
+      ]
+    },
+    {
+      "candidate": "candidate-c",
+      "byCriterion": { "coverage": 8, "architecture": 9, "reuse-accuracy": 8, "traceability": 8, "risk": 9, "test-strategy": 9, "consistency": 8 },
+      "total": 81.5,
+      "rationale": "The strongest on the three highest-weighted dimensions. Architecturally safest: routing the error card strictly inside the existing `MirrorStage.NoSignal ->` branch (AS-18) rather than ahead of the whole `when`, so the blast radius of a hypothetical projection bug is structurally confined to the one stage that already renders nothing actionable, rather than resting on the projection's test coverage alone to protect every other stage — a real, non-cosmetic improvement over A's and B's identical 'if ahead of the when' pattern. Most rigorous on test-strategy: it is the ONLY candidate with a dedicated, named, mutation-bearing test for the retry-restarts-discovery behavior (T-retry retryDiscoveryRestartsTheCollection), a behavior A never specifies and B specifies in prose but never tests directly. It correctly implements the FR-33 correction and drives AC-54's red run through ResumeLive exactly like A and B. Its one real weakness is its own explicitly-flagged open question: declining to mint HostCommand.KillServer leaves AC-27's 'Restart adb' mapped to a start-server-plus-re-poll that is a near no-op in the common NoDeviceFound case (the daemon is typically already up) — correctly identified by this evaluation as needing the correction below (graft B's KillServer mechanism). Unlike A, which has the same category of gap and never surfaces it, C records the tradeoff explicitly with an upgrade path (H4 hardware check, named follow-up), which is exactly the honesty this chain's test-integrity and copy-must-agree-with-behaviour rules demand even when the chosen answer turns out, on review, to be the wrong one.",
+      "strengths": [
+        "Safest blast-radius architecture of the three: error-card routing is structurally confined inside the existing NoSignal branch rather than ahead of the whole stage `when`",
+        "Only candidate with a dedicated, named, mutation-bearing test for the retry-restarts-discovery behavior (T-retry)",
+        "Most thorough and explicit honesty about every deviation taken (AC-27's KillServer gap, AC-55/56's inspection downgrade, the zero-annotation suppression choice, the wall-clock-in-composition ceiling) — nothing is silently decided",
+        "Correctly implements the FR-33 correction and AC-54's pre-fix red run with the same rigor as A and B",
+        "FR-37 is narrower and cleaner than B's (retry-restart semantics only; the adb-path chain stays under AC-26/FR-23 rather than acquiring its own id)"
+      ],
+      "weaknesses": [
+        "Its own explicitly-flagged AC-27 gap (no HostCommand.KillServer) is, on this evaluation's independent review, the wrong call — it leaves the 'Restart adb' button functionally close to a no-op in the common case, even though the gap is honestly recorded rather than hidden",
+        "The largest plan of the three (1756 lines); some risk/edge-case entries are restated across multiple sections",
+        "Does not share A's producer/consumer constant pattern for the timeout matcher (uses 'TimeoutMatcher.kt' plus a comment, the same weaker pattern as B, rather than a single constant referenced by both ProcessRunner and the consumer)"
+      ]
+    }
+  ],
+
+  "selectedCandidate": "candidate-c",
+  "selectionRationale": "candidate-c wins on the three highest-weighted dimensions (test non-vacuity, correctness-against-code, blast radius): it is the only candidate with a structurally-confined error-card routing (inside the existing NoSignal branch rather than ahead of the whole MirrorStage `when`), the only one with a dedicated mutation-bearing test for the retry-restarts-discovery behavior, and it matches A and B exactly on the one gating correctness check that could have disqualified any candidate — all three correctly implement the corrected FR-33 mechanism from inputs/CORRECTION-nfr-6-mechanism.md (Reconnect added, resumeLive() untouched, AC-54's red run driven through MirrorIntent.ResumeLive while Lost, never through onSessionLost alone). Where candidate-a is more concise, it pays for that concision with a real, silent completeness gap (MirrorIntent.Retry/RestartAdb minted with zero specified behavior and zero tests across three `must` ACs) that candidate-c does not share. Where candidate-b is functionally more complete (it alone implements a real adb-daemon restart for AC-27), that single advantage is a cleanly graftable correction rather than a reason to prefer B's otherwise bundled FR-37 and less conservative routing over C's safer architecture and superior test discipline. Every trace ID (SC-10/SC-11 vs F-4, FR-23 vs app-shell-window-layout, FR-24 vs android-device-discovery-mirroring) is carried unrenumbered in all three candidates, including the winner.",
+
+  "corrections": [
+    {
+      "issue": "AC-27's primary action 'Restart adb' maps only to HostCommand.StartServer plus an immediate re-poll (MirrorIntent.RetryDiscovery), which is a near no-op in the common NoDeviceFound case where adb has already resolved and the daemon is typically already running — the comp's copy ('Restart adb') and its own CommandBlock (`adb kill-server && adb devices`) both imply an actual daemon bounce, and presentation-core-ui/CLAUDE.md requires copy to agree with behaviour.",
+      "where": "requirements.functional (FR-37 text), scope.out (the line explicitly declining HostCommand.KillServer), architecture.components (DiscoveryErrorProjection / MirrorErrorStage / the RetryDiscovery handler), testStrategy (add the new tests named below), openQuestions/risks (the AC-27 semantic-gap entry)",
+      "suggestedFix": "Graft candidate-b's mechanism: add HostCommand.KillServer as a seventh parameterless case in the closed deviceless set (DeviceArgv.kt), add AdbHostSource.killServer() routed through the same single ProcessRunner under the existing HostCommandTimeoutMs budget (a kill is fast; it does not need the DaemonStartTimeoutMs watchdog), and add DeviceRepository.restartAdbServer() = killServer() then startServer(), wrapped in a RestartAdbServerUseCase. Split candidate-c's single RetryDiscovery intent into two: keep RetryDiscovery as the plain re-poll (used by AC-26's secondary 'Retry' and AC-53's primary 'Retry' — matching candidate-b's distinction), and add a separate MirrorIntent.RestartAdb (used only by AC-27's primary) that calls RestartAdbServerUseCase then RetryDiscovery. Add two tests with named mutations: an argv test for HostCommand.KillServer (mutation: add a flag to the branch, assertEquals fails) and a repository-level test asserting restartAdbServer() calls killServer() before startServer() exactly once each (mutation: swap the call order or drop killServer(), and the ordering/call-count assertion fails)."
+    },
+    {
+      "issue": "The timeout-vs-failure classifier (needed so the daemon-restart policy fires only on a genuine ProcessRunner timeout, never on a parse error or non-zero exit) is implemented as 'one matcher plus a comment naming the producer line' — a future reword of ProcessRunner's exception message silently disarms the classifier with every test still green, because the producer string and the consumer's match pattern are two separately-maintained literals.",
+      "where": "architecture.components (the isTimeout()/TimeoutMatcher logic in DeviceRepositoryImpl or its own file), data-device-api's DeviceCommandException",
+      "suggestedFix": "Graft candidate-a's pattern: add a single shared `TIMEOUT_REASON_PREFIX` constant on DeviceCommandException (or alongside it in data-device-api), have ProcessRunner build its timeout message FROM that constant (not a separately-typed literal), and have the classifier (`isTimeout`) reference the SAME constant. This turns 'a reword silently disarms the restart' into 'a reword cannot compile without touching both sides,' which is strictly stronger than a comment-only convention."
+    },
+    {
+      "issue": "candidate-c's AC-55 and AC-56 verificationMethod fields are already correctly set to `inspection` (matching this evaluation's accepted downgrade for AC-56 and the sound independent downgrade for AC-55) — no change needed here, but flag explicitly in the final payload that this is a deliberate field-level correction relative to preparation.json's literal `test` value, with the reasoning recorded (no new colour token; AC-55 is a structural argument per binding decision 6), so Stage 4/5 do not read it as an unexplained drift from preparation.",
+      "where": "acceptanceCriteria (AC-55, AC-56)",
+      "suggestedFix": "Carry candidate-c's existing AC-55/AC-56 verificationMethod values through unchanged, but add one explicit sentence to each verificationNote stating that the field itself (not just the evidence) deliberately diverges from preparation.json's literal `test` value, and why — this is the one place all three candidates under-documented their own correct decision."
+    },
+    {
+      "issue": "Minor: candidate-c does not mint a distinct zero-annotation banner string (it suppresses the detail line at annotationCount == 0 instead); candidate-a and candidate-b both mint an explicit `mirror_banner_kept_none` key with a named risk ('a count-zero plural is the classic tell of untested copy').",
+      "where": "i18n.strings, the MirrorDropBanner → FeedbackBar content-layer mapping",
+      "suggestedFix": "Either approach is acceptable (suppression is a smaller diff and avoids a key that is only reachable in an edge case); if the refine step keeps suppression, add the explicit risk note from candidate-a/b so a future reader does not reintroduce a literal '0 annotations kept' string by accident. Not a blocking correction — recorded for completeness since the brief asked for the strongest ideas from the runners-up to be grafted, not just the disqualifying ones."
+    }
+  ],
+
+  "losers": ["candidate-a", "candidate-b"]
+}

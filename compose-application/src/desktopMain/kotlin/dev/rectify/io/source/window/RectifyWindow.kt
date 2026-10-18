@@ -56,6 +56,8 @@ import presentation.core.ui.source.kit.organism.shell.ShellToolbar
 import presentation.core.ui.source.kit.organism.shell.ShellWindowDefaults
 import presentation.core.ui.source.kit.organism.shell.rememberShellState
 import presentation.core.ui.source.kit.organism.shell.shortcutToTab
+import dev.rectify.io.core.chooser.chooseAdbPath
+import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.MirrorHost
 import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorNotesTab
@@ -149,7 +151,19 @@ public fun ApplicationScope.RectifyWindow() {
                 // The mirror ViewModel is resolved HERE, not inside RectifyShellContent:
                 // the shell composition stays Koin-free so a render harness can drive it
                 // from literals.
-                MirrorHost { mirror, frame, onMirrorIntent ->
+                MirrorHost(
+                    // AC-26. Only the window layer owns a file dialog, so the ViewModel asks
+                    // for one by posting an effect and takes the answer back as an intent.
+                    // `window` is the Rectify frame, so the panel attaches to it rather than
+                    // floating free.
+                    onSideEffect = { effect, onIntent ->
+                        when (effect) {
+                            MirrorSideEffect.LocateAdb ->
+                                chooseAdbPath(window)?.let { onIntent(MirrorIntent.AdbPathChosen(it)) }
+                            else -> Unit
+                        }
+                    },
+                ) { mirror, frame, onMirrorIntent ->
                     // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
                     // only the first — the key stays true from the second one on, so a user who
                     // has walked over to Payload is not yanked back on every drag.

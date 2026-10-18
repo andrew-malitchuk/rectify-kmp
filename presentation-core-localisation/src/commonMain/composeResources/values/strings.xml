@@ -91,6 +91,10 @@
     <string name="mirror_status_waiting">Waiting for device…</string>
     <string name="mirror_status_ready">ready</string>
     <string name="mirror_status_tool_missing">adb not found</string>
+    <!-- Mirror - status line per discovery error state, from the design's own STATUS table.
+    Machine output, so these read as diagnostics rather than prose. -->
+    <string name="mirror_status_no_device_attached">adb devices → %1$d attached</string>
+    <string name="mirror_status_awaiting_choice">%1$d devices attached — waiting for choice</string>
     <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
@@ -107,4 +111,31 @@
          label has to say so rather than announcing Close. -->
     <string name="mirror_annotation_delete">Delete annotation</string>
     <string name="mirror_action_resume_live">Resume live</string>
+
+    <!-- Mirror - Actionable error cards. Copy is the design's verbatim err-adb / err-nodevice /
+         err-multi text (inputs/design-error-states.md), except err-multi's second sentence:
+         the design promises "Rectify remembers it until you quit", which is false against
+         sessionDeviceId (nulled by onSessionLost, selectPlatform and stopSession), so the
+         shipped sentence claims only the session. Same rule as mirror_waiting_subtitle. -->
+    <string name="mirror_error_tool_missing_title">adb isn\'t on your PATH</string>
+    <string name="mirror_error_tool_missing_body">Rectify uses Android platform-tools to find devices. Install them, or point Rectify at an adb you already have.</string>
+    <string name="mirror_error_no_device_title">No Android device detected</string>
+    <string name="mirror_error_no_device_body">adb is running but sees nothing. On the phone, turn on USB debugging and tap Allow on the prompt.</string>
+    <!-- No design state exists for a failed poll (it is Android-only). The copy has to say adb
+         itself did not answer, never that the bench is empty, or the card misreports (FR-32). -->
+    <string name="mirror_error_poll_failed_title">adb stopped responding</string>
+    <string name="mirror_error_poll_failed_body">The device poll never came back, so nothing is known about what is attached. Retry, or read what adb reported in the footer.</string>
+    <string name="mirror_error_multiple_title">%1$d devices connected</string>
+    <string name="mirror_error_multiple_body">Pick one to mirror. Rectify keeps using it for this session.</string>
+    <string name="mirror_error_action_locate_adb">Locate adb…</string>
+    <string name="mirror_error_action_retry">Retry</string>
+    <string name="mirror_error_action_restart_adb">Restart adb</string>
+    <string name="mirror_error_action_boot_emulator">Boot emulator instead</string>
+    <string name="mirror_error_action_mirror_device">Mirror %1$s</string>
+
+    <!-- Mirror - Stream-drop banner (FR-24 / AC-29). The design's verbatim copy, which has one
+         detail sentence and no singular variant: the count is always stated, zero included. -->
+    <string name="mirror_banner_stream_dropped">Stream dropped</string>
+    <string name="mirror_banner_annotations_kept">Your %1$d annotations are kept on the frozen frame.</string>
+    <string name="mirror_banner_reconnect">Reconnect</string>
 </resources>

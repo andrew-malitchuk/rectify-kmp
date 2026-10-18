@@ -1,0 +1,165 @@
+{
+  "spec": "error-handling-and-recovery",
+  "currentStage": "done",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done",
+      "note": "30 of 32 tasks. T-8 run on hardware. T-18 SKIPPED by operator decision."
+    },
+    "validation": {
+      "status": "done",
+      "verdict": "complete-with-waivers"
+    },
+    "review": {
+      "status": "done",
+      "verdict": "approve-with-nits",
+      "note": "Six dimensions reviewed (correctness, conventions, architecture, security, maintainability, performance). 18 findings; all actioned. Reflection SKIPPED by operator decision."
+    },
+    "reflection": {
+      "status": "skipped",
+      "source": "user-decided"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan-draft": {
+      "status": "done"
+    },
+    "plan-evaluate": {
+      "status": "done"
+    },
+    "plan-refine": {
+      "status": "done",
+      "note": "refiner stopped mid-write (no Edit tool); its reasoning was preserved and the plan body was assembled by the orchestrator"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done"
+    },
+    "T-2": {
+      "status": "done"
+    },
+    "T-3": {
+      "status": "done"
+    },
+    "T-4": {
+      "status": "done"
+    },
+    "T-5": {
+      "status": "done"
+    },
+    "T-6": {
+      "status": "done"
+    },
+    "T-7": {
+      "status": "done"
+    },
+    "T-9": {
+      "status": "done"
+    },
+    "T-10": {
+      "status": "done"
+    },
+    "T-11": {
+      "status": "done"
+    },
+    "T-12": {
+      "status": "done"
+    },
+    "T-13": {
+      "status": "done"
+    },
+    "T-14": {
+      "status": "done"
+    },
+    "T-16": {
+      "status": "done"
+    },
+    "T-17": {
+      "status": "done"
+    },
+    "T-19": {
+      "status": "done"
+    },
+    "T-20": {
+      "status": "done"
+    },
+    "T-21": {
+      "status": "done"
+    },
+    "T-22": {
+      "status": "done"
+    },
+    "T-23": {
+      "status": "done"
+    },
+    "T-24": {
+      "status": "done"
+    },
+    "T-25": {
+      "status": "done"
+    },
+    "T-27": {
+      "status": "done"
+    },
+    "T-28": {
+      "status": "done"
+    },
+    "T-30": {
+      "status": "done"
+    },
+    "T-31": {
+      "status": "done"
+    },
+    "T-32": {
+      "status": "done"
+    },
+    "T-8": {
+      "status": "done",
+      "note": "hardware-verified; wedge recovery recorded as an open item"
+    },
+    "T-18": {
+      "status": "skipped",
+      "source": "user-decided",
+      "note": "operator chose to skip; steps need a mouse and a cable"
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  },
+  "gates": {
+    "preparation": {
+      "status": "closed",
+      "source": "ai-proposed",
+      "note": "Operator delegated all gate decisions for this run and asked not to be involved. Six questions closed on the agents recommended options. No human chose these; source is ai-proposed deliberately."
+    }
+  }
+}

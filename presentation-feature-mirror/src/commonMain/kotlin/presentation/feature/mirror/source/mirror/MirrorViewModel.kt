@@ -13,6 +13,11 @@ import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlin.time.Clock
+import presentation.feature.mirror.core.discovery.errorCard
+import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
+import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
+import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,6 +68,10 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
  * @property bootEmulator Launches a cold AVD.
  * @property startMirroring Opens a capture session on a device.
  * @property observeMirrorStats Live transport statistics.
+ * @property refreshDiscovery Cuts the poll interval short so a Retry acts now.
+ * @property restartAdbServer Kills and restarts the adb daemon — AC-27's primary action, and
+ *   the only thing that clears a WEDGED daemon (`start-server` alone hangs against one).
+ * @property setAdbPath Persists the `adb` the user pointed Rectify at (AC-26).
  * @property decodeFrame Seam for PNG decoding — a parameter so tests need no real image.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,6 +81,9 @@ public class MirrorViewModel(
     private val bootEmulator: BootEmulatorUseCase,
     private val startMirroring: StartMirroringUseCase,
     private val observeMirrorStats: ObserveMirrorStatsUseCase,
+    private val restartAdbServer: RestartAdbServerUseCase,
+    private val refreshDiscovery: RefreshDiscoveryUseCase,
+    private val setAdbPath: SetAdbPathUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
 ) : ContainerHost<MirrorUiState, MirrorSideEffect>, ViewModel() {
 
@@ -122,6 +134,11 @@ public class MirrorViewModel(
             is MirrorIntent.DeleteAnnotation -> deleteAnnotation(intent.index)
             MirrorIntent.ClearStaged -> clearStaged()
             MirrorIntent.ResumeLive -> resumeLive()
+            MirrorIntent.Reconnect -> reconnect()
+            MirrorIntent.RetryDiscovery -> retryDiscovery()
+            MirrorIntent.RestartAdb -> restartAdb()
+            MirrorIntent.LocateAdb -> locateAdb()
+            is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
         }
     }
 
@@ -197,8 +214,26 @@ public class MirrorViewModel(
     }
 
     private fun closePicker() = intent {
-        // Escape before the first selection would leave an empty stage with no way back.
-        if (state.selectedDeviceId != null) reduce { state.copy(isPickerOpen = false) }
+        // Escape before the first selection would leave an empty stage with no way back — that
+        // is why this is a no-op rather than a plain toggle, and F-2 confirmed it.
+        //
+        // COR-2 narrows it rather than removing it. The "no way back" premise assumed the stage
+        // behind the picker is empty; with an error card available it is not. Dismissing the
+        // picker on two attached handsets now reveals AC-28's ambiguity card, which HAS a route
+        // onward: its primary action mirrors the top device, and the toolbar chip reopens the
+        // picker (AC-43). Without this the card was unreachable in AC-28's own scenario — the
+        // only way to close the picker was to resolve the ambiguity first, which is the thing
+        // the card exists to help with.
+        //
+        // The original guard still holds where it was written for: no selection AND no card
+        // means there is genuinely nothing behind the picker, so Escape still does nothing.
+        // Asked counterfactually — "would a card be there if I closed?" — because `errorCard()`
+        // yields to an OPEN picker, so asking it directly here always answers null and the
+        // guard could never open.
+        val somethingIsBehindIt = state.selectedDeviceId != null ||
+            state.copy(isPickerOpen = false)
+                .errorCard(Clock.System.now().toEpochMilliseconds()) != null
+        if (somethingIsBehindIt) reduce { state.copy(isPickerOpen = false) }
     }
 
     private fun highlightRow(id: String) = intent {
@@ -334,9 +369,99 @@ public class MirrorViewModel(
      * Releases the pinned bitmap and the staged list and nothing else: the session was never
      * stopped, so the next frame from the still-running capture loop simply shows up.
      */
+    /**
+     * AC-26's secondary and AC-53's primary — FR-37.
+     *
+     * Asks the repository's poll loop to skip the rest of its 2 s wait, so the Retry acts now
+     * instead of looking identical to a dead button for up to two seconds.
+     *
+     * The trigger lives in the data layer rather than here on purpose. Restarting the
+     * collection from this end was tried three ways and withdrawn: it had to be threaded
+     * through the discovery gate F-2 shipped and confirmed, and it proved timing-dependent
+     * (see execution/GAP-fr37-immediate-repoll.md). Beside the delay it shortens, it is
+     * covered by virtual-time tests instead of Orbit's dispatcher scheduling.
+     */
+    private fun retryDiscovery() = intent {
+        // No `.onFailure` here, and the asymmetry with restartAdb/adbPathChosen is deliberate:
+        // refreshDiscovery bottoms out in `Channel.trySend`, which cannot throw, so a failure
+        // branch would be a case the running app can never reach — and a test for it could
+        // only be written by faking the use case, which would prove nothing about this code.
+        // The sibling actions DO have real throwing paths (start/kill-server, a settings
+        // write), which is why they report.
+        refreshDiscovery()
+    }
+
+    /**
+     * AC-27's primary. A real daemon restart, then an immediate re-poll.
+     *
+     * Deliberately NOT an alias of [retryDiscovery]: a button labelled "Restart adb" that only
+     * re-polls is the lying copy `presentation-core-ui/CLAUDE.md` forbids, and measurement
+     * makes it concrete — `start-server` alone cannot clear a wedged daemon, so re-polling
+     * would be unable to fix the very state the user presses it in.
+     *
+     * The re-poll is awaited after the restart, not before: polling into a daemon that is
+     * still coming up would spend the poll's budget and report the same failure again.
+     */
+    private fun restartAdb() = intent {
+        // COR-7. The Optional is read, not discarded. Without this an unmounted SDK made the
+        // primary action silently do nothing, which is exactly the dead button FR-37 forbids —
+        // and the repository throws here specifically so this layer can say so.
+        restartAdbServer()
+            .onSuccess { refreshDiscovery() }
+            .onFailure { postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.RestartAdb)) }
+    }
+
+    /**
+     * AC-26's primary. Asks the window layer for a file, since only it owns a file dialog.
+     *
+     * The chosen path arrives back as [MirrorIntent.AdbPathChosen]; nothing is validated here
+     * (see [adbPathChosen]).
+     */
+    private fun locateAdb() = intent {
+        postSideEffect(MirrorSideEffect.LocateAdb)
+    }
+
+    /**
+     * Stores the path the dialog returned and immediately re-probes.
+     *
+     * No validation at this end on purpose: the path is checked against the filesystem by
+     * `ToolResolver`'s existing `isExecutable` predicate, the same one every other candidate
+     * passes through, so a path that is missing, a directory, or not executable simply falls
+     * through to the ordered candidate list. Validating here as well would be a second
+     * definition of "usable", free to drift from the one that actually decides.
+     */
+    private fun adbPathChosen(path: String) = intent {
+        // Re-probe only if the path actually persisted: polling against a preference that was
+        // not written would re-render the same ToolMissing card and read as the dialog having
+        // been cancelled.
+        setAdbPath(path)
+            .onSuccess { refreshDiscovery() }
+            .onFailure { postSideEffect(MirrorSideEffect.RecoveryFailed(RecoveryAction.SaveAdbPath)) }
+    }
+
     private fun resumeLive() = intent {
         currentFrozenFrame.value = null
         reduce { state.copy(frozen = null) }
+    }
+
+    /**
+     * Re-opens the capture session on the device that dropped (FR-35 / AC-54).
+     *
+     * The sibling of [resumeLive], not a variant of it: this one touches neither
+     * [currentFrozenFrame] nor `state.frozen`, so the pinned pixels and every staged
+     * annotation survive the reconnect. That is the whole of NFR-6 — the drop itself already
+     * preserved them ([onSessionLost] only moves the session to [MirrorSession.Lost]), and
+     * before this handler existed the only action on screen was the one that destroys them.
+     *
+     * Writing [sessionDeviceId] is what actually restarts the transport: `observeFrames`'
+     * `flatMapLatest` gate re-subscribes `startMirroring`, and `observeDiscoveryWhileIdle`
+     * stops polling again. The id comes from [MirrorSession.Lost] rather than from a new
+     * state field, which is why nothing had to be remembered for this.
+     */
+    private fun reconnect() = intent {
+        val lost = state.session as? MirrorSession.Lost ?: return@intent
+        reduce { state.copy(session = MirrorSession.Streaming(lost.deviceId)) }
+        sessionDeviceId.value = lost.deviceId
     }
 
     /**

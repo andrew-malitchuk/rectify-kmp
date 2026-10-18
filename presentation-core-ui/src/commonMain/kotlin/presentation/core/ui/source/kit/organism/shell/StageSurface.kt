@@ -26,15 +26,15 @@ import presentation.core.styling.core.ThemeMode
 import presentation.core.styling.source.theme.AppTheme
 
 /**
- * Dot-grid texture geometry.
+ * Dot-grid texture geometry — measured from the design's stage background, which is
+ * `radial-gradient(var(--stageDot) 1px, transparent 1px)` on a `16px 16px` cell.
  *
- * **Open question — not design-specified.** The comps show a faint dotted ground but carry no
- * measurements for it, so cell size, dot radius and opacity are chosen here and flagged for
- * design review rather than promoted to [Theme] tokens.
+ * The colour is *not* here: it is `Theme.color.stageDot`, because the two themes need different
+ * alphas to read as the same weight. Tinting [Theme.color.ink3] instead — which this did — came
+ * out roughly three times too dark in both themes.
  */
 private val DotCellSize: Dp = 16.dp
-private val DotRadius: Dp = 0.75.dp
-private const val DOT_ALPHA = 0.45f
+private val DotRadius: Dp = 0.5.dp
 
 /** Preview-only phone-outline geometry (see [StageSurfaceEmptyPreviewContent]). */
 private val PreviewOutlineWidth: Dp = 180.dp
@@ -61,7 +61,7 @@ public fun StageSurface(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val dotColor = Theme.color.ink3.copy(alpha = DOT_ALPHA)
+    val dotColor = Theme.color.stageDot
     val density = LocalDensity.current
     // Stepped once per composition, not per dot: the draw loop only adds floats.
     val cellPx = with(density) { DotCellSize.toPx() }
@@ -95,7 +95,7 @@ public fun StageSurface(
  */
 @Composable
 private fun StageSurfaceEmptyPreviewContent() {
-    val outlineColor = Theme.color.ink3.copy(alpha = DOT_ALPHA * 2)
+    val outlineColor = Theme.color.ink3.copy(alpha = 0.9f)
     val strokeWidth = Theme.stroke.thin
     Box(
         modifier = Modifier

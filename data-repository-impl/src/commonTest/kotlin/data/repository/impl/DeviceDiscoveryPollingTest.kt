@@ -181,13 +181,14 @@ class DeviceDiscoveryPollingTest {
     fun `a failed poll is reported and the next tick polls again`() = runTest {
         val adb = FakeAdbHostSource()
         adb.devices = listOf(device("R5CT10ABCDE", DeviceStateResource.Device))
-        adb.failuresLeft = 1
+        // Two: one for the poll, one for the ladder's single retry after it heals the daemon.
+        adb.failuresLeft = 2
         val received = collectDiscovery(adb)
 
         advanceTimeBy(1)
         val failed = assertIs<DiscoveryModel.PollFailed>(received.last().second)
         assertEquals("adb", failed.tool)
-        assertEquals("timed out after 3000ms", failed.reason)
+        assertEquals(timeoutReason(MirrorTuning.HostCommandTimeoutMs), failed.reason)
 
         // The stream is still alive - a terminal operator would have ended it here.
         advanceTimeBy(MirrorTuning.DiscoveryPollMs)
@@ -214,7 +215,7 @@ class DeviceDiscoveryPollingTest {
         // Two empty polls, then one that never answered, then the third empty one. If the
         // failure counted as empty the escalation would already have fired by now.
         advanceTimeBy(MirrorTuning.DiscoveryPollMs + 1)
-        adb.failuresLeft = 1
+        adb.failuresLeft = 2
         advanceTimeBy(MirrorTuning.DiscoveryPollMs)
         assertIs<DiscoveryModel.PollFailed>(received.last().second)
         assertTrue(received.none { it.second is DiscoveryModel.NoDeviceFound })
@@ -224,29 +225,233 @@ class DeviceDiscoveryPollingTest {
         assertEquals(MirrorTuning.EmptyPollEscalation, escalated.attempts)
     }
 
+    // ---- FR-36: the escalation ladder ----
+
+    @Test
+    fun `a timed out poll heals the daemon once and recovers without waiting for the next tick`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.devices = listOf(device("R5CT10ABCDE", DeviceStateResource.Device))
+        adb.failuresLeft = 1
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(1)
+
+        // start-server comes AFTER the first devices call, never before it: a pre-emptive
+        // call hangs against a wedged daemon and would burn the 15 s watchdog every poll.
+        assertEquals(
+            listOf(
+                "calls=devices, start-server, devices",
+                "emissions=Detecting, Found(R5CT10ABCDE)",
+            ),
+            listOf(
+                "calls=${adb.calls.joinToString(", ")}",
+                "emissions=${received.joinToString(", ") { it.second.summary() }}",
+            ),
+        )
+    }
+
+    @Test
+    fun `a start-server that times out escalates to kill-server then start-server`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.devices = listOf(device("R5CT10ABCDE", DeviceStateResource.Device))
+        adb.failuresLeft = 1
+        // A wedged daemon - alive but not serving, so start-server hangs instead of helping.
+        adb.startServerFailures = 1
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(1)
+
+        assertEquals(
+            listOf(
+                "calls=devices, start-server, kill-server, start-server, devices",
+                "emissions=Detecting, Found(R5CT10ABCDE)",
+            ),
+            listOf(
+                "calls=${adb.calls.joinToString(", ")}",
+                "emissions=${received.joinToString(", ") { it.second.summary() }}",
+            ),
+        )
+    }
+
+    @Test
+    fun `a non-timeout failure spawns nothing and is reported as it is`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.failuresLeft = 1
+        adb.failureExitCode = 1
+        adb.failureReason = "error: protocol fault (couldn't read status)"
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(1)
+
+        // Firing a 15 s watchdog at output that merely failed to parse is its own bug.
+        assertEquals(
+            listOf(
+                "calls=devices",
+                "emissions=Detecting, PollFailed(adb error: protocol fault (couldn't read status))",
+            ),
+            listOf(
+                "calls=${adb.calls.joinToString(", ")}",
+                "emissions=${received.joinToString(", ") { it.second.summary() }}",
+            ),
+        )
+    }
+
+    @Test
+    fun `a daemon that will not come back reports the real reason and keeps polling`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.failuresLeft = Int.MAX_VALUE
+        adb.startServerFailures = Int.MAX_VALUE
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(MirrorTuning.DiscoveryPollMs + 1)
+
+        // The reported reason is start-server's 15 s watchdog, not the 3 s poll it began as:
+        // the last thing that failed is what the user is told about. And the ladder runs once
+        // per poll - it never loops inside one.
+        val startServerTimedOut = "PollFailed(adb ${timeoutReason(MirrorTuning.DaemonStartTimeoutMs)})"
+        assertEquals(
+            listOf(
+                "calls=devices, start-server, kill-server, start-server, devices, start-server, kill-server, start-server",
+                "emissions=Detecting, $startServerTimedOut, $startServerTimedOut",
+            ),
+            listOf(
+                "calls=${adb.calls.joinToString(", ")}",
+                "emissions=${received.joinToString(", ") { it.second.summary() }}",
+            ),
+        )
+    }
+
+    @Test
+    fun `a start-server that fails for another reason is not treated as a wedge`() = runTest {
+        val adb = FakeAdbHostSource()
+        adb.failuresLeft = 1
+        adb.startServerFailures = 1
+        adb.startServerExitCode = 1
+        adb.startServerReason = "cannot bind to 127.0.0.1:5037"
+        val received = collectDiscovery(adb)
+
+        advanceTimeBy(1)
+
+        // Only a HANG says the daemon is alive but not serving. A daemon that refused to
+        // start for a stated reason has nothing to kill, so killing is not the answer.
+        assertEquals(
+            listOf(
+                "calls=devices, start-server",
+                "emissions=Detecting, PollFailed(adb cannot bind to 127.0.0.1:5037)",
+            ),
+            listOf(
+                "calls=${adb.calls.joinToString(", ")}",
+                "emissions=${received.joinToString(", ") { it.second.summary() }}",
+            ),
+        )
+    }
+
+    @Test
+    fun `restartAdbServer kills the daemon before starting it`() = runTest {
+        val adb = FakeAdbHostSource()
+
+        repository(adb).restartAdbServer()
+
+        assertEquals(listOf("kill-server", "start-server"), adb.calls)
+    }
+
     /**
      * Starts collecting the discovery flow on the background scope and returns the list it
      * fills, each emission stamped with the virtual time it arrived at.
      */
+
+    /**
+     * FR-37 — `refreshDiscovery()` cuts the poll interval short so a Retry acts now.
+     *
+     * This is the test that justifies the trigger living in the data layer at all. Doing it in
+     * the presentation layer was tried three ways and withdrawn: it had to be threaded through
+     * the discovery gate F-2 shipped and confirmed, and it proved timing-dependent against
+     * Orbit's dispatchers — unprovable, so unshippable. Here the clock is virtual, the loop is
+     * the one that owns the delay, and the claim is exact rather than probabilistic.
+     *
+     * MUTATION: put `delay(DiscoveryPollMs)` back in place of the withTimeoutOrNull race — the
+     * early-poll assertion fails, because the poll lands at 2000 ms instead of 500 ms.
+     */
+    @Test
+    fun `a refresh request cuts the poll interval short`() = runTest {
+        val adb = FakeAdbHostSource()
+        val repository = repository(adb)
+        val received = mutableListOf<Pair<Long, DiscoveryModel>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+        }
+
+        // Detecting plus the first poll land at 0; the next would normally be at 2000.
+        advanceTimeBy(500)
+        repository.refreshDiscovery()
+        advanceTimeBy(1)
+
+        assertEquals(
+            // 500, not 501: the collector is unconfined, so the emission is observed at the
+            // instant the refresh releases the wait rather than on the next tick.
+            expected = listOf("pollAt=500", "waitedFullInterval=false"),
+            actual = listOf(
+                "pollAt=${received.last().first}",
+                "waitedFullInterval=${received.last().first >= MirrorTuning.DiscoveryPollMs}",
+            ),
+        )
+    }
+
+    /**
+     * A refresh that arrives while a poll is already in flight is KEPT, not dropped.
+     *
+     * The channel is CONFLATED for this: with no buffer the nudge would vanish and the user's
+     * Retry would silently do nothing, which is the whole defect FR-37 exists to forbid. Two
+     * rapid requests collapse into one, because "poll now" is not a queue.
+     *
+     * MUTATION: change the channel to `Channel<Unit>()` (rendezvous) — `trySend` then fails
+     * with no receiver parked and this test's early poll never happens.
+     */
+    @Test
+    fun `a refresh requested between polls is not lost`() = runTest {
+        val adb = FakeAdbHostSource()
+        val repository = repository(adb)
+        // Nudge BEFORE anything collects, so nothing is waiting on the channel yet.
+        repository.refreshDiscovery()
+
+        val received = mutableListOf<Pair<Long, DiscoveryModel>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+        }
+        advanceTimeBy(1)
+
+        assertEquals(
+            expected = "polledEarly=true",
+            actual = "polledEarly=${received.count { it.second is DiscoveryModel.Found } >= 2}",
+        )
+    }
+
     private fun TestScope.collectDiscovery(
         adb: AdbHostSource,
         emulators: EmulatorSource = FakeEmulatorSource(emptyList()),
         executor: DeviceCommandExecutor = FakeDeviceCommandExecutor(),
     ): List<Pair<Long, DiscoveryModel>> {
-        val repository = DeviceRepositoryImpl(
-            adbHostSource = adb,
-            idbHostSource = FakeIdbHostSource(),
-            emulatorSource = emulators,
-            deviceCommandExecutor = executor,
-            mirrorTransport = FakeMirrorTransport,
-            nowMs = { testScheduler.currentTime },
-        )
+        val repository = repository(adb, emulators, executor)
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
         }
         return received
     }
+
+    private fun TestScope.repository(
+        adb: AdbHostSource,
+        emulators: EmulatorSource = FakeEmulatorSource(emptyList()),
+        executor: DeviceCommandExecutor = FakeDeviceCommandExecutor(),
+    ): DeviceRepositoryImpl = DeviceRepositoryImpl(
+        adbHostSource = adb,
+        idbHostSource = FakeIdbHostSource(),
+        emulatorSource = emulators,
+        deviceCommandExecutor = executor,
+        mirrorTransport = FakeMirrorTransport,
+        adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
+        nowMs = { testScheduler.currentTime },
+    )
 
     private fun device(
         serial: String,
@@ -270,6 +475,29 @@ private class FakeAdbHostSource(
     /** Set to make the next [listDevices] calls fail, the way a cold adb server does. */
     var failuresLeft: Int = 0
 
+    /**
+     * How the scripted [listDevices] failures present themselves. A timeout by default -
+     * assign a non-null exit code to get the kind of failure the ladder must NOT escalate on.
+     */
+    var failureExitCode: Int? = null
+    var failureReason: String = timeoutReason(MirrorTuning.HostCommandTimeoutMs)
+
+    /**
+     * Leading [startServer] calls that fail, and how. A timeout by default - the way a WEDGED
+     * daemon makes them - because that is the only shape the ladder treats as repairable.
+     */
+    var startServerFailures: Int = 0
+    var startServerExitCode: Int? = null
+    var startServerReason: String = timeoutReason(MirrorTuning.DaemonStartTimeoutMs)
+
+    /**
+     * Every deviceless call this fake received, in order.
+     *
+     * The ladder is an ORDER, so asserting a count per method cannot tell kill-then-start
+     * from start-then-kill - only the sequence can.
+     */
+    val calls: MutableList<String> = mutableListOf()
+
     override suspend fun probe(): ToolProbe = ToolProbe(
         kind = ToolKind.Adb,
         found = found,
@@ -281,12 +509,42 @@ private class FakeAdbHostSource(
     )
 
     override suspend fun listDevices(): List<DeviceResource> {
+        calls += "devices"
         if (failuresLeft > 0) {
             failuresLeft--
-            throw DeviceCommandException(listOf("adb", "devices", "-l"), null, "timed out after 3000ms")
+            throw DeviceCommandException(listOf("adb", "devices", "-l"), failureExitCode, failureReason)
         }
         return devices
     }
+
+    override suspend fun startServer() {
+        calls += "start-server"
+        if (startServerFailures > 0) {
+            startServerFailures--
+            throw DeviceCommandException(listOf("adb", "start-server"), startServerExitCode, startServerReason)
+        }
+    }
+
+    override suspend fun killServer() {
+        calls += "kill-server"
+    }
+}
+
+/** The watchdog's own words, built from the shared constant rather than hand-typed. */
+private fun timeoutReason(budgetMs: Long): String =
+    "${DeviceCommandException.TIMEOUT_REASON_PREFIX}${budgetMs}ms"
+
+/**
+ * One line per emission, so a whole sequence is one [assertEquals] instead of a chain of
+ * [assertTrue]s - a chain short-circuits, and a mutation that only breaks the later links
+ * then looks fully killed by the first one.
+ */
+private fun DiscoveryModel.summary(): String = when (this) {
+    is DiscoveryModel.Detecting -> "Detecting"
+    is DiscoveryModel.ToolMissing -> "ToolMissing(${tool})"
+    is DiscoveryModel.NoDeviceFound -> "NoDeviceFound(attempts=${attempts})"
+    is DiscoveryModel.PollFailed -> "PollFailed(${tool} ${reason})"
+    is DiscoveryModel.Found -> "Found(${physical.joinToString("|") { it.id }})"
 }
 
 /** An `idb` probe that answers without touching a process. */

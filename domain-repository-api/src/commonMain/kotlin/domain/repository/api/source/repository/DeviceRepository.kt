@@ -16,6 +16,16 @@ import kotlinx.coroutines.flow.Flow
 public interface DeviceRepository {
 
     /**
+     * Cuts the discovery poll interval short so the next poll happens now.
+     *
+     * Best-effort by design: it nudges a loop that is already running rather than guaranteeing
+     * a poll, so a request arriving mid-poll costs at most the remainder of one interval. The
+     * alternative — restarting the collection from the presentation layer — was tried and
+     * withdrawn as timing-dependent.
+     */
+    public suspend fun refreshDiscovery()
+
+    /**
      * Probes for the external platform tools.
      *
      * A missing tool is reported as `isInstalled = false`, never as an exception.
@@ -47,4 +57,32 @@ public interface DeviceRepository {
 
     /** Live statistics of the active mirroring session. */
     public fun observeMirrorStats(): Flow<MirrorStatsModel>
+
+    /**
+     * Restarts the `adb` daemon: kills it, then starts it again.
+     *
+     * Both halves are needed and in that order. `start-server` alone is a "make sure one
+     * exists" command, not a repair command, so it cannot clear a daemon that is alive but
+     * not serving — measured against a wedged daemon, it hangs there. Only killing it first
+     * does, which is why the recovery action is a restart and not a start.
+     *
+     * Fails rather than reporting a success it did not achieve, so a dead `adb` is visible
+     * instead of a button that appears to have worked.
+     */
+    public suspend fun restartAdbServer()
+
+    /**
+     * Records the path to the `adb` binary the user pointed Rectify at, or clears it when
+     * [path] is empty.
+     *
+     * The path is deliberately NOT validated here. It arrives from a file dialog, so it is
+     * outside the program's control, and the only honest place to check it is against the
+     * filesystem at probe time — by the same `isExecutable` predicate every other candidate
+     * goes through. Validating it twice, in two places, is how the two checks drift apart.
+     *
+     * A stored path that stops working is therefore not an error state: the resolver simply
+     * falls through to the ordered candidate list, which is what it would have done had the
+     * user never chosen anything.
+     */
+    public suspend fun setAdbPath(path: String)
 }

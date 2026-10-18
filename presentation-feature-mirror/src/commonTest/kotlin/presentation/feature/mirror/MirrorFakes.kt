@@ -10,6 +10,9 @@ import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.usecase.api.source.monad.Optional
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
+import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
+import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
+import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
@@ -159,6 +162,43 @@ internal fun sizedFrameDecoder(): suspend (ByteArray) -> ImageBitmap? = { bytes 
 }
 
 /**
+ * Records daemon restarts so a test can prove AC-27's button did a real restart rather than a
+ * re-poll — the distinction FR-37 exists to enforce.
+ */
+internal class FakeRestartAdbServer : RestartAdbServerUseCase {
+
+    var restarts: Int = 0
+    var failure: Throwable? = null
+
+    override suspend fun invoke(): Optional {
+        restarts += 1
+        return failure?.let { Result.failure(it) } ?: Result.success(Unit)
+    }
+}
+
+/** Counts poll-interval nudges, so a Retry that does nothing can be told from one that works. */
+internal class FakeRefreshDiscovery : RefreshDiscoveryUseCase {
+
+    var nudges: Int = 0
+
+    override suspend fun invoke(): Optional {
+        nudges += 1
+        return Result.success(Unit)
+    }
+}
+
+/** Records the paths AC-26's file dialog handed back. */
+internal class FakeSetAdbPath : SetAdbPathUseCase {
+
+    val paths: MutableList<String> = mutableListOf()
+
+    override suspend fun invoke(path: String): Optional {
+        paths += path
+        return Result.success(Unit)
+    }
+}
+
+/**
  * Builds a ViewModel with every seam faked.
  *
  * The decode seam returns `null` by default: most tests assert the state machine and need no
@@ -170,6 +210,9 @@ internal fun mirrorViewModel(
     boot: BootEmulatorUseCase = FakeBootEmulator(),
     mirroring: StartMirroringUseCase = FakeStartMirroring(),
     stats: ObserveMirrorStatsUseCase = FakeObserveMirrorStats(),
+    refreshDiscovery: RefreshDiscoveryUseCase = FakeRefreshDiscovery(),
+    restartAdbServer: RestartAdbServerUseCase = FakeRestartAdbServer(),
+    setAdbPath: SetAdbPathUseCase = FakeSetAdbPath(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
 ): MirrorViewModel = MirrorViewModel(
     detectTools = detectTools,
@@ -177,6 +220,9 @@ internal fun mirrorViewModel(
     bootEmulator = boot,
     startMirroring = mirroring,
     observeMirrorStats = stats,
+    refreshDiscovery = refreshDiscovery,
+    restartAdbServer = restartAdbServer,
+    setAdbPath = setAdbPath,
     decodeFrame = decodeFrame,
 )
 

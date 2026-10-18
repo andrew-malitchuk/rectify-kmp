@@ -1,0 +1,20 @@
+{
+  "verdict": "pass",
+  "iteration": 1,
+  "corrections": [
+    {
+      "taskId": "N/A (plan.json)",
+      "issue": "plan.json's own testStrategy.unit entries for T1b and T1c are stale relative to the FR-36 pre-first-poll-call withdrawal recorded later in refinementRecord.appliedCorrections/deviations: T1b's MUTATION clause still names a 'TimeoutMatcher.kt' file (the candidate-c separate-file design that CORRECTION 2 explicitly deleted in favour of DeviceCommandException.isTimeout() in data-device-api), and T1c's assertion text still says 'the count must still be 1 (the pre-first-poll call only)', which assumes the withdrawn unconditional pre-poll call still exists.",
+      "severity": "info",
+      "suggestedFix": "No backlog change needed — backlog.json's T-7 (TAC-2: 'change isTimeout()'s body'; TAC-3: 'the count must still be 0') correctly tracks the final, corrected FR-36 design rather than plan.json's stale testStrategy prose. Flagging only so Stage 4/5 do not misread plan.json's own unrepaired staleness as a backlog defect, and so a future plan.json edit pass cleans up the dangling TimeoutMatcher.kt / count-must-be-1 text."
+    },
+    {
+      "taskId": "T-5/T-6",
+      "issue": "backlog.json's executionPlan.waves lists T-5 and T-6 together in wave 3's 'parallel' array, yet both edit DeviceRepositoryImpl.kt. This is correctly caught and explained in sequenceNotes.serializedForScopeOverlap ('serialized within wave 3's dependency chain... serialized by file'), and T-5 carries parallelizable: false specifically to signal the executor must not run it concurrently with T-6 (parallelizable: true) despite sharing a wave number.",
+      "severity": "info",
+      "suggestedFix": "No change required — verified non-conflicting: wave number encodes topological depth (earliest-ready), not a concurrency guarantee, and the per-task parallelizable flag is the actual concurrency signal. Within wave 3 the parallelizable:true subset (T-6, T-14, T-16) is scope-disjoint, as required. Consider rewording sequenceNotes.serializedForScopeOverlap's T-5/T-6 entry in a future pass so 'both land wave 3' doesn't read as a contradiction of 'serialized' at first glance."
+    }
+  ],
+  "uncoveredAC": [],
+  "graphIssues": []
+}

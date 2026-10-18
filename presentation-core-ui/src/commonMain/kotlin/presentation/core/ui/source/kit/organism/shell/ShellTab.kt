@@ -12,7 +12,7 @@ import androidx.compose.ui.input.key.Key
  * @property label Tab copy as rendered in the panel header.
  */
 public enum class ShellTab(public val label: String) {
-    Notes("Notes"),
+    Notes("Annotations"),
     Payload("Payload"),
     History("History"),
 }

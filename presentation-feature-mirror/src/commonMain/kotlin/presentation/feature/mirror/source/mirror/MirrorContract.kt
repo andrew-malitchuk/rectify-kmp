@@ -102,6 +102,72 @@ public enum class MirrorStage {
 }
 
 /**
+ * Which actionable error the card is reporting — the semantics only, like [MirrorRowKind]: the
+ * headline, body and button labels are resolved in the content layer.
+ *
+ * The design file draws five card states, two of which ([`err-sim`, `err-trust`]) are iOS and
+ * deferred (NFR-10), so only the Android four are modelled. [PollFailed] has no design state of
+ * its own and is still a distinct case here: it is the only thing that separates "`adb` answered
+ * and saw nothing" from "`adb` did not answer at all", and folding it into [NoDevice] is exactly
+ * the misreport FR-32 forbids.
+ */
+public enum class MirrorErrorKind {
+    /** `adb` is not on the PATH at all (`err-adb`). */
+    ToolMissing,
+
+    /** `adb` runs and sees no device (`err-nodevice`). */
+    NoDevice,
+
+    /** The discovery poll itself failed — no answer, as opposed to an empty answer. */
+    PollFailed,
+
+    /** More than one usable device is attached and the user has to pick (`err-multi`). */
+    MultipleDevices,
+}
+
+/**
+ * The actionable error card's spec — **not** its copy.
+ *
+ * Deliberately Compose-free and string-free so the projection that builds it can be asserted in
+ * `commonTest`, which is the only test harness this module has. Same precedent as [MirrorRow]:
+ * semantics here, `stringResource` in the content layer.
+ *
+ * @property kind Which state this is. The only field that tells [MirrorErrorKind.PollFailed]
+ *   apart from [MirrorErrorKind.NoDevice].
+ * @property command Exact shell line for the command block, or `null` when the state has none
+ *   (as [MirrorErrorKind.MultipleDevices] does not). Machine text, never localised.
+ * @property diagnostic Mono footer — probed paths, `adb` version, poll age. Never localised.
+ * @property rows Picker rows for [MirrorErrorKind.MultipleDevices], carried verbatim from
+ *   [MirrorUiState.rows] including a `selectable = false` unauthorised handset so the card can
+ *   show it as disabled rather than hide it; empty for every other kind.
+ * @property primaryDeviceId First usable row's id for [MirrorErrorKind.MultipleDevices] — the
+ *   target of the "Mirror <top device>" shortcut; `null` otherwise.
+ * @property canBootEmulator Whether any AVD is known, so [MirrorErrorKind.NoDevice] can hide the
+ *   "Boot emulator instead" secondary instead of offering a dead button.
+ */
+public data class MirrorErrorCard(
+    val kind: MirrorErrorKind,
+    val command: String? = null,
+    val diagnostic: String = "",
+    val rows: List<MirrorRow> = emptyList(),
+    val primaryDeviceId: String? = null,
+    val canBootEmulator: Boolean = false,
+)
+
+/**
+ * The "stream dropped" banner's spec, shown over a frozen frame whose device went away (FR-24).
+ *
+ * @property deviceId Device from [MirrorSession.Lost] — the one [MirrorIntent.Reconnect]
+ *   re-attempts, so no new state field is needed to remember it.
+ * @property annotationCount `frozen.annotations.size`, so the banner can say how much work the
+ *   drop did **not** destroy.
+ */
+public data class MirrorDropBanner(
+    val deviceId: String,
+    val annotationCount: Int,
+)
+
+/**
  * The mirror surface's reduced state.
  *
  * Carries **no frame bytes**: pixels arrive up to ten times a second and a `ByteArray`-bearing
@@ -156,6 +222,19 @@ public data class MirrorUiState(
      * UI stop OFFERING the affordance instead of offering a no-op.
      */
     public val isPickerDismissable: Boolean get() = selectedDeviceId != null
+
+    /**
+     * Whether Resume Live may be **offered** (NFR-6).
+     *
+     * [MirrorIntent.ResumeLive] drops the staged annotations, which is the right trade while the
+     * stream is still running behind the pinned frame. Once the device is gone it is not: there
+     * is no live frame to go back to, so the only affordance on screen would be one that
+     * destroys the user's work. Withdrawing the button — the [isPickerDismissable] precedent —
+     * is what fixes that, not changing what the intent does: `ResumeLive`'s own behaviour stays
+     * exactly as AC-51 confirmed it. [MirrorIntent.Reconnect] is what the drop banner offers
+     * instead.
+     */
+    public val canResumeLive: Boolean get() = frozen != null && session !is MirrorSession.Lost
 
     /**
      * What the stage shows.
@@ -273,9 +352,55 @@ public sealed interface MirrorIntent {
 
     /** Unpin the frame and drop the staged list — back to the live mirror (AC-51). */
     public data object ResumeLive : MirrorIntent
+
+    /**
+     * Re-attempt the capture session after a drop (FR-33), from the banner's only action.
+     *
+     * Carries no device id: [MirrorSession.Lost] already holds the one to retry, so remembering
+     * it costs no new state field. Distinct from [ResumeLive] in the one way that matters — it
+     * keeps the frozen frame and its annotations.
+     */
+    public data object Reconnect : MirrorIntent
+
+    /** Restart the discovery collection — the error card's "Retry" (AC-26, AC-53). */
+    public data object RetryDiscovery : MirrorIntent
+
+    /**
+     * Restart the `adb` daemon — `kill-server` then `start-server` (AC-27's primary).
+     *
+     * Deliberately not an alias of [RetryDiscovery]: a button that says "Restart adb" and only
+     * re-polls is a lying string, and re-polling cannot clear a wedged daemon anyway.
+     */
+    public data object RestartAdb : MirrorIntent
+
+    /** Ask the host for an `adb` to use — the error card's "Locate adb…" (AC-26's primary). */
+    public data object LocateAdb : MirrorIntent
+
+    /**
+     * An `adb` the user picked in the host's file dialog.
+     *
+     * Still probed by `isExecutable` before it is used: coming from a dialog makes a path
+     * user-chosen, not valid.
+     *
+     * @property path Absolute path to the chosen binary.
+     */
+    public data class AdbPathChosen(val path: String) : MirrorIntent
 }
 
 /** One-shot events of the mirror surface. */
+/**
+ * The recovery actions that can fail visibly (see [MirrorSideEffect.RecoveryFailed]).
+ *
+ * `RetryDiscovery` is deliberately absent: it bottoms out in `Channel.trySend`, which cannot
+ * throw, so a case for it would be unreachable in the running app. An enum case nothing can
+ * produce is worse than no case — it invites a `when` branch and a test that both look like
+ * coverage.
+ */
+public enum class RecoveryAction {
+    RestartAdb,
+    SaveAdbPath,
+}
+
 public sealed interface MirrorSideEffect {
 
     /**
@@ -287,6 +412,28 @@ public sealed interface MirrorSideEffect {
      * @property avdName AVD that would not boot.
      */
     public data class BootFailed(val avdName: String) : MirrorSideEffect
+
+    /**
+     * Open the host's file picker so the user can point Rectify at an `adb` (AC-26).
+     *
+     * A side effect and not a reduced flag because only the host can show a native dialog; its
+     * result comes back as [MirrorIntent.AdbPathChosen].
+     */
+    public data object LocateAdb : MirrorSideEffect
+
+    /**
+     * A recovery action failed, so the user is told instead of watching nothing happen.
+     *
+     * Added for COR-7. The three recovery handlers discarded the `Optional` their use cases
+     * returned, which made a real failure — an unmounted SDK after the probe cached a success,
+     * say — indistinguishable from the dead button FR-37 exists to forbid: the card simply
+     * re-rendered as if the user had cancelled. `DeviceRepositoryImpl.restartAdbServer`'s own
+     * KDoc justifies throwing precisely so "the use case reports a Failure rather than a button
+     * that silently did nothing", and the only reader was throwing it away.
+     *
+     * @property action Which action failed, for the message.
+     */
+    public data class RecoveryFailed(val action: RecoveryAction) : MirrorSideEffect
 }
 
 /**

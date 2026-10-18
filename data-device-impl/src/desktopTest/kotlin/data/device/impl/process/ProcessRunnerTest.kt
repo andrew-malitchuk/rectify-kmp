@@ -44,6 +44,28 @@ class ProcessRunnerTest {
     }
 
     /**
+     * T17 — the producer end of the shared timeout classifier.
+     *
+     * [ProcessRunner] is the only producer of a timeout reason and the escalation ladder is its
+     * only consumer, matching via [DeviceCommandException.isTimeout]. This asserts the reason a
+     * real watchdog expiry carries is *built from*
+     * [DeviceCommandException.TIMEOUT_REASON_PREFIX] and therefore classifies — so retyping it
+     * as a hand-written literal (`"timed-out after "`, a reworded log line) goes red here
+     * instead of silently disarming the ladder with the suite still green.
+     */
+    @Test
+    fun timeoutPrefixIsSharedBetweenProducerAndConsumer() = runBlocking {
+        val failure = assertFailsWith<DeviceCommandException> {
+            ProcessRunner.run(listOf("/bin/sh", "-c", "sleep 30"), TIMEOUT_MS)
+        }
+        assertTrue(
+            failure.stderrTail.startsWith(DeviceCommandException.TIMEOUT_REASON_PREFIX),
+            "the watchdog reason was not built from the shared constant - got ${failure.stderrTail}",
+        )
+        assertTrue(failure.isTimeout(), "the watchdog reason did not classify as a timeout")
+    }
+
+    /**
      * The regression this file exists for.
      *
      * The shell exits 0 within milliseconds, so `waitFor` is never the slow part - the

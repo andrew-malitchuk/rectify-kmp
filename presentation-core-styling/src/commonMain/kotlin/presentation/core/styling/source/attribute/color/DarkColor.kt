@@ -21,8 +21,10 @@ internal val attributeDarkColorPalette: ThemeColor =
         bg = Color(0xFF1E1E20),
         chrome = Color(0xFF262628),
         stage = Color(0xFF151517),
+        stageDot = Color(0x0EFFFFFF), // rgba(255,255,255,.055)
         surface = Color(0xFF2B2B2E),
         pop = Color(0xFF2C2D31),
+        overlayScrim = Color(0xFF0C0C0E), // rgb(12,12,14) — fixed near-black, identical in LightColor by design
         // endregion
         // region Ink
         ink = Color(0xFFF1F1F2),
@@ -35,11 +37,11 @@ internal val attributeDarkColorPalette: ThemeColor =
         focus = Color(0xFF53A0FF), // oklch(0.7 0.17 255)
         // endregion
         // region Lines & Fills — rgba(255,255,255,alpha), same alpha steps as light
-        line = Color(0x14FFFFFF), // rgba(255,255,255,.08)
-        line2 = Color(0x24FFFFFF), // rgba(255,255,255,.14)
-        hover = Color(0x0BFFFFFF), // rgba(255,255,255,.045)
-        seg = Color(0x0FFFFFFF), // rgba(255,255,255,.06)
-        codeBg = Color(0x09FFFFFF), // rgba(255,255,255,.035)
+        line = Color(0x12FFFFFF), // rgba(255,255,255,.07)
+        line2 = Color(0x21FFFFFF), // rgba(255,255,255,.13)
+        hover = Color(0x0DFFFFFF), // rgba(255,255,255,.05)
+        seg = Color(0x12FFFFFF), // rgba(255,255,255,.07)
+        codeBg = Color(0x0AFFFFFF), // rgba(255,255,255,.04)
         // endregion
         // region Signal — same in both themes
         annotate = Color(0xFFF13936), // oklch(0.63 0.22 27)

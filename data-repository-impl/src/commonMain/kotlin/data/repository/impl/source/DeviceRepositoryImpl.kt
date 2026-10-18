@@ -14,6 +14,8 @@ import data.device.api.source.model.DeviceResource
 import data.device.api.source.model.DeviceStateResource
 import data.device.api.source.model.ToolKind
 import data.device.api.source.tuning.MirrorTuning
+import data.preference.api.source.datasource.AdbPathPreferenceSource
+import data.preference.api.source.model.AdbPathPreference
 import data.repository.impl.core.mapper.DeviceResourceMapper
 import data.repository.impl.core.mapper.EmulatorResourceMapper
 import data.repository.impl.core.mapper.MirrorFrameMapper
@@ -24,6 +26,11 @@ import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
+import co.touchlab.kermit.Logger
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,20 +49,62 @@ import kotlin.time.Clock
  * @property deviceCommandExecutor The device-scoped command path, used to ask a running
  *   emulator for its AVD name.
  * @property mirrorTransport Frame source for an active session.
+ * @property adbPathPreferenceSource Where a user-chosen `adb` path is persisted. Written here,
+ *   read by `ToolResolver` at probe time — the resolver validates it, this does not.
  * @property nowMs Wall-clock reader. A parameter so the poll metadata is assertable under
  *   virtual time instead of needing a real two-second wait.
  */
+private val log = Logger.withTag("DeviceRepository")
+
 internal class DeviceRepositoryImpl(
     private val adbHostSource: AdbHostSource,
     private val idbHostSource: IdbHostSource,
     private val emulatorSource: EmulatorSource,
     private val deviceCommandExecutor: DeviceCommandExecutor,
     private val mirrorTransport: MirrorTransport,
+    private val adbPathPreferenceSource: AdbPathPreferenceSource,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : DeviceRepository {
 
     /** Last version `adb` reported, for the status bar of an active session. */
     private val adbVersion = MutableStateFlow("")
+
+    /**
+     * @see DeviceRepository.refreshDiscovery
+     *
+     * `trySend`, not `send`: this must never suspend its caller. A refresh is a best-effort
+     * nudge, and the conflated channel means a dropped one only ever costs the user the
+     * remainder of an interval they were already waiting out.
+     */
+    override suspend fun refreshDiscovery() {
+        refreshRequests.trySend(Unit)
+    }
+
+    /**
+     * Requests to cut the poll interval short.
+     *
+     * CONFLATED on purpose: a refresh that arrives mid-poll is kept rather than dropped, so
+     * the next interval returns immediately instead of the request vanishing — and two rapid
+     * requests collapse into one, because "poll now" is not a queue.
+     */
+    private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
+
+    /**
+     * Serialises everything that talks to the adb daemon's lifecycle.
+     *
+     * COR-3. Without it, AC-27's "Restart adb" could make the state it repairs worse: the
+     * button runs on the Orbit intent scope while the poll loop runs on its own, so a
+     * `kill-server` could land while the loop was inside `adb devices -l`. That call then
+     * talks to a daemon that was just killed, pays the measured 3.03 s re-fork against a 3 s
+     * budget, times out, and enters the ladder — issuing its OWN `start-server` concurrently
+     * with the button's. Two racing starts, and a `PollFailed` card for a daemon the restart
+     * had already fixed. The interleaving was nondeterministic, so a successful restart could
+     * observably read as "adb stopped responding".
+     *
+     * Guards the daemon's lifecycle only, never a plain poll: holding it across every
+     * `listDevices` would serialise the whole loop behind any user action for no benefit.
+     */
+    private val daemonLifecycle = Mutex()
 
     /**
      * Probes both platforms (AC-1).
@@ -100,7 +149,13 @@ internal class DeviceRepositoryImpl(
             // Emitted outside the try: catching around `emit` would also swallow a
             // downstream failure, which flow exception transparency forbids.
             emit(emission.model)
-            delay(MirrorTuning.DiscoveryPollMs)
+            // Waits the poll interval, OR returns at once if someone asked for a refresh.
+            // This is what makes a Retry button do work NOW rather than up to two seconds
+            // later. It lives here, beside the delay it shortens, because this loop is
+            // covered by virtual-time tests - an earlier attempt to do it in the presentation
+            // layer had to be withdrawn when it proved timing-dependent and unprovable
+            // (see execution/GAP-fr37-immediate-repoll.md).
+            withTimeoutOrNull(MirrorTuning.DiscoveryPollMs) { refreshRequests.receive() }
         }
     }
 
@@ -127,7 +182,7 @@ internal class DeviceRepositoryImpl(
             )
         }
         adbVersion.value = probe.version.orEmpty()
-        val devices = adbHostSource.listDevices()
+        val devices = listDevicesEscalating()
         avdNames.keys.retainAll(devices.mapTo(mutableSetOf()) { it.id.value })
         val usable = devices.count { it.state == DeviceStateResource.Device }
         val streak = if (usable == 0) emptyPolls + 1 else 0
@@ -147,6 +202,89 @@ internal class DeviceRepositoryImpl(
             )
         }
         return PollOutcome(model, streak)
+    }
+
+    /**
+     * `adb devices -l`, with the FR-36 escalation ladder behind it.
+     *
+     * 1. Ask at the normal [MirrorTuning.HostCommandTimeoutMs] budget. Answered — done.
+     * 2. A TIMEOUT-classified failure, and only that, means the daemon may be cold: heal it
+     *    ([healDaemon]) and ask exactly once more. A parse error or a non-zero exit is a real
+     *    answer about something else and is rethrown untouched, so it reaches the caller as
+     *    `PollFailed` without a single extra process being spawned. Firing a 15 s watchdog at
+     *    output that merely failed to parse would be a bug of its own.
+     * 3. Anything still failing is rethrown, so the loop turns it into `PollFailed` with the
+     *    real reason and tries again on the next tick. One escalation per poll — never a loop.
+     *
+     * There is deliberately NO pre-emptive `startServer()` ahead of the first poll. It was
+     * proposed on the measurement that a warm `start-server` costs 0.00 s, then WITHDRAWN on
+     * the later measurement that it HANGS against a wedged daemon: unconditional, it would
+     * burn the full [MirrorTuning.DaemonStartTimeoutMs] on every poll — a second livelock,
+     * five times longer than the 3 s one this fixes. Keying on a timeout also means there is
+     * no "daemon is believed up" flag to keep, a flag whose belief outlived any daemon the
+     * user killed from a shell.
+     */
+    private suspend fun listDevicesEscalating(): List<DeviceResource> = try {
+        adbHostSource.listDevices()
+    } catch (failure: DeviceCommandException) {
+        // Step 2. Only a timeout is a candidate for healing; everything else is a real answer
+        // about something other than the daemon and goes straight back out untouched.
+        if (!failure.isTimeout()) throw failure
+        healDaemon()
+        // Step 3. Exactly one more attempt. If this throws, the caller turns it into
+        // PollFailed with the real reason and the next tick starts over - one escalation per
+        // poll, never a loop, which is what stops the cure from becoming a second livelock.
+        adbHostSource.listDevices()
+    }
+
+    /**
+     * Brings the adb daemon back, cold case first.
+     *
+     * A cold daemon is merely absent and `start-server` forks it in a measured, fixed 3.03 s.
+     * A WEDGED daemon — alive but not serving — is a second, distinct failure mode that
+     * `start-server` cannot repair: it hangs there, because one already exists. Only
+     * `kill-server` clears it, so a timed-out [AdbHostSource.startServer] escalates into the
+     * very same kill-then-start sequence AC-27's "Restart adb" button runs.
+     *
+     * A non-timeout `start-server` failure is not a wedge and is rethrown: nothing to repair.
+     */
+    private suspend fun healDaemon() = daemonLifecycle.withLock {
+        try {
+            // Logged on the way IN, not on success. ProcessRunner only logs when it kills a
+            // process, so a repair that works leaves no trace at all — which made the fix
+            // indistinguishable from the bug during hardware verification: one timeout, no
+            // start-server line, and a device that appeared anyway. An unobservable repair is
+            // one nobody can support in the field.
+            log.d { "poll timed out; starting the adb daemon" }
+            adbHostSource.startServer()
+        } catch (failure: DeviceCommandException) {
+            if (!failure.isTimeout()) throw failure
+            log.d { "daemon start timed out; it is wedged rather than absent, restarting it" }
+            killThenStart()
+        }
+    }
+
+    /**
+     * @see DeviceRepository.restartAdbServer
+     *
+     * Each half carries its own budget inside [AdbHostSource] — `kill-server` closes a local
+     * socket at the ordinary host-command budget, `start-server` forks a daemon under the far
+     * longer [MirrorTuning.DaemonStartTimeoutMs] watchdog. Either half failing throws, so the
+     * use case reports a `Failure` rather than a button that silently did nothing.
+     */
+    override suspend fun restartAdbServer() = daemonLifecycle.withLock { killThenStart() }
+
+    /**
+     * The kill-then-start sequence itself, WITHOUT taking [daemonLifecycle].
+     *
+     * Split out because Kotlin's `Mutex` is not reentrant: [healDaemon] already holds the lock
+     * when it escalates, so calling the public [restartAdbServer] from inside it deadlocked —
+     * caught immediately by two ladder tests, which is the whole reason the wedge path has
+     * them.
+     */
+    private suspend fun killThenStart() {
+        adbHostSource.killServer()
+        adbHostSource.startServer()
     }
 
     override suspend fun bootEmulator(avdName: String) {
@@ -228,5 +366,17 @@ internal class DeviceRepositoryImpl(
             ?: return null
         avdNames[device.value] = name
         return name
+    }
+
+    /**
+     * @see DeviceRepository.setAdbPath
+     *
+     * No validation and no probe here on purpose. The path is checked against the filesystem
+     * by `ToolResolver`'s existing `isExecutable` predicate, the same one every other candidate
+     * passes through, so a bad path falls through to the ordered candidate list rather than
+     * becoming an error the user has to clear.
+     */
+    override suspend fun setAdbPath(path: String) {
+        adbPathPreferenceSource.setData(AdbPathPreference(path))
     }
 }

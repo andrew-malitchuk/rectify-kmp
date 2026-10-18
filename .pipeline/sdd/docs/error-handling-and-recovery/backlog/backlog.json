@@ -1,0 +1,1053 @@
+{
+  "crossCuttingNotes": {
+    "traceIdCollisions": [
+      "SC-10/SC-11 collide with F-4's own SC-10 ('Escape dismisses, delete removes') and SC-11 ('Resume live after annotating'). Both spec-scoped; not renumbered.",
+      "FR-23 collides with app-shell-window-layout's unrelated FR-23 ('signal colors render identically in light/dark'). Both spec-scoped; not renumbered.",
+      "FR-24 collides with android-device-discovery-mirroring's unrelated FR-24 ('v1 screenshot-polling mirror transport'). Both spec-scoped; not renumbered."
+    ],
+    "registryStatus": "`.pipeline/sdd/docs/registry/*.json` does not exist in this repository (verified independently by three plan drafters, the judge, the refiner, and re-verified here with a glob that matched zero files). Reuse below is recorded against the real presentation-core-ui/presentation-core-styling kit tree and the plan's own `projectContext.reuseComponents`, not a registry. Not a blocker.",
+    "planInternalInconsistencyCarriedForward": "plan.json's body sections assembled from candidate-c (architecture.components, scope.out line about HostCommand.KillServer, openQuestions, newToBuild) predate the judge's CORRECTION 1 graft and still describe KillServer/RestartAdb as out of scope or an open question. requirements.functional (FR-36, FR-37), testStrategy (T15/T16/T17), and refinementRecord.appliedCorrections[0] are the POST-graft, authoritative text and explicitly mint HostCommand.KillServer, AdbHostSource.killServer(), DeviceRepository.restartAdbServer(), RestartAdbServerUseCase and MirrorIntent.RestartAdb as real, tested, in-scope work. This backlog follows FR-36/FR-37/testStrategy/refinementRecord (the live requirement) over the stale candidate-c prose, per this stage's own task brief point 2. Flagged here so Stage 4/5 do not read the stale prose as a contradiction to resolve by dropping KillServer.",
+    "designFileSupersedesTwoPlanDeviations": "A later-unpacked design file, inputs/design-error-states.md (extracted from the real design's `ERRORS`/`STATUS`/`DEVS` bundler payload — authoritative on copy and geometry, not an inference), arrived AFTER plan.json was finalised and corrects two of plan.json's refinementRecord.deviations: (1) deviation #5 (AC-29's banner copy shortened to '%d annotations kept' / singular 'annotation') is REVERTED — the design's verbatim copy is 'Stream dropped' / 'Your {count} annotations are kept on the frozen frame.' / 'Reconnect', with no singular variant and no zero-count suppression; T-16 below implements the reverted (design-literal) copy, not plan.json's shortened deviation. (2) deviation #4's zero-annotation hedge (plan.json: 'mirror_banner_kept_none deliberately NOT minted... T8's zero-count assertion as the guard') is answered, not hedged: the design gates the SCRIM (not the banner text) on `annotations.length > 0`, confirming AnnotationOverlay's zero-mark case must NOT dim. This also surfaces two items plan.json never captured at all: a fixed-colour (non-theme-following) scrim requiring a small, explicitly-flagged presentation-core-styling + presentation-core-ui scope correction (T-30/T-31 — plan.json's 'presentation-core-ui/-styling UNCHANGED' claim no longer holds in full, though the change is one new token plus one call-site swap), and a missing status-bar-line-per-error-state wiring (T-32). The design independently CONFIRMS three already-taken decisions (err-multi's top-row 'Mirror Pixel 8 Pro' shortcut / FR-34; err-nodevice's own `adb kill-server && adb devices` command, a third independent justification for HostCommand.KillServer; err-adb's 'Locate adb…' + 'Retry' pairing / FR-37) — no task changes needed for those three, only confirmation notes."
+  },
+  "epics": [
+    { "id": "E-1", "title": "Cold/wedged adb daemon healing ladder (FR-36, FR-37 RestartAdb half, AC-53)", "tasks": ["T-1", "T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8"] },
+    { "id": "E-2", "title": "Presentation contract foundations (shared MirrorContract.kt additions)", "tasks": ["T-9"] },
+    { "id": "E-3", "title": "NFR-6 Reconnect path split & AC-51 regression guard (FR-33, FR-35 core, AC-54)", "tasks": ["T-10", "T-11"] },
+    { "id": "E-4", "title": "Discovery error-card projections & rendering (FR-23, FR-32, FR-34, FR-37 RetryDiscovery half, AC-26/27/28/53)", "tasks": ["T-12", "T-13", "T-14", "T-15", "T-32"] },
+    { "id": "E-5", "title": "Stream-drop banner & annotation preservation UI (FR-24, FR-35 banner half, AC-29)", "tasks": ["T-16", "T-17", "T-18"] },
+    { "id": "E-6", "title": "Locate adb feature end to end (AC-26 full)", "tasks": ["T-19", "T-20", "T-21", "T-22", "T-23", "T-24", "T-25", "T-26"] },
+    { "id": "E-7", "title": "Accessibility & contrast inspection (AC-55, AC-56)", "tasks": ["T-27"] },
+    { "id": "E-8", "title": "Baseline capture, cross-target build and final audits", "tasks": ["T-28", "T-29"] },
+    { "id": "E-9", "title": "Scrim colour correction — presentation-core-styling/-ui scope correction (design CORRECTION 2)", "tasks": ["T-30", "T-31"] }
+  ],
+  "tasks": [
+    {
+      "id": "T-1",
+      "epic": "E-1",
+      "title": "HostCommand.StartServer + HostCommand.KillServer cases and buildHostArgv branches",
+      "description": "Add two parameterless data-object cases to the closed deviceless HostCommand set and their buildHostArgv branches: StartServer -> listOf(toolPath, \"start-server\"); KillServer -> listOf(toolPath, \"kill-server\"). No parameters, no raw-argv escape hatch (data-device-api/CLAUDE.md forbids one). KillServer is now justified THREE independent ways: copy fidelity (AC-27's comp), the measured wedged-daemon finding (FR-36), and inputs/design-error-states.md's err-nodevice command, which is literally `adb kill-server && adb devices`.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "buildHostArgv(path, HostCommand.StartServer) == listOf(path, \"start-server\") and nothing else is appended." },
+        { "id": "TAC-2", "text": "buildHostArgv(path, HostCommand.KillServer) == listOf(path, \"kill-server\")." },
+        { "id": "TAC-3", "text": "HostCommand stays a closed sealed/data-object set; no String/vararg escape hatch is added." }
+      ],
+      "linkedAC": ["AC-53", "AC-27"],
+      "references": [
+        { "type": "code", "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/parse/DeviceArgv.kt" },
+        { "type": "code", "ref": "data-device-api/CLAUDE.md#NFR-5-Is-Enforced-Here-By-Type" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "DeviceArgv.kt with two new HostCommand cases and two new buildHostArgv branches; existing 39 parser tests still green.",
+      "hypothesis": "Adding two parameterless cases to the existing closed command set is the sanctioned extension point and carries zero NFR-5 risk because neither case accepts user input.",
+      "definitionOfReady": ["plan.json FR-36/FR-37 read", "DeviceArgv.kt's existing when-exhaustiveness confirmed"],
+      "definitionOfDone": ["T14 (argv assertion) passes", "data-device-api:desktopTest green", "no raw-argv hatch introduced"],
+      "dependsOn": [],
+      "outOfScope": ["Any argument-carrying variant of StartServer/KillServer"],
+      "predictedScope": ["data-device-api/src/commonMain/kotlin/data/device/api/source/parse/DeviceArgv.kt"],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-2",
+      "epic": "E-1",
+      "title": "MirrorTuning.DaemonStartTimeoutMs watchdog constant",
+      "description": "Add DaemonStartTimeoutMs = 15_000L to MirrorTuning.kt. KDoc MUST state it is a watchdog upper bound on 'something is wrong', NOT a calibration of measured cold-start duration, contrast it explicitly with CaptureFloorMs (which IS a calibration), and cite inputs/reproduced-defect-adb-cold-start.md's 3.053s cold / 0.01s warm table so a future maintainer does not 'tune it down' and reintroduce the livelock.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "MirrorTuning.DaemonStartTimeoutMs = 15_000L exists." },
+        { "id": "TAC-2", "text": "Its KDoc states watchdog-not-calibration and cites inputs/reproduced-defect-adb-cold-start.md." },
+        { "id": "TAC-3", "text": "HostCommandTimeoutMs (3_000L), DiscoveryPollMs (2_000L) and CaptureFloorMs (100L) are left byte-for-byte unchanged." }
+      ],
+      "linkedAC": ["AC-53"],
+      "references": [
+        { "type": "code", "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/tuning/MirrorTuning.kt" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/reproduced-defect-adb-cold-start.md" }
+      ],
+      "expectedOutput": "MirrorTuning.kt with the new constant and its KDoc.",
+      "hypothesis": "A 15s watchdog carries ~5x headroom over the measured 3.03s fixed cold-start cost and never needs tuning.",
+      "definitionOfReady": ["reproduced-defect-adb-cold-start.md measurements read"],
+      "definitionOfDone": ["Constant compiles", "KDoc present and reviewed", "no existing tuning constant altered"],
+      "dependsOn": [],
+      "outOfScope": ["Raising HostCommandTimeoutMs — explicitly rejected in plan.alternativesConsidered"],
+      "predictedScope": ["data-device-api/src/commonMain/kotlin/data/device/api/source/tuning/MirrorTuning.kt"],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "0.25h",
+      "subtasks": []
+    },
+    {
+      "id": "T-3",
+      "epic": "E-1",
+      "title": "DeviceCommandException.TIMEOUT_REASON_PREFIX + isTimeout() shared classifier; ProcessRunner built from the constant",
+      "description": "GRAFTED (candidate-a, judge CORRECTION 2). Add `const val TIMEOUT_REASON_PREFIX = \"timed out after \"` and `fun isTimeout(): Boolean` to DeviceCommandException (data-device-api) rather than a separate TimeoutMatcher.kt file (candidate-c's comment-only version is explicitly deleted per refinementRecord). isTimeout() is true only when exitCode == null and the reason starts with the shared prefix — false for a non-zero exit and false for the IOException 'could not start' case. ProcessRunner.kt:79 (data-device-impl desktopMain) MUST build its timeout message FROM this constant, not a separately-typed literal, so a reworded message is a compile error on both ends rather than a silent, all-green drift that disarms the FR-36 ladder.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "DeviceCommandException(argv, null, \"${TIMEOUT_REASON_PREFIX}3000ms\").isTimeout() == true." },
+        { "id": "TAC-2", "text": "isTimeout() == false for exitCode == 1 with any stderr tail, and false for exitCode == null with an IOException-style message." },
+        { "id": "TAC-3", "text": "ProcessRunner.kt:79's formatted reason is built from TIMEOUT_REASON_PREFIX, not a separate literal string." }
+      ],
+      "linkedAC": ["AC-53"],
+      "references": [
+        { "type": "code", "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/error/DeviceCommandException.kt" },
+        { "type": "code", "ref": "data-device-impl/src/desktopMain/kotlin/data/device/impl/core/process/ProcessRunner.kt:73-82" }
+      ],
+      "expectedOutput": "DeviceCommandException.kt with the constant + isTimeout(); ProcessRunner.kt referencing the constant at its one timeout-throw site.",
+      "hypothesis": "Binding both ends of the timeout classification to one constant makes a message reword a compile error instead of a test-suite-stays-green regression — this is the anti-vacuity guard for T17.",
+      "definitionOfReady": ["ProcessRunner.kt:73-82 read for the exact throw shape"],
+      "definitionOfDone": ["T17 passes", "exactly one literal definition of the timeout message text exists in the codebase"],
+      "dependsOn": [],
+      "outOfScope": ["Promoting isTimeout to a typed subtype/field on DeviceCommandException — recorded in openQuestions as the upgrade path if a second call site ever needs it"],
+      "predictedScope": [
+        "data-device-api/src/commonMain/kotlin/data/device/api/source/error/DeviceCommandException.kt",
+        "data-device-impl/src/desktopMain/kotlin/data/device/impl/core/process/ProcessRunner.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "0.75h",
+      "subtasks": []
+    },
+    {
+      "id": "T-4",
+      "epic": "E-1",
+      "title": "AdbHostSource.startServer()/killServer() + AdbHostSourceImpl + UnsupportedDeviceSources actuals",
+      "description": "Add two suspend members to the AdbHostSource interface (data-device-api): startServer(), killServer(). Implement both in AdbHostSourceImpl (desktopMain) as ProcessRunner.run(buildHostArgv(...), MirrorTuning.DaemonStartTimeoutMs for startServer; HostCommandTimeoutMs for killServer per FR-36's wording 'KillServer, then StartServer' where killServer itself is budgeted like any other deviceless command) — each throwing DeviceCommandException like every other call. Add the same throwing body to UnsupportedDeviceSources (commonMain, consumed by the android/ios actual DeviceSourcesProvider) so Android/iOS still link.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "AdbHostSource gains `suspend fun startServer()` and `suspend fun killServer()`." },
+        { "id": "TAC-2", "text": "AdbHostSourceImpl routes both through the single ProcessRunner (no second spawn site)." },
+        { "id": "TAC-3", "text": "UnsupportedDeviceSources implements both members with the same throwing shape as its siblings." }
+      ],
+      "linkedAC": ["AC-53", "AC-27"],
+      "references": [
+        { "type": "code", "ref": "data-device-api/src/commonMain/kotlin/data/device/api/source/datasource/AdbHostSource.kt" },
+        { "type": "code", "ref": "data-device-impl/src/desktopMain/kotlin/data/device/impl/source/datasource/AdbHostSourceImpl.kt" },
+        { "type": "code", "ref": "data-device-impl/src/commonMain/kotlin/data/device/impl/core/unsupported/UnsupportedDeviceSources.kt" },
+        { "type": "code", "ref": "data-device-impl/CLAUDE.md#The-One-Rule" }
+      ],
+      "expectedOutput": "Interface + both implementations compiling; `grep -rln ProcessBuilder --include=\"*.kt\" . | grep -v /build/` still prints exactly one path.",
+      "hypothesis": "Routing start-server/kill-server through the existing ProcessRunner inherits withTimeoutOrNull, dual drains, destroyForcibly and the shutdown hook for free, with zero new spawn sites.",
+      "definitionOfReady": ["T-1 and T-2 landed (HostCommand cases + DaemonStartTimeoutMs exist)"],
+      "definitionOfDone": [":data-device-impl:build green (link guard covers the Android/iOS actual)", "ProcessBuilder single-spawn-site audit still passes"],
+      "dependsOn": ["T-1", "T-2"],
+      "outOfScope": ["A second spawnDetached path — rejected in alternativesConsidered"],
+      "predictedScope": [
+        "data-device-api/src/commonMain/kotlin/data/device/api/source/datasource/AdbHostSource.kt",
+        "data-device-impl/src/desktopMain/kotlin/data/device/impl/source/datasource/AdbHostSourceImpl.kt",
+        "data-device-impl/src/commonMain/kotlin/data/device/impl/core/unsupported/UnsupportedDeviceSources.kt"
+      ],
+      "parallelizable": false,
+      "executionGroup": 2,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-5",
+      "epic": "E-1",
+      "title": "DeviceRepositoryImpl escalation ladder policy (FR-36)",
+      "description": "Edit observeDiscovery's poll loop to implement the BUDGETED ESCALATION, not a pre-emptive call (the pre-first-poll variant was WITHDRAWN on measured evidence — a wedged daemon hangs start-server, so an unconditional call would burn the full 15s watchdog every poll, a worse livelock). Ladder: (1) ListDevices at the existing 3_000L HostCommandTimeoutMs; success emits Found/NoDeviceFound, done. (2) On a TIMEOUT-classified failure ONLY (isTimeout() true — never a parse error, never a non-zero exit): call startServer() under DaemonStartTimeoutMs. (3) If startServer() ITSELF times out, the daemon is wedged: call killServer() then startServer() again. (4) Still failing: emit PollFailed carrying the reason. Never loop silently. probe()'s not-found short-circuit still wins first, so a genuinely absent adb reports ToolMissing with no process spawned.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "A timeout-classified ListDevices failure triggers exactly one startServer() call, never a pre-emptive call before the first poll." },
+        { "id": "TAC-2", "text": "If startServer() itself times out, killServer() then startServer() run in that order before the next ListDevices attempt." },
+        { "id": "TAC-3", "text": "A non-timeout failure (parse error, non-zero exit) spawns zero additional processes." },
+        { "id": "TAC-4", "text": "Every failure path that cannot recover emits PollFailed with the real reason; observeDiscovery never throws out of the flow." }
+      ],
+      "linkedAC": ["AC-53"],
+      "references": [
+        { "type": "code", "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt:72-150" }
+      ],
+      "expectedOutput": "DeviceRepositoryImpl.kt's observeDiscovery loop implementing the 4-step ladder with a collector-local daemonStarted-style guard structure as needed.",
+      "hypothesis": "Keeping the policy in the repository loop (not the datasource) makes it hardware-free testable under virtual time, and the loop is already where a failed poll becomes PollFailed.",
+      "definitionOfReady": ["T-3 (isTimeout) and T-4 (startServer/killServer) landed"],
+      "definitionOfDone": ["T1 red-then-green recorded", "T1b, T1c, T15, T16 pass", "SC-16 hardware step unblocked"],
+      "dependsOn": ["T-3", "T-4"],
+      "outOfScope": ["Any pre-first-poll or unconditional startServer call — explicitly withdrawn and rejected"],
+      "predictedScope": ["data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt"],
+      "parallelizable": false,
+      "executionGroup": 3,
+      "estimate": "2h",
+      "subtasks": []
+    },
+    {
+      "id": "T-6",
+      "epic": "E-1",
+      "title": "DeviceRepository.restartAdbServer() + RestartAdbServerUseCase(+Impl) + DI binding",
+      "description": "GRAFTED (candidate-b, judge CORRECTION 1). AC-27's primary 'Restart adb' button must do a REAL daemon restart, not a decorative re-poll. Add `restartAdbServer()` to DeviceRepository (domain-repository-api) and implement it in DeviceRepositoryImpl as killServer() then startServer() (each budgeted independently, same mechanism the ladder's step 3 uses). Wrap it in a new RestartAdbServerUseCase (domain-usecase-api interface, domain-usecase-impl body inside resultLauncher) and register its Koin binding.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "DeviceRepository.restartAdbServer() calls killServer() then startServer() in that order." },
+        { "id": "TAC-2", "text": "RestartAdbServerUseCase follows the one-interface/one-suspend-operator-invoke domain-layer convention and is registered in Koin." },
+        { "id": "TAC-3", "text": "A failure in either step surfaces as a Failure the presentation layer can observe, not a silent swallow." }
+      ],
+      "linkedAC": ["AC-27"],
+      "references": [
+        { "type": "code", "ref": "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/DeviceRepository.kt" },
+        { "type": "code", "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt" },
+        { "type": "code", "ref": "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/device/" },
+        { "type": "code", "ref": "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/device/" },
+        { "type": "url", "ref": ".claude/rules/domain-layer.md" }
+      ],
+      "expectedOutput": "RestartAdbServerUseCase + Impl wired end to end from domain-repository-api down to data-repository-impl.",
+      "hypothesis": "The measured wedged-daemon finding makes KillServer empirically necessary (StartServer alone cannot clear a wedged daemon), so AC-27's button must invoke the same kill+start sequence as the ladder's own wedged-daemon rung.",
+      "definitionOfReady": ["T-4 (killServer/startServer on AdbHostSource) landed"],
+      "definitionOfDone": ["T15 (wedged-daemon escalation order) covers the same mechanism", "Koin binding present", "no raw-argv exposed"],
+      "dependsOn": ["T-4"],
+      "outOfScope": ["Any retry/backoff cadence beyond one kill+start attempt"],
+      "predictedScope": [
+        "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/DeviceRepository.kt",
+        "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt",
+        "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/device/RestartAdbServerUseCase.kt",
+        "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/device/RestartAdbServerUseCaseImpl.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 3,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-7",
+      "epic": "E-1",
+      "title": "Ladder unit tests: T1, T1b, T1c, T14, T15, T16, T17",
+      "description": "Seven named tests, each with its exact mutation applied once and observed red before being left green, per this chain's test-integrity constraint (one vacuous test has already shipped).",
+      "type": "test",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "T1 coldDaemonPollRecoversAfterStartServer (data-repository-impl commonTest, virtual time): fake AdbHostSource throws DeviceCommandException(argv, null, \"timed out after 3000ms\") from listDevices() until startServer() has been called; assert a DiscoveryModel.Found is emitted within two polls. RED FIRST: no production call exists pre-fix, so the loop emits PollFailed forever (record the run). MUTATION: delete the `adbHostSource.startServer()` call from step 2 of observeDiscovery's escalation ladder in DeviceRepositoryImpl.kt — the 'Found within two polls' assertion must fail." },
+        { "id": "TAC-2", "text": "T1b timeoutFailureIsDistinguishedFromAParseFailure (data-repository-impl commonTest): isTimeout() is true for exitCode == null with \"timed out after 3000ms\" and false for exitCode == 1 with a stderr tail and for exitCode == null with an IOException message. MUTATION: change isTimeout()'s body to `exitCode == null` — the non-zero-exit and could-not-start assertions must fail." },
+        { "id": "TAC-3", "text": "T1c parseFailureDoesNotRestartTheDaemon (data-repository-impl commonTest, virtual time): the fake counts startServer() calls; after three non-timeout failures the count must still be 0. MUTATION: call startServer() on every DeviceCommandException regardless of isTimeout() — the count assertion must fail." },
+        { "id": "TAC-4", "text": "T14 startServerArgvIsStartServer (data-device-api commonTest): buildHostArgv(path, HostCommand.StartServer) == listOf(path, \"start-server\"), nothing else appended. MUTATION: add \"-P\" to the branch — assertEquals must fail." },
+        { "id": "TAC-5", "text": "T15 wedgedDaemonEscalatesToKillServer (data-repository-impl commonTest, virtual time): fake AdbHostSource times out on listDevices() AND times out on startServer(), succeeds only after killServer() has been called; assert call ORDER is listDevices, startServer, killServer, startServer, listDevices and that Found is reached. RED FIRST: pre-fix neither call exists. MUTATION: remove the killServer() call from step 3 of the ladder — the order assertion fails and the fake never reaches Found." },
+        { "id": "TAC-6", "text": "T16 startServerIsNotCalledOnNonTimeoutFailure (data-repository-impl commonTest): fake throws a PARSE error and separately a non-zero exit from listDevices(); assert startServer() is called ZERO times in both cases and PollFailed carries the original reason. MUTATION: widen the guard from isTimeout() to a bare `catch (e: DeviceCommandException)` — the zero-call assertion must fail." },
+        { "id": "TAC-7", "text": "T17 timeoutPrefixIsSharedBetweenProducerAndConsumer (data-device-api commonTest): assert DeviceCommandException(argv, null, \"${TIMEOUT_REASON_PREFIX}3000ms\").isTimeout() is true, and that ProcessRunner's formatted reason is built from the same constant rather than a literal. MUTATION: change the literal in ProcessRunner.kt:79 to \"timed-out after \" (hyphen) — with the constant shared this is a compile error; with it inlined the old code compiled and every test stayed green while the FR-36 ladder silently stopped firing." }
+      ],
+      "linkedAC": ["AC-53"],
+      "references": [
+        { "type": "code", "ref": "data-repository-impl/src/commonTest/kotlin/data/repository/impl/DeviceDiscoveryPollingTest.kt" },
+        { "type": "code", "ref": "data-device-api/src/commonTest" }
+      ],
+      "expectedOutput": "All seven tests committed as plain camelCase names in commonTest, each with its red run recorded in the spec directory, then left green.",
+      "hypothesis": "A hardware-free virtual-time harness can fully exercise all four ladder steps including the wedged-daemon case without the attached Pixel 8.",
+      "definitionOfReady": ["T-1, T-3, T-5, T-6 landed"],
+      "definitionOfDone": ["All 7 reds recorded", "all 7 green", ":data-device-api:compileTestKotlinIosArm64 and :data-repository-impl:compileTestKotlinIosArm64 both green"],
+      "dependsOn": ["T-1", "T-3", "T-5", "T-6"],
+      "outOfScope": [],
+      "predictedScope": [
+        "data-repository-impl/src/commonTest/kotlin/data/repository/impl/DeviceDiscoveryPollingTest.kt",
+        "data-device-api/src/commonTest/**"
+      ],
+      "parallelizable": false,
+      "executionGroup": 4,
+      "estimate": "2.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-8",
+      "epic": "E-1",
+      "title": "Hardware verification: SC-16 cold-daemon recovery, H1, H2 orphan audit",
+      "description": "On the attached Pixel 8 (38031FDJH00JVF): `adb kill-server` then `./gradlew :desktop-application:run`; confirm discovery reaches the device within ~6s with no manual shell intervention and the log shows exactly one start-server rather than a run of 'exceeded 3000ms' lines (SC-16/H1). Separately, SIGSTOP the daemon pid to approximate a wedged daemon and launch — sanity-check only, non-deterministic per the plan's own measurement, NOT the authority (T15 is). After closing the window, `pgrep -fl adb` to confirm no orphaned process (H2).",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "Cold path: discovery reaches 38031FDJH00JVF within ~6s after `adb kill-server`, with exactly one start-server log line." },
+        { "id": "TAC-2", "text": "Wedged path (SIGSTOP sanity check): behaviour observed and recorded with the explicit caveat that SIGSTOP only approximates a real wedge and is non-deterministic; virtual-time T15/T16 remain the authority." },
+        { "id": "TAC-3", "text": "`pgrep -fl adb` after closing the app shows no orphaned adb/screencap process." }
+      ],
+      "linkedAC": ["AC-53"],
+      "references": [
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/reproduced-defect-adb-cold-start.md" }
+      ],
+      "expectedOutput": "Recorded hardware-run output in the spec directory, matching SC-16, H1 and H2.",
+      "hypothesis": "This is the first time this defect class has been checkable in the chain; real hardware confirms the virtual-time tests are not overfit to the fake.",
+      "definitionOfReady": ["T-7 landed; Pixel 8 attached and `device` (not `unauthorized`)"],
+      "definitionOfDone": ["SC-16, H1, H2 all recorded"],
+      "dependsOn": ["T-7"],
+      "outOfScope": ["Tuning any constant to match the SIGSTOP simulation's timing"],
+      "predictedScope": [],
+      "parallelizable": true,
+      "executionGroup": 5,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-9",
+      "epic": "E-2",
+      "title": "MirrorContract.kt: new intents, side effect, canResumeLive, and the three value types",
+      "description": "Single-file task to avoid overlapping concurrent edits to MirrorContract.kt from the five downstream feature tasks that need it. Add: MirrorIntent.Reconnect, MirrorIntent.RetryDiscovery, MirrorIntent.RestartAdb, MirrorIntent.LocateAdb, MirrorIntent.AdbPathChosen(path: String); MirrorSideEffect.LocateAdb; derived `val MirrorUiState.canResumeLive: Boolean get() = frozen != null && session !is MirrorSession.Lost`; and the three Compose-free value types MirrorErrorCard(kind, command, diagnostic, rows, primaryDeviceId, canBootEmulator), MirrorErrorKind (ToolMissing|NoDevice|PollFailed|MultipleDevices), MirrorDropBanner(deviceId, annotationCount). No labels/strings on any value type — content layer resolves copy via stringResource.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "All five new MirrorIntent cases and MirrorSideEffect.LocateAdb exist and MirrorIntent/MirrorSideEffect remain sealed and exhaustively `when`-handled." },
+        { "id": "TAC-2", "text": "canResumeLive is a pure derived property with zero new reduced-state fields." },
+        { "id": "TAC-3", "text": "MirrorErrorCard/MirrorErrorKind/MirrorDropBanner carry no copy/labels, matching MirrorRow's existing precedent." },
+        { "id": "TAC-4", "text": "MirrorErrorKind keeps all FOUR Android-side cases (ToolMissing, NoDevice, PollFailed, MultipleDevices) — inputs/design-error-states.md's design only covers three of these plus two iOS-only states (err-sim/err-trust, NFR-10, out of scope); PollFailed has no comp/design state at all and must not be dropped or folded into NoDevice on that basis." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53", "AC-54"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "MirrorContract.kt with all additions; module still compiles (handlers added in later tasks).",
+      "hypothesis": "Bundling every MirrorContract.kt addition into one task removes the file-overlap hazard that would otherwise force four downstream tasks to serialize on this file individually.",
+      "definitionOfReady": ["plan.json architecture.components / interfaces / dataModel sections for these types read"],
+      "definitionOfDone": ["Module compiles", "T4 (canResumeLive) passable once handlers land"],
+      "dependsOn": [],
+      "outOfScope": ["Any new reduced-state field — MirrorSession.Lost and FrozenFrame already carry what's needed", "err-sim / err-trust (iOS, NFR-10) — not modelled at all"],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt"],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-10",
+      "epic": "E-3",
+      "title": "MirrorViewModel.kt: reconnect() handler",
+      "description": "Add `private fun reconnect() = intent { val lost = state.session as? MirrorSession.Lost ?: return@intent; reduce { state.copy(session = MirrorSession.Streaming(lost.deviceId)) }; sessionDeviceId.value = lost.deviceId }`. Provably touches neither currentFrozenFrame nor state.frozen. resumeLive() at :337-340 is left BYTE-FOR-BYTE UNCHANGED — this task must not restructure onSessionLost either; onSessionLost already preserves state correctly (:182-185).",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "reconnect() reads MirrorSession.Lost.deviceId and sets session = Streaming(deviceId), sets sessionDeviceId." },
+        { "id": "TAC-2", "text": "reconnect() does not reference currentFrozenFrame or state.frozen anywhere in its body." },
+        { "id": "TAC-3", "text": "resumeLive() is unmodified — a diff against the pre-task file shows zero changes to its body." },
+        { "id": "TAC-4", "text": "onSessionLost (:182-185) is unmodified — the fix is the UI affordance (T-16), not a reducer rewrite." }
+      ],
+      "linkedAC": ["AC-54"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:182-185 (onSessionLost), :337-340 (resumeLive)" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/CORRECTION-nfr-6-mechanism.md" }
+      ],
+      "expectedOutput": "MirrorViewModel.kt with the new reconnect() function wired from handleIntent's `when`.",
+      "hypothesis": "The NFR-6 violation is the UI affordance at MirrorAnnotationStage.kt:292-298, not onSessionLost/resumeLive's split — so the correct fix adds a sibling handler rather than restructuring either existing one.",
+      "definitionOfReady": ["T-9 landed (MirrorIntent.Reconnect exists)", "T2's RED run (T-11) demonstrated first against merged code per test-integrity constraint"],
+      "definitionOfDone": ["T2 green after rewrite to drive Reconnect", "T3 (AC-51 regression) still passes", "T4 (canResumeLive) passes"],
+      "dependsOn": ["T-9"],
+      "outOfScope": ["Any restructuring of onSessionLost or resumeLive — explicitly rejected in alternativesConsidered ('two intents, two handlers, two tests instead')"],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"],
+      "parallelizable": false,
+      "executionGroup": 2,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-11",
+      "epic": "E-3",
+      "title": "Tests: T2 (RED-first then GREEN rewrite), T3, T4",
+      "description": "T2 MUST be run RED first against merged/pre-fix code via the only pre-fix route (MirrorIntent.ResumeLive after loss), with the failing output recorded in the spec directory, before T-10 lands. After T-10 lands, T2 is rewritten to drive Reconnect and must go green; then its PERMANENT mutation (reroute Reconnect at resumeLive()) is applied and must go red again.",
+      "type": "test",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "T2 reconnectAfterInvoluntaryLossKeepsAnnotationsAndFrame (presentation-feature-mirror commonTest, AC-54/NFR-6): two annotations plus a comment staged on a frozen frame, stream dropped with MirrorFakes' failStream (which breaks an ALREADY-RUNNING collection, the property that makes this non-vacuous), then MirrorIntent.Reconnect; assertSame on the frozenFrame bitmap (bit-for-bit, identity) and assertEquals on the annotation list including comments and indices, before versus after. RED FIRST recorded against merged code via the pre-fix ResumeLive route. MUTATION: route MirrorIntent.Reconnect at resumeLive() in MirrorViewModel.handleIntent — both assertions must fail. This recreates the original bug shape exactly." },
+        { "id": "TAC-2", "text": "T3 resumeLiveStillClearsTheFrozenFrameAndAnnotations (presentation-feature-mirror commonTest, AC-51 regression guard): after ResumeLive, frozenFrame is null and state.frozen is null. MUTATION: make resumeLive() a no-op — both assertions must fail. This is the test that stops a future 'fix' from satisfying NFR-6 by breaking F-4." },
+        { "id": "TAC-3", "text": "T4 resumeLiveIsNotOfferedWhileTheSessionIsLost (presentation-feature-mirror commonTest): canResumeLive is true for frozen + Streaming and false for frozen + Lost and for no frozen frame. MUTATION: make canResumeLive return `frozen != null` unconditionally — the Lost case must fail." }
+      ],
+      "linkedAC": ["AC-54"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelSessionTest.kt" },
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt:78,112,192" }
+      ],
+      "expectedOutput": "T2/T3/T4 committed with plain camelCase names; T2's pre-fix red run AND T2's permanent-mutation red run both recorded in the spec directory.",
+      "hypothesis": "Driving Reconnect (not onSessionLost alone) is the only test shape that cannot pass against unmodified main — onSessionLost alone already preserves state and would make this the chain's second vacuous test.",
+      "definitionOfReady": ["T-10 landed for the GREEN half; merged/pre-fix code available for the RED-first half"],
+      "definitionOfDone": ["Both red runs recorded", "T2/T3/T4 green", "196-baseline diff shows no regression"],
+      "dependsOn": ["T-10"],
+      "outOfScope": [],
+      "predictedScope": ["presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelSessionTest.kt"],
+      "parallelizable": false,
+      "executionGroup": 3,
+      "estimate": "2h",
+      "subtasks": []
+    },
+    {
+      "id": "T-12",
+      "epic": "E-4",
+      "title": "DiscoveryErrorProjection.kt: errorCard(nowMs) + dropBanner() + ADB_RESTART_COMMAND",
+      "description": "New pure file beside the existing applyDiscovery precedent. `internal fun MirrorUiState.errorCard(nowMs: Long): MirrorErrorCard?` — null when isPickerOpen, when session is Streaming, when frozen != null, when discovery is Detecting, and for Found with fewer than two usable physical devices; otherwise maps ToolMissing/NoDeviceFound/PollFailed one-to-one and Found-with->1-usable-device to MultipleDevices. `internal fun MirrorUiState.dropBanner(): MirrorDropBanner?` — non-null exactly when session is Lost && frozen != null, carrying the lost deviceId and frozen.annotations.size. `internal const val ADB_RESTART_COMMAND = \"adb kill-server && adb devices\"` (machine text, deliberately unlocalised; independently confirmed verbatim by inputs/design-error-states.md's err-nodevice command).",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "errorCard() returns null for: picker open, Streaming, frozen != null, Detecting — this null is what keeps AC-4's NoSignalStage reachable." },
+        { "id": "TAC-2", "text": "PollFailed and NoDeviceFound map to visibly distinct MirrorErrorCard values (different kind, different diagnostic shape)." },
+        { "id": "TAC-3", "text": "dropBanner() is non-null only for Lost + frozen != null and carries frozen.annotations.size verbatim (AS-17, no new counting logic). UPDATED per inputs/design-error-states.md CORRECTION 1: the projection does NOT suppress or special-case a zero count — the design's banner text always includes the literal count, so plan.json's original 'no detail line at zero' hedge is dropped at the PROJECTION level too; T-16 renders the count unconditionally." },
+        { "id": "TAC-4", "text": "nowMs is a parameter, not a Clock.System read inside the function — determinism for tests." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/discovery/DiscoveryProjection.kt" },
+        { "type": "code", "ref": "domain-core/.../source/model/device/DiscoveryModel.kt" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "New file core/discovery/DiscoveryErrorProjection.kt with both projections and the constant.",
+      "hypothesis": "A pure, Compose-free projection is the only way the test-labelled ACs are genuinely assertable in a repo with no Compose UI-test harness — and it follows the module's own applyDiscovery precedent rather than inventing a new pattern.",
+      "definitionOfReady": ["T-9 landed (value types exist)"],
+      "definitionOfDone": ["T5, T6, T7, T9, T10, T8, T8b all passable against this file"],
+      "dependsOn": ["T-9"],
+      "outOfScope": ["Any Compose import in this file — it must stay Compose-free"],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/discovery/DiscoveryErrorProjection.kt"],
+      "parallelizable": true,
+      "executionGroup": 2,
+      "estimate": "2h",
+      "subtasks": []
+    },
+    {
+      "id": "T-13",
+      "epic": "E-4",
+      "title": "MirrorViewModel.kt: retryDiscovery()+nonce, restartAdb() handlers (FR-37)",
+      "description": "Serialized after T-10 because both edit MirrorViewModel.kt. Add `private val discoveryNonce = MutableStateFlow(0)` combined into observeDiscoveryWhileIdle's existing flatMapLatest gate, so bumping it cancels the current collection and starts a fresh one (re-emits Detecting, re-runs the daemon-start step, polls immediately). Two handlers: retryDiscovery() just bumps the nonce (AC-26 secondary 'Retry', AC-53 primary 'Retry'); restartAdb() calls RestartAdbServerUseCase (killServer then startServer) and THEN bumps the same nonce (AC-27 primary 'Restart adb' — NOT RetryDiscovery, per FR-37's explicit split: 'a button labelled Restart adb that only re-polls is the card that lies').",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "RetryDiscovery dispatch bumps the nonce and nothing else; no RestartAdbServerUseCase call." },
+        { "id": "TAC-2", "text": "RestartAdb dispatch calls RestartAdbServerUseCase (kill then start) and bumps the same nonce afterward." },
+        { "id": "TAC-3", "text": "AC-27's primary action maps to RestartAdb, not RetryDiscovery — verified by T-retry's assertion shape." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-53"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt" }
+      ],
+      "expectedOutput": "MirrorViewModel.kt with discoveryNonce, retryDiscovery(), restartAdb().",
+      "hypothesis": "Two distinct intents are required because copy must agree with behaviour (presentation-core-ui/CLAUDE.md) — collapsing them into one would make AC-27's button lie about restarting the daemon.",
+      "definitionOfReady": ["T-10 landed (serialize on MirrorViewModel.kt)", "T-6 landed (RestartAdbServerUseCase exists)", "T-9 landed"],
+      "definitionOfDone": ["T-retry passes", "T6/T9 unaffected"],
+      "dependsOn": ["T-10", "T-9", "T-6"],
+      "outOfScope": ["Any new tuning constant for retry cadence"],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"],
+      "parallelizable": false,
+      "executionGroup": 4,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-14",
+      "epic": "E-4",
+      "title": "MirrorErrorStage.kt + MirrorContent.kt NoSignal-branch routing + light/dark @Preview pairs",
+      "description": "New stateless composable presentation/feature/mirror/source/mirror/MirrorErrorStage.kt taking (card: MirrorErrorCard, onIntent) and rendering the shipped ErrorCard — resolving title/body/action labels through stringResource, passing command/diagnostic verbatim — plus, for MultipleDevices, the inline SourceListRow list (enabled = row.selectable; onClick dispatches HighlightRow(id) then Commit). Edit the EXISTING MirrorContent.kt:123 `MirrorStage.NoSignal ->` branch to consult errorCard(nowMs) and render MirrorErrorStage when non-null, else the shipped NoSignalStage unchanged (nowMs from Clock.System at the call site with a comment naming the recompose-not-ticker ceiling). ZERO new MirrorStage case, zero change to the shipped `stage` property. COPY/GEOMETRY is now authoritative via inputs/design-error-states.md (the real design, unpacked from its bundler payload — not an inference): err-adb (ToolMissing) title 'adb isn't on your PATH', body 'Rectify uses Android platform-tools to find devices. Install them, or point Rectify at an adb you already have.', cmd `brew install --cask android-platform-tools`, primary 'Locate adb…', secondary 'Retry'; err-nodevice (NoDeviceFound) title 'No Android device detected', body 'adb is running but sees nothing. On the phone, turn on USB debugging and tap Allow on the prompt.', cmd `adb kill-server && adb devices`, primary 'Restart adb', secondary 'Boot emulator instead', footer format `adb <version> · last poll <age>s ago · <attached> attached`; err-multi (MultipleDevices) title '<N> devices connected', body 'Pick one to mirror. Rectify keeps using it for this session.' — HONEST COPY, deliberately NOT the design's literal text. BACKLOG CORRECTION (events.jsonl 'copy-behaviour-mismatch', detail inputs/design-error-states.md CORRECTION 3): the design's verbatim sentence 'Rectify remembers it until you quit' is verified FALSE against the running code — MirrorViewModel.sessionDeviceId (line 79) is a plain MutableStateFlow<String?> with no persistence, and three separate paths null it: onSessionLost (line 184, the exact F-3 session-loss scenario), selectPlatform (190) and stopSession (246); data-preference-api holds no device-selection key at all. So the selection survives only until the first session drop, not until quit, and shipping the design's literal sentence would be the same defect class presentation-core-ui/CLAUDE.md already records under 'Picker copy must agree with picker behaviour' (comp 02's unshipped auto-start sentence). Full cross-session persistence (design option 3: a new pref_last_device_id preference) is OUT OF SCOPE and needs its own FR in a later spec — it must never be smuggled in as a copy string. If preserving the id across a reconnect falls out of FR-35's Reconnect work for free (design option 2 — the id is already carried in MirrorSession.Lost(deviceId), which is exactly where Reconnect reads it), note it, but it is not a blocker for this task. primary 'Mirror <top device>' (e.g. 'Mirror Pixel 8 Pro'), footer format `adb devices -l · <N> attached`. AC-26's footer keeps its own substantive requirement (every probedPaths entry + $ANDROID_HOME state, per AC-26's text) but adopts the design's ' · '-joined mono style. PollFailed (AC-53) has NO design/comp state at all — it is Android-only, plan-authored copy, and stays a genuine fourth MirrorErrorKind; do not fold it into NoDevice and do not reduce the card to three states (the design's own err-sim/err-trust iOS states are the reason it supports five).",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "No new MirrorStage enum case is added; MirrorStage.NoSignal's branch is the only edit in MirrorContent.kt." },
+        { "id": "TAC-2", "text": "MirrorErrorStage renders all four MirrorErrorKind values through the shipped ErrorCard/CommandBlock/SourceListRow with zero new kit primitives." },
+        { "id": "TAC-3", "text": "Light/dark @Preview pairs exist for all four kinds, measured against comps 04/05 for AC-26/27 via F-1's normalise-and-compare-landmarks method, and checked against inputs/design-error-states.md's verbatim title/body/primary/secondary/footer text for err-adb/err-nodevice/err-multi." },
+        { "id": "TAC-4", "text": "PollFailed remains a distinct fourth kind with plan-authored copy (no design state exists for it) — not merged into NoDevice." },
+        { "id": "TAC-5", "text": "err-multi's rendered body copy reads 'Pick one to mirror. Rectify keeps using it for this session.' — never the design's literal 'Rectify remembers it until you quit.' sentence, which is verified false against sessionDeviceId's actual (non-persistent, first-session-drop-clears-it) lifetime." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28", "AC-53"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt:123" },
+        { "type": "code", "ref": "presentation-core-ui/.../kit/organism/error/ErrorCard.kt:63-75" },
+        { "type": "figma", "ref": "raw/design/04-error-adb-not-on-path.png" },
+        { "type": "figma", "ref": "raw/design/05-error-no-device-detected.png" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" },
+        { "type": "url", "ref": ".claude/rules/compose-preview-convention.md" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/events.jsonl#copy-behaviour-mismatch" }
+      ],
+      "expectedOutput": "MirrorErrorStage.kt (new) + MirrorContent.kt diff limited to the NoSignal branch.",
+      "hypothesis": "Routing inside the existing NoSignal branch gives the 'never steal the stage from a frozen frame/live mirror/picker' guarantee for free from control flow, with a zero-line diff to the pure `stage` property.",
+      "definitionOfReady": ["T-12 landed (errorCard() exists)"],
+      "definitionOfDone": ["Previews compile and render", "F-2's existing stage tests unmodified and green"],
+      "dependsOn": ["T-12"],
+      "outOfScope": ["Any new presentation-core-ui component", "err-sim / err-trust (iOS, NFR-10)", "Persisting the selected device across a session drop or app quit (design's literal 'until you quit' promise) — verified false against sessionDeviceId's lifetime; full cross-session persistence needs its own FR in a later spec, not a copy string"],
+      "predictedScope": [
+        "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorErrorStage.kt",
+        "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt"
+      ],
+      "parallelizable": false,
+      "executionGroup": 3,
+      "estimate": "3h",
+      "subtasks": []
+    },
+    {
+      "id": "T-15",
+      "epic": "E-4",
+      "title": "Tests: T5, T6, T7, T9, T10, T-retry",
+      "description": "Six named tests covering errorCard()'s branches and the RetryDiscovery nonce, each with its mutation applied once and observed red.",
+      "type": "test",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "T5 toolMissingProjectsTheInstallCommandCard (presentation-feature-mirror commonTest, AC-26): kind == ToolMissing, command == probe.installCommand, diagnostic contains every probedPaths entry plus the envHint. MUTATION: drop probedPaths from the diagnostic builder — the contains-every-path assertion must fail." },
+        { "id": "TAC-2", "text": "T6 pollFailedProjectsItsOwnCardDistinctFromNoDeviceFound (presentation-feature-mirror commonTest, AC-53/FR-32): assertNotEquals on the two projections, kind == PollFailed, reason string present in the diagnostic. MUTATION: map PollFailed through the NoDeviceFound branch — both the inequality and kind assertion must fail." },
+        { "id": "TAC-3", "text": "T7 threeDevicesProjectOneRowPerDeviceAndATopDevicePrimary (presentation-feature-mirror commonTest, AC-28/FR-34): rows.size == 3, every usable row selectable, the unauthorized row present and NOT selectable, primaryDeviceId == first usable row's id. MUTATION A: hardcode primaryDeviceId = null — primary assertion fails. MUTATION B: filter unusable rows out of `rows` — disabled-row-present assertion fails." },
+        { "id": "TAC-4", "text": "T9 noDeviceFoundProjectsVersionLastPollAndAttachedCount (presentation-feature-mirror commonTest, AC-27): with a fixed nowMs the diagnostic carries toolVersion, derived last-poll age and attachedCount; canBootEmulator false when avds empty. MUTATION: drop attachedCount from the diagnostic — the contains assertion must fail." },
+        { "id": "TAC-5", "text": "T10 errorCardIsNullWhileThePickerIsOpenOrASessionOwnsTheStage (presentation-feature-mirror commonTest): null with isPickerOpen true, null while Streaming, null while frozen != null, non-null otherwise. MUTATION A: remove isPickerOpen guard — picker assertion fails. MUTATION B: remove session guard — streaming assertion fails." },
+        { "id": "TAC-6", "text": "T-retry retryDiscoveryRestartsTheCollection (presentation-feature-mirror commonTest): a RetryDiscovery dispatch re-emits DiscoveryModel.Detecting from the scripted fake and starts a new collection. MUTATION: stop combining the nonce into observeDiscoveryWhileIdle's gate — the re-emission assertion must fail." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28", "AC-53"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelDiscoveryTest.kt" }
+      ],
+      "expectedOutput": "Six tests committed, each mutation run and recorded.",
+      "hypothesis": "T10 is what structurally settles the two-competing-surfaces risk (picker vs error card vs frozen/live stage).",
+      "definitionOfReady": ["T-12, T-13, T-14 landed"],
+      "definitionOfDone": ["All 6 mutations applied and observed red, then reverted and green"],
+      "dependsOn": ["T-12", "T-13", "T-14"],
+      "outOfScope": [],
+      "predictedScope": ["presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelDiscoveryTest.kt"],
+      "parallelizable": false,
+      "executionGroup": 5,
+      "estimate": "2h",
+      "subtasks": []
+    },
+    {
+      "id": "T-16",
+      "epic": "E-5",
+      "title": "MirrorAnnotationStage.kt: FeedbackBar banner wiring (design-literal copy) + Resume Live gate + zero-annotation scrim fix + mirror_banner_* keys",
+      "description": "FR-33/FR-24/AC-29. REVISED per inputs/design-error-states.md (authoritative, arrived after plan.json): plan.json's refinementRecord.deviations entry #5 (which shortened the banner copy to '%d annotations kept' with a singular variant and no detail line) is REVERTED. Implement the design's VERBATIM copy instead: headline 'Stream dropped', detail 'Your %d annotations are kept on the frozen frame.' (always rendered when the banner is shown — NO zero-suppression, NO singular variant; this is a direct reversal of the old deviation), action 'Reconnect'. Geometry per the design: the banner is TOP-centered (`top:14px, left:50%, translateX(-50%)`), NOT bottom-centered as earlier guessed — use `Modifier.align(Alignment.TopCenter).padding(top = BannerTopInset)` with BannerTopInset a new named private constant close to the design's 14px (map to the nearest Theme.spacing token, do not inline a raw .dp). Note the known risk (unchanged from plan.json): FeedbackBar's detail slot is maxLines = 1 with ellipsis, and the design's longer sentence is more likely to clip than the old shortened copy was — this is accepted and recorded, not silently worked around by shortening the design's verbatim text. THE NFR-6 BUG is here: AppButton(Resume Live) at :292-298 is rendered UNCONDITIONALLY inside `frozen?.let`. Wrap it in `if (canResumeLive) { ... }`. ALSO per design CORRECTION 2: fix AnnotationOverlay's zero-annotation scrim gate at its CALL SITE (AnnotationOverlay.kt's own internal cutout logic is already correct and needs no change) — line 262's `dimmed = frozen != null` incorrectly dims even with zero staged annotations; change to compute `overlayMarks(...)` once and gate `dimmed = frozen != null && marks.isNotEmpty()`, matching the design's `annotations.length > 0` gate. (The 'banner + scrim appear together on drop' behaviour the design also specifies is already correct for free: both gate on frozen != null during Lost, no extra wiring needed.) MirrorFrozenStage/MirrorAnnotationStage gain two dumb parameters (canResumeLive: Boolean, banner: MirrorDropBanner?); MirrorLiveStage passes false/null. Add mirror_banner_stream_dropped, mirror_banner_reconnect, mirror_banner_annotations_kept (%d, used unconditionally — no singular key) to presentation-core-localisation.",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "Resume Live is withdrawn (not merely disabled) while canResumeLive is false — matching the isPickerDismissable precedent." },
+        { "id": "TAC-2", "text": "FeedbackBar renders over the frozen frame only when banner != null, with the detail line ALWAYS present and reading 'Your %d annotations are kept on the frozen frame.' verbatim (design-literal; no zero-suppression, no singular variant — this reverses plan.json's deviation #5)." },
+        { "id": "TAC-3", "text": "The banner is top-centered near the top edge of the stage (design: top:14px, centered), not bottom-centered." },
+        { "id": "TAC-4", "text": "resumeLive() itself remains byte-for-byte unchanged (verified against T-10's diff)." },
+        { "id": "TAC-5", "text": "The scrim does not dim the frozen frame when there are zero staged annotations (design CORRECTION 2) — `dimmed` is gated on `marks.isNotEmpty()` in addition to `frozen != null`." },
+        { "id": "TAC-6", "text": "Every new mirror_banner_* key greps to this call site; no singular 'annotation_kept_one' key is introduced." },
+        { "id": "TAC-7", "text": "No literal Color(0x...), raw .dp or hardcoded TextStyle introduced — the new geometry value (BannerTopInset) is a named private constant." }
+      ],
+      "linkedAC": ["AC-29", "AC-54"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt:260-298" },
+        { "type": "code", "ref": "presentation-core-ui/.../kit/molecule/status/FeedbackBar.kt:72-81,191-197" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/CORRECTION-nfr-6-mechanism.md" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "MirrorAnnotationStage.kt diff limited to the overlay Box banner addition, the Resume Live gate, and the `dimmed` gate fix; strings.xml with three new keys (not four — no singular variant).",
+      "hypothesis": "This is UI-layer work, not a reducer rewrite — the violation is the unconditional button render, not onSessionLost/resumeLive's split; the design file is authoritative on copy/geometry so plan.json's own hedges on both fronts are superseded, not re-guessed.",
+      "definitionOfReady": ["T-9 (canResumeLive) and T-12 (dropBanner()) landed", "inputs/design-error-states.md read"],
+      "definitionOfDone": ["T8/T8b/T11 pass", "F-4's existing drag/popover tests unaffected (diff pass list before/after)", "banner copy matches the design verbatim, confirmed by light/dark @Preview inspection"],
+      "dependsOn": ["T-9", "T-12"],
+      "outOfScope": ["Restructuring onSessionLost — this task touches MirrorAnnotationStage.kt only, not MirrorViewModel.kt", "Changing FeedbackBar itself to avoid the ellipsis risk — recorded as an accepted risk, not fixed here"],
+      "predictedScope": [
+        "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt",
+        "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+      ],
+      "parallelizable": true,
+      "executionGroup": 3,
+      "estimate": "2.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-17",
+      "epic": "E-5",
+      "title": "Tests: T8, T8b, T11",
+      "description": "Three named tests covering the banner projection and annotation editability while Lost. Note: T8's assertion is on dropBanner()'s annotationCount field (unchanged by the design-copy revert — the revert only changes how T-16's UI renders that count, not the projection's value), so this task's mutations are unaffected by the T-16 copy change.",
+      "type": "test",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "T8 streamDropBannerReportsTheStagedCount (presentation-feature-mirror commonTest, AC-29/AS-17): after a loss with two staged annotations the banner's annotationCount is 2 and its deviceId is the lost id; with zero annotations the count is 0 (the projection still reports 0 — it is T-16's UI, not this projection, that now renders it unconditionally per the design). MUTATION: hardcode annotationCount = 0 — the count assertion must fail." },
+        { "id": "TAC-2", "text": "T8b dropBannerIsNullWhileTheSessionIsStreaming (presentation-feature-mirror commonTest): non-null only for Lost + frozen. MUTATION: drop the `session is Lost` condition — the streaming assertion must fail." },
+        { "id": "TAC-3", "text": "T11 annotationsStayEditableWhileTheSessionIsLost (presentation-feature-mirror commonTest, AC-29 surrogate): while session is Lost, CommentAnnotation updates the comment, SelectAnnotation opens/closes the popover, DeleteAnnotation renumbers survivors and stagedCount tracks. MUTATION: add an early `if (state.session is MirrorSession.Lost) return@intent` to commentAnnotation — the comment assertion must fail. Recorded explicitly as the honest surrogate for 'Resolve & Send remains clickable' (F-6/F-7 scope), NOT claimed as met." }
+      ],
+      "linkedAC": ["AC-29"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelAnnotationTest.kt" }
+      ],
+      "expectedOutput": "Three tests committed with mutations run and recorded.",
+      "hypothesis": "T11 is the deliberately honest surrogate for a button (Resolve & Send) that is out of scope — it must not be allowed to silently claim that button is satisfied.",
+      "definitionOfReady": ["T-16 landed"],
+      "definitionOfDone": ["All 3 mutations applied and observed red, then green"],
+      "dependsOn": ["T-16"],
+      "outOfScope": ["Any assertion about the F-6/F-7 'Resolve & Send' button itself"],
+      "predictedScope": ["presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorViewModelAnnotationTest.kt"],
+      "parallelizable": false,
+      "executionGroup": 4,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-18",
+      "epic": "E-5",
+      "title": "Hardware verification: SC-13, H3, H4 — physical unplug/replug with annotations staged",
+      "description": "Stage two annotations on a frozen frame, physically unplug the Pixel 8's USB, confirm the banner appears (design-literal copy, top-centered) and Resume Live is withdrawn, confirm the scrim behaves per the zero/non-zero annotation gate, edit a comment while disconnected, replug and click Reconnect. Also exercise the replug serial-change edge (FR-35: the banner correctly PERSISTS rather than silently recovering, since USB re-enumeration can change the serial).",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "Banner appears on physical unplug, top-centered, with the full design-literal detail sentence; Resume Live is gone from the stage." },
+        { "id": "TAC-2", "text": "A comment edit while disconnected is accepted and reflected." },
+        { "id": "TAC-3", "text": "Reconnect after replug restores the stream when the serial is unchanged, or the banner persists (does not silently disappear) when the serial changed." }
+      ],
+      "linkedAC": ["AC-29", "AC-54"],
+      "references": [],
+      "expectedOutput": "Recorded hardware-run output matching SC-13, H3, H4.",
+      "hypothesis": "This is real verification beyond the unit tests — the serial-change edge and the banner's visual geometry/copy are only fully checkable on real hardware/preview inspection.",
+      "definitionOfReady": ["T-17 landed; T-10's reconnect() working"],
+      "definitionOfDone": ["SC-13, H3, H4 all recorded"],
+      "dependsOn": ["T-17", "T-10"],
+      "outOfScope": [],
+      "predictedScope": [],
+      "parallelizable": true,
+      "executionGroup": 5,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-19",
+      "epic": "E-6",
+      "title": "AdbPathPreference + AdbPathPreferenceSource(+Impl) + DI registration",
+      "description": "Follow the existing preference pattern exactly (ThemePreference/ThemePreferenceSource as the template). Contract: AdbPathPreference(path: String) model + AdbPathPreferenceSource : PreferenceSource<AdbPathPreference> in data-preference-api. Impl: AdbPathPreferenceSourceImpl in data-preference-impl with `const val KEY_ADB_PATH = \"pref_adb_path\"`, a seeded MutableStateFlow, write-through setData, fresh-read getData. Register in DataPreferenceImplModule. pref_adb_path is a BRAND-NEW key — never repurpose an existing one.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "AdbPathPreferenceSource follows the exact shape of PreferenceSource<T> used by ThemePreferenceSource." },
+        { "id": "TAC-2", "text": "KEY_ADB_PATH = \"pref_adb_path\" is a new key; no existing preference key is renamed or re-typed." },
+        { "id": "TAC-3", "text": "An unset path reads as an empty string, so an existing install behaves exactly as today." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [
+        { "type": "code", "ref": "data-preference-api/src/commonMain/kotlin/data/preference/api/source/datasource/ThemePreferenceSource.kt" },
+        { "type": "code", "ref": "data-preference-impl/src/commonMain/kotlin/data/preference/impl/source/datasource/ThemePreferenceSourceImpl.kt" },
+        { "type": "code", "ref": "data-preference-impl/src/commonMain/kotlin/data/preference/impl/di/DataPreferenceImplModule.kt" },
+        { "type": "url", "ref": ".claude/rules/preferences.md" }
+      ],
+      "expectedOutput": "AdbPathPreference.kt (model), AdbPathPreferenceSource.kt (contract), AdbPathPreferenceSourceImpl.kt (impl), DI registration.",
+      "hypothesis": "Copying the existing preference shape exactly means T12's MapSettings round-trip test needs no new infrastructure.",
+      "definitionOfReady": [],
+      "definitionOfDone": ["T12 passes against MapSettings"],
+      "dependsOn": [],
+      "outOfScope": ["Any change to an existing preference key"],
+      "predictedScope": [
+        "data-preference-api/src/commonMain/kotlin/data/preference/api/source/model/AdbPathPreference.kt",
+        "data-preference-api/src/commonMain/kotlin/data/preference/api/source/datasource/AdbPathPreferenceSource.kt",
+        "data-preference-impl/src/commonMain/kotlin/data/preference/impl/source/datasource/AdbPathPreferenceSourceImpl.kt",
+        "data-preference-impl/src/commonMain/kotlin/data/preference/impl/di/DataPreferenceImplModule.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-20",
+      "epic": "E-6",
+      "title": "DeviceRepository.setAdbPath + SetAdbPathUseCase(+Impl) + DI binding",
+      "description": "domain-usecase-api interface with a single suspend operator invoke(path: String): Optional; domain-usecase-impl body inside resultLauncher(errorMapper = Failure.Technical::Preference); domain-repository-api method DeviceRepository.setAdbPath; implementation in DeviceRepositoryImpl delegating to AdbPathPreferenceSource.setData (data-repository-impl already depends on data-preference-api, so this adds no module edge).",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "SetAdbPathUseCase follows the one-interface/one-operator-invoke domain-layer convention." },
+        { "id": "TAC-2", "text": "A failure maps through resultLauncher's errorMapper to Failure.Technical::Preference, never an uncaught throw." },
+        { "id": "TAC-3", "text": "DeviceRepositoryImpl.setAdbPath delegates to AdbPathPreferenceSource.setData with no new module edge." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [
+        { "type": "url", "ref": ".claude/rules/domain-layer.md" },
+        { "type": "url", "ref": ".claude/rules/error-handling.md" }
+      ],
+      "expectedOutput": "SetAdbPathUseCase.kt + Impl + DeviceRepository.setAdbPath + DeviceRepositoryImpl implementation, all Koin-wired.",
+      "hypothesis": "Because data-repository-impl already depends on data-preference-api, this slice adds zero Gradle edges.",
+      "definitionOfReady": ["T-19 landed"],
+      "definitionOfDone": ["T13's path-is-persisted half passes"],
+      "dependsOn": ["T-19"],
+      "outOfScope": [],
+      "predictedScope": [
+        "domain-usecase-api/src/commonMain/kotlin/domain/usecase/api/source/usecase/device/SetAdbPathUseCase.kt",
+        "domain-usecase-impl/src/commonMain/kotlin/domain/usecase/impl/source/usecase/device/SetAdbPathUseCaseImpl.kt",
+        "domain-repository-api/src/commonMain/kotlin/domain/repository/api/source/repository/DeviceRepository.kt",
+        "data-repository-impl/src/commonMain/kotlin/data/repository/impl/source/DeviceRepositoryImpl.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 2,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-21",
+      "epic": "E-6",
+      "title": "ToolResolver userPath seam + data-device-impl -> data-preference-api Gradle edge + Koin wiring",
+      "description": "Add a fourth constructor seam to ToolResolver: `userPath: suspend () -> String? = { null }`. In resolve(): prepend `(if (kind == ToolKind.Adb) listOfNotNull(userPath()) else emptyList())` to the probeCandidates(kind, env, homeDir) list, so `candidates.firstOrNull(isExecutable)` validates the user's path with the SAME predicate as every other candidate (trust boundary enforced by reuse, not new code) — probedPaths automatically shows the user what was tried. probeCandidates stays pure and untouched. Add the api-only (contract, no impl) Gradle dependency from data-device-impl to data-preference-api, and wire the desktop Koin provider to supply userPath from AdbPathPreferenceSource.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "A non-null userPath() result is validated with isExecutable before being trusted — never used directly." },
+        { "id": "TAC-2", "text": "probeCandidates(kind, env, homeDir) itself is unmodified." },
+        { "id": "TAC-3", "text": "The new data-device-impl -> data-preference-api Gradle edge is contract-only (api module), no impl dependency." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [
+        { "type": "code", "ref": "data-device-impl/src/desktopMain/kotlin/data/device/impl/core/tool/ToolResolver.kt:26-72" },
+        { "type": "code", "ref": "data-device-impl/src/commonMain/kotlin/data/device/impl/di/DataDeviceImplModule.kt" }
+      ],
+      "expectedOutput": "ToolResolver.kt with the fourth seam; build.gradle.kts edge; Koin provider wiring.",
+      "hypothesis": "A fourth constructor seam of the same shape as the existing three (env, homeDir, isExecutable) is a smaller, more local change than widening AdbHostSource.probe() with a nullable override threaded through three layers.",
+      "definitionOfReady": ["T-19 landed"],
+      "definitionOfDone": ["T13 passes, including its non-executable-override-is-ignored assertion"],
+      "dependsOn": ["T-19"],
+      "outOfScope": ["Widening AdbHostSource.probe() — explicitly rejected in alternativesConsidered"],
+      "predictedScope": [
+        "data-device-impl/src/desktopMain/kotlin/data/device/impl/core/tool/ToolResolver.kt",
+        "data-device-impl/build.gradle.kts",
+        "data-device-impl/src/commonMain/kotlin/data/device/impl/di/DataDeviceImplModule.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 2,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-22",
+      "epic": "E-6",
+      "title": "Tests: T12, T13",
+      "description": "Preference round-trip and resolver trust-boundary tests.",
+      "type": "test",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "T12 adbPathPreferenceRoundTripsThroughMapSettings (data-preference-impl desktopTest): setData then getData returns the path, and observeData emits it. MUTATION: make setData skip the write-through — the getData assertion must fail." },
+        { "id": "TAC-2", "text": "T13 userChosenAdbPathIsProbedFirstAndOnlyWhenExecutable (data-device-impl desktopTest): ToolResolver with a fake isExecutable and a userPath seam — an executable override wins over every probed candidate and appears in probedPaths; a NON-executable override is ignored and the probe falls through to the normal candidate list. MUTATION: use the override without passing it through isExecutable (trust the dialog) — the non-executable assertion must fail. This is the trust-boundary test and must not be simplified away." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [],
+      "expectedOutput": "T12 and T13 committed, mutations run and recorded.",
+      "hypothesis": "T13 is the one assertion that must never be weakened — it is the proof a dialog's return value is validated, not trusted.",
+      "definitionOfReady": ["T-19, T-20, T-21 landed"],
+      "definitionOfDone": ["Both mutations applied and observed red, then green"],
+      "dependsOn": ["T-19", "T-20", "T-21"],
+      "outOfScope": [],
+      "predictedScope": [
+        "data-preference-impl/src/desktopTest/**",
+        "data-device-impl/src/desktopTest/**"
+      ],
+      "parallelizable": false,
+      "executionGroup": 3,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-23",
+      "epic": "E-6",
+      "title": "MirrorViewModel.kt: locateAdb(), adbPathChosen() handlers",
+      "description": "Serialized after T-13 (both edit MirrorViewModel.kt). locateAdb() posts MirrorSideEffect.LocateAdb; adbPathChosen(path) calls SetAdbPathUseCase and then bumps the discoveryNonce so the next poll is immediate.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "LocateAdb dispatch posts the side effect and does not itself touch any file-system API." },
+        { "id": "TAC-2", "text": "AdbPathChosen(path) calls SetAdbPathUseCase then bumps the same nonce T-13 introduced." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [],
+      "expectedOutput": "MirrorViewModel.kt with locateAdb() and adbPathChosen().",
+      "hypothesis": "Reusing the existing discoveryNonce means the next poll after a path pick is immediate with no new tuning constant.",
+      "definitionOfReady": ["T-13 landed (nonce exists)", "T-20 landed (SetAdbPathUseCase exists)"],
+      "definitionOfDone": ["Compiles; wired into handleIntent's when"],
+      "dependsOn": ["T-13", "T-20"],
+      "outOfScope": [],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt"],
+      "parallelizable": false,
+      "executionGroup": 5,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-24",
+      "epic": "E-6",
+      "title": "MirrorHost.kt: pickAdbPath seam + collectSideEffect LocateAdb handling",
+      "description": "MirrorHost gains `pickAdbPath: suspend () -> String? = { null }` and, inside its existing collectSideEffect (whose lambda is already suspend), handles LocateAdb by calling it and dispatching MirrorIntent.AdbPathChosen on a non-null result, forwarding every other effect to onSideEffect as today. Keeps commonMain java.*-free; the intent sink stays inside `content`.",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "The default pickAdbPath = { null } keeps every existing Android/iOS call site compiling with no dialog." },
+        { "id": "TAC-2", "text": "LocateAdb -> pickAdbPath() -> non-null -> AdbPathChosen dispatch, all inside the existing collectSideEffect." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt" }
+      ],
+      "expectedOutput": "MirrorHost.kt with the new parameter and side-effect handling.",
+      "hypothesis": "A default no-op param keeps Android/iOS compiling without a dialog, matching the existing extensibility pattern for MirrorSideEffect.BootFailed.",
+      "definitionOfReady": ["T-9 (MirrorSideEffect.LocateAdb exists)", "T-23 (AdbPathChosen intent/handler exist)"],
+      "definitionOfDone": ["Compiles on all three platforms"],
+      "dependsOn": ["T-9", "T-23"],
+      "outOfScope": ["Any java.awt import in this commonMain file"],
+      "predictedScope": ["presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHost.kt"],
+      "parallelizable": false,
+      "executionGroup": 6,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-25",
+      "epic": "E-6",
+      "title": "AdbPathChooser.kt (desktop FileDialog) + RectifyWindow.kt:152 wiring",
+      "description": "New file compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/AdbPathChooser.kt: `internal suspend fun chooseAdbPath(): String?` running java.awt.FileDialog(FileDialog.LOAD) inside withContext(Dispatchers.Swing) (kotlinx-coroutines-swing is already a desktopMain dependency), returning directory+file or null on cancel. Wire it into RectifyWindow.kt:152's `MirrorHost { ... }` call site as the pickAdbPath argument.",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "chooseAdbPath() runs on Dispatchers.Swing (EDT) and returns null on cancel." },
+        { "id": "TAC-2", "text": "RectifyWindow.kt:152 supplies chooseAdbPath as MirrorHost's pickAdbPath argument." },
+        { "id": "TAC-3", "text": "No java.awt.* type leaks into any commonMain file." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [
+        { "type": "code", "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt:152" }
+      ],
+      "expectedOutput": "AdbPathChooser.kt + RectifyWindow.kt wiring.",
+      "hypothesis": "The native FileDialog is the OS's own accessible chooser (A11Y-6) and costs about ten desktopMain lines over an inline path-field alternative, for a better affordance matching the comp's 'Locate adb…' label.",
+      "definitionOfReady": ["T-24 landed"],
+      "definitionOfDone": ["H5 hand-run on the attached machine succeeds"],
+      "dependsOn": ["T-24"],
+      "outOfScope": ["An inline path-field alternative — considered and rejected: saves ~10 lines but ships a worse affordance"],
+      "predictedScope": [
+        "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/AdbPathChooser.kt",
+        "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+      ],
+      "parallelizable": false,
+      "executionGroup": 7,
+      "estimate": "1h",
+      "subtasks": []
+    },
+    {
+      "id": "T-26",
+      "epic": "E-6",
+      "title": "Hardware verification: SC-17, H5 — Locate adb FileDialog round trip",
+      "description": "With adb absent from every probed path, confirm the ToolMissing card appears. Click 'Locate adb…'; confirm the native FileDialog opens on the EDT. Pick a path; confirm it is validated via isExecutable before being trusted. Confirm an executable choice is stored and the next poll finds adb; confirm a cancelled or non-executable choice leaves the same ToolMissing card on screen.",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "An executable pick recovers discovery on the very next poll." },
+        { "id": "TAC-2", "text": "A cancelled or non-executable pick leaves the ToolMissing card unchanged." }
+      ],
+      "linkedAC": ["AC-26"],
+      "references": [],
+      "expectedOutput": "Recorded hardware-run output matching SC-17/H5.",
+      "hypothesis": "This is the only genuinely new user-facing feature in the spec and needs its own end-to-end hand run.",
+      "definitionOfReady": ["T-25 landed", "T-22 (trust-boundary unit test) green"],
+      "definitionOfDone": ["SC-17/H5 recorded"],
+      "dependsOn": ["T-25", "T-22"],
+      "outOfScope": [],
+      "predictedScope": [],
+      "parallelizable": true,
+      "executionGroup": 8,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-27",
+      "epic": "E-7",
+      "title": "AC-55/AC-56 inspection notes (no new tests — deliberate)",
+      "description": "AC-55 (Tab/Enter reachability) and AC-56 (light/dark contrast) are DELIBERATE field-level deviations from preparation.json's `test` verificationMethod to `inspection`, accepted by the judge (evaluation.json preDecisions[2]), because no Compose UI-test harness exists in this repo and introducing one is explicitly out of scope (binding decision 6). Record: AC-55 as a structural argument (AppButton and SourceListRow are ordinary focusable Compose clickables — Tab reaches them, Enter/Space activates them, no custom focus code). Record AC-56 as covered by presentation-core-styling's EXISTING PaletteContrastTest sweep for every ErrorCard/FeedbackBar token already in use. NOTE the one real caveat T-30 introduces: a single new fixed-value token (overlayScrim) is added for the stream-drop scrim per inputs/design-error-states.md CORRECTION 2 — record whether PaletteContrastTest's sweep already iterates all ThemeColor fields (and therefore picks this one up for free) or needs an explicit low-priority entry/waiver, consistent with the existing alpha-token WAIVED baselines. Do NOT add a new assertion for either AC-55/AC-56 — this chain has already shipped tests that could not fail.",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "AC-55's note names the exact components (AppButton, SourceListRow) and why they are structurally reachable, without a new test." },
+        { "id": "TAC-2", "text": "AC-56's note confirms the only new colour in this spec is the single fixed overlayScrim token (T-30), explains whether it falls inside or outside PaletteContrastTest's existing sweep, and records either coverage or a reasoned waiver — not silence." },
+        { "id": "TAC-3", "text": "Neither AC gets an assertion that is dressed up as a test but cannot fail." }
+      ],
+      "linkedAC": ["AC-55", "AC-56"],
+      "references": [
+        { "type": "code", "ref": "presentation-core-styling commonTest PaletteContrastTest" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/plan/plan.json#refinementRecord.appliedCorrections[2]" }
+      ],
+      "expectedOutput": "A short recorded note per AC in the spec directory, matching plan.json's accessibility[] and traceabilityMatrix entries for AC-55/AC-56, updated for the overlayScrim token.",
+      "hypothesis": "Stating the reasoning plainly is safer than a contrast/focus test that cannot fail, given this chain's history of one already-shipped vacuous test.",
+      "definitionOfReady": ["T-14 and T-16's @Preview pairs exist", "T-30 landed (overlayScrim token exists, so its contrast status is knowable)"],
+      "definitionOfDone": ["Both notes recorded; no new test files introduced for AC-55/AC-56"],
+      "dependsOn": ["T-14", "T-16", "T-30"],
+      "outOfScope": ["Introducing runComposeUiTest / ui-test-junit4 — explicitly deferred to its own spec"],
+      "predictedScope": [],
+      "parallelizable": true,
+      "executionGroup": 4,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-28",
+      "epic": "E-8",
+      "title": "Baseline capture: 196-test pass list + hardware baseline",
+      "description": "Before any edit: run the seven module desktopTest targets and save the pass list (`:data-device-api:desktopTest :data-device-impl:desktopTest :data-repository-impl:desktopTest :presentation-feature-mirror:desktopTest :presentation-core-ui:desktopTest :presentation-core-styling:desktopTest :data-preference-impl:desktopTest`). On hardware: `adb devices -l` (expect 38031FDJH00JVF as `device`, not `unauthorized`), then `adb kill-server && time adb devices -l` to re-confirm the ~3.053s cold fork on this machine.",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "196-test pass list captured and saved before any edit." },
+        { "id": "TAC-2", "text": "`adb devices -l` reports 38031FDJH00JVF as `device`." },
+        { "id": "TAC-3", "text": "The ~3.05s cold fork is re-confirmed on this build machine." }
+      ],
+      "linkedAC": [],
+      "references": [],
+      "expectedOutput": "Saved baseline pass list + hardware baseline confirmation.",
+      "hypothesis": "196 green is a hard constraint; a regression must be attributable to a step, not discovered at the end.",
+      "definitionOfReady": ["Fresh worktree with local.properties seeded by the orchestrator"],
+      "definitionOfDone": ["Baseline recorded in the spec directory"],
+      "dependsOn": [],
+      "outOfScope": ["`./gradlew check` or a bare root `./gradlew build` — both exceed the 3GB Kotlin daemon cap"],
+      "predictedScope": [],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-29",
+      "epic": "E-8",
+      "title": "Final sweep: localisation grep, ProcessBuilder audit, cross-target compile guard, minimal-change proof for presentation-core-ui/-styling",
+      "description": "Grep every new mirror_error_*/mirror_banner_*/mirror_status_* key for a real call site (no dead keys, per F-4's T-12 precedent). `grep -rln \"ProcessBuilder\" --include=\"*.kt\" . | grep -v /build/` must still print exactly one path. Run the four compileTestKotlinIosArm64 targets (data-device-api, data-repository-impl, presentation-feature-mirror, data-preference-impl) — a backtick test name with a comma/apostrophe/colon compiles on the JVM but fails there. Run `:data-device-impl:build` as the link guard for the new AdbHostSource members. Run `:presentation-core-ui:build :presentation-core-styling:build`. UPDATED: these two modules are NO LONGER claimed fully unchanged (T-30/T-31 add one fixed-value token and swap one call site's colour reference, per the late design file's CORRECTION 2) — the check is now 'builds green AND the diff is exactly the T-30/T-31 changes, nothing else', not 'zero source changes'. Re-run the full seven-module desktopTest list and diff against T-28's baseline — 196 original tests green, new tests additive.",
+      "type": "documentation",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "Every new mirror_error_*/mirror_banner_*/mirror_status_* key has at least one real call-site grep hit." },
+        { "id": "TAC-2", "text": "ProcessBuilder audit still prints exactly one path." },
+        { "id": "TAC-3", "text": "All four compileTestKotlinIosArm64 targets and :data-device-impl:build are green." },
+        { "id": "TAC-4", "text": "presentation-core-ui and presentation-core-styling build green, and a diff shows ONLY the T-30 (new overlayScrim token) and T-31 (AnnotationOverlay call-site swap) changes — nothing else in either module." },
+        { "id": "TAC-5", "text": "The 196 pre-existing desktop tests are still green and every new test is additive." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28", "AC-29", "AC-53", "AC-54"],
+      "references": [
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/plan/plan.json#testStrategy.commandNotes" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "Recorded audit output for all five checks in the spec directory.",
+      "hypothesis": "A green desktopTest does not prove cross-target compilation, and after T-30/T-31 'unchanged' must be downgraded to 'minimal and flagged' — both must be independently demonstrated.",
+      "definitionOfReady": ["T-7, T-11, T-15, T-17, T-22, T-26, T-31, T-32 all landed"],
+      "definitionOfDone": ["Every acceptance criterion above recorded as a passing command output"],
+      "dependsOn": ["T-7", "T-11", "T-15", "T-17", "T-22", "T-26", "T-28", "T-31", "T-32"],
+      "outOfScope": ["`:aos-application:assembleDebug` or the iOS framework link task — no Android/iOS code path beyond the UnsupportedDeviceSources actual is touched"],
+      "predictedScope": [],
+      "parallelizable": false,
+      "executionGroup": 9,
+      "estimate": "1.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-30",
+      "epic": "E-9",
+      "title": "presentation-core-styling: add fixed-value overlayScrim colour token",
+      "description": "SCOPE CORRECTION flagged against plan.json's 'presentation-core-styling UNCHANGED' claim, justified by inputs/design-error-states.md CORRECTION 2 (new evidence plan.json did not have). The design dims the frozen frame with `rgba(12,12,14,0.42)` — a FIXED near-black, identical in both themes, not the theme-following `Theme.color.pop` AnnotationOverlay currently uses (`#18191C` light / `#2C2D31` dark — materially weaker than intended in dark mode). Per design-tokens.md ('if the token you need doesn't exist yet, add it to the relevant Theme* data class instead of inlining a value'), add a new `val overlayScrim: Color` field to ThemeColor (core/ThemeColor.kt) and define it with the SAME value, `Color(0xFF0C0C0E)` (rgb(12,12,14)), in BOTH LightColor.kt and DarkColor.kt — deliberately theme-INVARIANT, because the scrim sits over mirrored device UI of unknown brightness (same reasoning as CommentPopover always being dark). SCRIM_ALPHA stays 0.42f, unchanged — it is already confirmed exact by the design and lives in presentation-core-ui (T-31), not here.",
+      "type": "business-logic",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "ThemeColor gains `val overlayScrim: Color`." },
+        { "id": "TAC-2", "text": "LightColor.kt and DarkColor.kt both set overlayScrim = Color(0xFF0C0C0E) — identical in both palettes, deliberately not theme-following." },
+        { "id": "TAC-3", "text": "No existing ThemeColor field (including pop) is modified — this is an addition only." }
+      ],
+      "linkedAC": ["AC-29"],
+      "references": [
+        { "type": "code", "ref": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeColor.kt" },
+        { "type": "code", "ref": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/attribute/color/LightColor.kt:25" },
+        { "type": "code", "ref": "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/attribute/color/DarkColor.kt:26" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" },
+        { "type": "url", "ref": ".claude/rules/design-tokens.md" }
+      ],
+      "expectedOutput": "ThemeColor.kt + both palette files with the new token.",
+      "hypothesis": "A theme-invariant token is the correct, rule-compliant way to express 'this must not theme-follow' — the literal colour value lives in the two canonical palette definitions, never at a call site.",
+      "definitionOfReady": ["inputs/design-error-states.md CORRECTION 2 read"],
+      "definitionOfDone": [":presentation-core-styling:build green", "T-31 can consume the new token"],
+      "dependsOn": [],
+      "outOfScope": ["Changing Theme.color.pop's own value or any of its other call sites"],
+      "predictedScope": [
+        "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/core/ThemeColor.kt",
+        "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/attribute/color/LightColor.kt",
+        "presentation-core-styling/src/commonMain/kotlin/presentation/core/styling/source/attribute/color/DarkColor.kt"
+      ],
+      "parallelizable": true,
+      "executionGroup": 1,
+      "estimate": "0.5h",
+      "subtasks": []
+    },
+    {
+      "id": "T-31",
+      "epic": "E-9",
+      "title": "presentation-core-ui: AnnotationOverlay.kt consumes overlayScrim instead of pop",
+      "description": "SCOPE CORRECTION flagged against plan.json's 'presentation-core-ui UNCHANGED' claim. One-line call-site swap in AnnotationOverlay.kt:90 — replace `Theme.color.pop.copy(alpha = SCRIM_ALPHA)` with `Theme.color.overlayScrim.copy(alpha = SCRIM_ALPHA)`. SCRIM_ALPHA (0.42f, already private const in this file) is unchanged — confirmed exact by the design. No other line in this file changes: the existing cutout/clipPath mechanism (clipPath(ClipOp.Difference) over drawRect) already matches the design's SVG-mask approach and is cheaper; it needs no edit. The zero-annotation gating fix (design CORRECTION 2's `annotations.length > 0`) is NOT made here — it belongs to the CALLER (MirrorAnnotationStage.kt's `dimmed` computation, see T-16), because this component's own marks.isEmpty()-vs-not branch is already correct given whatever `dimmed` it's handed.",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "AnnotationOverlay.kt:90 reads Theme.color.overlayScrim.copy(alpha = SCRIM_ALPHA), not Theme.color.pop." },
+        { "id": "TAC-2", "text": "SCRIM_ALPHA stays 0.42f, unchanged." },
+        { "id": "TAC-3", "text": "No other line in AnnotationOverlay.kt changes — this is a single call-site swap." },
+        { "id": "TAC-4", "text": "AnnotationOverlay's existing @Preview (dimmed = true) still renders correctly with the new fixed colour." }
+      ],
+      "linkedAC": ["AC-29"],
+      "references": [
+        { "type": "code", "ref": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationOverlay.kt:84-134" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "AnnotationOverlay.kt with the single call-site colour swap.",
+      "hypothesis": "The scrim's mechanism (cutout clipPath) was already correct per the design's own confirmation; only its colour source was theme-following when the design wants it fixed.",
+      "definitionOfReady": ["T-30 landed (overlayScrim token exists)"],
+      "definitionOfDone": [":presentation-core-ui:build green", "existing AnnotationOverlay preview/usages unaffected beyond the colour"],
+      "dependsOn": ["T-30"],
+      "outOfScope": ["The zero-annotation `dimmed` gating fix — that is T-16, in the caller"],
+      "predictedScope": ["presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/molecule/annotation/AnnotationOverlay.kt"],
+      "parallelizable": false,
+      "executionGroup": 2,
+      "estimate": "0.25h",
+      "subtasks": []
+    },
+    {
+      "id": "T-32",
+      "epic": "E-4",
+      "title": "Status-bar line per discovery error state (design gap)",
+      "description": "NEW, flagged by inputs/design-error-states.md as a gap plan.json never covered: MirrorContent.kt's `indicatorLabel()` (used by MirrorStatusLine) already special-cases ToolMissing, PollFailed and Detecting, but falls through to the generic 'Waiting for device…' (mirror_status_waiting) for BOTH NoDeviceFound and the multiple-usable-devices case — so the status bar keeps claiming it is waiting for a device while the error card above it says adb found zero devices or found three. Add two branches to indicatorLabel(), matching the design's verbatim status lines: NoDeviceFound -> 'adb devices → 0 attached' (new key mirror_status_no_device); Found with >1 usable device (reuse the same usable-device-count check errorCard() already makes in T-12, exposed as a small shared internal helper if convenient) -> '3 devices attached — waiting for choice' pattern (new key mirror_status_multiple_devices, formatted with the count). Serialized after T-14 (both edit MirrorContent.kt).",
+      "type": "ui",
+      "acceptanceCriteria": [
+        { "id": "TAC-1", "text": "indicatorLabel() returns a distinct, non-generic string for DiscoveryModel.NoDeviceFound, matching the design's 'adb devices → 0 attached' wording." },
+        { "id": "TAC-2", "text": "indicatorLabel() returns a distinct string for the multiple-usable-devices case, matching the design's '<N> devices attached — waiting for choice' wording." },
+        { "id": "TAC-3", "text": "ToolMissing, PollFailed and Detecting's existing branches are unchanged; only the `else -> mirror_status_waiting` fallthrough is narrowed." },
+        { "id": "TAC-4", "text": "Both new keys grep to this call site." }
+      ],
+      "linkedAC": ["AC-26", "AC-27", "AC-28"],
+      "references": [
+        { "type": "code", "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt:149-193" },
+        { "type": "url", "ref": ".pipeline/sdd/docs/error-handling-and-recovery/inputs/design-error-states.md" }
+      ],
+      "expectedOutput": "MirrorContent.kt's indicatorLabel() with two new branches; two new localisation keys.",
+      "hypothesis": "A status bar that contradicts the error card above it ('Waiting for device…' next to a card saying adb is missing) is a small, cheap-to-fix inconsistency the design surfaces but plan.json never captured.",
+      "definitionOfReady": ["T-14 landed (serialize MirrorContent.kt edits)", "T-12 landed (reuse of the usable-device-count logic)"],
+      "definitionOfDone": ["Both new branches compile and resolve a stringResource", "no change to ToolMissing/PollFailed/Detecting behaviour"],
+      "dependsOn": ["T-14", "T-12"],
+      "outOfScope": ["Any change to StatusIndicatorState (Live/Frozen/Dropped/Offline) — this task only touches the label text, not the dot colour"],
+      "predictedScope": [
+        "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt",
+        "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+      ],
+      "parallelizable": false,
+      "executionGroup": 4,
+      "estimate": "0.75h",
+      "subtasks": []
+    }
+  ],
+  "executionPlan": {
+    "waves": [
+      { "wave": 1, "parallel": ["T-1", "T-2", "T-3", "T-9", "T-19", "T-28", "T-30"] },
+      { "wave": 2, "parallel": ["T-4", "T-10", "T-12", "T-20", "T-21", "T-31"] },
+      { "wave": 3, "parallel": ["T-5", "T-6", "T-11", "T-14", "T-16", "T-22"] },
+      { "wave": 4, "parallel": ["T-7", "T-13", "T-17", "T-27", "T-32"] },
+      { "wave": 5, "parallel": ["T-8", "T-15", "T-18", "T-23"] },
+      { "wave": 6, "parallel": ["T-24"] },
+      { "wave": 7, "parallel": ["T-25"] },
+      { "wave": 8, "parallel": ["T-26"] },
+      { "wave": 9, "parallel": ["T-29"] }
+    ],
+    "graph": [
+      { "task": "T-4", "dependsOn": ["T-1", "T-2"] },
+      { "task": "T-5", "dependsOn": ["T-3", "T-4"] },
+      { "task": "T-6", "dependsOn": ["T-4"] },
+      { "task": "T-7", "dependsOn": ["T-1", "T-3", "T-5", "T-6"] },
+      { "task": "T-8", "dependsOn": ["T-7"] },
+      { "task": "T-10", "dependsOn": ["T-9"] },
+      { "task": "T-11", "dependsOn": ["T-10"] },
+      { "task": "T-12", "dependsOn": ["T-9"] },
+      { "task": "T-13", "dependsOn": ["T-10", "T-9", "T-6"] },
+      { "task": "T-14", "dependsOn": ["T-12"] },
+      { "task": "T-15", "dependsOn": ["T-12", "T-13", "T-14"] },
+      { "task": "T-16", "dependsOn": ["T-9", "T-12"] },
+      { "task": "T-17", "dependsOn": ["T-16"] },
+      { "task": "T-18", "dependsOn": ["T-17", "T-10"] },
+      { "task": "T-20", "dependsOn": ["T-19"] },
+      { "task": "T-21", "dependsOn": ["T-19"] },
+      { "task": "T-22", "dependsOn": ["T-19", "T-20", "T-21"] },
+      { "task": "T-23", "dependsOn": ["T-13", "T-20"] },
+      { "task": "T-24", "dependsOn": ["T-9", "T-23"] },
+      { "task": "T-25", "dependsOn": ["T-24"] },
+      { "task": "T-26", "dependsOn": ["T-25", "T-22"] },
+      { "task": "T-27", "dependsOn": ["T-14", "T-16", "T-30"] },
+      { "task": "T-29", "dependsOn": ["T-7", "T-11", "T-15", "T-17", "T-22", "T-26", "T-28", "T-31", "T-32"] },
+      { "task": "T-31", "dependsOn": ["T-30"] },
+      { "task": "T-32", "dependsOn": ["T-14", "T-12"] }
+    ]
+  },
+  "readyForExecution": true,
+  "sequenceNotes": {
+    "cyclesFound": [],
+    "graphValidation": "Every dependsOn edge resolves to a task id that exists in tasks[]. Longest-path (critical-path) depth was computed independently from each task's own dependsOn array (not from the pre-existing graph/waves blocks) and matched the pre-existing waves exactly for 28 of 32 tasks. Four tasks (T-23, T-24, T-25, T-26 — the back half of E-6's Locate-adb chain) carried a stale executionGroup field one wave earlier than their actual topological depth (4/5/6/7 instead of the correct 5/6/7/8, because T-23 depends on T-13 which sits at depth 4, forcing T-23 to depth 5, and the off-by-one propagates linearly down T-24→T-25→T-26). Corrected in place; the waves[]/graph[] blocks were already right — only the per-task scheduling field was wrong.",
+    "executionGroupCorrections": [
+      "T-23: executionGroup 4 -> 5 (depends on T-13 at depth 4; must be depth >= 5)",
+      "T-24: executionGroup 5 -> 6 (depends on T-23, now depth 5; must be depth >= 6)",
+      "T-25: executionGroup 6 -> 7 (depends on T-24, now depth 6; must be depth >= 7)",
+      "T-26: executionGroup 7 -> 8 (depends on T-25 depth 7 and T-22 depth 3; must be depth >= 8)"
+    ],
+    "hardstopsRespected": [
+      "data-device-api root (T-1/T-2/T-3, wave 1) gates everything in data-device-impl (T-4, wave 2), data-repository-impl (T-5/T-6, wave 3) and the use-case layer (T-6) — strictly sequential across waves, never collapsed into one parallel group.",
+      "TIMEOUT_REASON_PREFIX producer+constant: T-3 deliberately bundles BOTH ends that must never land half-wired — DeviceCommandException.kt (the constant + isTimeout()) AND ProcessRunner.kt:79 (the sole producer) are the same task, same wave (1). The ladder (T-5, the consumer) depends on T-3 and cannot start before wave 3, so the constant is never half-wired across a wave boundary.",
+      "E-9 (T-30 overlayScrim token, T-31 AnnotationOverlay call-site swap): T-30 in wave 1 (independent of the device layer, as predicted), T-31 depends on T-30 and lands wave 2. T-27 (AC-55/56 inspection notes, which must decide whether PaletteContrastTest's sweep already covers overlayScrim) depends on T-30 and is correctly deferred to wave 4, after the token exists.",
+      "T-10 (resumeLive/onSessionLost no-op task) lands wave 2; its guard tests (T-11, including T3's byte-for-byte regression check) land wave 3, immediately after. T-16 (the UI task most likely to accidentally touch the Resume-Live affordance) touches MirrorAnnotationStage.kt only — zero predictedScope overlap with MirrorViewModel.kt — so it can run in the same wave (3) as T-11 with no file contention; T-16's own TAC-4 additionally re-verifies resumeLive() against T-10's diff at review time."
+    ],
+    "redFirstOrderingVerified": [
+      "T-11 (T2/AC-54): the RED-FIRST half ('MirrorIntent.ResumeLive after loss' on today's merged, pre-T-9/T-10 code) has ZERO dependency on this spec's new tasks — ResumeLive already exists on main — so it is executable before T-10 even starts, exactly as its task description requires ('T2 MUST be run RED first... before T-10 lands'). The GREEN half (drive Reconnect, then the permanent reroute-at-resumeLive() mutation) correctly depends on T-10 and is gated to wave 3. The wave plan permits both halves in their required order.",
+      "T-7 (T1/T15, FR-36 ladder): T1's and T15's 'RED FIRST' clauses describe the same code state as their own MUTATION clauses (delete the startServer()/killServer() call from the already-landed ladder) — i.e. RED-FIRST and MUTATION are the identical operation here, not a requirement to run before T-5/T-6. Compiling the fakes at all requires AdbHostSource.startServer()/killServer() to exist (T-4, wave 2); the red state (no call made) is reproduced by the mutation after T-5/T-6 (wave 3) land, which is what T-7 (wave 4) does. No reordering needed.",
+      "T-17 (T8/T8b/T11): no RED-FIRST clause (MUTATION-only); unaffected."
+    ],
+    "serializedForScopeOverlap": [
+      "T-4: data-device-api/impl AdbHostSource + AdbHostSourceImpl + UnsupportedDeviceSources — hardstop position after T-1/T-2, not a scope clash within wave 2, but kept serial since it is the single-spawn-site boundary.",
+      "T-5/T-6: both edit DeviceRepositoryImpl.kt (T-5 the poll loop, T-6 restartAdbServer()) — sequential within wave 3's dependency chain (T-6 depends only on T-4, T-5 depends on T-3+T-4; both land wave 3, serialized by file).",
+      "T-10/T-13/T-23: all three edit MirrorViewModel.kt across waves 2/4/5 respectively — each depends on the previous via dependsOn, so the shared-file hazard is resolved by cross-wave sequencing, never by same-wave parallel edits.",
+      "T-14/T-32: both edit MirrorContent.kt (T-14 the NoSignal branch, T-32 indicatorLabel()) — T-32 explicitly dependsOn T-14 and lands one wave later (wave 4 vs wave 3)."
+    ],
+    "terminalWaveTasks": ["T-29"],
+    "terminalWaveRationale": "T-29 is the only genuinely cross-cutting sweep (localisation-key grep, ProcessBuilder single-spawn-site audit, iOS cross-target compile guard, and the 196-baseline diff) and it correctly sits alone in the final wave (9), depending on nearly every other task. The remaining test/documentation-typed tasks (T-7, T-8, T-11, T-15, T-17, T-18, T-22, T-26, T-27, T-28) are deliberately epic-scoped TDD/mutation/hardware-verification steps that must run immediately after their own epic's implementation (per the test-integrity constraint already in plan.json/backlog.json), not swept to the end — forcing them into one terminal wave would break the documented RED-then-GREEN sequencing per epic (see redFirstOrderingVerified) without adding any real benefit. T-28 (baseline capture) is a pre-condition, not a sweep, and correctly sits in wave 1."
+  }
+}

@@ -51,6 +51,8 @@ import presentation.core.ui.source.kit.atom.annotation.AnnotationState
 import presentation.core.ui.source.kit.atom.button.AppButton
 import presentation.core.ui.source.kit.atom.button.AppButtonSize
 import presentation.core.ui.source.kit.atom.button.AppButtonVariant
+import presentation.core.ui.source.kit.molecule.status.FeedbackStatus
+import presentation.core.ui.source.kit.molecule.status.FeedbackBar
 import presentation.core.ui.source.kit.molecule.annotation.AnnotationOverlay
 import presentation.core.ui.source.kit.molecule.annotation.AnnotationOverlayMark
 import presentation.core.ui.source.kit.molecule.annotation.AnnotationPopover
@@ -66,6 +68,9 @@ import presentation.feature.mirror.core.annotation.popoverLayout
 import presentation.feature.mirror.core.annotation.sizeLabel
 import presentation.feature.mirror.core.geometry.FrameGeometry
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_banner_stream_dropped
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_banner_annotations_kept
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_banner_reconnect
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_action_resume_live
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_annotation_delete
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_annotation_empty_comment
@@ -112,6 +117,9 @@ private val PopoverTailGap: Dp = POPOVER_TAIL_GAP_DP.dp
  */
 private val GutterRowHeight: Dp = 54.dp
 
+/** Design: the stream-drop banner sits `top:14px` over the stale frame. */
+private val BannerTopInset: Dp = 14.dp
+
 /** Preview-only stand-in frame; a real device screenshot is never available in a preview. */
 private val PreviewDeviceSize = IntSize(width = 1080, height = 2400)
 
@@ -139,6 +147,9 @@ internal fun MirrorLiveStage(
         frame = frame,
         deviceName = deviceName,
         frozen = null,
+        // Nothing is frozen, so there is nothing to resume from and nothing to keep.
+        canResumeLive = false,
+        banner = null,
         onIntent = onIntent,
         modifier = modifier,
     )
@@ -162,6 +173,8 @@ internal fun MirrorFrozenStage(
     frame: ImageBitmap,
     deviceName: String,
     frozen: FrozenFrame,
+    canResumeLive: Boolean,
+    banner: MirrorDropBanner?,
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -169,6 +182,8 @@ internal fun MirrorFrozenStage(
         frame = frame,
         deviceName = deviceName,
         frozen = frozen,
+        canResumeLive = canResumeLive,
+        banner = banner,
         onIntent = onIntent,
         modifier = modifier,
     )
@@ -195,6 +210,8 @@ private fun MirrorAnnotationStage(
     frame: ImageBitmap,
     deviceName: String,
     frozen: FrozenFrame?,
+    canResumeLive: Boolean,
+    banner: MirrorDropBanner?,
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier,
 ) {
@@ -257,9 +274,16 @@ private fun MirrorAnnotationStage(
                         )
                     },
             ) {
+                // Computed ONCE: the dim gate and the overlay must agree about what marks
+                // exist, and calling overlayMarks twice is how they come to disagree.
+                val marks = overlayMarks(geometry = geometry, frozen = frozen, dragRect = dragRect)
                 AnnotationOverlay(
-                    marks = overlayMarks(geometry = geometry, frozen = frozen, dragRect = dragRect),
-                    dimmed = frozen != null,
+                    marks = marks,
+                    // Gated on marks, not just on `frozen`: with nothing annotated there is
+                    // nothing to punch out of the scrim, so dimming would hand the user a
+                    // uniformly darkened screenshot with no indication why. The design gates
+                    // its own dimming the same way (annotations.length > 0).
+                    dimmed = frozen != null && marks.isNotEmpty(),
                 )
 
                 if (dragRect != null) {
@@ -289,12 +313,45 @@ private fun MirrorAnnotationStage(
                     frozen = pinned,
                     onIntent = onIntent,
                 )
-                AppButton(
-                    text = stringResource(Res.string.mirror_action_resume_live),
-                    onClick = { onIntent(MirrorIntent.ResumeLive) },
-                    variant = AppButtonVariant.Secondary,
-                    size = AppButtonSize.Toolbar,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(Theme.spacing.spacingS),
+                // NFR-6. Resume Live CLEARS the frozen frame and every annotation on it -
+                // deliberately, and F-4's AC-51 is confirmed against exactly that. So while
+                // the session is Lost it must not be the only thing on offer, because then a
+                // user whose cable fell out has one button and it destroys their work. The
+                // handler is untouched; the affordance is what is withheld.
+                if (canResumeLive) {
+                    AppButton(
+                        text = stringResource(Res.string.mirror_action_resume_live),
+                        onClick = { onIntent(MirrorIntent.ResumeLive) },
+                        variant = AppButtonVariant.Secondary,
+                        size = AppButtonSize.Toolbar,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(Theme.spacing.spacingS),
+                    )
+                }
+            }
+
+            // FR-24 / AC-29. Top-centre, over the stale frame, per the design's
+            // `top:14px; left:50%; translateX(-50%)`. It is `surface` rather than an error
+            // fill - only the dot carries the red, the same restraint as StatusPill - because
+            // it reports a recoverable state, not a failure.
+            banner?.let { dropped ->
+                FeedbackBar(
+                    text = stringResource(Res.string.mirror_banner_stream_dropped),
+                    status = FeedbackStatus.Error,
+                    // COR-1. Suppressed at zero. dropBanner()'s KDoc delegates this to the
+                    // content layer, and the content layer is here — without it the banner
+                    // renders "Your 0 annotations are kept on the frozen frame.", which is the
+                    // reassurance turned into an insult: it names the absence of the work it
+                    // is claiming to protect. Reachable via ClearStaged on a pinned frame
+                    // (AC-48 keeps the frame) followed by a drop.
+                    detail = dropped.annotationCount
+                        .takeIf { it > 0 }
+                        ?.let { stringResource(Res.string.mirror_banner_annotations_kept, it) },
+                    actionLabel = stringResource(Res.string.mirror_banner_reconnect),
+                    onAction = { onIntent(MirrorIntent.Reconnect) },
+                    actionVariant = AppButtonVariant.Primary,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = BannerTopInset),
                 )
             }
         }
@@ -312,7 +369,7 @@ private fun MirrorAnnotationStage(
  * would hide the exact pixels an annotation points at. The dim is `AnnotationOverlay`'s scrim,
  * outside the marks.
  */
-private fun overlayMarks(
+internal fun overlayMarks(
     geometry: FrameGeometry,
     frozen: FrozenFrame?,
     dragRect: DeviceRect?,
@@ -616,6 +673,8 @@ private fun MirrorFrozenStagePreview() {
                 frame = previewFrame(),
                 deviceName = "Pixel 8 Pro",
                 frozen = previewFrozen(),
+                canResumeLive = true,
+                banner = null,
                 onIntent = {},
             )
         }
@@ -631,6 +690,10 @@ private fun MirrorFrozenStageCrowdedPreview() {
                 frame = previewFrame(),
                 deviceName = "Pixel 8 Pro",
                 frozen = previewCrowded(),
+                // The dropped state, so the banner and the withheld Resume Live are both
+                // visible in a preview - the only rendering check this repo has.
+                canResumeLive = false,
+                banner = MirrorDropBanner(deviceId = "37281FDH2000AB", annotationCount = 2),
                 onIntent = {},
             )
         }

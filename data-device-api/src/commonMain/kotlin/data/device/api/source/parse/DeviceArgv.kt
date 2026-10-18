@@ -17,6 +17,24 @@ public sealed interface HostCommand {
     /** `adb devices -l`. */
     public data object ListDevices : HostCommand
 
+    /**
+     * `adb start-server`.
+     *
+     * Forks the daemon ahead of a discovery poll. A cold fork takes ~3.03 s on real hardware —
+     * longer than `HostCommandTimeoutMs` — so a poll that triggers the fork implicitly kills it
+     * mid-start and the next poll re-enters the same cold state. Starting the daemon explicitly
+     * is what breaks that livelock.
+     */
+    public data object StartServer : HostCommand
+
+    /**
+     * `adb kill-server`.
+     *
+     * Against a *wedged* daemon (alive but not serving) `start-server` itself hangs, so
+     * [KillServer] then [StartServer] is the only sequence that recovers it.
+     */
+    public data object KillServer : HostCommand
+
     /** `emulator -version`. */
     public data object EmulatorVersion : HostCommand
 
@@ -52,6 +70,8 @@ public fun buildDeviceArgv(toolPath: String, device: DeviceId, command: DeviceCo
 public fun buildHostArgv(toolPath: String, command: HostCommand): List<String> = listOf(toolPath) + when (command) {
     HostCommand.AdbVersion -> listOf("--version")
     HostCommand.ListDevices -> listOf("devices", "-l")
+    HostCommand.StartServer -> listOf("start-server")
+    HostCommand.KillServer -> listOf("kill-server")
     HostCommand.EmulatorVersion -> listOf("-version")
     HostCommand.ListAvds -> listOf("-list-avds")
     is HostCommand.BootAvd -> listOf("-avd", command.avd.value)

@@ -15,6 +15,8 @@ import data.device.api.source.model.MirrorFrame
 import data.device.api.source.model.ToolKind
 import data.device.api.source.model.ToolProbe
 import data.device.api.source.model.TransportStats
+import data.device.api.source.parse.HostCommand
+import data.device.api.source.parse.buildHostArgv
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,12 +29,25 @@ private const val UNSUPPORTED = "Device tooling runs on the desktop host only"
 /** A probe that reports the tool as absent — which, on a phone, it is. */
 private fun absent(kind: ToolKind): ToolProbe = ToolProbe(kind = kind, found = false)
 
+/**
+ * The failure a deviceless `adb` command raises here, with the argv it would have run.
+ *
+ * Built through [buildHostArgv] rather than a hand-listed argv so this stays bound to the
+ * closed command set like every other call site.
+ */
+private fun unsupported(command: HostCommand): DeviceCommandException =
+    DeviceCommandException(buildHostArgv(ToolKind.Adb.binaryName, command), null, UNSUPPORTED)
+
 /** No-op [AdbHostSource] for targets that cannot spawn a process. */
 internal object UnsupportedAdbHostSource : AdbHostSource {
 
     override suspend fun probe(): ToolProbe = absent(ToolKind.Adb)
 
     override suspend fun listDevices(): List<DeviceResource> = emptyList()
+
+    override suspend fun startServer(): Unit = throw unsupported(HostCommand.StartServer)
+
+    override suspend fun killServer(): Unit = throw unsupported(HostCommand.KillServer)
 }
 
 /** No-op [IdbHostSource] for targets that cannot spawn a process. */

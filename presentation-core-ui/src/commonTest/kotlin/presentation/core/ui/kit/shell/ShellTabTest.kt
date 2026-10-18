@@ -21,8 +21,10 @@ class ShellTabTest {
     }
 
     @Test
-    fun `labels are the shipped copy - not SidebarTabs KDoc Annotations`() {
-        assertEquals("Notes", ShellTab.Notes.label)
+    fun `labels are the design's tab strip copy`() {
+        // The design labels this tab "Annotations"; "Notes" was pinned here before the design
+        // file was available, resolving a conflict between our own KDoc and our own enum.
+        assertEquals("Annotations", ShellTab.Notes.label)
         assertEquals("Payload", ShellTab.Payload.label)
         assertEquals("History", ShellTab.History.label)
     }
