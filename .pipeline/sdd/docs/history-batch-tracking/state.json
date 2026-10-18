@@ -92,6 +92,11 @@
       "status": "done",
       "wave": 8,
       "updatedAt": "2026-10-18T20:18:51Z"
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-18T20:23:02Z"
     }
   },
   "effort": "fast",
