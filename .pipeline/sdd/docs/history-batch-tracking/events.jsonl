@@ -48,3 +48,7 @@
 {"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "start", "at": "2026-10-18T20:32:38Z", "spec": "history-batch-tracking"}
 {"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "end", "tokens": 193876, "at": "2026-10-18T20:50:56Z", "spec": "history-batch-tracking"}
 {"stage": "validation", "step": "request", "agent": "sdd-build-validation-request", "event": "start", "at": "2026-10-18T20:50:56Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "request", "agent": "sdd-build-validation-request", "event": "end", "tokens": 40792, "at": "2026-10-18T20:53:18Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "start", "at": "2026-10-18T20:53:18Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 97487, "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "validation", "event": "end", "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
