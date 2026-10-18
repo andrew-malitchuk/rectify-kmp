@@ -1,0 +1,127 @@
+# history-batch-tracking — input
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | preparation |
+| step | input |
+| status | done |
+| producedBy | sdd-build-discussion-aggregate |
+| schemaVersion | 1 |
+| createdAt | 2026-10-18T18:20:47Z |
+| updatedAt | 2026-10-18T18:20:47Z |
+
+## Gate
+
+### type
+
+human
+
+### approvedBy
+
+orchestrator-autonomous
+
+### approved
+
+true
+
+### at
+
+2026-10-18T18:20:47Z
+
+## Provenance
+
+### selfHash
+
+a5bed37cd18f641dd903ce2bbddc2c3d4346ed08fcace9dde987538436614ec8
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| inputs/prd-handoff.json | 52cb69f1e98ef5a10756195afec4ca9c7cde66751e3051d18851cea89e0f2e4d |
+
+## Data
+
+### title
+
+History & Batch Tracking
+
+### goalStatement
+
+The History tab plus the local persistence layer behind it: every batch ever sent is recorded with its frozen frame, per-annotation records, generated prompt and hierarchy dump, and listed grouped by time period with a thumbnail crop, title/summary, timestamp and status chip (Fixed, In progress, etc.). All records survive app restarts and never leave the machine. Why: PER-2 needs to see what has already been reported and its state without re-testing everything, and the Verify loop needs a durable original-frame record to diff against.
+
+### rawDescription
+
+The History tab plus the local persistence layer behind it: every batch ever sent is recorded with its frozen frame, per-annotation records, generated prompt and hierarchy dump, and listed grouped by time period with a thumbnail crop, title/summary, timestamp and status chip (Fixed, In progress, etc.). All records survive app restarts and never leave the machine. Why: PER-2 needs to see what has already been reported and its state without re-testing everything, and the Verify loop needs a durable original-frame record to diff against.
+
+### sources
+
+| type | ref | summary | cached | fetchedAt |
+| --- | --- | --- | --- | --- |
+| text | inputs/prd-handoff.json | Upstream PRD feature bundle F-8 'History & Batch Tracking' (sourcePrd: rectify). Carries FR-20, NFR-4, NFR-7, AC-22, AC-33, SC-8, SC-15, US-8, dependsOn: [F-7], priority: must, phase: PH-1, estimate: M. |  |  |
+| figma | rectify-screens.html — History tab markup | Bundled prototype containing the History tab UI. Decoded modules in raw/design/ (History markup: raw/design/_history-tab.html, full screen: raw/design/6833ecee.html). Tab-strip position (third segment), in-progress badge, grouped-by-time list, row anatomy with 44×44 crop thumbnail and exact measurements, status chips with tone dots, optional Verify button (scope boundary to F-9), footer session line. | raw/rectify-screens.html | 2026-10-11T16:12:17Z |
+
+### codeReferences
+
+| repo | path | note |
+| --- | --- | --- |
+| rectify-kmp | data-handoff-api/CLAUDE.md | F-7's cross-process handoff contract: AnnotationEnvelope, AnnotationHandoff interface, FileSlotAnnotationHandoff at ~/.rectify/handoff/latest.json. F-8 must persist every batch sent, not just latest. |
+| rectify-kmp | mcp-application/CLAUDE.md | F-7's MCP server reads the handoff slot. F-8 must coordinate with this reader's lifecycle (never delete active published batches). |
+| rectify-kmp | data-database-api/CLAUDE.md + data-database-impl/CLAUDE.md | Room KMP scaffold (currently unused, first intended consumer is F-8). Must wire Room's KSP for desktop target. registry/features.json names it 'scaffold only'. |
+| rectify-kmp | presentation-feature-mirror/source/window/RectifyWindow.kt | The right inspector panel with tab strip; F-8 adds the History segment (third tab). Existing Annotations and Payload tabs already there. |
+
+### designReferences
+
+| screen | nodeId | cached | description |
+| --- | --- | --- | --- |
+| History tab (from Rectify Screens prototype) | 6833ecee | raw/design/6833ecee.html | Complete History tab design. Tab-strip placement (third segment), in-progress badge count, vertically scrolling grouped list (Today/Yesterday headers), rows with flex-gap-10px layout, 44×44 thumbnail crop with box-shadow 1px var(--line2), title 12.5px single-line-ellipsis, meta-line Mono 10.5px var(--ink3) '3 notes · 14:02 · #a41f', status row with 20px chip (11px/500 font, border-radius 10px, tone dot), optional sub-line Mono 10px (agent activity), optional Verify button 22px (11.5px/500, background var(--primary)), footer with agent/path/session line. |
+| History tab (extracted markup block) | 6833ecee | raw/design/_history-tab.html | Extracted History markup block from prototype. Crop math from design: cx=max(0,x-pad); cy=max(0,y-pad); cw=min(W-cx,w+2pad); ch=min(H-cy,h+2pad); s=min(bw/cw, bh/ch); box = cw*s × ch*s, frame offset -cx*s,-cy*s, scale(s). Statuses: Sent/In progress (amber)/Fixed (green)/Verified (neutral)/Follow-up sent (red). Frame 296×640 scaled to fit 44×44 box. |
+
+### ticketRefs
+
+
+### existingSolutions
+
+| where | summary | link |
+| --- | --- | --- |
+| this-project | F-7 (resolve-and-send-mcp, merged) publishes each send to ~/.rectify/handoff/latest.json with AnnotationEnvelope containing frame bytes, crop bytes, hierarchy dump, prompt, version, sentAtMs. F-8 must read this contract and persist every send in a database, keyed by sentAtMs or similar. | .pipeline/sdd/docs/resolve-and-send-mcp/plan/plan.md |
+| this-project | F-4 (drag-annotate-frozen-frame) defines StagedAnnotation, FrozenFrame, DeviceRect models. F-8 must store these per-batch in the database and reconstruct them for the History UI. | .pipeline/sdd/docs/drag-annotate-frozen-frame/ |
+
+### glossary
+
+| term | definition |
+| --- | --- |
+| Batch | A single Resolve & Send operation: one frozen frame, N annotations on it, one hierarchy dump, one generated prompt, one sentAtMs timestamp. Published atomically by F-7 to ~/rectify/handoff/latest.json, must be persisted by F-8. |
+| Status chip | A colored chip (Sent/In progress/Fixed/Verified/Follow-up sent) shown per row in History, preceded by a tone dot. Status transitions are mostly F-9's territory (Verify), but Sent is the entry state, In progress indicates MCP agent is working, Follow-up sent is a secondary send after fixes. |
+| Frozen frame | The original adb-captured PNG screenshot at the moment Resolve & Send was clicked. Stored by F-7 at ~/.rectify/handoff/<sentAtMs>/frame.png. F-8 must persist a reference to this or a copy of it. |
+| Thumbnail crop | A 44×44 preview extracted from the frozen frame, centered on the annotated element (or elements if multi-annotation batch). Crop math defined in design: pad=18, bw/bh=40/40, scale to fit. |
+| Time period | Grouping header in History list: 'Today', 'Yesterday', 'Last week', etc. Design prototype shows Today/Yesterday; full bucketing algorithm undefined. |
+| Session line | Footer of History list showing 'claude · ~/code/shopkit · session 7f3a' — agent name, project path, session identifier. Source of this data (per-batch or global?) undefined. |
+| Activity line | Optional sub-line under status chip for in-progress batches, e.g. 'editing CartScreen.kt'. Indicates live MCP agent work. Source (MCP response? heartbeat?) undefined. |
+
+### attachments
+
+
+### ambiguities
+
+- Status transition rules and state machine: what moves a batch from Sent → In progress → Fixed → Verified? Verify is F-9, but what triggers Sent → In progress? Does the MCP agent publish status updates, or does the Verify flow (F-9) perform all transitions?
+- Follow-up sent status: mentioned in design but not defined in any requirement. Is this a state users can manually trigger, or automatic after a Verify → Fix cycle?
+- Session line footer data source: design shows 'claude · ~/code/shopkit · session 7f3a' but where does this live per-batch? Is it in AnnotationEnvelope? Is it the session from the MCP get_latest_annotation call?
+- Activity line (sub-line under status chip): 'editing CartScreen.kt' is shown for in-progress batches in the design, but no requirement defines where this data comes from. Is it polled from the MCP agent? A heartbeat? Part of AnnotationEnvelope?
+- History list bucketing: design shows 'Today' and 'Yesterday' groups, but full algorithm for time-period bucketing is undefined. Is it just Today/Yesterday/Older? Weekly buckets? Arbitrary?
+- Search/filter affordances: no requirement mentions searching or filtering History. Is the tab a flat vertically-scrolling list only?
+- Pagination/max-visible: no requirement on History list size. Does it paginate, virtualize, or show all? Memory cost for hundreds/thousands of batches?
+- Navigation after row click: clicking a History row — does it open the Verify flow immediately (F-9 territory)? Or open a detail view?
+- Thumbnail crop on multi-annotation batches: if a batch has 3 annotations scattered across the frame, what single crop is shown in the thumbnail? First annotation? Bounding box? Centered on average?
+- Frame persistence: must F-8 store the full PNG frame bytes (per F-7's frame.png), or just a reference to the handoff directory, or generate thumbnails on-demand from memory?
+- Batch deletion: no requirement on whether users can delete batches. History grows unbounded? Or is there a retention policy?
+- Verify button visibility: AC-22 says rows show 'title/summary/timestamp/status chip' (no Verify button). SC-8 says 'Locate a Fixed batch, Click Verify'. Design shows Verify only on Fixed status rows. Is AC-22 incomplete, or is the Verify button out of scope for F-8?
+- Cross-platform: F-8 spec lists Android/iOS/Desktop targets, but F-7 (Resolve & Send) is desktop-only. Does F-8 also desktop-only, or does it span all platforms? Registry notes indicate History is desktop-specific (RectifyWindow is desktop only).
+
+### dictation
+
+
+
+### rawCacheDeltas

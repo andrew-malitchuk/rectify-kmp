@@ -1,0 +1,272 @@
+{
+  "spec": "history-batch-tracking",
+  "stage": "preparation",
+  "step": "preparation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-preparation-compile",
+  "provenance": {
+    "selfHash": "42b2b0eb4629896ec4eaf148e33daf36b0aa73a81ba9b786b488f1886624e6ca",
+    "inputs": [
+      {
+        "artifact": "preparation/input.json",
+        "hash": "a5bed37cd18f641dd903ce2bbddc2c3d4346ed08fcace9dde987538436614ec8"
+      },
+      {
+        "artifact": "preparation/clarify.json",
+        "hash": "d974c9ddd8498776c1d1e0745017c59654b2d912616181cb1110bca3021f73f3"
+      },
+      {
+        "artifact": "preparation/brainstorm.json",
+        "hash": "b1b3f183efd501af308dcad73c8435138ed86edf411287bdb8cb998ed0ac7a5c"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T18:39:24Z",
+  "updatedAt": "2026-10-18T18:39:24Z",
+  "data": {
+    "summary": "History & Batch Tracking (F-8) adds a desktop-only third tab-strip segment to RectifyWindow plus the Room-backed persistence layer behind it. Every batch F-7 publishes via AnnotationHandoff is copied into app-owned storage (~/.rectify/history/<batchId>/ for frame/crop/hierarchy files, Room for metadata + a small thumbnail BLOB) immediately after a successful publish, and rendered as a time-grouped (Today/Yesterday/Older), lazily-virtualized list with thumbnail, title, meta line, and status chip. Status transitions beyond the initial 'Sent' write, the Verify/re-diff logic itself, search/filter, row-detail navigation, and batch deletion are explicitly out of scope and deferred to F-9 or a future spec. All 13 clarify decisions and 5 brainstorm architecture decisions are closed; two load-bearing corrections are carried forward verbatim below and must not be silently resolved by the plan.",
+    "problemStatement": "PER-2 (QA tester) currently has no durable record of batches already sent to the coding agent: F-7's handoff slot retains only the most recent send and nothing survives an app restart, so there is no way to see what has already been reported and its state without re-testing everything. The upcoming Verify loop (F-9) also needs a durable original-frame record to diff against, which does not exist today.",
+    "confirmedRequirements": {
+      "functional": [
+        {
+          "id": "FR-20",
+          "text": "Provide a History tab listing every batch ever sent, grouped by time period, each row showing a thumbnail crop, title/summary, timestamp, and a status chip (e.g. Fixed, In progress)."
+        },
+        {
+          "id": "FR-26",
+          "text": "On every successful AnnotationHandoff.publish (F-7), persist a new Batch record (frozen frame copy, per-annotation crop copies, hierarchy dump, prompt, sessionId, sentAtMs, device info) to the local Room database with initial status Sent."
+        },
+        {
+          "id": "FR-27",
+          "text": "Copy the frozen frame PNG and each per-annotation crop PNG from the handoff slot into app-owned storage at persist time, because F-7 prunes every handoff-slot image directory except the latest after each publish and a bare path reference would go stale."
+        },
+        {
+          "id": "FR-28",
+          "text": "Render History rows grouped under Today / Yesterday / Older headers, based on the batch's local calendar day relative to now, newest batch first within each group."
+        },
+        {
+          "id": "FR-29",
+          "text": "Compute each row's 44x44 thumbnail by running the existing crop() algorithm (pad=18, bw=bh=40) against the union bounding box of all of the batch's annotation rects."
+        },
+        {
+          "id": "FR-30",
+          "text": "Render each row's title as the batch's first annotation's comment text (ellipsised, single line) and its meta line as '<n> notes . <HH:mm sent time> . #<last 4 hex chars of batch id>'. CORRECTION CARRIED FORWARD: this is not literally satisfiable — mintSessionId returns '<deviceId>-f<frameId>-<sentAtMs>' (decimal), whose last 4 chars are millisecond digits, not hex. The resolution of record: derive the short id as (id.hashCode() and 0xFFFF).toString(16). Stage 2 plan must implement this derivation, not the literal 'last 4 hex chars' wording."
+        },
+        {
+          "id": "FR-31",
+          "text": "Render a status chip with a tone dot per BatchStatus value (Sent, In progress, Fixed, Verified, Follow-up sent), matching the design's tone mapping; Sent shares Verified's neutral tone since the prototype defines no distinct tone for it."
+        },
+        {
+          "id": "FR-32",
+          "text": "Show a Verify button only on rows with status Fixed; clicking it invokes a caller-supplied callback (no-op by default). The diff/verify logic itself is out of scope (F-9)."
+        },
+        {
+          "id": "FR-33",
+          "text": "Expose a BatchRepository.updateStatus(batchId, BatchStatus) API for a future consumer (F-9) to drive In progress / Fixed / Verified / Follow-up sent transitions; F-8 itself never calls it beyond the initial Sent write."
+        },
+        {
+          "id": "FR-34",
+          "text": "Show History as the third segment of RectifyWindow's existing inspector tab strip, with a badge equal to the count of batches currently in In progress status (hidden when zero)."
+        },
+        {
+          "id": "FR-35",
+          "text": "Show a footer line 'claude . session <sessionId>' sourced from the most recently persisted batch's sessionId; project path is omitted because AnnotationEnvelope carries no such field."
+        },
+        {
+          "id": "FR-36",
+          "text": "Keep all persisted batches visible indefinitely; no delete or retention UI ships in this spec."
+        }
+      ],
+      "nonFunctional": [
+        {
+          "id": "NFR-4",
+          "category": "security",
+          "text": "All mirror stream data, screenshots, hierarchy dumps, and payloads stay local to the machine; no network egress beyond localhost MCP communication."
+        },
+        {
+          "id": "NFR-7",
+          "category": "reliability",
+          "text": "History and batch metadata persist locally and survive app restarts."
+        },
+        {
+          "id": "NFR-13",
+          "category": "performance",
+          "text": "The History list renders via a lazily-virtualized list (Compose LazyColumn) so UI render cost stays independent of total persisted batch count."
+        },
+        {
+          "id": "NFR-14",
+          "category": "performance",
+          "text": "Copying frame and crop PNGs to durable per-batch storage at publish time runs off the UI thread, consistent with AnnotationHandoff's existing suspend contract."
+        }
+      ]
+    },
+    "acceptanceCriteria": [
+      {
+        "id": "AC-22",
+        "text": "Given batches have been sent previously, when the History tab is opened, then batches are grouped by time period, each showing thumbnail, summary, timestamp, and status chip.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": true
+      },
+      {
+        "id": "AC-33",
+        "text": "Given History contains at least one batch, when the app is quit and relaunched, then all batches, their status chips, stored frozen frames, and per-annotation records are still present and openable.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": true
+      },
+      {
+        "id": "AC-34",
+        "text": "Given the History tab badge, when zero batches have status In progress, then no badge is shown on the tab; when N batches are In progress, the badge shows N.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": true
+      },
+      {
+        "id": "AC-35",
+        "text": "Given a batch has more than one annotation, when its History row thumbnail is generated, then the crop is computed from the union bounding box of all of the batch's annotation rects, not just the first.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": true
+      },
+      {
+        "id": "AC-36",
+        "text": "Given a batch's status, when its History row renders, then the Verify button is shown only for status Fixed and is absent for every other status.",
+        "priority": "must",
+        "verificationMethod": "demo",
+        "confirmed": true
+      },
+      {
+        "id": "AC-37",
+        "text": "Given at least one batch has been persisted, when the History list footer renders, then it shows 'claude . session <id>' sourced from the most recently persisted batch's sessionId.",
+        "priority": "should",
+        "verificationMethod": "inspection",
+        "confirmed": true
+      },
+      {
+        "id": "AC-38",
+        "text": "Given F-7 prunes the handoff slot's image files after each publish, when a batch is persisted, then its frame and crop images have already been copied into app-owned storage so they remain available after subsequent sends and app restarts.",
+        "priority": "must",
+        "verificationMethod": "test",
+        "confirmed": true
+      }
+    ],
+    "scope": {
+      "in": [
+        "Persist every successful F-7 AnnotationHandoff.publish as a Batch record (metadata in Room, frame/crop/hierarchy files copied to app-owned storage, small thumbnail BLOB) before it can be pruned.",
+        "Render a desktop-only History tab (third RectifyWindow inspector segment) listing batches grouped Today/Yesterday/Older, newest first, via Compose LazyColumn.",
+        "Row anatomy: 44x44 union-bbox thumbnail, single-line title (first annotation comment), meta line (count . time . short id), status chip with tone dot.",
+        "Status model with 5 values (Sent, In progress, Fixed, Verified, Follow-up sent); F-8 writes only the initial Sent value and exposes BatchRepository.updateStatus for F-9.",
+        "Verify button shown only on Fixed rows, wired through MirrorIntent.VerifyBatch to a logging-stub handler for F-9 to fill.",
+        "In-progress badge count on the tab strip, hidden at zero.",
+        "Footer line 'claude . session <id>' from the most recently persisted batch.",
+        "Resilience: a failed image copy still persists the row with metadata and a placeholder thumbnail (SC-18)."
+      ],
+      "out": [
+        "Verify/re-diff execution logic itself (F-9 verify-and-rediff-loop) -- F-8 ships only the button affordance and visibility rule.",
+        "Automatic status transitions beyond the initial Sent write (In progress / Fixed / Verified / Follow-up sent are set by future consumers via BatchRepository.updateStatus).",
+        "Search and filter UI for the History list.",
+        "Row-click detail view or re-opening the original annotation UI from a History row.",
+        "Batch deletion and retention-policy UI.",
+        "Android/iOS support -- History is desktop-only, matching F-7's desktop-only dependency and RectifyWindow's desktop-only host.",
+        "Live agent-activity 'sub' line under the status chip (e.g. 'editing CartScreen.kt') -- no data source exists in the F-7 handoff contract."
+      ]
+    },
+    "constraints": [
+      "[tech] Desktop-only (jvm target) -- matches F-7's desktop-only AnnotationHandoff and RectifyWindow, the only host for the tab strip.",
+      "[tech] Must use the existing Room KMP scaffold (data-database-api/data-database-impl) as the persistence layer -- its first real consumer; wire KSP for the desktop target per platform-coverage.md.",
+      "[tech] Must ingest exclusively via the existing AnnotationHandoff/AnnotationEnvelope contract from data-handoff-api -- no changes to F-7's shipped, merged wire contract.",
+      "[business] NFR-4: no network egress -- all batch storage is local filesystem plus local database.",
+      "[process] Room has never been instantiated anywhere in this repo (AppDatabase is a lazy Koin single nothing injects; verified on disk that neither ~/rectify.db nor ~/.rectify/ exists). Step 0 of the Stage 2 plan MUST be a blocking spike proving a trivial insert+observe round-trip on desktop (KSP output, BundledSQLiteDriver linkage, AppDatabaseConstructor actuals, schemas/ export) before any feature code is written.",
+      "[tech] DB relocates to ~/.rectify/rectify.db (same root as the handoff slot); stays at @Database(version = 1) with no Migration added, since no pre-existing database file can exist anywhere on disk -- the relocation and the version-1-no-migration decision ship together or not at all."
+    ],
+    "assumptions": [
+      "AS-1: A single integration point (the AnnotationHandoff.publish call site, or an equivalent completion hook in presentation-feature-mirror) is sufficient to trigger a persist-to-history write; F-8 does not need to poll the handoff slot.",
+      "AS-2: The 'title/summary' required by AC-22 is satisfied by the batch's first annotation's comment text, matching the design's single-line title row; no separate generated summary field is needed.",
+      "AS-3: A static 'claude' agent label in the footer is acceptable because the only shipped MCP consumer is Claude Code (mcp-application's single get_latest_annotation tool).",
+      "AS-4: Sent status's visual tone is unspecified in the design's status table; it is assumed to share Verified's neutral/ink3 tone until F-9 or product specifies otherwise.",
+      "AS-29 (brainstorm): BatchFileStore never throws and returns null on any failure on desktop, and Android/iOS bind a null-returning stand-in (unreachable in practice because UnsupportedAnnotationHandoff.publish already throws there first)."
+    ],
+    "dependencies": [
+      "F-7 resolve-and-send-mcp -- source of AnnotationHandoff/AnnotationEnvelope and the frame.png/crop-N.png files F-8 must copy before they are pruned. Already merged; F-8 makes zero changes to its wire contract.",
+      "data-database-api / data-database-impl (Room KMP scaffold) -- F-8 is the first real consumer; schema and DAO live here. Currently registry-tagged 'scaffold only' and must be re-tagged once F-8 lands.",
+      "F-9 verify-and-rediff-loop (future) -- will call BatchRepository.updateStatus and own the Verify button's actual diff behavior."
+    ],
+    "chosenApproach": "A single persistence vertical hung off the existing mirror surface, with one new side effect inside MirrorViewModel.resolveAndSend(), rather than a new module, a second ViewModel, or an observer on the handoff slot. Write path: resolveAndSend() already holds the frozen frame and, after assembly, (envelope, images) as in-memory locals; the thumbnail is encoded in the same withContext(Dispatchers.Default) block via encodeCrop.encode(bitmap, unionRect(annotations)), so every byte History needs is in memory before handoff.publish() runs. On published.onSuccess, and before postSideEffect(SendComplete), the VM calls recordSentBatch(...): Result<Unit>, consumed with .onFailure { log.w } only -- a DB/IO failure can never flip SendPhase to Failed, and a successful send is never misreported as failed. Down the stack: RecordSentBatchUseCaseImpl -> HistoryRepositoryImpl, which (1) hands bulk bytes to an injected BatchFileStore (fun-interface seam copying the CropEncoder/HandoffSourcesProvider precedent -- desktop java.io actual, null-returning stand-in on Android/iOS) writing to ~/.rectify/history/<sanitised batchId>/{frame.png, crop-N.png, hierarchy.xml} on Dispatchers.IO, never throwing; then (2) inserts the parent row + a normalised history_annotation child table (not a JSON blob) in one @Transaction via HistoryDao, using whatever paths step (1) returned (or null on failure, satisfying SC-18). Read path: HistoryDao exposes Flow<List<HistoryEntryEntity>> ordered sentAtMs DESC, mapped to HistoryEntryModel, collected once in MirrorViewModel's container init into a new MirrorUiState.history field feeding both the list and the in-progress badge count. Render path: MirrorHistoryTab reuses the existing HistoryRow/StatusPill/AppButton design-system components inside a Column { LazyColumn(weight(1f)) { groups }; footer }, with grouping computed at render time by a pure groupHistory(entries, nowMs, zone) function; the 44x44 thumbnail is a pre-encoded PNG stored as a small BLOB column and decoded via the already-used ByteArray.decodeToImageBitmap(), so rendering never touches the filesystem and a user deleting the batch directory by hand cannot break a row (only F-9's future diff opens framePath, with an existence check at use time). Two edits close the loop in RectifyWindow.kt (the ShellTab.History branch and the tabCounts badge map).",
+    "rationale": "Persist-after-success was chosen over persist-before-publish (would show a lying 'Sent' row for a batch the agent never received, contradicting FR-26's 'on every successful publish'), over sharing publish's runCatching (a full disk could reduce SendPhase.Failed for a send that actually succeeded -- the one outcome the brief rules out), and over a detached fire-and-forget launch (makes SC-16's new row racy against the toast and escapes the VM test harness's advanceUntilIdle discipline) for one extra .onFailure line. A normalised child table for per-annotation records was chosen over a JSON blob column because the blob would embed AnnotationEnvelope -- a contract data-handoff-api documents as wire-breaking -- into durable storage, store knowingly-dead cropPaths once F-7 prunes its slot, and pull in a serialization dependency edge presentation-feature-mirror doesn't otherwise need; the child table costs ~30 extra lines and gives F-9's future per-annotation 'resolved' flag a column add instead of a blob rewrite. A thumbnail BLOB column was chosen over a thumb.png file-plus-path because a commonMain composable cannot read a file -- a path-based thumbnail would require an entirely new expect/actual image-loading seam for a single 44dp plate -- and the BLOB makes the 'row survives manual file deletion' resilience structural rather than defensive, at a cost of a few KB per row (~8 MB at 1000 batches). BatchFileStore as a fun-interface Koin seam (rather than a bare expect/actual function, or pulling in okio/kotlinx-io) matches two precedents already in this codebase (CropEncoder, HandoffSourcesProvider) and is the only option of the three that lets SC-18 (file write fails, row still persists) be unit-tested without touching a real disk.",
+    "architectureOverview": "Components, by module: (1) data-database-impl -- HistoryEntryEntity + HistoryAnnotationEntity (Room rows; public under source/entity/ as a documented deviation from database.md's core/entity/ placement, since the entity is the datasource's wire type), HistoryEntryDao (@Transaction insert of row+children, Flow<List<...>> observeAll ordered sentAtMs DESC, status UPDATE query), AppDatabase edit (swap ExampleEntity/ExampleDao for the two history entities, keep version=1), DatabaseBuilder.desktop.kt edit (relocate to ~/.rectify/rectify.db, add .setQueryCoroutineContext(Dispatchers.IO)), HistoryDataSource/Impl (public interface mixing ObservableDataSource/AppendableDataSource/UpsertableDataSource). (2) domain-core -- HistoryEntryModel, BatchStatusModel, SentBatchModel (zero dependencies, plain ByteArray). (3) domain-repository-api / domain-usecase-api+impl -- HistoryRepository (observe/record/updateStatus) and exactly two use cases, RecordSentBatchUseCase (Result<Unit> via resultLauncher) and ObserveHistoryUseCase (bare Flow); updateStatus gets a repository method only, no use case, since F-8 has no caller for it. (4) data-repository-impl -- HistoryRepositoryImpl orchestrating BatchFileStore then HistoryDataSource, HistoryEntryMapper (never throws; unknown status falls back to Sent), BatchFileStore fun interface + desktop java.io actual + null-returning Android/iOS stand-in, bound via a BatchStoreProvider expect/actual copying HandoffSourcesProvider's shape. (5) presentation-feature-mirror -- HistoryFormatting.kt (pure: groupHistory, metaLine, shortBatchId, unionRect, statusTone -- unit-tested in commonTest), MirrorContract additions (MirrorUiState.history, MirrorIntent.VerifyBatch), MirrorViewModel edits (two required constructor params, no defaults; container init collects observeHistory(); resolveAndSend() gains thumbnail encode + post-publish persist), MirrorHistoryTab.kt (LazyColumn + footer, reusing HistoryRow/StatusPill/AppButton with zero new design-system components), MirrorFakes.kt updates. (6) compose-application -- RectifyWindow.kt ShellTab.History branch and tabCounts badge entry. (7) presentation-core-localisation -- ~12 new string keys. Exceptions/failure semantics: BatchFileStore never throws (returns null); HistoryEntryMapper never throws (safe status fallback); RecordSentBatchUseCaseImpl maps SQLiteException to Failure.Technical.Database via resultLauncher; resolveAndSend() only logs on that Result's failure, never touches SendPhase; ObserveHistoryUseCase's Flow is guarded with .catch { log.w; emit(emptyList()) } in the repository so a DB read failure degrades the tab to empty rather than crashing the mirror surface. Known edge cases: zero-annotation batches (unblocked by canSend already, but unionRect must return null gracefully); day-rollover grouping computed at render time (accepted, no midnight timer); same-millisecond sessionId collisions handled via @Insert(onConflict = REPLACE); AC-34's badge is structurally correct but practically unverifiable in F-8 alone since nothing ever writes In progress -- prove it with a unit test on the count-to-badge mapping plus a one-off manual DB seed during the demo, never a fake transition.",
+    "techStack": [
+      "Persistence: Room KMP (existing scaffold), schema stays at version 1, DB relocated to ~/.rectify/rectify.db -- mandated by the clarify constraints; relocation makes 'no existing install' provable, removing the migration obligation.",
+      "Bulk image/XML storage: plain java.io file writes in a desktopMain source set under ~/.rectify/history/<batchId>/ -- no okio/kotlinx-io in the catalog and a new dependency for three file writes fails the reuse ladder; same root as the handoff slot.",
+      "Thumbnail generation: existing CropEncoder (AWT getSubimage + ImageIO) over the union bounding box, stored as a Room BLOB column -- reuses shipped crop math unchanged (FR-29) and removes the need for any file-reading seam in commonMain UI code.",
+      "Date bucketing: kotlinx-datetime (already in the version catalog), pure function in presentation-feature-mirror/core/history/ -- unit-testable, unlike anything in :compose-application.",
+      "List rendering: Compose LazyColumn, footer outside the scroll (NFR-13; design's footer is flex:none).",
+      "State transport: one new field on the existing MirrorUiState, fed by a bare Flow use case collected in the container init block -- no second ViewModel or Gradle module.",
+      "DI: existing per-module Koin modules; two new use-case bindings, one repository binding, one datasource binding, one per-platform BatchFileStore binding, appended within the existing layer groups."
+    ],
+    "openRisks": [
+      "Room's KMP toolchain (KSP + generated constructor actuals + bundled SQLite driver) has never been exercised in this repo; the first real table may surface build/packaging problems unrelated to F-8's logic. Likelihood high, impact high. Mitigation: Step 0 spike before any F-8 code, timeboxed; a packaging fight is a scope conversation, not an in-branch debug session.",
+      "Staying at schema version 1 while changing the entity set would crash any machine that somehow already has a v1 rectify.db. Likelihood low, impact high. Mitigation: relocating to ~/.rectify/rectify.db in the same change makes a pre-existing file impossible by construction; the two decisions ship together or not at all.",
+      "Adding two non-defaulted MirrorViewModel constructor params breaks every existing VM test until MirrorFakes is updated. Likelihood high, impact low. Mitigation: update MirrorFakes.kt in the same commit with trivial success/empty-flow fakes.",
+      "Disk/SQLite work added to resolveAndSend lengthens the send's perceived latency. Likelihood low, impact low. Mitigation: writes are a few hundred KB on Dispatchers.IO inside an already multi-second operation; the single-line escape hatch (detached viewModelScope.launch) exists if ever measured as felt.",
+      "Growing MirrorUiState with a list that changes on every DB emission adds reducer passes to an already pixel-sensitive state machine. Likelihood low, impact low. Mitigation: emissions happen once per send, not per frame; thumbnail BLOBs are small and already decoded lazily by the row.",
+      "Storing thumbnail bytes in state/DB could be read as contradicting the closed 'paths, not BLOBs' decision. Likelihood medium, impact low. Mitigation: document explicitly in the plan that frame.png/crop-N.png remain files with paths exactly as decided; the BLOB is a separate, derived few-KB thumbnail that exists only so a commonMain composable needs no file-reading seam.",
+      "AC-34's badge can never be demonstrated end-to-end in F-8 because nothing writes In progress. Likelihood high, impact low. Mitigation: unit-test the count-to-badge mapping function and manually seed one DB row during the demo; never ship a fake transition."
+    ],
+    "openQuestions": [
+      "Should Sent status get its own distinct tone/color once product reviews the design, instead of sharing Verified's neutral tone (AS-4)?",
+      "If disk usage from retained frame/crop copies becomes a real problem, what retention policy (age cap, count cap, manual delete) should a future spec add? (No cap is in scope for F-8.)",
+      "Should a future MCP tool/heartbeat channel be added so the 'editing X.kt' activity sub-line becomes possible, or is that permanently out of scope for a single-request-response MCP server?",
+      "Plan-stage verification needed: does CropWindow.kt's existing cropWindow() padding constant actually equal 18 as FR-29 assumes, and should the union-rect thumbnail reuse cropWindow() directly or expand the rect by 18 before encoding?",
+      "Plan-stage verification needed: does SidebarTabs render a zero-count badge entry safely, or must the tabCounts map key be omitted at zero (current mitigation) regardless?",
+      "Plan-stage verification needed: is Compose Resources' pluralStringResource available in this project's version for the '1 note'/'N notes' meta-line copy, or does it need two separate string keys as a fallback?"
+    ],
+    "readyForPlan": true,
+    "artifacts": {
+      "input": "input.json",
+      "clarify": "clarify.json",
+      "brainstorm": "brainstorm.json"
+    },
+    "survey": [
+      {
+        "question": "FR-30 literally asks for the 'last 4 hex chars of the batch id', but mintSessionId emits a decimal string whose last 4 chars are millisecond digits, not hex. Is the carried-forward correction -- deriving the short id as (id.hashCode() and 0xFFFF).toString(16) -- accepted as the requirement of record for Stage 2?",
+        "options": [
+          "Accept the correction: Stage 2 implements (id.hashCode() and 0xFFFF).toString(16), not literal 'last 4 hex chars'",
+          "Reject: change mintSessionId itself to emit a hex-suffixed id instead",
+          "Reject: defer the short-id format to product review before Stage 2"
+        ],
+        "answer": "Accept the correction: Stage 2 implements (id.hashCode() and 0xFFFF).toString(16), not literal 'last 4 hex chars'",
+        "source": "ai-proposed",
+        "rationale": "mintSessionId is F-7's shipped, merged contract; changing it to satisfy a display-only meta-line format in F-8 would be a disproportionate wire-contract edit for a cosmetic suffix. The hashCode-derived short id is deterministic, matches the design's '#a41f' visual shape, and needs zero changes outside F-8."
+      },
+      {
+        "question": "Room has never been instantiated anywhere in this repo (verified: no ~/rectify.db, no ~/.rectify/ on disk). Should Stage 2's plan treat the Room round-trip spike as a blocking Step 0 prerequisite, separate from and before any F-8 feature code?",
+        "options": [
+          "Yes: Step 0 is a standalone blocking spike (insert+observe on desktop, proving KSP/driver/schema export) before any entity/DAO/repository work begins",
+          "No: fold the spike into the first feature commit (HistoryEntryEntity + DAO) without a separate checkpoint",
+          "No: skip the spike and assume the existing scaffold works as documented"
+        ],
+        "answer": "Yes: Step 0 is a standalone blocking spike (insert+observe on desktop, proving KSP/driver/schema export) before any entity/DAO/repository work begins",
+        "source": "ai-proposed",
+        "rationale": "This is the single biggest schedule risk the brainstorm identified (likelihood high, impact high) precisely because nothing exercises Room today. Isolating it as Step 0 means a packaging or KSP failure surfaces as a scope conversation before any feature-shaped code has been written on top of an unproven foundation."
+      },
+      {
+        "question": "With all 13 clarify decisions, all 5 brainstorm architecture decisions, and the two carried-forward corrections (FR-30 short-id derivation, Room Step-0 spike) consolidated above with no further contradictions found between input/clarify/brainstorm, is this Preparation deliverable ready to gate Stage 2 planning?",
+        "options": [
+          "Yes: sign off and set readyForPlan true",
+          "No: hold for further review of a specific section first"
+        ],
+        "answer": "Yes: sign off and set readyForPlan true",
+        "source": "ai-proposed",
+        "rationale": "Cross-checking the three artifacts found all raised ambiguities (status state machine, Verify visibility, platform scope, bucketing, thumbnail cropping, storage model, footer source) already closed by the clarify/brainstorm surveys with no new contradiction introduced; the only two open items needing explicit carry-forward (FR-30 wording, Room's unproven state) are already captured as corrections and a blocking Step 0 rather than left ambiguous."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-autonomous",
+    "approved": true,
+    "at": "2026-10-18T18:39:24Z"
+  }
+}
