@@ -14,3 +14,11 @@
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-18T18:57:30Z", "spec": "history-batch-tracking"}
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 171240, "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
 {"stage": "plan", "event": "end", "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "event": "start", "at": "2026-10-18T19:11:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-18T19:11:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 103719, "at": "2026-10-18T19:16:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-18T19:16:27Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 103119, "at": "2026-10-18T19:21:37Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-18T19:21:37Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 130739, "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}
+{"stage": "backlog", "event": "end", "at": "2026-10-18T19:27:40Z", "spec": "history-batch-tracking"}

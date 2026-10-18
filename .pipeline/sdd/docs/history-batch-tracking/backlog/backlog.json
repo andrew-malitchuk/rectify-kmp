@@ -1,0 +1,1240 @@
+{
+  "spec": "history-batch-tracking",
+  "stage": "backlog",
+  "step": "backlog",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-backlog-validate",
+  "provenance": {
+    "selfHash": "eff06fc5c8f1046cfd75c6bdac6c1ee4f41734eb1f9a24dafaab832844126a86",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "94628227d8ffeec714b41e88c51880ef42ce7d3afad42dca37ff0a249843f5ec"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T19:27:12Z",
+  "updatedAt": "2026-10-18T19:27:31Z",
+  "data": {
+    "epics": [
+      {
+        "id": "E-1",
+        "title": "Room persistence foundation (spike, tables, datasource)",
+        "tasks": [
+          "T-1",
+          "T-2",
+          "T-3"
+        ]
+      },
+      {
+        "id": "E-2",
+        "title": "Domain models & repository layer",
+        "tasks": [
+          "T-4",
+          "T-5",
+          "T-6",
+          "T-7"
+        ]
+      },
+      {
+        "id": "E-3",
+        "title": "Mirror feature logic & ViewModel wiring",
+        "tasks": [
+          "T-8",
+          "T-9"
+        ]
+      },
+      {
+        "id": "E-4",
+        "title": "History tab UI & window integration",
+        "tasks": [
+          "T-10",
+          "T-11",
+          "T-12"
+        ]
+      },
+      {
+        "id": "E-5",
+        "title": "Docs & cross-target verification",
+        "tasks": [
+          "T-13",
+          "T-14"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T-1",
+        "epic": "E-1",
+        "title": "BLOCKING SPIKE — prove Room insert+observe round-trip on desktop",
+        "description": "Add the missing commonTest dependency block (kotlinx-coroutines-test) to data-database-impl/build.gradle.kts, relocate DatabaseBuilder.desktop.kt to ~/.rectify/rectify.db (mkdirs first) plus .setQueryCoroutineContext(Dispatchers.IO), temporarily inject AppDatabase and prove one insert + one Flow emission. Confirms KSP output, the generated AppDatabaseConstructor actual, BundledSQLiteDriver linkage, and schemas/ export. The DB relocation and staying at @Database(version = 1) with no Migration are ONE atomic change — ship together, never split.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "data-database-impl/build.gradle.kts has a commonTest.dependencies block with libs.kotlinx.coroutines.test"
+          },
+          {
+            "id": "TAC-2",
+            "text": "DatabaseBuilder.desktop.kt opens the db at ~/.rectify/rectify.db (mkdirs first) with setQueryCoroutineContext(Dispatchers.IO)"
+          },
+          {
+            "id": "TAC-3",
+            "text": "A desktop test proves one Room insert followed by one Flow emission, exercising the real KSP-generated code and BundledSQLiteDriver"
+          },
+          {
+            "id": "TAC-4",
+            "text": "schemas/ export runs and produces a schema json for version 1"
+          }
+        ],
+        "linkedAC": [
+          "AC-33"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-database-impl/src/desktopMain/kotlin/.../core/DatabaseBuilder.desktop.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-database-impl/.../core/database/AppDatabase.kt"
+          },
+          {
+            "type": "url",
+            "ref": ".pipeline/sdd/docs/history-batch-tracking/inputs/codebase-recon.md"
+          }
+        ],
+        "expectedOutput": "Green desktop test proving Room works end-to-end on this toolchain; relocated DB path committed; module's missing test dependency block added.",
+        "hypothesis": "Room has never been instantiated in this repo (AppDatabase is a lazy Koin single nothing injects); KSP output, the generated AppDatabaseConstructor actual, and BundledSQLiteDriver packaging may not work on first try on desktop — this spike surfaces that risk before any entity/DAO/repository work starts.",
+        "definitionOfReady": [
+          "Branch sdd/history-batch-tracking cut from development with F-7 merged",
+          "data-database-impl confirmed to have no commonTest/desktopTest block today"
+        ],
+        "definitionOfDone": [
+          "Insert + Flow-observe round trip green on :data-database-impl:desktopTest",
+          "~/.rectify/rectify.db confirmed as the DB path; no Migration added; @Database(version = 1) unchanged",
+          "Timeboxed to 0.5d — a packaging fight is escalated to the orchestrator as a scope conversation, not debugged in-branch"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Any Room Migration",
+          "Entity/DAO production code (step 1)"
+        ],
+        "predictedScope": [
+          "data-database-impl/build.gradle.kts",
+          "data-database-impl/src/desktopMain/kotlin/**/core/DatabaseBuilder.desktop.kt",
+          "data-database-impl/src/desktopTest/kotlin/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 1,
+        "estimate": "0.5d",
+        "subtasks": [
+          "Add commonTest.dependencies { implementation(libs.kotlinx.coroutines.test) } to build.gradle.kts",
+          "Relocate DatabaseBuilder.desktop.kt to ~/.rectify/rectify.db with mkdirs() + setQueryCoroutineContext(Dispatchers.IO)",
+          "Temporarily wire AppDatabase for the spike (removed/superseded once step 2's real datasource lands)",
+          "Write and run a throwaway/transitional insert+observe desktopTest; confirm schemas/ export"
+        ]
+      },
+      {
+        "id": "T-2",
+        "epic": "E-1",
+        "title": "History Room tables: entities, DAO, AppDatabase wiring, delete ExampleEntity/ExampleDao",
+        "description": "Add HistoryEntryEntity, HistoryAnnotationEntity, HistoryEntryWithAnnotations under source/entity/ (public — they are the datasource's wire type), HistoryEntryDao under core/dao/ (@Transaction insert, @Transaction observeAll ORDER BY sentAtMs DESC, status UPDATE). Update AppDatabase (entity set, historyEntryDao(), version stays 1, keep the body-less initialize()). Delete ExampleEntity/ExampleDao in the SAME change (cleanup ships with the first real table, never separately). Commit schemas/<AppDatabase>/1.json.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "HistoryEntryEntity/HistoryAnnotationEntity/HistoryEntryWithAnnotations exist under source/entity/ with the exact columns from the plan's data model"
+          },
+          {
+            "id": "TAC-2",
+            "text": "HistoryEntryDao exposes @Transaction insert, @Transaction observeAll(): Flow<List<HistoryEntryWithAnnotations>> ordered sentAtMs DESC, and an updateStatus query"
+          },
+          {
+            "id": "TAC-3",
+            "text": "AppDatabase lists both new entities, stays @Database(version = 1), keeps the body-less override fun initialize(), and exposes historyEntryDao()"
+          },
+          {
+            "id": "TAC-4",
+            "text": "ExampleEntity.kt and ExampleDao.kt are deleted in this same task"
+          },
+          {
+            "id": "TAC-5",
+            "text": "schemas/<AppDatabase>/1.json is regenerated and committed, replacing the example-table schema"
+          }
+        ],
+        "linkedAC": [
+          "AC-33",
+          "AC-22"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".claude/rules/database.md"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/package-layout.md"
+          },
+          {
+            "type": "url",
+            "ref": ".pipeline/sdd/docs/history-batch-tracking/inputs/codebase-recon.md"
+          }
+        ],
+        "expectedOutput": "Compiling KSP-generated Room schema with history_entry + history_annotation tables, ExampleEntity/ExampleDao removed, schema v1 committed.",
+        "hypothesis": "A public @Entity under source/entity/ (not core/entity/) satisfies explicitApi()/package-layout.md because these entities ARE the public HistoryDataSource's wire type (survey Q2 answer).",
+        "definitionOfReady": [
+          "T-1 spike green (Room round-trip proven on desktop)"
+        ],
+        "definitionOfDone": [
+          "HistoryEntryEntity, HistoryAnnotationEntity, HistoryEntryWithAnnotations, HistoryEntryDao added under the correct source/ vs core/ split",
+          "AppDatabase edited (entity set, historyEntryDao(), version 1, body-less initialize() retained) and compiles",
+          "ExampleEntity.kt / ExampleDao.kt deleted",
+          "schemas/<AppDatabase>/1.json committed"
+        ],
+        "dependsOn": [
+          "T-1"
+        ],
+        "outOfScope": [
+          "HistoryDataSource/HistoryDataSourceImpl (step 2)",
+          "Any Migration"
+        ],
+        "predictedScope": [
+          "data-database-impl/src/commonMain/kotlin/**/source/entity/HistoryEntryEntity.kt",
+          "data-database-impl/src/commonMain/kotlin/**/source/entity/HistoryAnnotationEntity.kt",
+          "data-database-impl/src/commonMain/kotlin/**/source/entity/HistoryEntryWithAnnotations.kt",
+          "data-database-impl/src/commonMain/kotlin/**/core/dao/HistoryEntryDao.kt",
+          "data-database-impl/src/commonMain/kotlin/**/core/database/AppDatabase.kt",
+          "data-database-impl/src/commonMain/kotlin/**/core/entity/ExampleEntity.kt",
+          "data-database-impl/src/commonMain/kotlin/**/core/dao/ExampleDao.kt",
+          "data-database-impl/schemas/**/1.json"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "0.5d",
+        "subtasks": [
+          "Add HistoryEntryEntity.kt (id PK, sentAtMs, status, title, annotationCount, deviceLabel, prompt, dirPath?, framePath?, hierarchyPath?, thumbPng BLOB?)",
+          "Add HistoryAnnotationEntity.kt (composite PK batchId+index, FK CASCADE, @Index on batchId)",
+          "Add HistoryEntryWithAnnotations.kt (@Embedded entry + @Relation annotations)",
+          "Add HistoryEntryDao.kt (insert, observeAll DESC, updateStatus)",
+          "Edit AppDatabase.kt entity set + historyEntryDao()",
+          "Delete ExampleEntity.kt / ExampleDao.kt",
+          "Export and commit schemas/.../1.json"
+        ]
+      },
+      {
+        "id": "T-3",
+        "epic": "E-1",
+        "title": "HistoryDataSource + impl; commit HistoryEntryDaoTest from the spike",
+        "description": "Public HistoryDataSource in source/datasource/ mixing ObservableDataSource<HistoryEntryWithAnnotations> + AppendableDataSource<HistoryEntryWithAnnotations> (UpsertableDataSource deliberately NOT mixed in — no caller) plus its own suspend updateStatus(id, status). Internal DAO-backed HistoryDataSourceImpl in core/datasource/, registered in dataDatabaseImplModule. Convert the step-0 spike into the committed desktopTest HistoryEntryDaoTest (insert parent + 2 children, observe, assert order, cascade, updateStatus, and survival across a re-open of the same file).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "HistoryDataSource mixes ObservableDataSource + AppendableDataSource only, plus its own updateStatus(id, status)"
+          },
+          {
+            "id": "TAC-2",
+            "text": "HistoryDataSourceImpl is internal, DAO-backed, and registered in dataDatabaseImplModule"
+          },
+          {
+            "id": "TAC-3",
+            "text": "HistoryEntryDaoTest asserts ordering (sentAtMs DESC), parent+children insert, cascade delete, updateStatus, and re-open-same-file survival"
+          }
+        ],
+        "linkedAC": [
+          "AC-33"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-database-api/.../source/datasource/base/{ObservableDataSource,AppendableDataSource,UpsertableDataSource}.kt"
+          }
+        ],
+        "expectedOutput": "Green HistoryEntryDaoTest committed under data-database-impl/src/desktopTest/; HistoryDataSource bound in Koin.",
+        "hypothesis": "UpsertableDataSource's upsert(resource): Int has no caller here — the status change is a targeted column UPDATE, not an upsert — so omitting it keeps the mixin honest (PLAN-AS-10).",
+        "definitionOfReady": [
+          "T-2 merged (entities/DAO/AppDatabase in place)"
+        ],
+        "definitionOfDone": [
+          "HistoryDataSource + HistoryDataSourceImpl compile and are Koin-bound",
+          "HistoryEntryDaoTest is green on :data-database-impl:desktopTest and is the committed artefact of the step-0 spike (temporary spike code removed)"
+        ],
+        "dependsOn": [
+          "T-2"
+        ],
+        "outOfScope": [
+          "UpsertableDataSource mixin"
+        ],
+        "predictedScope": [
+          "data-database-impl/src/commonMain/kotlin/**/source/datasource/HistoryDataSource.kt",
+          "data-database-impl/src/commonMain/kotlin/**/core/datasource/HistoryDataSourceImpl.kt",
+          "data-database-impl/src/commonMain/kotlin/**/di/DataDatabaseImplModule.kt",
+          "data-database-impl/src/desktopTest/kotlin/**/HistoryEntryDaoTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "0.5d",
+        "subtasks": [
+          "Add HistoryDataSource interface",
+          "Add internal HistoryDataSourceImpl (DAO-backed)",
+          "Register in DataDatabaseImplModule",
+          "Write HistoryEntryDaoTest (order, cascade, updateStatus, re-open)"
+        ]
+      },
+      {
+        "id": "T-4",
+        "epic": "E-2",
+        "title": "domain-core history models",
+        "description": "Add HistoryEntryModel, BatchStatusModel (5 values: Sent, InProgress, Fixed, Verified, FollowUpSent), SentBatchModel + SentAnnotationModel under source/model/history/. Zero dependencies. KDoc the ByteArray identity-equality consequence (PLAN-AS-11).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "BatchStatusModel has exactly 5 values matching FR-31"
+          },
+          {
+            "id": "TAC-2",
+            "text": "HistoryEntryModel carries id (=sessionId), sentAtMs, status, title, annotationCount, thumbPng: ByteArray?, framePath: String?"
+          },
+          {
+            "id": "TAC-3",
+            "text": "SentBatchModel/SentAnnotationModel carry the write-side fields needed by the mapper (frameBytes, thumbPng, hierarchyXml, prompt, deviceLabel, annotations)"
+          },
+          {
+            "id": "TAC-4",
+            "text": "KDoc on HistoryEntryModel notes the ByteArray makes equality identity-based"
+          }
+        ],
+        "linkedAC": [
+          "AC-22",
+          "AC-33"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-core/.../source/model/"
+          }
+        ],
+        "expectedOutput": "Four new model files in domain-core, zero new dependencies, compiling for all targets.",
+        "hypothesis": "domain-core stays dependency-free; a plain data-class model with a ByteArray field is sufficient and needs no custom equals/hashCode for v1 (recomposition cost is bounded elsewhere by keyed LazyColumn, not here).",
+        "definitionOfReady": [
+          "T-1 spike green"
+        ],
+        "definitionOfDone": [
+          "All four model files added, zero new dependencies, cross-target compile green"
+        ],
+        "dependsOn": [
+          "T-1"
+        ],
+        "outOfScope": [
+          "Any mapper or repository logic"
+        ],
+        "predictedScope": [
+          "domain-core/src/commonMain/kotlin/**/source/model/history/HistoryEntryModel.kt",
+          "domain-core/src/commonMain/kotlin/**/source/model/history/BatchStatusModel.kt",
+          "domain-core/src/commonMain/kotlin/**/source/model/history/SentBatchModel.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "0.25d",
+        "subtasks": [
+          "Add BatchStatusModel enum",
+          "Add HistoryEntryModel (read model)",
+          "Add SentBatchModel + SentAnnotationModel (write model)"
+        ]
+      },
+      {
+        "id": "T-5",
+        "epic": "E-2",
+        "title": "HistoryRepository API",
+        "description": "domain-repository-api: HistoryRepository with observe(): Flow<List<HistoryEntryModel>>, suspend record(batch: SentBatchModel), suspend updateStatus(batchId: String, status: BatchStatusModel) — updateStatus exposed for F-9 and never called by F-8 itself (no UpdateBatchStatusUseCase in this spec; a use case with zero callers is scaffolding).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "HistoryRepository interface declares exactly observe()/record()/updateStatus() per the plan's interface contract"
+          }
+        ],
+        "linkedAC": [
+          "AC-34"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-repository-api/.../source/repository/"
+          }
+        ],
+        "expectedOutput": "One new interface file in domain-repository-api.",
+        "hypothesis": "A repository-level updateStatus is sufficient for FR-33; no use case is needed until F-9 has a caller.",
+        "definitionOfReady": [
+          "T-4 models merged"
+        ],
+        "definitionOfDone": [
+          "HistoryRepository.kt added and compiles"
+        ],
+        "dependsOn": [
+          "T-4"
+        ],
+        "outOfScope": [
+          "UpdateBatchStatusUseCase (explicitly cut — FR-33 is a repository API only)"
+        ],
+        "predictedScope": [
+          "domain-repository-api/src/commonMain/kotlin/**/source/repository/HistoryRepository.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-6",
+        "epic": "E-2",
+        "title": "data-repository-impl: BatchFileStore, HistoryEntryMapper, HistoryRepositoryImpl",
+        "description": "Add the implementation(projects.dataDatabaseImpl) module edge. Add HistoryEntryMapper (internal object: toModel Mapper with unknown-status-to-Sent fallback + SentBatchModel.toEntities(dirPath); deliberately NOT a ModelResourceMapper — PLAN-AS-9, no fabricated inverse). Add BatchFileStore fun interface (never throws, null on any failure) + desktop FileSystemBatchFileStore (java.io on Dispatchers.IO, runCatching) + BatchStoreProvider expect/actual (desktop binds the real store; android/ios bind a null-returning stand-in). Add HistoryRepositoryImpl (store then datasource; observe() guarded with .catch { log.w; emit(emptyList()) }). Register bindings in dataRepositoryImplModule. Write HistoryRepositoryImplTest (SC-18 null-store branch + store-ok branch) and HistoryEntryMapperTest (unknown status fallback, toEntities(dirPath) / toEntities(null)).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "BatchFileStore never throws; on any failure write() returns null"
+          },
+          {
+            "id": "TAC-2",
+            "text": "FileSystemBatchFileStore writes frame.png/crop-N.png/hierarchy.xml under ~/.rectify/history/<sanitised batchId>/ on Dispatchers.IO"
+          },
+          {
+            "id": "TAC-3",
+            "text": "Android/iOS BatchStoreProvider actuals bind a null-returning BatchFileStore stand-in"
+          },
+          {
+            "id": "TAC-4",
+            "text": "HistoryRepositoryImpl.observe() never propagates a datasource exception; it logs and emits emptyList()"
+          },
+          {
+            "id": "TAC-5",
+            "text": "HistoryRepositoryImplTest proves: store-returns-null ⇒ row still inserted with null paths + non-null thumbnail (SC-18); store-ok ⇒ inserted paths are the store's directory's children"
+          },
+          {
+            "id": "TAC-6",
+            "text": "HistoryEntryMapperTest proves unrecognised status falls back to Sent and never throws, and toEntities(dirPath=null) leaves all three paths null"
+          }
+        ],
+        "linkedAC": [
+          "AC-38",
+          "AC-33"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-handoff-api/.../di/HandoffSourcesProvider.{kt,desktop,android,ios}.kt"
+          },
+          {
+            "type": "code",
+            "ref": "common-core/.../source/mapper/Mapper.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/mappers.md"
+          }
+        ],
+        "expectedOutput": "HistoryRepositoryImpl fully wired behind HistoryRepository, with BatchFileStore's three platform bindings and two new commonTest files green.",
+        "hypothesis": "A fun-interface Koin seam (matching HandoffSourcesProvider's shape) is sufficient for file I/O here — no okio/kotlinx-io needed for three file writes; batch directory names are sanitised with [^A-Za-z0-9._-] -> '_' (PLAN-AS-6).",
+        "definitionOfReady": [
+          "T-3 datasource merged",
+          "T-5 repository API merged"
+        ],
+        "definitionOfDone": [
+          "data-repository-impl builds with the new projects.dataDatabaseImpl edge",
+          "BatchFileStore + FileSystemBatchFileStore + 4 BatchStoreProvider files added",
+          "HistoryEntryMapper + HistoryRepositoryImpl added and Koin-registered",
+          "HistoryRepositoryImplTest and HistoryEntryMapperTest green on :data-repository-impl:desktopTest"
+        ],
+        "dependsOn": [
+          "T-3",
+          "T-5"
+        ],
+        "outOfScope": [
+          "okio/kotlinx-io or any new filesystem dependency",
+          "A toResource inverse on HistoryEntryMapper"
+        ],
+        "predictedScope": [
+          "data-repository-impl/build.gradle.kts",
+          "data-repository-impl/src/commonMain/kotlin/**/core/mapper/HistoryEntryMapper.kt",
+          "data-repository-impl/src/commonMain/kotlin/**/source/repository/HistoryRepositoryImpl.kt",
+          "data-repository-impl/src/commonMain/kotlin/**/source/store/BatchFileStore.kt",
+          "data-repository-impl/src/desktopMain/kotlin/**/core/store/FileSystemBatchFileStore.kt",
+          "data-repository-impl/src/commonMain/kotlin/**/di/BatchStoreProvider.kt",
+          "data-repository-impl/src/desktopMain/kotlin/**/di/BatchStoreProvider.desktop.kt",
+          "data-repository-impl/src/androidMain/kotlin/**/di/BatchStoreProvider.android.kt",
+          "data-repository-impl/src/iosMain/kotlin/**/di/BatchStoreProvider.ios.kt",
+          "data-repository-impl/src/commonMain/kotlin/**/di/DataRepositoryImplModule.kt",
+          "data-repository-impl/src/commonTest/kotlin/**/HistoryRepositoryImplTest.kt",
+          "data-repository-impl/src/commonTest/kotlin/**/HistoryEntryMapperTest.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 4,
+        "estimate": "1d",
+        "subtasks": [
+          "Add implementation(projects.dataDatabaseImpl) to build.gradle.kts",
+          "Add HistoryEntryMapper (toModel + toEntities)",
+          "Add BatchFileStore fun interface",
+          "Add FileSystemBatchFileStore (desktopMain)",
+          "Add BatchStoreProvider expect/actual (desktop/android/ios)",
+          "Add HistoryRepositoryImpl, register in DataRepositoryImplModule",
+          "Write HistoryRepositoryImplTest and HistoryEntryMapperTest"
+        ]
+      },
+      {
+        "id": "T-7",
+        "epic": "E-2",
+        "title": "RecordSentBatchUseCase / ObserveHistoryUseCase",
+        "description": "domain-usecase-api + domain-usecase-impl: RecordSentBatchUseCase (Result<Unit> via resultLauncher(errorMapper = Failure.Technical::Database)) and ObserveHistoryUseCase (bare Flow<List<HistoryEntryModel>>, never Flow<Result<T>>). Two bindings appended to the usecase Koin module inside the existing layer group.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "RecordSentBatchUseCaseImpl wraps HistoryRepository.record via resultLauncher(errorMapper = Failure.Technical::Database)"
+          },
+          {
+            "id": "TAC-2",
+            "text": "ObserveHistoryUseCaseImpl returns a bare Flow, never Flow<Result<T>>"
+          },
+          {
+            "id": "TAC-3",
+            "text": "Both use cases are bound in DomainUsecaseImplModule inside the existing layer group"
+          }
+        ],
+        "linkedAC": [
+          "AC-33"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-usecase-impl/core/ResultLauncher.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/domain-layer.md"
+          }
+        ],
+        "expectedOutput": "Two use-case API interfaces + two impls, Koin-bound.",
+        "hypothesis": "resultLauncher's existing errorMapper pattern needs no new Failure variant beyond Failure.Technical.Database.",
+        "definitionOfReady": [
+          "T-6 repository layer merged"
+        ],
+        "definitionOfDone": [
+          "RecordSentBatchUseCase/ObserveHistoryUseCase (api+impl) added and Koin-bound; compiles cross-target"
+        ],
+        "dependsOn": [
+          "T-6"
+        ],
+        "outOfScope": [],
+        "predictedScope": [
+          "domain-usecase-api/src/commonMain/kotlin/**/source/usecase/history/RecordSentBatchUseCase.kt",
+          "domain-usecase-api/src/commonMain/kotlin/**/source/usecase/history/ObserveHistoryUseCase.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/**/source/usecase/history/RecordSentBatchUseCaseImpl.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/**/source/usecase/history/ObserveHistoryUseCaseImpl.kt",
+          "domain-usecase-impl/src/commonMain/kotlin/**/di/DomainUsecaseImplModule.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 5,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-8",
+        "epic": "E-3",
+        "title": "Pure history formatting + thumbnail crop/scale (presentation-feature-mirror core)",
+        "description": "Add libs.kotlinx.datetime to presentation-feature-mirror's commonMain. Write core/history/HistoryFormatting.kt (groupHistory, metaTime, shortBatchId, unionRect, thumbnailRect, statusTone, inProgressCount, noteCountKey) and core/history/ThumbnailBitmap.kt (cropAndScale to <=128px via commonMain ImageBitmap/Canvas/drawImageRect — PLAN-AS-8, no new DI seam, UNCHANGED CropEncoder). Write HistoryFormattingTest in commonTest and ThumbnailBitmapTest in desktopTest (the C-1 gate: <=128px both axes, non-null PNG <=8 KB; only this test failing triggers the AWT-sibling fallback). camelCase test names only (no comma/colon — iOS compile constraint).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "groupHistory buckets Today/Yesterday/Older by local calendar day, newest-first within each group"
+          },
+          {
+            "id": "TAC-2",
+            "text": "unionRect over 3 scattered rects returns the hand-computed envelope, not the first rect; unionRect(emptyList()) is null"
+          },
+          {
+            "id": "TAC-3",
+            "text": "thumbnailRect expands by pad = 18 * frameWidth / 296 and clamps to the frame on all four sides"
+          },
+          {
+            "id": "TAC-4",
+            "text": "shortBatchId = (id.hashCode() and 0xFFFF).toString(16).padStart(4,'0'), deterministic"
+          },
+          {
+            "id": "TAC-5",
+            "text": "statusTone maps all five BatchStatusModel values written out one by one (no map-restating anti-pattern, bugs.json#PP-TD-4)"
+          },
+          {
+            "id": "TAC-6",
+            "text": "inProgressCount returns 0/N correctly including the zero case"
+          },
+          {
+            "id": "TAC-7",
+            "text": "ThumbnailBitmapTest: cropAndScale on a 1080x2400 source + scattered union rect yields <=128px both axes; CropEncoder.encode(scaled, fullBounds) returns non-null, <=8 KB PNG; a degenerate rect returns null, not a throw"
+          }
+        ],
+        "linkedAC": [
+          "AC-35",
+          "AC-22",
+          "AC-34"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../core/payload/CropWindow.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../core/crop/AwtCropEncoder.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../source/mirror/CropEncoder.kt"
+          },
+          {
+            "type": "url",
+            "ref": ".pipeline/sdd/docs/history-batch-tracking/inputs/design-history-tab.md"
+          }
+        ],
+        "expectedOutput": "Two new pure/near-pure files plus commonTest + desktopTest coverage, all green.",
+        "hypothesis": "AwtCropEncoder only getSubimage()s and never scales (verified at refine); pre-scaling in commonMain Canvas before handing to the unchanged CropEncoder keeps the thumbnail <=8 KB with zero new DI seam and zero CropEncoder signature change.",
+        "definitionOfReady": [
+          "T-4 models merged"
+        ],
+        "definitionOfDone": [
+          "HistoryFormatting.kt and ThumbnailBitmap.kt added, exactly two files (no junk-drawer scatter, bugs.json#PP-TD-6)",
+          "HistoryFormattingTest (commonTest) and ThumbnailBitmapTest (desktopTest) green",
+          "./gradlew :presentation-feature-mirror:desktopTest green; cross-target compile unaffected"
+        ],
+        "dependsOn": [
+          "T-4"
+        ],
+        "outOfScope": [
+          "Reusing cropWindow() for the thumbnail (rejected, PLAN-AS-1)",
+          "A desktopMain AwtThumbnailEncoder sibling (named contingency only, not taken unless the gate fails)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/build.gradle.kts",
+          "presentation-feature-mirror/src/commonMain/kotlin/**/core/history/HistoryFormatting.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/**/core/history/ThumbnailBitmap.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/**/HistoryFormattingTest.kt",
+          "presentation-feature-mirror/src/desktopTest/kotlin/**/ThumbnailBitmapTest.kt"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "0.75d",
+        "subtasks": [
+          "Add libs.kotlinx.datetime to commonMain dependencies",
+          "Write HistoryFormatting.kt (7 pure functions)",
+          "Write ThumbnailBitmap.kt (cropAndScale)",
+          "Write HistoryFormattingTest (commonTest, literal-asserted)",
+          "Write ThumbnailBitmapTest (desktopTest, the C-1 gate)"
+        ]
+      },
+      {
+        "id": "T-9",
+        "epic": "E-3",
+        "title": "MirrorViewModel wiring: persist-after-send, history collection, VerifyBatch stub",
+        "description": "Add MirrorUiState.history: List<HistoryEntryModel> = emptyList() and MirrorIntent.VerifyBatch(batchId) to MirrorContract. Add two REQUIRED MirrorViewModel constructor params (recordSentBatch, observeHistory — no defaults, bugs.json#PP-TD-3). Container init collects observeHistory() into state.history. Inside the existing assembly withContext(Dispatchers.Default), run cropAndScale + encodeCrop.encode. In published.onSuccess, BEFORE postSideEffect(SendComplete), call recordSentBatch(...) and consume its Result with .onFailure { log.w } only — persisted prompt comes from the assembled envelope, never from MirrorUiState (PLAN-AS-12 / bugs.json#PP-TD-2). Add the VerifyBatch log.i stub to handleIntent. Update MirrorFakes.kt (two trivial fakes) and the explicit viewModel { } block in PresentationFeatureMirrorModule.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A failing RecordSentBatchUseCase never turns SendPhase into Failed; SendComplete still posts"
+          },
+          {
+            "id": "TAC-2",
+            "text": "recordSentBatch is called before postSideEffect(SendComplete) on success"
+          },
+          {
+            "id": "TAC-3",
+            "text": "Persisted SentBatchModel.prompt equals the assembled envelope's prompt, not MirrorUiState's promptOverride"
+          },
+          {
+            "id": "TAC-4",
+            "text": "state.history reflects ObserveHistoryUseCase's fake flow in the VM test harness"
+          },
+          {
+            "id": "TAC-5",
+            "text": "MirrorFakes.kt provides RecordSentBatchUseCase { Result.success(Unit) } and ObserveHistoryUseCase { emptyFlow() } so no existing VM test breaks"
+          }
+        ],
+        "linkedAC": [
+          "AC-38",
+          "AC-33",
+          "AC-22"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../source/mirror/MirrorViewModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../source/mirror/MirrorContract.kt"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/orbit-mvi.md"
+          }
+        ],
+        "expectedOutput": "MirrorViewModel persists every successful send as a side effect in its own failure domain; History state is populated reactively.",
+        "hypothesis": "A default value on either new constructor param would turn a missing Koin binding into silently losing every batch (PP-TD-3's exact failure shape) — required params with MirrorFakes updated in the same commit is the only safe shape.",
+        "definitionOfReady": [
+          "T-7 use cases merged",
+          "T-8 cropAndScale merged"
+        ],
+        "definitionOfDone": [
+          "MirrorContract + MirrorViewModel edited, two required ctor params, no defaults",
+          "PresentationFeatureMirrorModule's viewModel { } block updated with the two get<T>() params",
+          "MirrorFakes.kt updated; existing VM test suite plus new persist-order/prompt-provenance/history-collection assertions green on :presentation-feature-mirror:desktopTest"
+        ],
+        "dependsOn": [
+          "T-7",
+          "T-8"
+        ],
+        "outOfScope": [
+          "VerifyBatch's real diff logic (F-9 fills the stub body)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/**/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/**/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/**/di/PresentationFeatureMirrorModule.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/**/MirrorFakes.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/**/*MirrorViewModel*Test.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 6,
+        "estimate": "0.75d",
+        "subtasks": [
+          "Add MirrorUiState.history and MirrorIntent.VerifyBatch to MirrorContract",
+          "Add two required ctor params to MirrorViewModel; wire container-init collector",
+          "Insert cropAndScale + encode inside the existing assembly withContext",
+          "Call recordSentBatch in onSuccess before postSideEffect; .onFailure { log.w } only",
+          "Add VerifyBatch log.i stub to handleIntent",
+          "Update MirrorFakes.kt and PresentationFeatureMirrorModule's viewModel { } block",
+          "Extend the existing MirrorViewModel test harness with the new assertions"
+        ]
+      },
+      {
+        "id": "T-10",
+        "epic": "E-4",
+        "title": "mirror_history_* string resources",
+        "description": "Add the 15 mirror_history_* keys to presentation-core-localisation's values/strings.xml: empty, group_today/yesterday/older, meta, meta_note_one/other, verify, status_sent/in_progress/fixed/verified/followup, footer, thumbnail_description. No AAPT-style apostrophe escapes (regression fixed in dae0893). Two plain note-count keys instead of a plurals resource (PLAN-AS-2 — zero pluralStringResource usages exist in the repo and this does not introduce the first one).",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "All 15 keys from the plan's i18n.strings list exist in values/strings.xml"
+          },
+          {
+            "id": "TAC-2",
+            "text": "No <plurals> resource and no pluralStringResource call is introduced; note count uses the two plain keys"
+          },
+          {
+            "id": "TAC-3",
+            "text": "No literal apostrophe is backslash-escaped AAPT-style"
+          }
+        ],
+        "linkedAC": [
+          "AC-22",
+          "AC-37"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/localisation.md"
+          }
+        ],
+        "expectedOutput": "15 new string keys compiled into Res.string.*.",
+        "hypothesis": "No new localisation infrastructure (no plurals API) is needed; two plain keys selected by a pure function (noteCountKey, from T-8) fully covers the one/other case.",
+        "definitionOfReady": [],
+        "definitionOfDone": [
+          "All 15 keys added, resolve through Res.string.*, module compiles for every target"
+        ],
+        "dependsOn": [
+          "T-1"
+        ],
+        "outOfScope": [
+          "Any locale other than en"
+        ],
+        "predictedScope": [
+          "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-11",
+        "epic": "E-4",
+        "title": "MirrorHistoryTab composable",
+        "description": "presentation-feature-mirror/.../source/mirror/MirrorHistoryTab.kt: empty-state early return copying MirrorNotesTab's shape; Column { LazyColumn(Modifier.weight(1f)) { group header items (Theme.typography.overline + ink3) + HistoryRow items with key = { it.id }, the thumbnail BLOB decoded inside remember(entry.id), meta line, StatusPill, and a Fixed-only Verify AppButton(ListAction) }; footer 'claude · session <id>' from the newest entry, hidden when history is empty }. Two private light/dark previews (one across all five statuses and two groups, one empty). Zero new design-system components — entirely composed from HistoryRow/StatusPill/AppButton.",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Empty state renders mirror_history_empty and hides the footer"
+          },
+          {
+            "id": "TAC-2",
+            "text": "Rows are grouped under Today/Yesterday/Older headers, newest-first within each group"
+          },
+          {
+            "id": "TAC-3",
+            "text": "Verify button renders only on Fixed rows (AC-36)"
+          },
+          {
+            "id": "TAC-4",
+            "text": "Footer shows 'claude · session <id>' sourced from the most recently persisted batch (AC-37)"
+          },
+          {
+            "id": "TAC-5",
+            "text": "LazyColumn items use key = { it.id }; thumbnail decode is inside remember(entry.id)"
+          },
+          {
+            "id": "TAC-6",
+            "text": "No literal Color/dp/TextStyle; all copy via Res.string.*; two private light+dark @Preview pairs wrapped in AppTheme"
+          }
+        ],
+        "linkedAC": [
+          "AC-22",
+          "AC-36",
+          "AC-37"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../kit/molecule/row/HistoryRow.kt"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../kit/molecule/bar/tab/SidebarTabs.kt"
+          },
+          {
+            "type": "url",
+            "ref": ".pipeline/sdd/docs/history-batch-tracking/inputs/design-history-tab.md"
+          },
+          {
+            "type": "code",
+            "ref": ".claude/rules/compose-preview-convention.md"
+          }
+        ],
+        "expectedOutput": "MirrorHistoryTab.kt composable, reused entirely from shipped design-system components, with previews.",
+        "hypothesis": "HistoryRow's 56dp plate (vs the design's 44x44) needs no design-system change — a <=128px-encoded thumbnail stays crisp at either size (PLAN-AS-4 / survey Q3).",
+        "definitionOfReady": [
+          "T-9 VM wiring merged",
+          "T-10 strings merged"
+        ],
+        "definitionOfDone": [
+          "MirrorHistoryTab.kt added, compiles, zero new design-system components",
+          "Two private light/dark previews render without crashing",
+          "Reviewed against design-history-tab.md's row anatomy and tone table"
+        ],
+        "dependsOn": [
+          "T-9",
+          "T-10"
+        ],
+        "outOfScope": [
+          "Row click / detail view (no-op onClick = {} per PLAN-AS-13)",
+          "Live agent-activity sub-line (no data source exists)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/**/source/mirror/MirrorHistoryTab.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 7,
+        "estimate": "0.75d",
+        "subtasks": [
+          "Empty-state early return",
+          "Grouped LazyColumn with keyed HistoryRow items",
+          "Fixed-only Verify button wiring to MirrorIntent.VerifyBatch",
+          "Footer line from the newest entry",
+          "Two private light/dark previews"
+        ]
+      },
+      {
+        "id": "T-12",
+        "epic": "E-4",
+        "title": "RectifyWindow.kt wiring: History tab branch + badge buildMap",
+        "description": "Two pure-wiring edits in compose-application's RectifyWindow.kt, nothing else. Edit 1 (~L238-258): replace `else -> Unit` with `ShellTab.History -> MirrorHistoryTab(state = mirror, onIntent = onIntent, modifier = Modifier.weight(1f))`. Edit 2 (L427-430): the current `mapOf(ShellTab.Notes to .., ShellTab.Payload to ..)` becomes `buildMap { put(Notes, stagedCount); put(Payload, stagedCount); val n = inProgressCount(mirror.history); if (n > 0) put(History, n) }` — the History key MUST be omitted at zero because SidebarTabs renders a literal '0' for a present-but-zero count (PLAN-AS-3, required for AC-34, not merely defensive).",
+        "type": "ui",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Cmd+3 / the History tab segment renders MirrorHistoryTab with Modifier.weight(1f)"
+          },
+          {
+            "id": "TAC-2",
+            "text": "tabCounts omits the ShellTab.History key entirely when inProgressCount(mirror.history) == 0; includes it with the exact count when > 0"
+          },
+          {
+            "id": "TAC-3",
+            "text": "No other logic lands in this file — :compose-application has no test wiring"
+          }
+        ],
+        "linkedAC": [
+          "AC-22",
+          "AC-34"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+          }
+        ],
+        "expectedOutput": "Two localized diffs in RectifyWindow.kt; History reachable via Cmd+3; badge omits zero.",
+        "hypothesis": "This is pure wiring with zero new logic — inProgressCount already lives in and is tested by presentation-feature-mirror (T-8), so RectifyWindow.kt needs no test of its own (testing.md: nothing testable lands in :compose-application).",
+        "definitionOfReady": [
+          "T-11 MirrorHistoryTab merged"
+        ],
+        "definitionOfDone": [
+          "Both edits applied exactly as specified; :desktop-application:run opens and Cmd+3 reaches History"
+        ],
+        "dependsOn": [
+          "T-11"
+        ],
+        "outOfScope": [
+          "Any logic beyond the two specified edits"
+        ],
+        "predictedScope": [
+          "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 8,
+        "estimate": "0.25d",
+        "subtasks": [
+          "Replace else -> Unit with the ShellTab.History branch",
+          "Convert tabCounts mapOf to a buildMap that omits History at zero"
+        ]
+      },
+      {
+        "id": "T-13",
+        "epic": "E-5",
+        "title": "Docs: database.md amendment + data-database-impl/CLAUDE.md update",
+        "description": "Amend .claude/rules/database.md with a one-line note that an @Entity exposed as a public datasource's wire type lives under source/entity/, not core/entity/ (package-layout.md's internal-only core/ rule), plus a note that F-8 stayed at @Database(version = 1) only because the DB was relocated to a provably empty path. Edit data-database-impl/CLAUDE.md to drop the 'replace the ExampleEntity placeholder' framing, record the new ~/.rectify/rectify.db path, the first real tables, and the new commonTest block. Report the features.json#database re-tag (scaffold-only ⇒ has a production consumer) as a registry delta to the orchestrator — never edit the registry here.",
+        "type": "documentation",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "database.md documents the source/entity/ exception for public datasource wire types"
+          },
+          {
+            "id": "TAC-2",
+            "text": "data-database-impl/CLAUDE.md no longer frames the module as a placeholder; documents the relocated path and the new test block"
+          },
+          {
+            "id": "TAC-3",
+            "text": "A registry delta for features.json#database (re-tag, un-waive 'No production consumer') is reported, not applied directly"
+          }
+        ],
+        "linkedAC": [],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".claude/rules/database.md"
+          },
+          {
+            "type": "code",
+            "ref": "data-database-impl/CLAUDE.md"
+          }
+        ],
+        "expectedOutput": "Two doc files amended; one registry delta reported.",
+        "hypothesis": "A one-line rule amendment is sufficient — no broader rewrite of database.md's placement rules is needed since this is the only exception introduced by F-8.",
+        "definitionOfReady": [
+          "T-12 window wiring merged"
+        ],
+        "definitionOfDone": [
+          "Both doc files edited; registry delta for features.json#database handed to the orchestrator"
+        ],
+        "dependsOn": [
+          "T-12"
+        ],
+        "outOfScope": [
+          "Direct registry file edits (reported only)"
+        ],
+        "predictedScope": [
+          ".claude/rules/database.md",
+          "data-database-impl/CLAUDE.md"
+        ],
+        "parallelizable": false,
+        "executionGroup": 9,
+        "estimate": "0.25d",
+        "subtasks": []
+      },
+      {
+        "id": "T-14",
+        "epic": "E-5",
+        "title": "Cross-target verification + manual demo",
+        "description": "Run ./gradlew :presentation-feature-mirror:desktopTest :data-repository-impl:desktopTest :data-database-impl:desktopTest, then the cross-target build (:presentation-feature-mirror:build :data-repository-impl:build :data-database-impl:build, --max-workers=1 per bugs.json#PP-TD-8 to avoid the known Kotlin/Native linker OOM). Then the manual demo script: send two batches, quit, relaunch, confirm both rows intact with thumbnails (AC-33/SC-15); send a third while History is open — new row at top of Today, badge unchanged (SC-16); send a 3-annotation batch and eyeball the union crop (AC-35/SC-17); hand-seed one In-progress row — badge shows 1, remove it — badge disappears entirely, not '0' (AC-34); hand-seed one Fixed row — Verify present only there, logs on click (AC-36); read the footer against the newest row's sessionId (AC-37); delete ~/.rectify/history/<id>/ — row still renders; confirm the directory holds frame.png/crop-N.png/hierarchy.xml after a send (AC-38); measure a real thumbPng against the 8 KB budget.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "All three desktopTest tasks green"
+          },
+          {
+            "id": "TAC-2",
+            "text": "Cross-target build green with --max-workers=1 (commonTest compiles for iOS)"
+          },
+          {
+            "id": "TAC-3",
+            "text": "All 9 manual demo steps pass and are recorded in the PR"
+          },
+          {
+            "id": "TAC-4",
+            "text": "A real 3-annotation 1080x2400 thumbPng measures <= 8 KB"
+          }
+        ],
+        "linkedAC": [
+          "AC-22",
+          "AC-33",
+          "AC-34",
+          "AC-35",
+          "AC-36",
+          "AC-37",
+          "AC-38"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".claude/rules/testing.md"
+          }
+        ],
+        "expectedOutput": "Green desktopTest + cross-target build logs, and a recorded manual demo transcript covering AC-22/33/34/35/36/37/38.",
+        "hypothesis": "No production code changes land in this task; all behaviour under test was already implemented and unit-tested in T-1..T-12. This task is the gate, not the build.",
+        "definitionOfReady": [
+          "T-12 window wiring merged",
+          "T-13 docs merged"
+        ],
+        "definitionOfDone": [
+          "./gradlew :presentation-feature-mirror:desktopTest :data-repository-impl:desktopTest :data-database-impl:desktopTest is green",
+          "Cross-target build green (iOS commonTest compiles)",
+          "Manual demo script executed and recorded, covering every must-priority AC"
+        ],
+        "dependsOn": [
+          "T-12"
+        ],
+        "outOfScope": [
+          "Any new production code or test file"
+        ],
+        "predictedScope": [],
+        "parallelizable": false,
+        "executionGroup": 10,
+        "estimate": "0.5d",
+        "subtasks": []
+      }
+    ],
+    "executionPlan": {
+      "waves": [
+        {
+          "wave": 1,
+          "parallel": [
+            "T-1"
+          ]
+        },
+        {
+          "wave": 2,
+          "parallel": [
+            "T-2",
+            "T-4",
+            "T-10"
+          ]
+        },
+        {
+          "wave": 3,
+          "parallel": [
+            "T-3",
+            "T-5",
+            "T-8"
+          ]
+        },
+        {
+          "wave": 4,
+          "parallel": [
+            "T-6"
+          ]
+        },
+        {
+          "wave": 5,
+          "parallel": [
+            "T-7"
+          ]
+        },
+        {
+          "wave": 6,
+          "parallel": [
+            "T-9"
+          ]
+        },
+        {
+          "wave": 7,
+          "parallel": [
+            "T-11"
+          ]
+        },
+        {
+          "wave": 8,
+          "parallel": [
+            "T-12"
+          ]
+        },
+        {
+          "wave": 9,
+          "parallel": [
+            "T-13"
+          ]
+        },
+        {
+          "wave": 10,
+          "parallel": [
+            "T-14"
+          ]
+        }
+      ],
+      "graph": [
+        {
+          "task": "T-2",
+          "dependsOn": [
+            "T-1"
+          ]
+        },
+        {
+          "task": "T-4",
+          "dependsOn": [
+            "T-1"
+          ]
+        },
+        {
+          "task": "T-10",
+          "dependsOn": [
+            "T-1"
+          ]
+        },
+        {
+          "task": "T-3",
+          "dependsOn": [
+            "T-2"
+          ]
+        },
+        {
+          "task": "T-5",
+          "dependsOn": [
+            "T-4"
+          ]
+        },
+        {
+          "task": "T-8",
+          "dependsOn": [
+            "T-4"
+          ]
+        },
+        {
+          "task": "T-6",
+          "dependsOn": [
+            "T-3",
+            "T-5"
+          ]
+        },
+        {
+          "task": "T-7",
+          "dependsOn": [
+            "T-6"
+          ]
+        },
+        {
+          "task": "T-9",
+          "dependsOn": [
+            "T-7",
+            "T-8"
+          ]
+        },
+        {
+          "task": "T-11",
+          "dependsOn": [
+            "T-9",
+            "T-10"
+          ]
+        },
+        {
+          "task": "T-12",
+          "dependsOn": [
+            "T-11"
+          ]
+        },
+        {
+          "task": "T-13",
+          "dependsOn": [
+            "T-12"
+          ]
+        },
+        {
+          "task": "T-14",
+          "dependsOn": [
+            "T-12"
+          ]
+        }
+      ]
+    },
+    "readyForExecution": true,
+    "sequenceNotes": {
+      "cyclesFound": [],
+      "serializedForScopeOverlap": [],
+      "terminalWaveTasks": [
+        "T-13",
+        "T-14"
+      ],
+      "validatorCorrections": [
+        "Split the original wave 9 (T-13 + T-14 parallel) into wave 9 (T-13 alone) and wave 10 (T-14 alone) so the verification/demo gate (T-14) runs strictly after docs (T-13), matching the 'T-14 is last' terminal-wave requirement. T-14's dependsOn is left as [\"T-12\"] (its only true blocking dependency) rather than fabricating a T-13 edge; wave order alone enforces the sequencing. parallelizable/executionGroup updated on T-13 (false/9, unchanged group) and T-14 (false/10) to match."
+      ]
+    },
+    "survey": [
+      {
+        "question": "Is splitting T-13 (docs) and T-14 (verification) into separate waves acceptable at fast tier, or should they stay parallel since their file scopes are disjoint?",
+        "options": [
+          "Accept the split: T-14 must be last per the terminal-wave requirement; cost is one wave boundary, not extra work",
+          "Keep T-13/T-14 parallel in one wave"
+        ],
+        "answer": "Accept the split: T-14 must be last per the terminal-wave requirement; cost is one wave boundary, not extra work",
+        "source": "ai-proposed",
+        "rationale": "The backlog-validator checklist names 'T-14 is last' as a hard terminal-wave requirement."
+      },
+      {
+        "question": "SC-8 is only partially provable in F-8 (affordance + visibility rule; the diff is F-9's). Add a stub task, or is tracing it through T-8/T-11/T-14 sufficient?",
+        "options": [
+          "Sufficient as-is: the plan's traceability matrix already marks SC-8 'PARTIAL BY DESIGN'",
+          "Add a stub task for the F-9 half"
+        ],
+        "answer": "Sufficient as-is: the plan's traceability matrix already marks SC-8 'PARTIAL BY DESIGN'",
+        "source": "ai-proposed",
+        "rationale": "Fabricating a task for logic that does not exist yet (F-9) would be scope creep."
+      },
+      {
+        "question": "Should T-14's dependsOn widen to [T-12, T-13] to make docs-before-verify a real graph edge?",
+        "options": [
+          "No: T-14 has no functional dependency on T-13's doc files; wave order already sequences them",
+          "Yes: add the edge"
+        ],
+        "answer": "No: T-14 has no functional dependency on T-13's doc files; wave order already sequences them",
+        "source": "ai-proposed",
+        "rationale": "A false edge would misrepresent the dependency graph for a sequencing concern wave order already satisfies."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-autonomous",
+    "approved": true,
+    "at": "2026-10-18T19:27:12Z"
+  }
+}
