@@ -33,3 +33,5 @@
 {"stage": "execution", "step": "wave-4", "agent": "sdd-build-business-implement", "event": "end", "tokens": 212222, "at": "2026-10-18T23:17:39Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "cr-a", "agent": "sdd-build-business-implement", "event": "end", "tokens": 118628, "at": "2026-10-18T23:29:33Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-5", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T23:29:33Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-5", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 100082, "at": "2026-10-18T23:37:55Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-6", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T23:37:56Z", "spec": "verify-and-rediff-loop"}

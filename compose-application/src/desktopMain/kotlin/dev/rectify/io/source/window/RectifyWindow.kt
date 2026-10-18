@@ -81,6 +81,7 @@ import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorStageContent
 import presentation.feature.mirror.source.mirror.MirrorStatusLine
 import presentation.feature.mirror.source.mirror.MirrorUiState
+import presentation.feature.mirror.source.mirror.VerifyFrames
 import java.awt.Dimension
 import kotlin.math.roundToInt
 
@@ -206,10 +207,10 @@ public fun ApplicationScope.RectifyWindow() {
                                 else -> Unit
                             }
                         },
-                        // The fifth slot is a verification run's BEFORE/AFTER pair. Only the
-                        // verify stage draws it, and that surface lands with its own task —
-                        // ignored by name until then rather than forwarded nowhere.
-                    ) { mirror, frame, hierarchy, _, onMirrorIntent ->
+                        // The fifth slot is a verification run's BEFORE/AFTER pair; the only
+                        // surface that draws it is the verify stage, so it travels down to
+                        // MirrorStageContent and nowhere else.
+                    ) { mirror, frame, hierarchy, verifyFrames, onMirrorIntent ->
                         // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
                         // only the first — the key stays true from the second one on, so a user who
                         // has walked over to Payload is not yanked back on every drag.
@@ -221,12 +222,17 @@ public fun ApplicationScope.RectifyWindow() {
                         // The shortcut and the button are the same predicate by construction: the
                         // holder is null whenever the button is disabled, so ⌘↩ cannot start a send
                         // the toolbar refuses to (A11Y-2 / TAC-3).
+                        // The verify stage prints the same ⌘↩ hint on its own primary action, so
+                        // the holder points at the follow-up while that stage owns the screen —
+                        // the same precedence MirrorUiState.stage gives Verify over Frozen. A
+                        // hint for a key that does nothing is the thing being avoided here.
                         val canSend = mirror.canSend
-                        LaunchedEffect(canSend) {
-                            sendAction = if (canSend) {
-                                { onMirrorIntent(MirrorIntent.ResolveAndSend) }
-                            } else {
-                                null
+                        val followUpCount = mirror.verify?.stillOffRows?.size ?: 0
+                        LaunchedEffect(canSend, followUpCount) {
+                            sendAction = when {
+                                followUpCount > 0 -> { { onMirrorIntent(MirrorIntent.SendFollowUp) } }
+                                canSend -> { { onMirrorIntent(MirrorIntent.ResolveAndSend) } }
+                                else -> null
                             }
                         }
 
@@ -234,6 +240,7 @@ public fun ApplicationScope.RectifyWindow() {
                             state = shellState,
                             mirror = mirror,
                             frame = frame,
+                            verifyFrames = verifyFrames,
                             onIntent = onMirrorIntent,
                             sidePanel = { tab ->
                                 // Exhaustive by design (no `else`): the tab strip is what
@@ -342,6 +349,7 @@ private fun StackedSnakbarHostState.showSendComplete(effect: MirrorSideEffect.Se
  * @param sidePanel Panel content for the live session, or `null` while none exists.
  * @param mirror Mirror state snapshot.
  * @param frame Latest decoded device frame, or `null` when nothing is streaming.
+ * @param verifyFrames BEFORE/AFTER pair of a verification run, or `null` when there is none.
  * @param onIntent Mirror intent sink.
  */
 @Composable
@@ -354,6 +362,7 @@ internal fun RectifyShellContent(
     sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null,
     mirror: MirrorUiState = MirrorUiState(),
     frame: ImageBitmap? = null,
+    verifyFrames: VerifyFrames? = null,
     onIntent: (MirrorIntent) -> Unit = {},
 ) {
     RectifyWindowShell(
@@ -446,6 +455,7 @@ internal fun RectifyShellContent(
                 frame = frame,
                 onIntent = onIntent,
                 modifier = Modifier.align(Alignment.Center),
+                verifyFrames = verifyFrames,
             )
         },
     )
