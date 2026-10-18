@@ -67,6 +67,11 @@
       "status": "done",
       "wave": 3,
       "updatedAt": "2026-10-18T19:46:42Z"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-18T19:53:57Z"
     }
   },
   "effort": "fast",

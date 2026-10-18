@@ -30,3 +30,5 @@
 {"stage": "execution", "step": "wave-3", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:35:52Z", "spec": "history-batch-tracking"}
 {"stage": "execution", "step": "wave-3", "agent": "sdd-build-business-implement", "event": "end", "tokens": 143896, "at": "2026-10-18T19:46:42Z", "spec": "history-batch-tracking"}
 {"stage": "execution", "step": "wave-4", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:46:42Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-4", "agent": "sdd-build-business-implement", "event": "end", "tokens": 91061, "at": "2026-10-18T19:53:57Z", "spec": "history-batch-tracking"}
+{"stage": "execution", "step": "wave-5", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T19:53:57Z", "spec": "history-batch-tracking"}
