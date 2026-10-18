@@ -1,0 +1,382 @@
+{
+  "spec": "resolve-and-send-mcp",
+  "stage": "preparation",
+  "step": "preparation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-preparation-compile",
+  "provenance": {
+    "selfHash": "467dac29e61d0bd77248e0d08fb1f0f512e833b1b2477390b32a751c20e0a308",
+    "inputs": [
+      {
+        "artifact": "preparation/input.json",
+        "hash": "984bb3fdd6caffdcad5fd46524735e64febb9d77c2e07fbda3a73ac7c6a8561e"
+      },
+      {
+        "artifact": "preparation/clarify.json",
+        "hash": "67166dff5cc1f4ff37a40bfcd535d7d6d1eb37603be5d861e082e8c40eed2f8b"
+      },
+      {
+        "artifact": "preparation/brainstorm.json",
+        "hash": "669dcd52f50c16147de6b1e39c1b57e168725a23bd27345a2132b3115487eb48"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T11:03:59Z",
+  "updatedAt": "2026-10-18T11:03:59Z",
+  "data": {
+    "summary": "F-7 'Resolve & Send via Local MCP' wires the already-mounted-but-inert toolbar Resolve & Send button into a full handoff pipeline: it assembles F-6's payload envelope (frame screenshot, per-annotation crops, raw hierarchy XML, generated prompt, serialized PAYLOAD_FORMAT_VERSION), publishes it through a new single-slot atomic file drop at ~/.rectify/handoff/latest.json, and serves it to a Claude Code agent via a new bounded in-repo stdio MCP server stub (:mcp-application) exposing exactly one tool, get_latest_annotation. The toolbar animates Streaming -> Frozen -> Dumping hierarchy -> Sent, confirms with a toast whose 'Open session' action copies a session identifier to the clipboard, then resumes live mirroring and resets the counter. Nine architecture/naming/transport decisions are settled by prior human gates (clarify + brainstorm surveys) and recorded here as closed; two genuine open decisions (session-id composition, stale-slot policy) and the .mcp.json discovery/hardening follow-ups carry forward into Stage 2 without blocking it.",
+    "problemStatement": "F-6 (merged) assembles the full payload bundle but explicitly stops short of transmitting it, and declares PAYLOAD_FORMAT_VERSION = 1 as an internal const that is 'rendered nowhere.' The PRD's FR-17 presumes 'the existing local rectify MCP server,' but a repo-wide grep of every *.kt/*.kts/*.swift/*.toml file found zero MCP server, MCP client, or JSON-RPC code anywhere in source — that server does not exist and must be built as bounded new infrastructure. Three further gaps the PRD could not see: HierarchySnapshotMapper discards the raw uiautomator XML dump; MirrorViewModel decodes and discards the frozen frame's raw PNG bytes; and no session identifier exists anywhere in the codebase for FR-58's clipboard copy to act on.",
+    "confirmedRequirements": {
+      "functional": [
+        {
+          "id": "FR-16",
+          "text": "In the toolbar, show a staged-annotation counter, a 'Clear' action that removes all staged annotations, and a primary 'Resolve & Send' button that is disabled while zero annotations are staged or while a send is in progress."
+        },
+        {
+          "id": "FR-17",
+          "text": "On 'Resolve & Send', package the full frame screenshot, per-annotation crops, view-hierarchy XML dump, and generated prompt into a versioned envelope, and publish it so a locally running Claude Code agent can retrieve it by calling a single MCP tool (name/transport per survey Q2/Q3) against an in-repo stdio MCP server stub that this spec builds and hosts from the desktop app (survey Q1) — not a pre-existing external server, which this codebase does not contain."
+        },
+        {
+          "id": "FR-18",
+          "text": "During send, show a visible status sequence (Streaming -> Frozen -> Dumping hierarchy -> Sent) with colored dots, running asynchronously off the UI thread (AS-30), then confirm with a toast ('Sent N annotations to Claude Code · frame + hierarchy · <time>s') including an 'Open session' link."
+        },
+        {
+          "id": "FR-19",
+          "text": "After a successful send, resume live mirroring automatically and reset the staged-annotation counter to 0."
+        },
+        {
+          "id": "FR-56",
+          "text": "Rectify desktop hosts/spawns a local, stdio-transport MCP server process exposing exactly one retrieval tool (name per survey Q2) that returns the most recently sent payload envelope; this is new infrastructure this spec builds, not integration with a pre-existing server."
+        },
+        {
+          "id": "FR-57",
+          "text": "On 'Resolve & Send', serialize the payload envelope — frame screenshot, per-annotation crops, hierarchy XML, generated prompt, and the PAYLOAD_FORMAT_VERSION field (AS-28) — and publish it to the in-process store the MCP server's retrieval tool reads from."
+        },
+        {
+          "id": "FR-58",
+          "text": "The toast's 'Open session' action copies the current session identifier to the system clipboard (survey Q4 default), giving the user something to paste into their own Claude Code terminal/session picker without this repo needing to focus or launch an external application window."
+        }
+      ],
+      "nonFunctional": [
+        {
+          "id": "NFR-3",
+          "category": "performance",
+          "text": "Resolve & Send payload transmission to the local MCP server should typically complete in under ~2s on localhost for a typical batch."
+        },
+        {
+          "id": "NFR-4",
+          "category": "security",
+          "text": "All mirror stream data, screenshots, hierarchy dumps, and payloads stay local to the machine; no network egress beyond localhost MCP communication — trivially satisfied by a stdio transport, which never opens a network socket at all."
+        },
+        {
+          "id": "NFR-12",
+          "category": "maintainability",
+          "text": "The payload format (prompt + crops + hierarchy XML) is versioned so the receiving MCP server/Claude Code agent can evolve its parsing without breaking older sends."
+        },
+        {
+          "id": "NFR-15",
+          "category": "maintainability",
+          "text": "The MCP server component ships as a convention-plugin-shaped module (library or application plugin, per build-logic/convention) hosted/spawned by :desktop-application's main(), introducing no bespoke Gradle and no new third-party dependency beyond the already-cataloged kotlinx-serialization unless the survey's transport answer requires one."
+        }
+      ]
+    },
+    "acceptanceCriteria": [
+      {
+        "id": "AC-17",
+        "text": "Given zero annotations are staged, then 'Resolve & Send' is disabled; given one or more are staged, it is enabled; 'Clear' removes all staged annotations and resets the counter to 0.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-18",
+        "text": "When the user clicks 'Resolve & Send', then the frame screenshot, per-annotation crops, hierarchy XML, and generated prompt are transmitted via the local MCP server (per survey Q1/Q3: an in-repo stdio MCP server stub spawned/hosted by the desktop app) such that a Claude Code session calling the retrieval tool (per survey Q2) receives the complete payload.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-19",
+        "text": "When sending, then the status sequence Streaming -> Frozen -> Dumping hierarchy -> Sent displays in order with colored dots, and on completion a toast shows the sent-count/time summary with an 'Open session' link.",
+        "priority": "must",
+        "verificationMethod": "demo"
+      },
+      {
+        "id": "AC-20",
+        "text": "While a send is in progress, 'Resolve & Send' is disabled and only re-enables after the toast confirms or the send fails; on failure, staged annotations and the frozen frame are NOT cleared (AS-31), so the user can retry with the same batch.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-21",
+        "text": "After a successful send, then live mirroring resumes automatically and the staged-annotation counter resets to 0.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-32",
+        "text": "Given a staged annotation batch is sent, then the persisted payload envelope carries an explicit format/schema version field (serialized from F-6's existing but currently unserialized PAYLOAD_FORMAT_VERSION=1 const, per AS-28) that the receiving MCP server can read to select its parsing path.",
+        "priority": "should",
+        "verificationMethod": "inspection"
+      },
+      {
+        "id": "AC-81",
+        "text": "Given the in-repo MCP server stub is running and a payload has been sent, when a client calls the retrieval tool a second time with no new send in between, then it returns the same last-sent payload (idempotent 'latest' semantics) rather than an error or an empty result.",
+        "priority": "must",
+        "verificationMethod": "test"
+      }
+    ],
+    "scope": {
+      "in": [
+        "Wire the existing-but-stubbed toolbar Resolve & Send button (RectifyWindow.kt:304), Clear action, and staged-annotation counter badge to a live send pipeline (FR-16, AC-17).",
+        "Add a send state machine (MirrorIntent.ResolveAndSend, SendPhase in MirrorUiState) with in-flight guards covering double-send and zero-staged cases (AC-20).",
+        "Thread the raw uiautomator dump text through HierarchySnapshotModel.rawDump (populated by HierarchySnapshotMapper, which already holds stdout.dump) so the envelope ships a real hierarchy.xml (FR-17, AC-18).",
+        "Retain the frozen frame's original MirrorFrame.bytes (new MirrorViewModel.frozenFrameBytes StateFlow) instead of re-encoding a decoded bitmap (FR-17, AC-18).",
+        "Add :data-handoff-api (library convention plugin): @Serializable AnnotationEnvelope with version first (AC-32, NFR-12), AnnotationHandoff/AnnotationHandoffReader interfaces, desktopMain FileSlotAnnotationHandoff backed by atomic file-drop at ~/.rectify/handoff/latest.json, Android/iOS Unsupported* actuals.",
+        "Add :mcp-application (new plain-JVM module, kotlin(\"jvm\") + application): stdio JSON-RPC main() exposing get_latest_annotation, reading the published slot, returning metadata + prompt + hierarchy inline with images by reference (FR-56, AC-18, AC-81).",
+        "Encode per-annotation crop PNGs in desktopMain via an injected suspend (ImageBitmap, DeviceRect) -> ByteArray? seam (skiko/ImageIO), mirroring the existing decodeFrame seam (FR-17, AC-18).",
+        "Render the send status sequence via a pure SendPhase -> List<StatusStep> projection consumed by the existing StatusLine component, and host the completion toast via StackedSnackbarHost (FR-18, AC-19).",
+        "Route the toast's 'Open session' action to copy a session identifier to the system clipboard at the RectifyWindow host layer, following CommandBlock's host-owns-clipboard precedent (FR-58).",
+        "On success: resume live mirroring and reset the staged-annotation counter to 0, reading stagedCount for the toast BEFORE the reset (FR-19, AC-21).",
+        "On failure: preserve the frozen frame and staged batch untouched, re-enable Resolve & Send for retry with the same batch, reusing F-3's MirrorDropBanner/Reconnect error surface rather than a parallel one (AC-20, AS-31, SC-25)."
+      ],
+      "out": [
+        "File-drop or webhook fallback transport — MCP (stdio, per Q3 recommendation) is the sole transport in v1, per PRD.",
+        "Full production-grade / spec-compliant MCP server hardening: multi-client support, auth/pairing handshake, tool discovery/listing beyond the single retrieval tool, reconnection of the MCP transport itself. Survey Q1's recommended option explicitly defers this to a follow-up once AC-18/AC-81 are proven end to end.",
+        "Any work belonging to F-8 (verify-and-rediff-loop) or F-9 (history-batch-tracking).",
+        "iOS hierarchy dump / iOS payload send — inherits F-5/F-6's Android-only boundary (AS-19, AS-23, AS-29).",
+        "Replacing or upgrading Claude Code's own MCP client config mechanism — this spec only ships the server side the user's existing Claude Code MCP config would point at (tracked as an openQuestion, not blocking)."
+      ]
+    },
+    "constraints": [
+      {
+        "type": "tech",
+        "text": "Android, iOS, and Desktop-JVM only (platform-coverage.md) — there is no macOS/Linux native target; the MCP server and the handoff file-slot implementation are Desktop-JVM-hosted only, same as :desktop-application's existing scope."
+      },
+      {
+        "type": "tech",
+        "text": "gradle/libs.versions.toml has ktor-client-* declared but unused anywhere, and no ktor-server-* or MCP/JSON-RPC SDK entry exists at all. The stdio transport and hand-rolled JSON-RPC layer need no new dependency beyond the already-cataloged kotlinx-serialization."
+      },
+      {
+        "type": "tech",
+        "text": ":data-handoff-api must go through build-logic/convention's existing library plugin per CLAUDE.md. :mcp-application is the one exception: no convention plugin models a plain-JVM module (all four model KotlinMultiplatformExtension), so it needs its own small bespoke build.gradle.kts — an explicit, documented extension of the precedent :desktop-application already set, not a new category of exception."
+      },
+      {
+        "type": "tech",
+        "text": "package-layout.md and explicitApi(): :data-handoff-api's envelope/handoff interface types are public API (source/); the atomic-write/slot-path plumbing is internal (core/)."
+      },
+      {
+        "type": "tech",
+        "text": "testing.md: commonTest names must avoid commas and colons; desktopTest is the verification runner; no Compose UI-test harness exists, so AC-19's animated ordering is provable only via the pure sendSteps projection plus a @Preview pair."
+      },
+      {
+        "type": "tech",
+        "text": "Koin DI: new desktop-only sources bind via internal expect fun Module.provideAnnotationHandoff() with per-platform actuals (Android/iOS Unsupported* that throw), verbatim copying data-device-impl's provideDeviceSources() shape so every target keeps linking."
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "AS-28",
+        "text": "F-6's PAYLOAD_FORMAT_VERSION = 1 is today an internal const declared in core/payload and 'rendered nowhere' (per F-6's own plan: 'nothing writes frame.png / hierarchy.xml yet') — it is NOT currently serialized into any transmitted bytes, because nothing is transmitted yet. F-7 is the spec that reads this const and embeds it into the actual envelope for AC-32. Verified by reading F-6's plan.data.json directly; not a product question."
+      },
+      {
+        "id": "AS-29",
+        "text": "The hierarchy-dump phase (FR-18's 'Dumping hierarchy' step) stays Android-only, matching measure-mode's AS-19 and payload-preview's AS-23 precedent — both already-shipped specs drew this exact line and F-7 sends whatever F-6 already assembled (empty/absent hierarchy field when HierarchyStatus is Absent/Unavailable, unconditionally for iOS)."
+      },
+      {
+        "id": "AS-30",
+        "text": "Send runs asynchronously, not blocking the UI: FR-18's four-step animated status sequence and AC-20's 'disabled while in flight, re-enables after toast or failure' only make sense if the UI keeps rendering and reacting to status updates while the send is in progress."
+      },
+      {
+        "id": "AS-31",
+        "text": "On a failed send, staged annotations and the frozen frame are NOT cleared — following F-3's shipped Reconnect precedent (FR-33/FR-35: involuntary disconnect preserves frame+annotations, a distinct code path from the user-initiated Resume Live clear-and-return). 'Resolve & Send' simply re-enables (AC-20) so the user can retry the same batch; only explicit Clear or Resume Live discards staged annotations."
+      },
+      {
+        "id": "AS-32",
+        "text": "The MCP server this spec builds is a bounded stub sufficient to prove AC-18/AC-81 (a working stdio JSON-RPC process exposing one retrieval tool, returning the last-sent envelope) — not a fully spec-compliant, multi-session-capable MCP implementation. Hardening is explicit future work, not silently assumed-away scope."
+      }
+    ],
+    "dependencies": [
+      {
+        "on": "payload-preview (F-6, merged)",
+        "note": "Supplies the assembled bundle (frame screenshot, crops, hierarchy XML, generated prompt) and the internal PAYLOAD_FORMAT_VERSION=1 const that F-7 serializes into the transmitted envelope (AS-28)."
+      },
+      {
+        "on": "error-handling-and-recovery (F-3, merged)",
+        "note": "Its Reconnect/stream-drop precedent (FR-33/FR-35: preserve frame+annotations on involuntary failure, distinct from user-initiated clear) is the basis for AS-31's send-failure recovery behavior, and MirrorDropBanner/Reconnect is the error surface a failed send plugs into."
+      },
+      {
+        "on": "measure-mode (F-5, merged) / payload-preview (F-6, merged)",
+        "note": "Both establish the Android-only hierarchy-dump boundary (AS-19, AS-23) that F-7 inherits unchanged (AS-29)."
+      },
+      {
+        "on": "Claude Code's own MCP client configuration",
+        "note": "Out of this repo's control: the user must point their Claude Code MCP config at whatever this spec's stdio server process is (exact discovery/config mechanism is an openQuestion, not blocking plan.py)."
+      },
+      {
+        "on": "HierarchySnapshotMapper raw-dump retention (this spec, Stage 2 implementation step)",
+        "note": "HierarchySnapshotMapper currently discards the raw uiautomator XML text it already holds (stdout.dump). FR-17/AC-18's 'hierarchy XML dump' blocks on adding HierarchySnapshotModel.rawDump and populating it — settled by decision 7, not yet implemented."
+      },
+      {
+        "on": "Frozen frame raw PNG bytes retention (this spec, Stage 2 implementation step)",
+        "note": "MirrorViewModel decodes MirrorFrame.bytes into an ImageBitmap and discards the original bytes today. FR-17/AC-18's frame.png blocks on retaining them via a new frozenFrameBytes StateFlow rather than re-encoding a decoded bitmap — part of the chosen architecture, not yet implemented."
+      }
+    ],
+    "chosenApproach": "Nine decisions are settled by prior human gates and recorded here as closed, not reopened: (1) F-7 ships the payload-publication seam plus a bounded in-repo stdio MCP server stub sufficient to prove AC-18/AC-81, deferring full protocol hardening (multi-client, auth, discovery) to a follow-up — there is no pre-existing 'rectify' MCP server anywhere in this codebase, contrary to FR-17's literal PRD wording. (2) The retrieval tool is named get_latest_annotation verbatim. (3) Transport is stdio subprocess — Claude Code spawns the server via its MCP config over stdin/stdout; no socket is ever opened. (4) The toast's 'Open session' action copies the session identifier to the system clipboard via Compose's existing clipboard API (executed at the RectifyWindow host layer per CommandBlock's deprecated-ClipboardManager precedent). (5) The cross-process handoff is a single-slot atomic file drop at ~/.rectify/handoff/latest.json (temp-write + ATOMIC_MOVE), re-read by the server on every tool call. (6) The MCP server's main() lives in a new plain-JVM module :mcp-application, depending on :data-handoff-api only. (7) The raw uiautomator dump is threaded through via a new HierarchySnapshotModel.rawDump: String = \"\" field populated by HierarchySnapshotMapper, which already holds the text. (8) get_latest_annotation returns metadata + prompt + hierarchy inline, with images by reference — a change later is an AC-32 version bump. (9) Per-annotation crop PNGs are encoded in desktopMain via an injected suspend (ImageBitmap, DeviceRect) -> ByteArray? seam (skiko/ImageIO), mirroring the existing decodeFrame parameter, with no new dependency.",
+    "rationale": "Decision 1 is forced by evidence: a repo-wide grep of every *.kt/*.kts/*.swift/*.toml file found zero MCP/JSON-RPC code, and the version catalog has no ktor-server-* or MCP SDK entry at all, so FR-17's 'existing' server is factually false against this codebase and treating it as a build-from-scratch bounded stub is the only reading that does not either invent an unverifiable external contract or silently exceed the 'fast' effort tier. Decisions 2-4 follow PRD wording and precedent directly (literal FR-17 tool name; stdio because it needs zero new dependencies and makes NFR-4's no-network-egress literally true rather than argued; clipboard copy because nothing in this codebase can focus an external window or knows a Claude Code session URL scheme). Decision 5 (the file-slot handoff) is the single most likely item in this document to be challenged in review: the PRD says 'no file fallback transport,' and this reading treats that prohibition as governing the agent-facing contract only — the agent always calls an MCP tool and is never pointed at a folder, and the slot path never leaves the two Rectify processes. This interpretation is recorded here and flagged again in openRisks as a reviewer-challenge item, not asserted as settled fact. Decision 6 extends :desktop-application's already-documented deviation (no convention plugin models a plain-JVM module) by one, rather than inventing a new category of exception; the cost is an explicit constraint (bespoke Gradle for :mcp-application) rather than a hidden one. Decision 7 was chosen over re-serializing XML from parsed nodes because parseUiAutomatorDump keeps only the attributes the measuring code needs — a re-synthesized document labeled hierarchy.xml would not be what the device actually emitted. Decision 9 was settled by the orchestrator rather than by a user survey answer, on the grounds that the alternative (shipping bare rectangles and letting the agent crop) would reinterpret AC-18 and FR-17, both of which name 'per-annotation crops' literally as a deliverable, not a derivable-by-the-agent nicety.",
+    "architectureOverview": "Three seams carry the whole feature, two of them pure wiring onto existing shipped pieces and one genuinely new piece of cross-process infrastructure. (1) Publication seam — the crux: Claude Code spawns the MCP server as its own OS process while Rectify is a separately launched process, so an in-memory Kotlin interface cannot bridge them. A single-slot atomic file drop at ~/.rectify/handoff/latest.json (written as latest.json.tmp then Files.move(ATOMIC_MOVE, REPLACE_EXISTING)) makes AC-81's idempotent 'latest' a property of storage rather than code, and makes the payload retrievable whether or not Rectify is running at tool-call time. (2) The envelope — new module :data-handoff-api (library convention plugin, kotlinx-serialization only): source/envelope/AnnotationEnvelope.kt is @Serializable with version: Int as the first field, constructed from F-6's PAYLOAD_FORMAT_VERSION (which stays internal to presentation-feature-mirror/core/payload and is passed in by the only code that can see it — nothing moves or gets re-exported). source/handoff/AnnotationHandoff (publish) / AnnotationHandoffReader (read) are plain commonMain interfaces with a desktopMain FileSlotAnnotationHandoff implementation bound via internal expect fun Module.provideAnnotationHandoff(), copying data-device-impl's provideDeviceSources()/Unsupported* shape verbatim so Android/iOS still link. (3) The server process — new module :mcp-application (kotlin(\"jvm\") + application, depending on :data-handoff-api only, no Compose/Koin/Skiko): a readLine() loop over System.in dispatching hand-rolled JSON-RPC (initialize, tools/list, tools/call -> get_latest_annotation) over kotlinx.serialization, writing protocol frames to System.out exclusively and all diagnostics to System.err. installDist yields the stable launcher path a user's .mcp.json command entry names. On the UI side, no new design-system component is needed: RectifyWindow.kt:304 already composes the stubbed AppButton(text = \"Resolve & Send\", onClick = {}, shortcut = \"⌘↵\", enabled = false) and the CounterBadge/Clear slots are already live; StatusLine's own @Preview already renders both AC-19 status variants (Streaming›Frozen›Dumping hierarchy›Sent with trailing=\"live\", and the Stream dropped failure variant with trailing=\"failed\") verbatim, so F-7 writes only a pure SendPhase -> List<StatusStep> projection; StackedSnackbarHost hosts the completion toast; MirrorContract already has ResumeLive, Reconnect, ClearStaged, EditPrompt intents and MirrorUiState.canResumeLive/stagedCount to extend rather than redesign; and F-3's MirrorErrorCard/MirrorDropBanner/Reconnect is the existing error surface a failed send plugs into rather than duplicating. Two retained-but-not-yet-wired data points feed EnvelopeAssembly: the frozen frame's original MirrorFrame.bytes (new frozenFrameBytes StateFlow, avoiding a decode/re-encode round trip) and HierarchySnapshotModel.rawDump (new defaulted field, populated by the mapper that already holds stdout.dump).",
+    "techStack": [
+      {
+        "area": "Envelope serialization",
+        "choice": "kotlinx-serialization JSON, @Serializable data class with version: Int as the first field",
+        "reason": "Already cataloged and in use; no new dependency (NFR-15). The explicit version field is AC-32 and NFR-12 in one line."
+      },
+      {
+        "area": "MCP transport",
+        "choice": "stdio subprocess, line-delimited JSON-RPC over System.in/System.out",
+        "reason": "Settled in clarify Q3. No socket is ever opened, so NFR-4 is literally true rather than argued."
+      },
+      {
+        "area": "JSON-RPC layer",
+        "choice": "Hand-rolled over kotlinx-serialization (~3 methods), no SDK",
+        "reason": "No MCP SDK or JSON-RPC library exists in libs.versions.toml; the remaining surface after serialization is initialize/tools-list/tools-call plus readLine()/println framing — adding a dependency to avoid ~120 lines is the bigger decision."
+      },
+      {
+        "area": "Cross-process handoff",
+        "choice": "Single-slot JSON file under ~/.rectify/handoff/, written with Files.move(ATOMIC_MOVE, REPLACE_EXISTING)",
+        "reason": "java.nio.file only; atomic rename removes the need for a lock; a re-read is AC-81's idempotency for free."
+      },
+      {
+        "area": "Frame PNG",
+        "choice": "Reuse the original MirrorFrame.bytes captured by adb screencap -p",
+        "reason": "Already PNG-encoded upstream; retaining it avoids a decode/re-encode round trip entirely."
+      },
+      {
+        "area": "Crop PNGs",
+        "choice": "skiko Image.makeFromBitmap(...).encodeToData() (or toAwtImage()+ImageIO), desktopMain only, injected as a seam",
+        "reason": "Both already on the desktop classpath via Compose Desktop — no new dependency. Injected so commonTest needs no real image, matching decodeFrame."
+      },
+      {
+        "area": "Elapsed-time measurement",
+        "choice": "kotlin.time.TimeSource.Monotonic, injected",
+        "reason": "Wall clock can step backwards (NTP, sleep) and would print a nonsense <time>s. Monotonic cannot; injection makes it testable."
+      },
+      {
+        "area": "Server module build",
+        "choice": "kotlin(\"jvm\") + application plugin, bespoke build.gradle.kts",
+        "reason": "No convention plugin models a plain-JVM module. :desktop-application already set and documented this precedent; installDist gives the .mcp.json a stable command path."
+      },
+      {
+        "area": "DI",
+        "choice": "Koin, internal expect fun Module.provideAnnotationHandoff() with per-platform actuals",
+        "reason": "Verbatim reuse of data-device-impl's provideDeviceSources() shape, including the Android/iOS Unsupported* actual that keeps every target linking."
+      },
+      {
+        "area": "Status / toast UI",
+        "choice": "Existing StatusLine, CounterBadge, AppButton, StackedSnackbarHost",
+        "reason": "Every piece the design calls for is already in the kit and in the registry. F-7 adds pure projections, not components."
+      }
+    ],
+    "openRisks": [
+      {
+        "text": "The file-slot handoff (decision 5) is judged to violate the PRD's 'no file fallback transport' in review, forcing a late rewrite to a socket.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Stated explicitly in rationale: the prohibition is read as governing the agent-facing transport (the agent only ever calls an MCP tool, never learns the path). AnnotationHandoff is an interface precisely so the implementation can become AF_UNIX later without touching the ViewModel, the envelope, or the server's tool surface."
+      },
+      {
+        "text": "A multi-megabyte base64 payload on one JSON-RPC stdout line exceeds what the agent's stdio reader handles, failing the tool call for exactly the large payloads users care most about.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Decision 8 defaults the tool result to metadata + prompt + hierarchy with image bytes by reference; measure a real 1080x2400 three-annotation send during implementation to confirm the inline portion stays small."
+      },
+      {
+        "text": "The second process entry point (:mcp-application) drifts out of sync with the envelope format — a stale installDist launcher runs against a newly published slot.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "This is what AC-32 is for: the server reads version first and refuses a version it does not know with a message naming both numbers, rather than mis-parsing into a plausible-looking wrong answer."
+      },
+      {
+        "text": "AC-18 and AC-81 are not provable end-to-end in CI: the only test target is desktop and the agent side is an external process neither Rectify nor its test suite controls.",
+        "likelihood": "high",
+        "impact": "high",
+        "mitigation": "What IS automatable: the file-slot publisher/reader round trip (publish, read, read again returns identical envelope, replaced slot returns the new one, absent slot returns null, version survives), and the JSON-RPC dispatcher as a pure String->String function with no spawned process. What is NOT automatable and is left to manual demo: an actual Claude Code session spawning the server and calling get_latest_annotation end to end — required as an exit criterion, not optional."
+      },
+      {
+        "text": "Retaining raw frame bytes plus per-annotation crop bitmaps grows the GUI process's heap during long sessions.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "Exactly one frozen frame's bytes are retained at a time, cleared with the frame; crops are produced during the send and released after publish. Matches the existing single-frozenFrame retention pattern."
+      },
+      {
+        "text": "Adding rawDump to HierarchySnapshotModel makes the model carry tens of kilobytes of text that could end up compared by value in a hot path.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "The snapshot already lives outside the reduced state on MirrorViewModel.frozenHierarchy for exactly this reason, reduced to a four-state HierarchyStatus verdict for MirrorUiState. Keep rawDump out of MirrorUiState."
+      },
+      {
+        "text": "Clipboard write for 'Open session' needs a Compose ClipboardManager API documented as deprecated in this version.",
+        "likelihood": "low",
+        "impact": "low",
+        "mitigation": "Do it at the RectifyWindow host layer via AWT's Toolkit.getDefaultToolkit().systemClipboard, the same reasoning CommandBlock's KDoc already documents for pushing copy operations to the host."
+      },
+      {
+        "text": "Gap-resolution note (not open): decision 9's injected encoder seam covers ONLY per-annotation crop PNG encoding. The separate gap of the frozen frame's raw PNG bytes being discarded today is already covered by the chosen architecture's own retention step (a new MirrorViewModel.frozenFrameBytes StateFlow holding the original adb-captured bytes) rather than by any encoder — this is settled architecture pending Stage 2 implementation, not an open decision.",
+        "likelihood": "n/a",
+        "impact": "n/a",
+        "mitigation": "No further decision needed; implement frozenFrameBytes retention alongside the crop-encoder seam."
+      },
+      {
+        "text": "No convention plugin in build-logic/convention models a plain-JVM module, so :mcp-application needs bespoke Gradle — a reviewer should see this declared, not discover it.",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "Extends :desktop-application's already-documented deviation by one rather than inventing a new category; flagged explicitly in constraints and techStack."
+      },
+      {
+        "text": "No .mcp.json exists in this repo and nothing generates one; the user must hand-wire the server into their Claude Code MCP config, which means AC-18's end-to-end proof requires a manual setup step no automated test can perform.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "Carried as an openQuestion for Stage 2 engineering decision (generated config file vs documented manual step); document the installDist launcher path regardless."
+      }
+    ],
+    "openQuestions": [
+      "Exact mechanism by which a user's Claude Code MCP config discovers/launches this repo's stdio server process (a generated .mcp.json entry? a fixed script path Rectify writes on first run?) is undefined — needs an engineering decision in the plan stage, not blocking preparation.",
+      "Long-term hardening path for the MCP server (multi-client, auth/pairing, full protocol compliance) is explicitly out of v1 scope but should be tracked as a follow-up feature once F-7 ships.",
+      "What composes the session identifier FR-58 copies, since nothing in the codebase has one today? Recommendation (from brainstorm.openDecisions): deviceId + frameId + sentAtMs — derived from data that already exists, human-readable when pasted, and the natural primary key for F-9's history. Stage 2 must commit to this or an alternative.",
+      "Is a stale published slot (hours or days old) still a valid get_latest_annotation answer? Recommendation (from brainstorm.openDecisions): report sentAtMs in the result and let the agent judge; an expiry is a policy nobody asked for and AC-81's wording is unconditional. Stage 2 must commit to this or an alternative."
+    ],
+    "readyForPlan": true,
+    "proposedSurvey": [
+      {
+        "question": "Sign-off — Does this Preparation deliverable for resolve-and-send-mcp (F-7) correctly consolidate the approved input/clarify/brainstorm artifacts (9 settled decisions carried as closed, 3 PRD-invisible gaps carried into dependencies/openRisks, 2 genuinely open decisions carried into openQuestions with their recommendations) and unlock Stage 2 (Plan)?",
+        "options": [
+          "Approve — consolidation is accurate and complete, proceed to Plan (Recommended)",
+          "Comment / revise — something in the consolidated summary, scope, or carried-forward risks/questions needs correction before Plan starts"
+        ],
+        "recommended": "Approve — consolidation is accurate and complete, proceed to Plan (Recommended)",
+        "rationale": "All nine architecture/naming/transport decisions were already settled at prior human gates in clarify.json and brainstorm.json surveys and are reproduced here verbatim rather than reopened; all trace ids (FR-16..19, FR-56/57/58, NFR-3/4/12/15, AC-17..21/32/81, AS-28..32, SC-25) are reused unchanged from clarify.json; the three PRD-invisible gaps (discarded raw hierarchy dump, discarded frame PNG bytes, no session identifier) are each stated plainly as either covered-by-chosen-architecture or carried forward as an explicit open question with its brainstorm recommendation intact, per this task's explicit instructions."
+      }
+    ],
+    "artifacts": {
+      "input": ".pipeline/sdd/docs/resolve-and-send-mcp/preparation/input.json",
+      "clarify": ".pipeline/sdd/docs/resolve-and-send-mcp/preparation/clarify.json",
+      "brainstorm": ".pipeline/sdd/docs/resolve-and-send-mcp/preparation/brainstorm.json"
+    }
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "human",
+    "approved": true,
+    "at": "2026-10-18T11:03:59Z"
+  },
+  "survey": [
+    {
+      "question": "Sign-off — Does this Preparation deliverable for resolve-and-send-mcp (F-7) correctly consolidate the approved input/clarify/brainstorm artifacts and unlock Stage 2 (Plan)?",
+      "options": [
+        "Approve — consolidation is accurate and complete, proceed to Plan (Recommended)",
+        "Comment / revise — something needs correction before Plan starts"
+      ],
+      "answer": "Approve — consolidation is accurate and complete, proceed to Plan (Recommended)",
+      "source": "user-edited"
+    }
+  ]
+}

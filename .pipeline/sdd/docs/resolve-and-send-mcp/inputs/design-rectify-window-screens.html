@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0} a{color:inherit;text-decoration:none} a:hover{text-decoration:underline}</style>
+</helmet>
+<div style="{{ rootStyle }}" onMouseEnter="{{ enter }}" onMouseLeave="{{ leave }}">
+
+  <div style="height:52px; flex:none; display:flex; align-items:center; gap:10px; padding:0 14px 0 18px; background:var(--chrome); border-bottom:1px solid var(--line)">
+    <div style="display:flex; gap:8px; margin-right:18px">
+      <div style="width:12px; height:12px; border-radius:50%; background:#ff5f57"></div>
+      <div style="width:12px; height:12px; border-radius:50%; background:#febc2e"></div>
+      <div style="width:12px; height:12px; border-radius:50%; background:#28c840"></div>
+    </div>
+    <div style="display:flex; padding:2px; gap:2px; background:var(--seg); border-radius:7px">
+      <sc-if value="{{ isAndroid }}" hint-placeholder-val="{{ true }}">
+        <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; background:var(--segOn); box-shadow:0 1px 2px rgba(0,0,0,.12); font-weight:500">Android</div>
+        <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; color:var(--ink2)">iOS</div>
+      </sc-if>
+      <sc-if value="{{ isIOS }}" hint-placeholder-val="{{ false }}">
+        <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; color:var(--ink2)">Android</div>
+        <div style="height:24px; padding:0 12px; display:flex; align-items:center; border-radius:5px; background:var(--segOn); box-shadow:0 1px 2px rgba(0,0,0,.12); font-weight:500">iOS</div>
+      </sc-if>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; height:28px; padding:0 10px; border-radius:7px; border:1px solid var(--line2); background:var(--surface)">
+      <div style="width:7px; height:7px; border-radius:50%; background:{{ dev.dot }}"></div>
+      <span style="font-weight:500">{{ dev.name }}</span>
+      <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">{{ dev.meta }}</span>
+      <span style="color:var(--ink3); font-size:9px; margin-left:2px">▼</span>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink2); margin-right:4px">
+      <div style="min-width:20px; height:20px; padding:0 6px; box-sizing:border-box; border-radius:10px; background:{{ countBg }}; color:{{ countFg }}; display:flex; align-items:center; justify-content:center; font-weight:500">{{ count }}</div>
+      <span>staged</span>
+    </div>
+    <div onClick="{{ clear }}" style="height:28px; padding:0 12px; display:flex; align-items:center; border-radius:7px; color:var(--ink2); cursor:default" style-hover="background:var(--hover)">Clear</div>
+    <sc-if value="{{ canSend }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ send }}" style="height:28px; padding:0 8px 0 12px; display:flex; align-items:center; gap:8px; border-radius:7px; background:var(--primary); color:var(--onPrimary); font-weight:500; cursor:default">
+        <span>Resolve &amp; Send</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ cannotSend }}" hint-placeholder-val="{{ true }}">
+      <div style="height:28px; padding:0 8px 0 12px; display:flex; align-items:center; gap:8px; border-radius:7px; background:var(--seg); color:var(--ink3); font-weight:500; cursor:default">
+        <span>{{ sendLabel }}</span>
+        <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="flex:1; min-height:0; display:flex">
+
+    <sc-if value="{{ showPicker }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1; display:flex; justify-content:center; background:var(--bg)">
+        <div style="width:560px; padding-top:64px; display:flex; flex-direction:column; gap:28px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="font-size:20px; font-weight:600; letter-spacing:-0.01em">Choose what to mirror</div>
+            <div style="color:var(--ink2)">Switch platform or device any time from the toolbar.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Platform</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+              <div style="padding:14px 16px; border-radius:10px; background:var(--surface); border:1.5px solid var(--ink); display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                  <span style="font-size:15px; font-weight:600">Android</span>
+                  <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:5px solid var(--ink); background:var(--surface)"></div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink2)">
+                  <div style="width:6px; height:6px; border-radius:50%; background:var(--ok)"></div>adb 35.0.1 · /opt/homebrew/bin
+                </div>
+              </div>
+              <div style="padding:14px 16px; border-radius:10px; background:var(--surface); border:1.5px solid var(--line2); display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                  <span style="font-size:15px; font-weight:600">iOS</span>
+                  <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--line2)"></div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink2)">
+                  <div style="width:6px; height:6px; border-radius:50%; background:var(--ok)"></div>idb 1.1.8 · Xcode 16.0
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="display:flex; justify-content:space-between; align-items:baseline">
+              <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Source</div>
+              <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">3 found · adb devices -l</div>
+            </div>
+            <div style="border-radius:10px; background:var(--surface); border:1px solid var(--line2); overflow:hidden">
+              <div style="padding:7px 14px; font-size:11px; font-weight:500; color:var(--ink3); border-bottom:1px solid var(--line)">Physical device</div>
+              <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--hover); border-bottom:1px solid var(--line)">
+                <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:5px solid var(--ink); background:var(--surface)"></div>
+                <span style="font-weight:500">Pixel 8 Pro</span>
+                <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">37281FDH2000AB</span>
+                <div style="flex:1"></div>
+                <span style="font-size:12px; color:var(--ink2)">Android 15 · USB</span>
+              </div>
+              <div style="padding:7px 14px; font-size:11px; font-weight:500; color:var(--ink3); border-bottom:1px solid var(--line)">Emulator</div>
+              <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; border-bottom:1px solid var(--line)">
+                <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--line2)"></div>
+                <span style="font-weight:500">Pixel_7_API_34</span>
+                <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">emulator-5554</span>
+                <div style="flex:1"></div>
+                <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink2)"><div style="width:6px; height:6px; border-radius:50%; background:var(--ok)"></div>Running</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:9px 14px">
+                <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--line2)"></div>
+                <span style="font-weight:500; color:var(--ink2)">Pixel_Fold_API_35</span>
+                <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">shut down</span>
+                <div style="flex:1"></div>
+                <div style="height:24px; padding:0 10px; display:flex; align-items:center; border-radius:6px; border:1px solid var(--line2); font-size:12px; font-weight:500">Boot</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">↑↓ select · ↩ start</span>
+            <div style="height:32px; padding:0 16px; display:flex; align-items:center; border-radius:8px; background:var(--primary); color:var(--onPrimary); font-weight:500">Start mirroring</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; gap:64px; background-color:var(--stage); background-image:radial-gradient(var(--stageDot) 1px, transparent 1px); background-size:16px 16px">
+        <div style="width:236px; height:500px; box-sizing:border-box; border-radius:38px; border:1.5px dashed var(--line2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3); letter-spacing:0.08em">NO SIGNAL</div>
+        <div style="width:360px; display:flex; flex-direction:column; gap:22px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="font-size:18px; font-weight:600; letter-spacing:-0.01em">Waiting for an Android device</div>
+            <div style="color:var(--ink2); line-height:19px; text-wrap:pretty">Mirroring starts on its own as soon as adb sees one.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; gap:12px">
+              <div style="width:20px; height:20px; flex:none; border-radius:50%; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink2)">1</div>
+              <div style="line-height:19px; text-wrap:pretty">Plug in a phone with <span style="font-weight:500">USB debugging</span> on and accept the prompt.</div>
+            </div>
+            <div style="display:flex; gap:12px">
+              <div style="width:20px; height:20px; flex:none; border-radius:50%; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink2)">2</div>
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <div style="line-height:19px">Or boot an emulator</div>
+                <div style="display:flex; gap:8px">
+                  <div style="height:28px; padding:0 10px; display:flex; align-items:center; gap:10px; border-radius:7px; border:1px solid var(--line2); background:var(--surface); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px">Pixel_7_API_34<span style="font-size:9px; color:var(--ink3)">▼</span></div>
+                  <div style="height:28px; padding:0 14px; display:flex; align-items:center; border-radius:7px; background:var(--primary); color:var(--onPrimary); font-weight:500">Boot</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">
+            <div style="width:6px; height:6px; border-radius:50%; background:var(--ink3)"></div>adb devices · polling every 2 s
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showError }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; background-color:var(--stage); background-image:radial-gradient(var(--stageDot) 1px, transparent 1px); background-size:16px 16px">
+        <div style="width:460px; box-sizing:border-box; padding:24px; border-radius:14px; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; gap:14px; align-items:flex-start">
+            <div style="width:28px; height:28px; flex:none; border-radius:50%; background:{{ err.toneBg }}; color:{{ err.tone }}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px">{{ err.glyph }}</div>
+            <div style="display:flex; flex-direction:column; gap:5px; padding-top:3px">
+              <div style="font-size:15px; font-weight:600; letter-spacing:-0.01em">{{ err.title }}</div>
+              <div style="color:var(--ink2); line-height:19px; text-wrap:pretty">{{ err.body }}</div>
+            </div>
+          </div>
+          <sc-if value="{{ err.cmd }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:10px; padding:9px 10px 9px 12px; border-radius:8px; background:var(--codeBg); border:1px solid var(--line)">
+              <span style="color:var(--ink3); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px">$</span>
+              <span style="flex:1; min-width:0; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px">{{ err.cmd }}</span>
+              <div style="height:22px; padding:0 8px; display:flex; align-items:center; border-radius:5px; border:1px solid var(--line2); font-size:11px; color:var(--ink2)">Copy</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ err.list }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:9px; border:1px solid var(--line2); overflow:hidden">
+              <sc-for list="{{ err.list }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex; align-items:center; gap:12px; padding:10px 12px; background:{{ d.bg }}; border-top:{{ d.border }}">
+                  <div style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:{{ d.radio }}; background:var(--surface)"></div>
+                  <span style="font-weight:500">{{ d.name }}</span>
+                  <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--ink3)">{{ d.id }}</span>
+                  <div style="flex:1"></div>
+                  <span style="font-size:12px; color:var(--ink2)">{{ d.kind }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex; align-items:center; gap:8px; padding-left:42px">
+            <div style="height:30px; padding:0 14px; display:flex; align-items:center; border-radius:7px; background:var(--primary); color:var(--onPrimary); font-weight:500">{{ err.primary }}</div>
+            <sc-if value="{{ err.secondary }}" hint-placeholder-val="{{ false }}">
+              <div style="height:30px; padding:0 12px; display:flex; align-items:center; border-radius:7px; color:var(--ink2)">{{ err.secondary }}</div>
+            </sc-if>
+          </div>
+          <div style="padding:10px 0 0 42px; border-top:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ err.foot }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMirror }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1; min-width:0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; background-color:var(--stage); background-image:radial-gradient(var(--stageDot) 1px, transparent 1px); background-size:16px 16px">
+
+        <sc-if value="{{ m }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; left:16px; top:16px; z-index:20; width:228px; box-sizing:border-box; padding:12px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:10px">
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="min-width:18px; height:18px; box-sizing:border-box; padding:0 4px; border-radius:4px; border:1px solid var(--line2); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink2)">⌥</span>
+              <span style="font-weight:600">Measuring</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ m.n }}</span>
+            </div>
+            <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--measure)">{{ m.node }}</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <sc-for list="{{ m.rows }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--ink2)">{{ r.k }}</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px">{{ r.v }}</span></div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ m.finding }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:7px 8px; border-radius:6px; background:oklch(0.63 0.22 27 / 0.1); color:var(--red); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:15px">{{ m.finding }}</div>
+            </sc-if>
+            <div style="font-size:11px; line-height:15px; color:var(--ink3)">Numbers attach to the annotation and go into the prompt.</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isFailed }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:12px; padding:8px 8px 8px 14px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); white-space:nowrap">
+            <div style="width:7px; height:7px; border-radius:50%; background:var(--red)"></div>
+            <span style="font-weight:500">Stream dropped</span>
+            <span style="color:var(--ink2)">Your {{ count }} annotations are kept on the frozen frame.</span>
+            <div style="height:26px; padding:0 12px; display:flex; align-items:center; border-radius:6px; background:var(--primary); color:var(--onPrimary); font-weight:500; font-size:12px">Reconnect</div>
+          </div>
+        </sc-if>
+
+        <div style="position:relative; width:296px; height:640px; margin-top:44px; margin-left:22px; flex:none">
+          <div style="position:absolute; left:0; top:-22px; width:296px; height:18px; box-sizing:border-box; border-bottom:1px solid var(--line2); pointer-events:none">
+            <sc-for list="{{ rx }}" as="k" hint-placeholder-count="0">
+              <div style="position:absolute; left:{{ k.p }}; bottom:0; width:1px; height:{{ k.len }}; background:var(--ink3); opacity:.7"></div>
+              <sc-if value="{{ k.lab }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; left:{{ k.lp }}; top:1px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; color:var(--ink3)">{{ k.lab }}</span></sc-if>
+            </sc-for>
+            <sc-if value="{{ ext }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; left:{{ ext.x }}; width:{{ ext.w }}; bottom:-1px; height:3px; background:var(--red)"></div>
+              <span style="position:absolute; left:{{ ext.x }}; top:0; padding:0 3px; border-radius:3px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; line-height:12px">{{ ext.vx }}</span>
+            </sc-if>
+          </div>
+          <div style="position:absolute; left:-22px; top:0; width:18px; height:640px; box-sizing:border-box; border-right:1px solid var(--line2); pointer-events:none">
+            <sc-for list="{{ ry }}" as="k" hint-placeholder-count="0">
+              <div style="position:absolute; top:{{ k.p }}; right:0; height:1px; width:{{ k.len }}; background:var(--ink3); opacity:.7"></div>
+              <sc-if value="{{ k.lab }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; top:{{ k.lp }}; left:1px; writing-mode:vertical-rl; transform:rotate(180deg); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; color:var(--ink3)">{{ k.lab }}</span></sc-if>
+            </sc-for>
+            <sc-if value="{{ ext }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; top:{{ ext.y }}; height:{{ ext.h }}; right:-1px; width:3px; background:var(--red)"></div>
+              <span style="position:absolute; top:{{ ext.y }}; left:0; padding:3px 0; border-radius:3px; background:var(--red); color:#fff; writing-mode:vertical-rl; transform:rotate(180deg); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:8.5px; line-height:12px">{{ ext.vy }}</span>
+            </sc-if>
+          </div>
+          <div style="position:absolute; top:-48px; left:0; right:0; display:flex; justify-content:center">
+            <div style="display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; letter-spacing:0.06em; color:var(--ink2); white-space:nowrap">
+              <div style="width:6px; height:6px; border-radius:50%; background:{{ mode.dot }}"></div>{{ mode.label }}
+            </div>
+          </div>
+                    <div style="position:absolute; left:0; top:0; width:296px; height:640px; border-radius:4px; overflow:hidden; box-shadow:0 0 0 1px var(--line2), 0 20px 50px rgba(0,0,0,.16); background:#faf8f5; color:#1b1b1b; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, sans-serif">
+            <dc-import name="Mock Cart" hint-size="296px,640px"></dc-import>
+          </div>
+
+          {{ dimEl }}
+          <div onMouseDown="{{ onDown }}" style="position:absolute; left:0; top:0; width:296px; height:640px; cursor:crosshair">
+            <sc-for list="{{ anns }}" as="a" hint-placeholder-count="0">
+              <div style="position:absolute; left:{{ a.l }}; top:{{ a.t }}; width:{{ a.w }}; height:{{ a.h }}; box-sizing:border-box; border:1.5px solid {{ a.col }}; background:{{ a.fill }}; border-radius:3px; pointer-events:none">
+                <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:{{ a.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">{{ a.n }}</div>
+                <sc-if value="{{ a.sel }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute; left:-5px; top:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid {{ a.col }}"></div>
+                  <div style="position:absolute; right:-5px; top:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid {{ a.col }}"></div>
+                  <div style="position:absolute; left:-5px; bottom:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid {{ a.col }}"></div>
+                  <div style="position:absolute; right:-5px; bottom:-5px; width:8px; height:8px; border-radius:50%; background:#fff; border:1.5px solid {{ a.col }}"></div>
+                </sc-if>
+              </div>
+              <sc-for list="{{ a.lines }}" as="ln" hint-placeholder-count="0">
+                <div style="position:absolute; left:{{ ln.l }}; top:{{ ln.t }}; width:{{ ln.w }}; height:{{ ln.h }}; background:{{ a.col }}; pointer-events:none"></div>
+              </sc-for>
+              <sc-if value="{{ a.leader }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute; left:{{ a.dotL }}; top:{{ a.dotT }}; width:9px; height:9px; box-sizing:border-box; border-radius:50%; background:{{ a.col }}; border:1.5px solid #fff; pointer-events:none"></div>
+              </sc-if>
+            </sc-for>
+
+            <sc-if value="{{ showPops }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ anns }}" as="a" hint-placeholder-count="0">
+              <div onMouseDown="{{ stop }}" style="position:absolute; left:{{ a.pl }}; top:{{ a.pt }}; width:248px; z-index:{{ a.z }}; cursor:default">
+                <sc-if value="{{ a.below }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute; top:-4px; left:16px; width:10px; height:10px; background:var(--pop); transform:rotate(45deg); border-radius:2px; border-left:1px solid var(--popLine); border-top:1px solid var(--popLine)"></div>
+                </sc-if>
+                <div style="position:relative; display:flex; flex-direction:column; gap:5px; padding:6px; border-radius:10px; background:var(--pop); border:1px solid var(--popLine); box-shadow:0 10px 28px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.2)">
+                  <div style="display:flex; align-items:center; gap:6px">
+                    <div style="width:18px; height:18px; flex:none; border-radius:4px; background:{{ a.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">{{ a.n }}</div>
+                    <input value="{{ a.c }}" onChange="{{ a.onChange }}" autoFocus="{{ a.auto }}" placeholder="What's wrong here?" style="flex:1; min-width:0; height:26px; box-sizing:border-box; padding:0 8px; border-radius:6px; border:1px solid rgba(255,255,255,.1); background:var(--field); color:#f4f4f5; font-family:inherit; font-size:12.5px; outline:none" style-focus="border-color:oklch(0.63 0.22 27); box-shadow:0 0 0 2px oklch(0.63 0.22 27 / 0.3)">
+                    <div onClick="{{ a.onDelete }}" title="Delete annotation" style="width:22px; height:22px; flex:none; border-radius:5px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.55); font-size:11px; cursor:default" style-hover="background:rgba(255,255,255,.1); color:#ffffff">✕</div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:0 2px 0 26px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:rgba(255,255,255,.42)"><span>{{ a.meta }}</span><span>{{ a.hint }}</span></div>
+                  <sc-if value="{{ a.mNote }}" hint-placeholder-val="{{ false }}"><div style="padding:0 2px 1px 26px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:oklch(0.74 0.13 255)">⌥ {{ a.mNote }}</div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+            </sc-if>
+
+            <sc-if value="{{ m }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ m.nb }}" as="b" hint-placeholder-count="0">
+                <div style="position:absolute; left:{{ b.l }}; top:{{ b.t }}; width:{{ b.w }}; height:{{ b.h }}; box-sizing:border-box; outline:1px dashed var(--measure); opacity:.7; pointer-events:none"></div>
+              </sc-for>
+              <div style="position:absolute; left:{{ m.tl }}; top:{{ m.tt }}; width:{{ m.tw }}; height:{{ m.th }}; outline:1px solid var(--measure); pointer-events:none"></div>
+              <sc-for list="{{ m.lines }}" as="ln" hint-placeholder-count="0">
+                <div style="position:absolute; left:{{ ln.l }}; top:{{ ln.t }}; width:{{ ln.w }}; height:{{ ln.h }}; background:var(--measure); pointer-events:none"></div>
+              </sc-for>
+              <sc-if value="{{ m.al }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute; left:{{ m.al.l }}; top:{{ m.al.t }}; width:{{ m.al.w }}; height:0; border-top:1px dashed var(--red); pointer-events:none"></div>
+                <div style="position:absolute; left:{{ m.al.lx }}; top:{{ m.al.ly }}; padding:0 4px; border-radius:3px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px; white-space:nowrap; pointer-events:none">{{ m.al.text }}</div>
+              </sc-if>
+              <sc-for list="{{ m.labels }}" as="lb" hint-placeholder-count="0">
+                <div style="position:absolute; left:{{ lb.l }}; top:{{ lb.t }}; transform:translate(-50%, -50%); padding:0 4px; border-radius:3px; background:var(--measure); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; line-height:13px; white-space:nowrap; pointer-events:none">{{ lb.text }}</div>
+              </sc-for>
+            </sc-if>
+
+            <sc-if value="{{ drag }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; left:{{ drag.l }}; top:{{ drag.t }}; width:{{ drag.w }}; height:{{ drag.h }}; box-sizing:border-box; border:1.5px dashed var(--red); background:var(--redFill); pointer-events:none">
+                <div style="position:absolute; right:-1.5px; bottom:-22px; height:17px; padding:0 6px; border-radius:4px; background:var(--red); color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; display:flex; align-items:center; white-space:nowrap">{{ drag.label }}</div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:10px; padding:7px 8px 7px 10px; border-radius:10px; background:var(--surface); border:1px solid var(--line2); box-shadow:var(--shadow); white-space:nowrap">
+            <div style="width:18px; height:18px; border-radius:50%; background:var(--ok); color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center">✓</div>
+            <span style="font-weight:500">Sent {{ count }} annotations to Claude Code</span>
+            <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">frame + hierarchy · 1.4 s</span>
+            <div style="height:24px; padding:0 10px; display:flex; align-items:center; border-radius:6px; color:var(--ink2); font-size:12px" style-hover="background:var(--hover)">Open session</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="width:300px; flex:none; display:flex; flex-direction:column; background:var(--bg); border-left:1px solid var(--line)">
+        <div style="height:44px; flex:none; display:flex; align-items:center; gap:2px; padding:0 8px; border-bottom:1px solid var(--line)">
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
+            <div onClick="{{ tb.go }}" style="height:26px; padding:0 9px; display:flex; align-items:center; gap:6px; border-radius:6px; background:{{ tb.bg }}; color:{{ tb.fg }}; font-size:12px; font-weight:500; cursor:default">{{ tb.label }}<sc-if value="{{ tb.badge }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; font-weight:400; color:var(--ink3)">{{ tb.badge }}</span></sc-if></div>
+          </sc-for>
+          <div style="flex:1"></div>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3); padding-right:6px; white-space:nowrap; flex:none">{{ frameLabel }}</span>
+        </div>
+
+        <sc-if value="{{ tabNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1; min-height:0; overflow:auto; padding:6px; display:flex; flex-direction:column; gap:2px">
+            <sc-for list="{{ anns }}" as="a" hint-placeholder-count="0">
+              <div onClick="{{ a.onSelect }}" style="display:flex; gap:10px; padding:9px 8px; border-radius:7px; background:{{ a.rowBg }}; cursor:default">
+                <div style="width:18px; height:18px; flex:none; border-radius:4px; background:{{ a.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center">{{ a.n }}</div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                  <div style="font-size:12.5px; line-height:17px; color:{{ a.textCol }}; text-wrap:pretty">{{ a.textOr }}</div>
+                  <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ a.sub }}</div>
+                  <sc-if value="{{ a.mNote }}" hint-placeholder-val="{{ false }}"><div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:15px; color:var(--measure)">⌥ {{ a.mNote }}</div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noAnns }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:12px 10px; color:var(--ink3); font-size:12px; line-height:18px; text-wrap:pretty">Drag on the screen to mark a bug. The frame freezes when you let go.</div>
+            </sc-if>
+          </div>
+          <div style="flex:none; display:flex; flex-direction:column; gap:8px; padding:12px 14px 14px; border-top:1px solid var(--line)">
+            <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Payload</div>
+            <sc-for list="{{ payload }}" as="p" hint-placeholder-count="3">
+              <div style="display:flex; justify-content:space-between; gap:12px; font-size:12px"><span style="color:var(--ink2)">{{ p.k }}</span><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:{{ p.col }}">{{ p.v }}</span></div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabPayload }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column">
+            <sc-if value="{{ noAnns }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 14px; color:var(--ink3); font-size:12px; line-height:18px; text-wrap:pretty">Nothing staged. Draw a box and the payload builds here, exactly as Claude will get it.</div>
+            </sc-if>
+            <sc-if value="{{ hasAnns }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:12px 14px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--line)">
+                <div style="display:flex; align-items:baseline; gap:8px"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Prompt</span><div style="flex:1"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">≈ {{ tokens }} tokens</span><span style="font-size:11.5px; color:var(--ink2)">Edit</span></div>
+                <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:16px; white-space:pre-wrap; padding:10px; border-radius:8px; background:var(--codeBg); border:1px solid var(--line); max-height:214px; overflow:auto; user-select:text">{{ prompt }}</div>
+              </div>
+              <div style="padding:12px 14px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--line)">
+                <div style="display:flex; align-items:baseline"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Crops</span><div style="flex:1"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">from frame 18422</span></div>
+                <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px">
+                  <sc-for list="{{ crops }}" as="c" hint-placeholder-count="3">
+                    <div style="display:flex; flex-direction:column; gap:4px">
+                      <div style="height:72px; border-radius:6px; background:var(--stage); display:flex; align-items:center; justify-content:center">
+                  <div style="width:{{ c.bw }}; height:{{ c.bh }}; position:relative; overflow:hidden; border-radius:3px; box-shadow:0 0 0 1px var(--line2)">
+                    <div style="position:absolute; left:{{ c.ml }}; top:{{ c.mt }}; width:296px; height:640px; transform:{{ c.tf }}; transform-origin:0 0; pointer-events:none"><dc-import name="Mock Cart" fixed="{{ c.fixed }}" hint-size="296px,640px"></dc-import></div>
+                    <div style="position:absolute; left:{{ c.r.l }}; top:{{ c.r.t }}; width:{{ c.r.w }}; height:{{ c.r.h }}; box-sizing:border-box; border:1px solid var(--red)"></div>
+                  </div>
+                      </div>
+                      <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:9.5px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ c.cap }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:12px 14px; display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; align-items:baseline"><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Hierarchy</span><div style="flex:1"></div><span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ hierSrc }}</span></div>
+                <div style="display:flex; flex-direction:column; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:17px">
+                  <sc-for list="{{ hier }}" as="hl" hint-placeholder-count="8">
+                    <div style="display:flex; align-items:center; gap:6px">
+                      <span style="flex:1; min-width:0; white-space:pre; overflow:hidden; text-overflow:ellipsis; color:{{ hl.fg }}">{{ hl.t }}</span>
+                      <sc-if value="{{ hl.mark }}" hint-placeholder-val="{{ false }}"><span style="padding:0 4px; border-radius:3px; background:var(--red); color:#fff; font-size:9.5px; line-height:13px">{{ hl.mark }}</span></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="flex:none; display:flex; justify-content:space-between; padding:10px 14px; border-top:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3); white-space:nowrap; gap:12px"><span style="min-width:0; overflow:hidden; text-overflow:ellipsis">frame.png · {{ count }} crops · hierarchy.xml</span><span style="flex:none">{{ payloadSize }}</span></div>
+        </sc-if>
+
+        <sc-if value="{{ tabHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1; min-height:0; overflow:auto; padding:6px; display:flex; flex-direction:column; gap:2px">
+            <sc-for list="{{ history }}" as="hi" hint-placeholder-count="4">
+              <sc-if value="{{ hi.group }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 8px 4px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">{{ hi.group }}</div></sc-if>
+              <div style="display:flex; gap:10px; padding:8px; border-radius:7px" style-hover="background:var(--hover)">
+                <div style="width:44px; height:44px; flex:none; border-radius:6px; background:var(--stage); display:flex; align-items:center; justify-content:center">
+                  <div style="width:{{ hi.crop.bw }}; height:{{ hi.crop.bh }}; position:relative; overflow:hidden; border-radius:3px; box-shadow:0 0 0 1px var(--line2)">
+                    <div style="position:absolute; left:{{ hi.crop.ml }}; top:{{ hi.crop.mt }}; width:296px; height:640px; transform:{{ hi.crop.tf }}; transform-origin:0 0; pointer-events:none"><dc-import name="Mock Cart" fixed="{{ hi.crop.fixed }}" hint-size="296px,640px"></dc-import></div>
+                  </div>
+                </div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                  <div style="font-size:12.5px; line-height:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ hi.title }}</div>
+                  <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">{{ hi.meta }}</div>
+                  <div style="display:flex; align-items:center; gap:6px; margin-top:3px">
+                    <div style="height:20px; padding:0 8px; box-sizing:border-box; border-radius:10px; border:1px solid var(--line2); display:flex; align-items:center; gap:5px; font-size:11px; font-weight:500; color:var(--ink2); white-space:nowrap"><div style="width:6px; height:6px; border-radius:50%; background:{{ hi.tone }}"></div>{{ hi.status }}</div>
+                    <sc-if value="{{ hi.sub }}" hint-placeholder-val="{{ false }}"><span style="min-width:0; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ hi.sub }}</span></sc-if>
+                    <div style="flex:1"></div>
+                    <sc-if value="{{ hi.canVerify }}" hint-placeholder-val="{{ false }}"><div onClick="{{ hi.verify }}" style="height:22px; padding:0 9px; flex:none; border-radius:6px; background:var(--primary); color:var(--onPrimary); font-size:11.5px; font-weight:500; display:flex; align-items:center; cursor:default">Verify</div></sc-if>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:none; padding:10px 14px; border-top:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3)">claude · ~/code/shopkit · session 7f3a</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showVerify }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1; min-width:0; position:relative; display:flex; align-items:center; justify-content:center; gap:56px; overflow:hidden; background-color:var(--stage); background-image:radial-gradient(var(--stageDot) 1px, transparent 1px); background-size:16px 16px">
+        <div onClick="{{ backLive }}" style="position:absolute; left:16px; top:16px; height:26px; padding:0 10px; display:flex; align-items:center; border-radius:6px; border:1px solid var(--line2); background:var(--surface); font-size:12px; color:var(--ink2); cursor:default">← Back to live</div>
+        <sc-for list="{{ vcols }}" as="v" hint-placeholder-count="2">
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:24px">
+            <div style="display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; letter-spacing:0.06em; color:var(--ink2)"><div style="width:6px; height:6px; border-radius:50%; background:{{ v.dot }}"></div>{{ v.label }}</div>
+            <div style="position:relative; width:296px; height:640px">
+              <div style="position:absolute; inset:0; border-radius:4px; overflow:hidden; box-shadow:0 0 0 1px var(--line2), 0 20px 50px rgba(0,0,0,.16)"><dc-import name="Mock Cart" fixed="{{ v.fixed }}" hint-size="296px,640px"></dc-import></div>
+              <sc-for list="{{ v.rects }}" as="r" hint-placeholder-count="3">
+                <div style="position:absolute; left:{{ r.l }}; top:{{ r.t }}; width:{{ r.w }}; height:{{ r.h }}; box-sizing:border-box; border:1.5px solid {{ r.col }}; background:{{ r.fill }}; border-radius:3px">
+                  <div style="position:absolute; left:-1.5px; top:-21px; min-width:18px; height:17px; padding:0 5px; box-sizing:border-box; border-radius:4px; background:{{ r.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center">{{ r.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="width:300px; flex:none; display:flex; flex-direction:column; background:var(--bg); border-left:1px solid var(--line)">
+        <div style="height:44px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 14px; border-bottom:1px solid var(--line)">
+          <span style="font-size:12.5px; font-weight:600">Verification</span>
+          <span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink2)">{{ vSummary }}</span>
+        </div>
+        <div style="flex:1; min-height:0; overflow:auto; padding:6px; display:flex; flex-direction:column; gap:2px">
+          <sc-for list="{{ vrows }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex; gap:10px; padding:9px 8px; border-radius:7px">
+              <div style="width:18px; height:18px; flex:none; border-radius:4px; background:{{ r.col }}; color:#fff; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center">{{ r.icon }}</div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:12.5px; line-height:17px; text-wrap:pretty">{{ r.c }}</div>
+                <div style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; line-height:15px; color:var(--ink2)">{{ r.result }}</div>
+                <div style="font-size:11px; font-weight:500; color:{{ r.col }}">{{ r.verdict }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:14px 8px 6px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink3)">Agent changes</div>
+          <sc-for list="{{ vfiles }}" as="vf" hint-placeholder-count="3">
+            <div style="display:flex; justify-content:space-between; padding:3px 8px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px"><span style="color:var(--ink2)">{{ vf.name }}</span><span style="display:flex; gap:6px"><span style="color:var(--ok)">+{{ vf.a }}</span><span style="color:var(--red)">−{{ vf.d }}</span></span></div>
+          </sc-for>
+        </div>
+        <div style="flex:none; display:flex; flex-direction:column; gap:6px; padding:12px 14px 14px; border-top:1px solid var(--line)">
+          <div style="height:30px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:7px; background:var(--primary); color:var(--onPrimary); font-weight:500">Send follow-up · 1<span style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; opacity:.6">⌘↩</span></div>
+          <div style="height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px; color:var(--ink2)">Mark all as verified</div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="height:28px; flex:none; display:flex; align-items:center; gap:10px; padding:0 14px; background:var(--chrome); border-top:1px solid var(--line); font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; color:var(--ink3); white-space:nowrap">
+    <sc-for list="{{ steps }}" as="s" hint-placeholder-count="0">
+      <sc-if value="{{ s.notFirst }}" hint-placeholder-val="{{ false }}"><span style="opacity:.5">›</span></sc-if>
+      <div style="display:flex; align-items:center; gap:6px; color:{{ s.fg }}"><div style="width:6px; height:6px; border-radius:50%; background:{{ s.dot }}"></div>{{ s.label }}</div>
+    </sc-for>
+    <sc-if value="{{ status }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:6px; color:var(--ink2)"><div style="width:6px; height:6px; border-radius:50%; background:{{ status.dot }}"></div>{{ status.text }}</div>
+    </sc-if>
+    <div style="flex:1"></div>
+    <sc-if value="{{ altHint }}" hint-placeholder-val="{{ false }}"><span style="display:flex; align-items:center; gap:5px; color:var(--ink2)"><span style="padding:0 4px; border-radius:3px; border:1px solid var(--line2); line-height:14px">⌥</span>hold to measure</span><span style="opacity:.5">·</span></sc-if>
+    <span>{{ stats }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:820},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;picker&quot;,&quot;empty&quot;,&quot;drag&quot;,&quot;one&quot;,&quot;three&quot;,&quot;success&quot;,&quot;measure&quot;,&quot;payload&quot;,&quot;history&quot;,&quot;verify&quot;,&quot;err-adb&quot;,&quot;err-nodevice&quot;,&quot;err-multi&quot;,&quot;err-sim&quot;,&quot;err-trust&quot;,&quot;err-stream&quot;],&quot;default&quot;:&quot;three&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const RED = 'oklch(0.63 0.22 27)', OK = 'oklch(0.66 0.15 152)', WARN = 'oklch(0.74 0.15 70)';
+const BASE = { '--measure': 'oklch(0.6 0.2 255)', '--red': RED, '--redFill': 'oklch(0.63 0.22 27 / 0.10)', '--ok': OK, '--warn': WARN };
+const THEMES = {
+  light: { '--bg': '#f6f6f5', '--chrome': '#ededeb', '--surface': '#ffffff', '--stage': '#e7e7e4', '--stageDot': 'rgba(0,0,0,.07)', '--ink': '#1a1a1c', '--ink2': '#5b5b61', '--ink3': '#8b8b91', '--line': 'rgba(0,0,0,.08)', '--line2': 'rgba(0,0,0,.14)', '--hover': 'rgba(0,0,0,.045)', '--seg': 'rgba(0,0,0,.06)', '--segOn': '#ffffff', '--pop': '#18191c', '--popLine': 'rgba(255,255,255,.06)', '--field': 'rgba(255,255,255,.08)', '--primary': '#1a1a1c', '--onPrimary': '#ffffff', '--codeBg': 'rgba(0,0,0,.035)', '--shadow': '0 1px 2px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.08)' },
+  dark: { '--bg': '#1e1e20', '--chrome': '#262628', '--surface': '#2b2b2e', '--stage': '#151517', '--stageDot': 'rgba(255,255,255,.055)', '--ink': '#f1f1f2', '--ink2': '#a3a3aa', '--ink3': '#707077', '--line': 'rgba(255,255,255,.07)', '--line2': 'rgba(255,255,255,.13)', '--hover': 'rgba(255,255,255,.05)', '--seg': 'rgba(255,255,255,.07)', '--segOn': '#4a4a4e', '--pop': '#2c2d31', '--popLine': 'rgba(255,255,255,.1)', '--field': 'rgba(255,255,255,.07)', '--primary': '#f1f1f2', '--onPrimary': '#151517', '--codeBg': 'rgba(255,255,255,.04)', '--shadow': '0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35)' }
+};
+const AREA = {
+  price: { x: 212, y: 190, w: 72, h: 34, node: { android: 'TextView#item_price', ios: 'UILabel · priceLabel' } },
+  stepper: { x: 78, y: 221, w: 96, h: 34, node: { android: 'QtyStepper#qty', ios: 'UIStepper · qtyStepper' } },
+  promo: { x: 14, y: 272, w: 268, h: 52, node: { android: 'TextInputLayout#promo', ios: 'UITextField · promoField' } }
+};
+const CMT = {
+  price: 'Price sits 6px below the title — align baselines',
+  stepper: 'Stepper is 24dp tall; hit target should be 48dp',
+  promo: 'Placeholder is clipped — ellipsize or shorten'
+};
+const THREE = [{ k: 'price', pop: 132 }, { k: 'stepper', pop: 224, sel: true }, { k: 'promo', pop: 316 }];
+const SCREENS = {
+  picker: { platform: 'android', view: 'picker' },
+  empty: { platform: 'android', view: 'empty' },
+  drag: { platform: 'android', view: 'mirror', phase: 'live', anns: [] },
+  one: { platform: 'ios', view: 'mirror', phase: 'frozen', anns: [{ k: 'price', sel: true, c: 'Price sits 6px below the title — align basel' }] },
+  three: { platform: 'android', view: 'mirror', phase: 'frozen', anns: THREE },
+  success: { platform: 'android', view: 'mirror', phase: 'sent', anns: THREE },
+  measure: { platform: 'android', view: 'mirror', phase: 'frozen', anns: [{ k: 'price', sel: true, c: 'Price sits lower than the title' }] },
+  payload: { platform: 'android', view: 'mirror', phase: 'frozen', anns: THREE, tab: 'payload' },
+  history: { platform: 'android', view: 'mirror', phase: 'live', anns: [], tab: 'history' },
+  verify: { platform: 'android', view: 'verify' },
+  'err-adb': { platform: 'android', view: 'error' },
+  'err-nodevice': { platform: 'android', view: 'error' },
+  'err-multi': { platform: 'android', view: 'error' },
+  'err-sim': { platform: 'ios', view: 'error' },
+  'err-trust': { platform: 'ios', view: 'error' },
+  'err-stream': { platform: 'android', view: 'mirror', phase: 'failed', anns: [{ k: 'price', pop: 132 }, { k: 'promo', pop: 316 }] }
+};
+const ERRORS = {
+  'err-adb': { tone: WARN, glyph: '!', title: "adb isn't on your PATH", body: 'Rectify uses Android platform-tools to find devices. Install them, or point Rectify at an adb you already have.', cmd: 'brew install --cask android-platform-tools', primary: 'Locate adb…', secondary: 'Retry', foot: 'which adb → not found · $ANDROID_HOME unset' },
+  'err-nodevice': { tone: WARN, glyph: '!', title: 'No Android device detected', body: 'adb is running but sees nothing. On the phone, turn on USB debugging and tap Allow on the prompt.', cmd: 'adb kill-server && adb devices', primary: 'Restart adb', secondary: 'Boot emulator instead', foot: 'adb 35.0.1 · last poll 0.8 s ago · 0 attached' },
+  'err-multi': { tone: 'var(--ink2)', glyph: '?', title: '3 devices connected', body: 'Pick one to mirror. Rectify remembers it until you quit.', primary: 'Mirror Pixel 8 Pro', foot: 'adb devices -l · 3 attached', list: [
+    { name: 'Pixel 8 Pro', id: '37281FDH2000AB', kind: 'USB', on: true },
+    { name: 'Galaxy S24', id: 'R5CX10ABCDE', kind: 'USB' },
+    { name: 'Pixel_7_API_34', id: 'emulator-5554', kind: 'Emulator' }] },
+  'err-sim': { tone: WARN, glyph: '!', title: "iPhone 15 Pro simulator isn't booted", body: 'The simulator exists but is shut down. Boot it and streaming starts automatically.', cmd: 'xcrun simctl boot "iPhone 15 Pro"', primary: 'Boot simulator', secondary: 'Choose another', foot: 'simctl · 8DE3…A41F · Shutdown' },
+  'err-trust': { tone: WARN, glyph: '!', title: 'Trust this Mac on the iPhone', body: 'Unlock the iPhone and tap Trust. No prompt? Unplug the cable and plug it back in.', primary: "I've tapped Trust — retry", secondary: 'Use simulator', foot: 'idb_companion · 00008110-001A… · pairing: untrusted' }
+};
+const DEVS = {
+  android: { name: 'Pixel 8 Pro', meta: 'USB', dot: OK },
+  ios: { name: 'iPhone 15 Pro', meta: 'Simulator', dot: OK },
+  none: { name: 'No device', meta: '', dot: 'var(--ink3)' },
+  'err-multi': { name: '3 devices', meta: 'choose one', dot: WARN },
+  'err-sim': { name: 'iPhone 15 Pro', meta: 'Shutdown', dot: WARN },
+  'err-trust': { name: 'iPhone 15', meta: 'USB · untrusted', dot: WARN },
+  'err-stream': { name: 'Pixel 8 Pro', meta: 'USB · reconnecting', dot: RED }
+};
+const STATUS = {
+  picker: { dot: OK, text: 'adb 35.0.1 · idb 1.1.8 · ready' },
+  empty: { dot: 'var(--ink3)', text: 'Waiting for device…' },
+  'err-adb': { dot: WARN, text: 'adb not found in PATH' },
+  'err-nodevice': { dot: WARN, text: 'adb devices → 0 attached' },
+  'err-multi': { dot: WARN, text: '3 devices attached — waiting for choice' },
+  'err-sim': { dot: WARN, text: 'simctl: iPhone 15 Pro · Shutdown' },
+  'err-trust': { dot: WARN, text: 'idb: pairing required' }
+};
+let uid = 1;
+const ELS = [
+  { id: 'cart_title', x: 20, y: 50, w: 58, h: 31 },
+  { id: 'item_image_1', x: 20, y: 110, w: 52, h: 52 },
+  { id: 'item_title_1', x: 84, y: 110, w: 104, h: 17 },
+  { id: 'item_meta_1', x: 84, y: 128, w: 52, h: 15 },
+  { id: 'qty_1', x: 84, y: 146, w: 84, h: 24, tap: 1 },
+  { id: 'item_price_1', x: 228, y: 110, w: 48, h: 17 },
+  { id: 'divider_1', x: 20, y: 182, w: 256, h: 1 },
+  { id: 'item_image', x: 20, y: 192, w: 52, h: 52, node: 'ImageView#item_image' },
+  { id: 'item_title', x: 84, y: 192, w: 82, h: 17, node: 'TextView#item_title' },
+  { id: 'item_meta', x: 84, y: 208, w: 32, h: 15 },
+  { id: 'qty', x: 84, y: 226, w: 84, h: 24, tap: 1, node: 'QtyStepper#qty' },
+  { id: 'item_price', x: 228, y: 198, w: 48, h: 17, node: 'TextView#item_price' },
+  { id: 'divider', x: 20, y: 264, w: 256, h: 1 },
+  { id: 'promo', x: 20, y: 278, w: 256, h: 40, tap: 1, node: 'TextInputLayout#promo' },
+  { id: 'subtotal', x: 20, y: 340, w: 256, h: 16 },
+  { id: 'shipping', x: 20, y: 364, w: 256, h: 16 },
+  { id: 'total', x: 20, y: 404, w: 256, h: 19, node: 'SummaryView#totals' },
+  { id: 'returns_note', x: 20, y: 440, w: 160, h: 15 },
+  { id: 'checkout', x: 36, y: 566, w: 240, h: 50, tap: 1, node: 'Button#checkout' }
+];
+function measure(a, u) {
+  let t = ELS.filter(e => e.x >= a.x - 4 && e.y >= a.y - 4 && e.x + e.w <= a.x + a.w + 4 && e.y + e.h <= a.y + a.h + 4).sort((p, q) => q.w * q.h - p.w * p.h)[0];
+  if (!t) t = { id: null, x: Math.round(a.x), y: Math.round(a.y), w: Math.round(a.w), h: Math.round(a.h) };
+  const o = ELS.filter(e => e !== t && !(e.x < t.x + t.w && e.x + e.w > t.x && e.y < t.y + t.h && e.y + e.h > t.y));
+  const vO = e => e.y < t.y + t.h && e.y + e.h > t.y, hO = e => e.x < t.x + t.w && e.x + e.w > t.x;
+  const L = o.filter(e => vO(e) && e.x + e.w <= t.x).sort((p, q) => (q.x + q.w) - (p.x + p.w))[0];
+  const R = o.filter(e => vO(e) && e.x >= t.x + t.w).sort((p, q) => p.x - q.x)[0];
+  const T = o.filter(e => hO(e) && e.y + e.h <= t.y).sort((p, q) => (q.y + q.h) - (p.y + p.h))[0];
+  const B = o.filter(e => hO(e) && e.y >= t.y + t.h).sort((p, q) => p.y - q.y)[0];
+  const my = t.y + t.h / 2, mx = t.x + t.w / 2;
+  const lx = L ? L.x + L.w : 0, rx = R ? R.x : 296, ty = T ? T.y + T.h : 0, by = B ? B.y : 640;
+  const g = { left: t.x - lx, right: rx - (t.x + t.w), top: t.y - ty, bottom: by - (t.y + t.h) };
+  const P = v => v + 'px', lines = [], labels = [];
+  const H = (x1, x2, y, v) => { if (v < 1) return; lines.push({ l: P(x1), t: P(y), w: P(x2 - x1), h: '1px' }); labels.push({ l: P((x1 + x2) / 2), t: P(y), text: String(v) }); };
+  const V = (y1, y2, x, v) => { if (v < 1) return; lines.push({ l: P(x), t: P(y1), w: '1px', h: P(y2 - y1) }); labels.push({ l: P(x), t: P((y1 + y2) / 2), text: String(v) }); };
+  H(lx, t.x, my, g.left); H(t.x + t.w, rx, my, g.right); V(ty, t.y, mx, g.top); V(t.y + t.h, by, mx, g.bottom);
+  let al = null, finding = null;
+  if (L && L.y !== t.y && Math.abs(L.y - t.y) <= 10) {
+    const d = Math.abs(L.y - t.y);
+    finding = 'top Δ' + d + u + ' vs ' + L.id + ' · expected 0';
+    al = { l: P(L.x), t: P(L.y), w: P(t.x + t.w - L.x), lx: P(L.x), ly: P(L.y - 16), text: 'Δ' + d + u };
+  } else if (T && T.x !== t.x && Math.abs(T.x - t.x) <= 24) {
+    finding = 'left Δ' + Math.abs(T.x - t.x) + u + ' vs ' + T.id + ' · expected 0';
+  } else if (t.tap && t.h < 32) finding = 'height ' + t.h + u + ' · min touch 48' + u;
+  const nb = [L, R, T, B].filter(Boolean).map(e => ({ l: P(e.x), t: P(e.y), w: P(e.w), h: P(Math.max(e.h, 1)) }));
+  return { t, g, lines, labels, al, finding, nb, node: t.node || (t.id ? 'View#' + t.id : 'View (no match)') };
+}
+const HIER = [
+  ['FrameLayout#content', null], ['└ CartScreen', null], ['  ├ LazyColumn#cart_list', null], ['  │ ├ CartItemView[0]', null], ['  │ └ CartItemView[1]', null],
+  ['  │   ├ ImageView#item_image', 'item_image'], ['  │   ├ TextView#item_title', 'item_title'], ['  │   ├ TextView#item_price', 'item_price'], ['  │   └ QtyStepper#qty', 'qty'],
+  ['  ├ TextInputLayout#promo', 'promo'], ['  ├ SummaryView#totals', 'total'], ['  └ Button#checkout', 'checkout']
+];
+const HIST = [
+  { title: 'Price sits 6px below the title', meta: '3 notes · 14:02 · #a41f', status: 'Fixed', tone: OK, canVerify: true, el: 'item_price' },
+  { title: 'Checkout button is 16dp off the margin', meta: '1 note · 13:47 · #9c02', status: 'In progress', tone: WARN, sub: 'editing CartScreen.kt', el: 'checkout' },
+  { title: 'Promo placeholder clipped at 360dp', meta: '1 note · 12:10 · #77b1', status: 'Verified', tone: 'var(--ink3)', el: 'promo' },
+  { group: 'Yesterday', title: 'Total row reads lighter than subtotal', meta: '2 notes · 18:31 · #51e8', status: 'Follow-up sent', tone: RED, el: 'total' }
+];
+const VER = [
+  { ok: true, result: 'top Δ6dp → 0dp' },
+  { ok: false, result: 'height 24dp → 32dp · want 48dp' },
+  { ok: true, result: 'placeholder fits · no clipping' }
+];
+const VFILES = [{ name: 'CartItemView.kt', a: 4, d: 2 }, { name: 'QtyStepper.kt', a: 1, d: 1 }, { name: 'strings.xml', a: 1, d: 1 }];
+
+class Component extends DCLogic {
+  state = {};
+  componentDidMount() {
+    this._kd = e => { if (e.key === 'Alt') this.setState({ alt: true }); };
+    this._ku = e => { if (e.key === 'Alt') this.setState({ alt: false }); };
+    window.addEventListener('keydown', this._kd); window.addEventListener('keyup', this._ku);
+  }
+  componentWillUnmount() { clearTimeout(this.t1); clearTimeout(this.t2); window.removeEventListener('keydown', this._kd); window.removeEventListener('keyup', this._ku); }
+  sc() { return SCREENS[this.props.screen] || SCREENS.three; }
+  getAnns() {
+    if (this.state.anns) return this.state.anns;
+    if (!this._preset) this._preset = (this.sc().anns || []).map(a => ({ id: uid++, ...AREA[a.k], c: a.c ?? CMT[a.k], pop: a.pop ?? null, sel: !!a.sel }));
+    return this._preset;
+  }
+  getPhase() { return this.state.phase ?? this.sc().phase ?? 'live'; }
+  setAnns(fn, extra) { this.setState({ anns: fn(this.getAnns()), touched: true, ...extra }); }
+  stop = e => e.stopPropagation();
+  clear = () => { if (this.getPhase() === 'dumping') return; this.setState({ anns: [], phase: 'live', touched: true, drag: null }); };
+  send = () => {
+    this.setState({ anns: this.getAnns(), phase: 'dumping', touched: true });
+    this.t1 = setTimeout(() => this.setState(s => { const l = this.getAnns(); const first = l[0]; return { phase: 'sent', hist: [{ title: (first && first.c) || 'Untitled batch', meta: l.length + ' notes · just now', status: 'In progress', tone: WARN, sub: 'reading payload', el: (first && measure(first, 'dp').t.id) || 'item_price' }, ...(s.hist || [])] }; }), 1300);
+    this.t2 = setTimeout(() => this.setState({ phase: 'live', anns: [] }), 4300);
+  };
+  onDown = e => {
+    if (e.button !== 0 || this.getPhase() === 'dumping') return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect(), k = 296 / r.width;
+    const pt = ev => ({ x: Math.max(0, Math.min(296, (ev.clientX - r.left) * k)), y: Math.max(0, Math.min(640, (ev.clientY - r.top) * k)) });
+    const p = pt(e);
+    let anns = this.getAnns();
+    if (this.getPhase() === 'sent') anns = [];
+    this.setState({ touched: true, anns, drag: { x0: p.x, y0: p.y, x1: p.x, y1: p.y } });
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const move = ev => { const q = pt(ev); this.setState(s => ({ drag: s.drag && { ...s.drag, x1: q.x, y1: q.y } })); };
+    const up = () => {
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+      const d = this.state.drag; if (!d) return;
+      const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1), w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
+      if (w < 8 || h < 8) { this.setState({ drag: null }); return; }
+      const id = uid++;
+      this.setState(s => ({ drag: null, phase: 'frozen', active: id, anns: [...(s.anns || []), { id, x, y, w, h, c: '', pop: null, fresh: true, node: { android: 'View#' + Math.round(x), ios: 'UIView · ' + Math.round(x) } }] }));
+    };
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  };
+  renderVals() {
+    const screen = this.props.screen ?? 'three';
+    const sc = this.sc();
+    const theme = this.props.theme === 'dark' ? 'dark' : 'light';
+    const ios = sc.platform === 'ios';
+    const phase = this.getPhase();
+    const raw = this.getAnns();
+    const scale = ios ? 1179 / 296 : 1344 / 296;
+    const sent = phase === 'sent';
+    const presetSel = raw.find(a => a.sel);
+    const activeId = this.state.active !== undefined ? this.state.active : (presetSel ? presetSel.id : null);
+    const px = v => v + 'px';
+    const D = v => Math.round(v * scale);
+    const unit = ios ? 'pt' : 'dp';
+    let li = 0;
+    const anns = raw.map((a, i) => {
+      const active = a.id === activeId && !sent;
+      const col = sent ? 'var(--ok)' : 'var(--red)';
+      const leader = a.pop != null;
+      let lines = [], pl, pt, dotL, dotT;
+      if (leader) {
+        const dx = a.x + a.w, dy = a.y + a.h / 2, ex = 300 + li * 8, py = a.pop + 19, pxx = 330;
+        li++;
+        lines = [
+          { l: px(dx), t: px(dy - 0.5), w: px(ex - dx), h: '1px' },
+          { l: px(ex - 0.5), t: px(Math.min(dy, py) - 0.5), w: '1px', h: px(Math.abs(py - dy) + 1) },
+          { l: px(ex), t: px(py - 0.5), w: px(pxx - ex), h: '1px' }
+        ];
+        pl = px(pxx); pt = px(a.pop); dotL = px(dx - 4.5); dotT = px(dy - 4.5);
+      } else { pl = px(a.x - 2); pt = px(a.y + a.h + 10); }
+      const meta = `${D(a.w)}×${D(a.h)} @ ${D(a.x)},${D(a.y)}`;
+      const msr = measure(a, unit);
+      return {
+        mNote: msr.finding, n: i + 1, c: a.c, col, leader, below: !leader, lines, dotL, dotT, pl, pt, sel: active,
+        l: px(a.x), t: px(a.y), w: px(a.w), h: px(a.h),
+        fill: sent ? 'oklch(0.66 0.15 152 / 0.10)' : active ? 'oklch(0.63 0.22 27 / 0.16)' : 'oklch(0.63 0.22 27 / 0.08)',
+        z: active ? 7 : 6, auto: !!a.fresh, meta, hint: sent ? 'sent' : active ? '⏎ save' : '',
+        rowBg: active ? 'var(--hover)' : 'transparent',
+        textOr: a.c || 'No comment yet', textCol: a.c ? 'var(--ink)' : 'var(--ink3)',
+        sub: sent ? a.node[ios ? 'ios' : 'android'] : meta,
+        onChange: e => { const v = e.target.value; this.setAnns(l => l.map(x => x.id === a.id ? { ...x, c: v, fresh: false } : x)); },
+        onDelete: () => { const left = raw.filter(x => x.id !== a.id); this.setState({ anns: left, touched: true, active: null, phase: left.length || phase === 'failed' ? phase : 'live' }); },
+        onSelect: () => this.setState({ active: a.id })
+      };
+    });
+    let d = this.state.drag;
+    if (!d && !this.state.touched && screen === 'drag') d = { x0: 14, y0: 100, x1: 284, y1: 258 };
+    const drag = d ? (() => { const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1), w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0); return { l: px(x), t: px(y), w: px(w), h: px(h), label: `${D(w)} × ${D(h)}` }; })() : null;
+    const view = this.state.view ?? sc.view;
+    const isMirror = view === 'mirror';
+    const ticks = (len, dev) => { const out = [], step = 100 / scale; for (let v = 0; v * step <= len + 0.01; v++) { const major = v % 5 === 0; out.push({ p: px(v * step), lp: px(v * step + 3), len: major ? '8px' : '4px', lab: major && v > 0 && v * step < len - 24 ? String(v * 100) : null }); } return out; };
+    const rx = isMirror ? ticks(296) : [], ry = isMirror ? ticks(640) : [];
+    let exSrc = d ? { x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1), w: Math.abs(d.x1 - d.x0), h: Math.abs(d.y1 - d.y0) } : raw.find(a => a.id === activeId);
+    const ext = exSrc && !sent ? { x: px(exSrc.x), y: px(exSrc.y), w: px(exSrc.w), h: px(exSrc.h), vx: String(D(exSrc.x)), vy: String(D(exSrc.y)) } : null;
+    const dimOn = raw.length > 0 && (phase === 'frozen' || phase === 'dumping' || phase === 'failed');
+    const h = React.createElement;
+    const mid = 'rfm' + (this._mid || (this._mid = Math.random().toString(36).slice(2, 8)));
+    const dimEl = dimOn ? h('svg', { width: 296, height: 640, style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none', borderRadius: 4 } },
+      h('defs', null, h('mask', { id: mid }, h('rect', { width: 296, height: 640, fill: '#fff' }), ...raw.map(a => h('rect', { key: a.id, x: a.x, y: a.y, width: a.w, height: a.h, rx: 3, fill: '#000' })))),
+      h('rect', { width: 296, height: 640, fill: 'rgba(12,12,14,0.42)', mask: 'url(#' + mid + ')' })) : null;
+    const idx = { live: 0, frozen: 1, dumping: 2, sent: 3, failed: 0 }[phase];
+    const steps = isMirror ? ['Streaming', 'Frozen', 'Dumping hierarchy', 'Sent'].map((label, i) => {
+      let fg = 'var(--ink3)', dot = 'var(--line2)';
+      if (i < idx) dot = 'var(--ink3)';
+      if (i === idx) { fg = 'var(--ink)'; dot = [RED, 'var(--ink)', WARN, OK][i]; }
+      if (phase === 'failed' && i === 0) { label = 'Stream dropped'; fg = RED; dot = RED; }
+      if (sent && i === 3) label = 'Sent to Claude Code';
+      return { label, fg, dot, notFirst: i > 0 };
+    }) : [];
+    const fps = ios ? '30' : '58';
+    const mode = {
+      live: { dot: RED, label: `LIVE · ${fps} FPS` },
+      frozen: { dot: 'var(--ink2)', label: 'FROZEN · FRAME 18422 · 14:02:31.204' },
+      dumping: { dot: WARN, label: 'DUMPING VIEW HIERARCHY…' },
+      sent: { dot: OK, label: 'SENT · RESUMING LIVE' },
+      failed: { dot: RED, label: 'STREAM LOST · LAST FRAME 14:02:29.880' }
+    }[phase];
+    const count = raw.length;
+    const canSend = count > 0 && (phase === 'frozen' || phase === 'failed');
+    const errSrc = ERRORS[screen];
+    const err = errSrc && { ...errSrc, toneBg: errSrc.tone === WARN ? 'oklch(0.74 0.15 70 / 0.16)' : 'var(--seg)',
+      cmd: errSrc.cmd || null, secondary: errSrc.secondary || null,
+      list: errSrc.list ? errSrc.list.map((x, i) => ({ ...x, bg: x.on ? 'var(--hover)' : 'transparent', border: i ? '1px solid var(--line)' : 'none', radio: x.on ? '5px solid var(--ink)' : '1.5px solid var(--line2)' })) : null };
+    const dev = DEVS[screen] || (isMirror || view === 'verify' ? DEVS[ios ? 'ios' : 'android'] : DEVS.none);
+    const activeRaw = raw.find(a => a.id === activeId);
+    const measuring = isMirror && !sent && (screen === 'measure' || (this.state.alt && this.state.hover));
+    let m = null;
+    if (measuring && activeRaw) {
+      const q = measure(activeRaw, unit), g = q.g;
+      m = { tl: px(q.t.x), tt: px(q.t.y), tw: px(q.t.w), th: px(q.t.h), lines: q.lines, labels: q.labels, al: q.al, nb: q.nb, node: q.node, finding: q.finding, n: '#' + (raw.indexOf(activeRaw) + 1),
+        rows: [{ k: 'Size', v: q.t.w + '×' + q.t.h + unit }, { k: 'Top', v: g.top + unit }, { k: 'Right', v: g.right + unit }, { k: 'Bottom', v: g.bottom + unit }, { k: 'Left', v: g.left + unit }] };
+    }
+    const tabId = this.state.tab ?? sc.tab ?? 'notes';
+    const histRaw = [...(this.state.hist || []), ...HIST].map((x, i) => ({ ...x, group: i === 0 ? 'Today' : (x.group || null) }));
+    const inProg = histRaw.filter(x => x.status === 'In progress').length;
+    const tabs = [['notes', 'Annotations', count || null], ['payload', 'Payload', null], ['history', 'History', inProg || null]].map(([id, label, badge]) => ({ label, badge, bg: id === tabId ? 'var(--seg)' : 'transparent', fg: id === tabId ? 'var(--ink)' : 'var(--ink3)', go: () => this.setState({ tab: id }) }));
+    const crop = (r, bw, bh, pad, fixed, withRect) => {
+      const cx = Math.max(0, r.x - pad), cy = Math.max(0, r.y - pad), cw = Math.min(296 - cx, r.w + pad * 2), ch = Math.min(640 - cy, r.h + pad * 2);
+      const s = Math.min(bw / cw, bh / ch);
+      return { bw: px(cw * s), bh: px(ch * s), ml: px(-cx * s), mt: px(-cy * s), tf: 'scale(' + s + ')', fixed: !!fixed, r: withRect ? { l: px((r.x - cx) * s), t: px((r.y - cy) * s), w: px(r.w * s), h: px(r.h * s) } : null };
+    };
+    const mAll = raw.map(a => measure(a, unit));
+    const pl = ['Fix ' + count + ' UI issue' + (count === 1 ? '' : 's') + ' on the Cart screen.', 'Device: ' + dev.name + ' · ' + (ios ? 'iOS 18 · 1179×2556' : 'Android 15 · 1344×2992'), ''];
+    raw.forEach((a, i) => { const q = mAll[i]; pl.push('#' + (i + 1) + ' ' + q.node + ' · ' + q.t.w + '×' + q.t.h + unit); pl.push('   "' + (a.c || 'no comment') + '"'); if (q.finding) pl.push('   measured: ' + q.finding); pl.push(''); });
+    pl.push('Attached: frame.png, ' + count + ' crops, hierarchy.xml');
+    const marks = {};
+    mAll.forEach((q, i) => { if (q.t.id) marks[q.t.id] = (marks[q.t.id] ? marks[q.t.id] + ' ' : '') + '#' + (i + 1); });
+    const vfixed = VER.filter(v => v.ok).length;
+    const extra = {
+      enter: () => this.setState({ hover: true }), leave: () => this.setState({ hover: false, alt: false }),
+      m, showPops: !m, altHint: isMirror && (phase === 'frozen' || phase === 'failed') && count > 0 && !m,
+      tabs, tabNotes: tabId === 'notes', tabPayload: tabId === 'payload', tabHistory: tabId === 'history', hasAnns: count > 0,
+      prompt: pl.join('\n'), tokens: String(360 + count * 140), payloadSize: (1.6 + count * 0.12).toFixed(1) + ' MB',
+      crops: raw.map((a, i) => ({ ...crop(a, 84, 72, 14, false, true), cap: '#' + (i + 1) + ' · ' + D(a.w) + '×' + D(a.h) })),
+      hierSrc: ios ? 'idb · 388 nodes' : 'uiautomator · 412 nodes',
+      hier: HIER.map(([t, id]) => ({ t, mark: (id && marks[id]) || null, fg: id && marks[id] ? 'var(--ink)' : 'var(--ink3)' })),
+      history: histRaw.map(x => { const e = ELS.find(q => q.id === x.el) || ELS[0]; return { ...x, crop: crop(e, 40, 40, 18, false, false), sub: x.sub || null, canVerify: !!x.canVerify, verify: () => this.setState({ view: 'verify' }) }; }),
+      showVerify: view === 'verify',
+      backLive: () => this.setState({ view: 'mirror', phase: 'live', anns: [], touched: true, tab: 'history' }),
+      vcols: [false, true].map(after => ({ label: after ? 'AFTER · FRAME 18977 · 14:09' : 'BEFORE · FRAME 18422 · 14:02', dot: after ? OK : 'var(--ink3)', fixed: after,
+        rects: THREE.map((t, i) => { const r = AREA[t.k], ok = VER[i].ok; return { l: px(r.x), t: px(r.y), w: px(r.w), h: px(r.h), col: after ? (ok ? OK : WARN) : RED, fill: after ? (ok ? 'oklch(0.66 0.15 152 / 0.10)' : 'oklch(0.74 0.15 70 / 0.14)') : 'oklch(0.63 0.22 27 / 0.08)', n: after ? (ok ? '✓' : '!') : String(i + 1) }; }) })),
+      vrows: THREE.map((t, i) => ({ c: CMT[t.k], result: VER[i].result, col: VER[i].ok ? OK : WARN, icon: VER[i].ok ? '✓' : '!', verdict: VER[i].ok ? 'Fixed' : 'Still off' })),
+      vfiles: VFILES, vSummary: vfixed + ' of 3 fixed'
+    };
+    if (view === 'verify') Object.assign(extra, {
+      steps: ['Sent 14:02', 'Agent fixed · 3 files', 'Recaptured 14:09', 'Verified ' + vfixed + '/3'].map((label, i) => ({ label, fg: i === 3 ? 'var(--ink)' : 'var(--ink3)', dot: i === 3 ? WARN : 'var(--ink3)', notFirst: i > 0 })),
+      status: null, stats: 'frame 18422 ↔ 18977 · 3 regions diffed', count: 3, countBg: WARN, countFg: '#fff', frameLabel: ''
+    });
+    return {
+      rootStyle: { ...BASE, ...THEMES[theme], width: '1240px', height: '820px', display: 'flex', flexDirection: 'column', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, sans-serif', fontSize: '13px', boxShadow: theme === 'dark' ? '0 0 0 1px rgba(0,0,0,.6), inset 0 0 0 0.5px rgba(255,255,255,.12), 0 30px 70px rgba(0,0,0,.3)' : '0 0 0 0.5px rgba(0,0,0,.22), 0 30px 70px rgba(0,0,0,.16)', userSelect: 'none', WebkitFontSmoothing: 'antialiased', position: 'relative' },
+      isIOS: ios, isAndroid: !ios,
+      dev, count, countBg: count ? (sent ? OK : RED) : 'var(--seg)', countFg: count ? '#fff' : 'var(--ink3)',
+      canSend, cannotSend: !canSend, sendLabel: phase === 'dumping' ? 'Sending…' : 'Resolve & Send',
+      send: this.send, clear: this.clear, stop: this.stop, onDown: this.onDown,
+      showPicker: sc.view === 'picker', showEmpty: sc.view === 'empty', showError: sc.view === 'error', showMirror: isMirror,
+      err, anns, drag, mode, rx, ry, ext, dimEl, noAnns: count === 0,
+      isFailed: phase === 'failed', isSent: sent,
+      frameLabel: phase === 'live' ? 'live' : '#18422',
+      payload: [
+        { k: 'Frame', v: ios ? '1179×2556 PNG' : '1344×2992 PNG', col: 'var(--ink2)' },
+        { k: 'Hierarchy', v: phase === 'dumping' ? 'dumping…' : sent ? '412 nodes ✓' : 'on send', col: phase === 'dumping' ? WARN : sent ? OK : 'var(--ink3)' },
+        { k: 'Agent', v: 'claude · ~/code/shopkit', col: 'var(--ink2)' }
+      ],
+      steps, status: isMirror ? null : STATUS[screen],
+      stats: phase === 'failed' ? 'scrcpy exited (1) · retry in 3 s' : isMirror ? (ios ? 'idb 1.1.8 · 1179×2556 · 30 fps · 48 ms' : 'scrcpy 2.4 · 1344×2992 · 58 fps · 31 ms') : 'Rectify 0.4',
+      ...extra
+    };
+  }
+}
+</script>
+</body>
+</html>
