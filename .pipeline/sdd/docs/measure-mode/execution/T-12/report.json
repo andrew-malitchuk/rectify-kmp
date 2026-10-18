@@ -1,0 +1,152 @@
+{
+  "spec": "measure-mode",
+  "stage": "execution",
+  "step": "T-12",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-frontend-implement",
+  "provenance": {
+    "selfHash": "c89f2efbb4cb8b4cd78347b842e72ee8ee685abe72b15ab3c749c36532b0ce0c",
+    "inputs": [
+      {
+        "artifact": "backlog/backlog.json",
+        "hash": "6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8"
+      },
+      {
+        "artifact": "execution/T-10/report.json",
+        "hash": "6239b9a362ae8fbdc5e75515e0c06c41ec323bbfa33551d77cc1a2c8de59b3e7"
+      }
+    ]
+  },
+  "createdAt": "2026-10-17T08:46:48Z",
+  "updatedAt": "2026-10-17T08:46:48Z",
+  "data": {
+    "taskId": "T-12",
+    "type": "ui",
+    "outcome": "partial",
+    "touchedPaths": [
+      "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/organism/annotation/MeasureCard.kt",
+      "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorAnnotationStage.kt",
+      "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt",
+      "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml"
+    ],
+    "implementation": {
+      "filesChanged": [
+        "MeasureCard.kt",
+        "MirrorAnnotationStage.kt",
+        "MirrorContent.kt",
+        "strings.xml"
+      ],
+      "summary": "MeasureCard floated at TopStart in the frame-sized Box behind one named private val MeasureCardWidth = 228.dp, following the ErrorCardWidth/BannerTopInset precedent. The organism gained the additive footer: String? = null parameter rendering ink3 text inside the card's own border below the finding block - source-compatible, zero existing callers. Its KDoc no longer claims the card is a sidebar panel that is not an overlay. The @Preview's Top value was corrected from 9dp to 15dp, which is what the design's own algorithm produces over its real ELS fixture. Ten localisation keys added with English values, and light and dark previews of a measuring frozen stage."
+    },
+    "testRun": {
+      "command": "./gradlew :presentation-core-ui:build ; :presentation-feature-mirror:desktopTest",
+      "passed": true,
+      "output": "presentation-core-ui:build BUILD SUCCESSFUL. presentation-feature-mirror:desktopTest 197 tests, 0 failures. Verified by the orchestrator."
+    },
+    "needsHumanReview": {
+      "required": true,
+      "reason": "AC-67 requires the light and dark previews to be ACTUALLY RENDERED by a human; compiling is not verification, per the drag-annotate verdict's W-2 waiver. This host cannot load Skiko. Recorded BLOCKED, not waived - MC-4 in execution/MANUAL-CHECKS.md."
+    },
+    "linkedAC": [
+      "AC-67",
+      "AC-11"
+    ],
+    "blockedDependents": [],
+    "registryUpdates": [
+      {
+        "registry": "components",
+        "entry": "measure-card — gained an additive footer: String? = null parameter and its first production caller. KDoc corrected: measure mode floats it as an overlay rather than a sidebar-only panel. Preview Top corrected 9dp -> 15dp to match the design's own algorithm."
+      }
+    ],
+    "backlogUpdate": {
+      "taskId": "T-12",
+      "status": "done"
+    },
+    "visualValidation": "skipped",
+    "validations": [
+      {
+        "stage": "DoD - the footer renders inside the card's border via the new additive parameter",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Parameter present at MeasureCard.kt:75, rendered at :159-161 inside the padded column, and exercised by the preview at :194. No breaking signature change - it defaults to null and there were zero existing callers (operator ruling 1)."
+        ]
+      },
+      {
+        "stage": "DoD - KDoc no longer calls the card a sidebar panel that is not an overlay",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Now reads that measure mode presents it as an overlay and a sidebar is equally valid."
+        ]
+      },
+      {
+        "stage": "DoD - one named private val MeasureCardWidth = 228.dp, no other raw dp or Color at a call site",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Declared once at MirrorAnnotationStage.kt:159, used once at :548. The only other added .dp/.toPx() lines are two stroke widths, which are not call-site geometry."
+        ]
+      },
+      {
+        "stage": "DoD - ten localisation keys with English values",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Exactly ten added: mirror_measure_title, _row_size, _row_top, _row_right, _row_bottom, _row_left, _footer, _hierarchy_dumping, _hierarchy_unavailable, mirror_status_dumping."
+        ]
+      },
+      {
+        "stage": "DoD - padding, gap, radius and border read from tokens, judged at token fidelity",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "Theme.spacing.spacingL/spacingS, Theme.cornerToken.card, Theme.color.line. Deliberately not px-exact against the design's raw 12/10/10/line2, because design-tokens.md forbids raw dp at call sites. Note this project has no Theme.spacing.spacingM and no Theme.elevation."
+        ]
+      },
+      {
+        "stage": "DoD - the light and dark previews are actually rendered by a human",
+        "passed": false,
+        "iterations": 0,
+        "issues": [
+          "BLOCKED, not waived. MirrorFrozenStageMeasuringLightPreview and MirrorFrozenStageMeasuringDarkPreview compile and are wired, but compiling is not verification. MC-4 in execution/MANUAL-CHECKS.md."
+        ]
+      },
+      {
+        "stage": "DoD - presentation-core-ui:build green",
+        "passed": true,
+        "iterations": 1,
+        "issues": [
+          "BUILD SUCCESSFUL."
+        ]
+      }
+    ],
+    "troubleshooting": [
+      {
+        "at": "batch C planning",
+        "issue": "No Compose UI-test harness exists in this repo and this host cannot load Skiko, so no composable in either task can be asserted automatically.",
+        "resolution": "The gating decision was extracted into pure internal functions (shouldMeasure, measureTarget, measureDispatch) in core/measure/MeasureGate.kt and unit-tested with 14 cases, converting the testable part of the interaction into commonTest coverage. Everything genuinely visual is recorded blocked in execution/MANUAL-CHECKS.md with runnable instructions.",
+        "severity": "warn"
+      },
+      {
+        "at": "T-12 status line",
+        "issue": "Beyond the task's scope: T-10 gave the indicator DOT a Dumping branch but the label beside it still read FROZEN, so the status line contradicted its own indicator for the whole ~2.7s dump - the defect AC-72 exists to prevent.",
+        "resolution": "MirrorContent now resolves a Dumping label above the frozen case, in the same order indicatorDot puts it. Found while wiring the card rather than by a test; the same class of defect as the error-handling spec's T-32.",
+        "severity": "warn"
+      },
+      {
+        "at": "T-12 preview fidelity",
+        "issue": "MeasureCard's shipped @Preview carried Top = 9dp, a value the design's own algorithm cannot produce from its fixture (the nearest node above item_price is divider_1, bottom edge 183, giving 198-183=15).",
+        "resolution": "Corrected to 15dp with a comment pointing at the gate record. Four of the preview's five values and its finding string already reproduced exactly, so it was the right node with one hand-typed figure. Verified twice independently.",
+        "severity": "info"
+      }
+    ]
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator-under-operator-delegation",
+    "approved": true,
+    "at": "2026-10-17T08:46:48Z"
+  }
+}

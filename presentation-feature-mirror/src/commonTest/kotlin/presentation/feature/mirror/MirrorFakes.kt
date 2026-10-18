@@ -5,11 +5,13 @@ import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.colorspace.ColorSpace
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import domain.core.source.model.device.DiscoveryModel
+import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
 import domain.usecase.api.source.monad.Optional
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
+import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
@@ -17,6 +19,7 @@ import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
@@ -199,6 +202,34 @@ internal class FakeSetAdbPath : SetAdbPathUseCase {
 }
 
 /**
+ * Resolves immediately with [result] by default — the right shape for every test that does not
+ * care about the in-flight window. Set [manual] to gate resolution behind [resolve] instead, so
+ * a test can assert the `Dumping` state deterministically before completing the dump, rather
+ * than racing a real suspension against `advanceUntilIdle()`.
+ */
+internal class FakeDumpHierarchy(
+    private val result: Result<HierarchySnapshotModel> = Result.success(HierarchySnapshotModel.Empty),
+    private val manual: Boolean = false,
+) : DumpHierarchyUseCase {
+
+    val calls: MutableList<String> = mutableListOf()
+    private var gate: CompletableDeferred<Result<HierarchySnapshotModel>>? = null
+
+    override suspend fun invoke(deviceId: String): Result<HierarchySnapshotModel> {
+        calls += deviceId
+        if (!manual) return result
+        val deferred = CompletableDeferred<Result<HierarchySnapshotModel>>()
+        gate = deferred
+        return deferred.await()
+    }
+
+    /** Completes the most recently started call that is still pending. */
+    fun resolve(newResult: Result<HierarchySnapshotModel> = result) {
+        gate?.complete(newResult)
+    }
+}
+
+/**
  * Builds a ViewModel with every seam faked.
  *
  * The decode seam returns `null` by default: most tests assert the state machine and need no
@@ -213,6 +244,7 @@ internal fun mirrorViewModel(
     refreshDiscovery: RefreshDiscoveryUseCase = FakeRefreshDiscovery(),
     restartAdbServer: RestartAdbServerUseCase = FakeRestartAdbServer(),
     setAdbPath: SetAdbPathUseCase = FakeSetAdbPath(),
+    dumpHierarchy: DumpHierarchyUseCase = FakeDumpHierarchy(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
 ): MirrorViewModel = MirrorViewModel(
     detectTools = detectTools,
@@ -223,6 +255,7 @@ internal fun mirrorViewModel(
     refreshDiscovery = refreshDiscovery,
     restartAdbServer = restartAdbServer,
     setAdbPath = setAdbPath,
+    dumpHierarchy = dumpHierarchy,
     decodeFrame = decodeFrame,
 )
 

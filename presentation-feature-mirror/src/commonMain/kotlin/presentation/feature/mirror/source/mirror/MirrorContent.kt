@@ -55,6 +55,7 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_sec
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_section_source
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_source_summary
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_detecting
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_dumping
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_latency_placeholder
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_no_device_attached
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_awaiting_choice
@@ -141,6 +142,8 @@ public fun MirrorStageContent(
                     frozen = state.frozen,
                     canResumeLive = state.canResumeLive,
                     banner = state.dropBanner(),
+                    measure = state.measure,
+                    hierarchyStatus = state.hierarchyStatus,
                     onIntent = onIntent,
                 )
             }
@@ -210,6 +213,10 @@ private fun MirrorUiState.indicatorState(card: MirrorErrorCard?): StatusIndicato
 
 @Composable
 private fun MirrorUiState.indicatorLabel(card: MirrorErrorCard?): String = when {
+    // Above the frozen case, in the same order `indicatorDot` puts it: T-10 gave the DOT a
+    // Dumping branch and left the label beside it saying FROZEN, which is the status line
+    // contradicting its own indicator for the ~2.7 s the dump takes (AC-72).
+    hierarchyStatus == HierarchyStatus.Dumping -> stringResource(Res.string.mirror_status_dumping)
     // Machine state, not prose — uppercased from the enum exactly as the LIVE label is.
     frozen != null -> StatusIndicatorState.Frozen.name.uppercase()
     session is MirrorSession.Streaming -> StatusIndicatorState.Live.name.uppercase()

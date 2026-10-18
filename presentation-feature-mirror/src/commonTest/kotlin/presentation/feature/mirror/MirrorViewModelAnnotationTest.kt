@@ -453,4 +453,39 @@ class MirrorViewModelAnnotationTest {
         advanceUntilIdle()
         return viewModel
     }
+
+    /**
+     * T-10 — the same race shape [sessionLostWhileFrozenKeepsTheAnnotations]'s sibling handlers
+     * already guard against (see `stageAnnotation`'s KDoc: every annotation handler reads
+     * `state.frozen` INSIDE `reduce`, so a later intent's CAS retry always sees the earlier
+     * intent's write rather than a stale pre-image). `DeleteAnnotation` and `EndMeasure` are
+     * both dispatched before a single `advanceUntilIdle()`, so Orbit's own reduce scheduling —
+     * not this test — decides which one's `intent {}` block actually runs first.
+     *
+     * Either order must leave index 1 gone and never resurrect it with a measure note: deleting
+     * first makes `EndMeasure` see a vanished index (a no-op); writing the note first makes
+     * `DeleteAnnotation` remove the now-commented annotation outright. A handler that read
+     * `state.frozen` OUTSIDE `reduce` could instead write the note's comment back onto a
+     * pre-image that still has the annotation, resurrecting it after the delete "won".
+     */
+    @Test
+    fun endMeasureRacingDeleteAnnotationOnTheSameIndexDoesNotResurrectIt() = runTest(mainDispatcher) {
+        val viewModel = frozenWithTwoAnnotations()
+        viewModel.handleIntent(MirrorIntent.StartMeasure(index = 1))
+        advanceUntilIdle()
+
+        viewModel.handleIntent(MirrorIntent.DeleteAnnotation(index = 1))
+        viewModel.handleIntent(MirrorIntent.EndMeasure)
+        advanceUntilIdle()
+
+        val frozen = viewModel.currentState.frozen
+        assertEquals(
+            expected = listOf("indices=[1]", "rect=$SECOND_RECT", "comment="),
+            actual = listOf(
+                "indices=${frozen?.annotations?.map { it.index }}",
+                "rect=${frozen?.annotations?.singleOrNull()?.rect}",
+                "comment=${frozen?.annotations?.singleOrNull()?.comment}",
+            ),
+        )
+    }
 }

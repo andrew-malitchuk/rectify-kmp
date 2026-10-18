@@ -26,6 +26,7 @@ class DeviceArgvTest {
         DeviceCommand.WmDensity,
         DeviceCommand.GetProp("ro.product.model"),
         DeviceCommand.EmuAvdName,
+        DeviceCommand.UiAutomatorDump,
     )
 
     private val everyHostCommand = listOf(
@@ -77,6 +78,10 @@ class DeviceArgvTest {
         assertEquals(
             listOf(adb, "-s", device.value, "emu", "avd", "name"),
             buildDeviceArgv(adb, device, DeviceCommand.EmuAvdName),
+        )
+        assertEquals(
+            listOf(adb, "-s", device.value, "exec-out", "uiautomator", "dump", "/dev/tty"),
+            buildDeviceArgv(adb, device, DeviceCommand.UiAutomatorDump),
         )
     }
 

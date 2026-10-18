@@ -1,0 +1,42 @@
+{"stage": "startup", "step": "config", "event": "end", "note": "effort=fast fixed; dashboard skipped; registry bootstrap requested", "at": "2026-10-16T13:44:44Z", "spec": "measure-mode"}
+{"stage": "registry", "step": "scan", "agent": "sdd-build-generate-registry", "event": "end", "tokens": 209731, "at": "2026-10-16T16:51:43Z", "spec": "measure-mode"}
+{"stage": "preparation", "event": "start", "at": "2026-10-16T16:52:01Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "start", "at": "2026-10-16T16:52:38Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "end", "tokens": 71366, "at": "2026-10-16T17:08:14Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "start", "at": "2026-10-16T17:08:14Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "clarify", "agent": "sdd-build-requirements-clarify", "event": "end", "tokens": 81625, "at": "2026-10-16T17:18:33Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "start", "at": "2026-10-16T17:18:33Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "brainstorm", "agent": "sdd-build-architecture-brainstorm", "event": "end", "tokens": 154312, "at": "2026-10-16T17:35:15Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-16T17:35:15Z", "spec": "measure-mode"}
+{"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 68510, "at": "2026-10-16T18:00:43Z", "spec": "measure-mode"}
+{"stage": "preparation", "event": "end", "at": "2026-10-16T18:00:43Z", "spec": "measure-mode"}
+{"stage": "plan", "event": "start", "at": "2026-10-16T18:01:05Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "note": "N=1 (effort=fast)", "at": "2026-10-16T18:01:05Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 234268, "at": "2026-10-16T18:16:11Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-16T18:36:26Z", "spec": "measure-mode"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 211876, "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
+{"stage": "plan", "event": "end", "at": "2026-10-16T18:53:37Z", "spec": "measure-mode"}
+{"stage": "backlog", "event": "start", "at": "2026-10-16T18:54:13Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-16T18:54:13Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 129125, "at": "2026-10-16T19:00:52Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-16T19:00:52Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 125490, "at": "2026-10-16T19:08:21Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "note": "cap=1 (effort=fast)", "at": "2026-10-16T19:08:30Z", "spec": "measure-mode"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 232323, "at": "2026-10-16T19:21:01Z", "spec": "measure-mode"}
+{"stage": "backlog", "event": "end", "at": "2026-10-16T19:21:01Z", "spec": "measure-mode"}
+{"stage": "execution", "event": "start", "note": "Pixel 8 shiba 38031FDJH00JVF attached and authorised", "at": "2026-10-16T19:28:59Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-1", "agent": "sdd-build-business-implement", "event": "start", "note": "wave 1, implementBatch=wave, fast tier: implement closes gate", "at": "2026-10-16T19:29:21Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-1", "agent": "sdd-build-business-implement", "event": "end", "tokens": 62844, "at": "2026-10-16T21:32:50Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-2", "event": "end", "note": "operator GO: continue as planned; normalise rects on parse; node id via resource-id->text->content-desc->class+[n]", "at": "2026-10-16T21:36:26Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "wave-3", "event": "start", "note": "T-3 + T-4, one shared worktree (implementBatch=wave)", "at": "2026-10-16T21:37:19Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "wave-3", "event": "end", "tokens": 429130, "note": "T-3+T-4 green; 2 frozen-test harness defects fixed by their authors, zero production failures", "at": "2026-10-16T21:55:38Z", "spec": "measure-mode"}
+{"stage": "execution", "event": "note", "note": "operator delegated all remaining decisions to the orchestrator and left the session", "at": "2026-10-16T22:07:08Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "wave-4", "event": "end", "tokens": 496586, "at": "2026-10-16T22:19:21Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "batch-a", "event": "end", "tokens": 663680, "at": "2026-10-16T23:03:29Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "batch-b", "event": "end", "tokens": 124902, "at": "2026-10-17T07:40:08Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "batch-c", "event": "end", "note": "T-11/T-12 code complete and verified by the orchestrator; visual clauses BLOCKED pending MANUAL-CHECKS.md", "at": "2026-10-17T08:46:37Z", "spec": "measure-mode"}
+{"stage": "execution", "step": "T-13", "event": "end", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}
+{"stage": "execution", "event": "end", "note": "all 13 tasks done; 547 tests 0 failures; 4 criteria blocked on a human", "at": "2026-10-17T08:52:34Z", "spec": "measure-mode"}
+{"stage": "validation", "event": "end", "note": "complete-with-waivers; 732 test executions 0 failures incl iosSimulatorArm64; 4 criteria blocked on a human", "at": "2026-10-17T08:59:15Z", "spec": "measure-mode"}
+{"stage": "review", "event": "end", "note": "approve-with-nits; one major found fixed and red-proved during review", "at": "2026-10-17T09:06:45Z", "spec": "measure-mode"}
+{"stage": "reflection", "event": "skip", "note": "effort=fast: reflection deferred to manual", "at": "2026-10-17T09:06:45Z", "spec": "measure-mode"}

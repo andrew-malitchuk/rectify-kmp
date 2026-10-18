@@ -38,6 +38,19 @@ public object MirrorTuning {
     /** Timeout for a single screen capture, in milliseconds. */
     public const val CaptureTimeoutMs: Long = 5_000L
 
+    /**
+     * Timeout for one `uiautomator dump`, in milliseconds.
+     *
+     * MEASURED, with headroom: three dumps of real screens on a Pixel 8 took 2317 / 2711 /
+     * 2938 ms (`.pipeline/sdd/docs/measure-mode/execution/T-1/spike-note.md`), and the cost is
+     * dominated by fixed adb + accessibility round-trip overhead rather than payload size — a
+     * 4.5x size range moved the number by only 620 ms. 10 s is ~3.4x the measured mean.
+     *
+     * It exists because [HostCommandTimeoutMs] (3 s) would miss on a dump that is merely a
+     * little slower than the mean, and `timeoutMs()`'s `else` branch makes that failure silent.
+     */
+    public const val DumpTimeoutMs: Long = 10_000L
+
     /** Timeout for a deviceless host command, in milliseconds. */
     public const val HostCommandTimeoutMs: Long = 3_000L
 

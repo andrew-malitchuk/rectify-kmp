@@ -138,4 +138,25 @@
     <string name="mirror_banner_stream_dropped">Stream dropped</string>
     <string name="mirror_banner_annotations_kept">Your %1$d annotations are kept on the frozen frame.</string>
     <string name="mirror_banner_reconnect">Reconnect</string>
+    <!-- Mirror - Measure mode (FR-36..FR-45 / AC-10 / AC-67 / AC-69 / AC-72). Only the panel's
+         CHROME is localised: the node id, the five figures, the finding and the ⌥ note line are
+         machine text produced by core/measure and must read identically on every machine, because
+         they are pasted into bug reports. -->
+    <string name="mirror_measure_title">Measuring</string>
+    <string name="mirror_measure_row_size">Size</string>
+    <string name="mirror_measure_row_top">Top</string>
+    <string name="mirror_measure_row_right">Right</string>
+    <string name="mirror_measure_row_bottom">Bottom</string>
+    <string name="mirror_measure_row_left">Left</string>
+    <!-- The design's own footer copy, verbatim. -->
+    <string name="mirror_measure_footer">Numbers attach to the annotation and go into the prompt.</string>
+    <!-- AC-72. The dump costs ~2.7 s, so the panel says so rather than silently reporting
+         "View (no match)" for the whole of it. -->
+    <string name="mirror_measure_hierarchy_dumping">Reading the view hierarchy… measurements are against the frame until it lands.</string>
+    <!-- AC-69. "Unavailable" is not an error: every figure above is still measured, against the
+         annotation box and the frame edges. -->
+    <string name="mirror_measure_hierarchy_unavailable">No view hierarchy for this frame, so these are measured against the annotation box and the frame edges.</string>
+    <!-- Machine state, like LIVE and FROZEN, but it has to be a string because the enum name is
+         not what the design shows beside the spinner. -->
+    <string name="mirror_status_dumping">DUMPING</string>
 </resources>

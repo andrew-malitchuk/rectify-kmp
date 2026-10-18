@@ -18,10 +18,13 @@ import data.preference.api.source.datasource.AdbPathPreferenceSource
 import data.preference.api.source.model.AdbPathPreference
 import data.repository.impl.core.mapper.DeviceResourceMapper
 import data.repository.impl.core.mapper.EmulatorResourceMapper
+import data.repository.impl.core.mapper.HierarchyDumpStdout
+import data.repository.impl.core.mapper.HierarchySnapshotMapper
 import data.repository.impl.core.mapper.MirrorFrameMapper
 import data.repository.impl.core.mapper.ToolProbeMapper
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.EmulatorModel
+import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
@@ -312,6 +315,33 @@ internal class DeviceRepositoryImpl(
                 droppedFrames = stats.droppedFrames,
             )
         }
+
+    /**
+     * @see DeviceRepository.dumpHierarchy
+     *
+     * TWO executor calls, one repository call. `UiAutomatorDump` and `WmDensity` are separate
+     * sealed commands with separate argvs, so one `run` cannot carry both — and it does not
+     * need to: density is a static device property and the frame size comes from the dump's
+     * own root, so nothing can drift between two calls a fraction of a second apart. What
+     * matters is that the snapshot is assembled from both halves or from neither, which
+     * [HierarchyDumpStdout] enforces at the type level. See the wave-4 addendum in
+     * `execution/GATE-step2-go-no-go.md`.
+     */
+    override suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel {
+        val device = DeviceId.of(deviceId)
+            ?: throw DeviceCommandException(listOf(ToolKind.Adb.binaryName), null, "invalid device id $deviceId")
+        val dump = deviceCommandExecutor.run(device, DeviceCommand.UiAutomatorDump).decodeToString()
+        // A dump that worked is not thrown away because `wm density` did not: an unknown
+        // density degrades to the 0 sentinel, which makes the caller report px instead of a
+        // dp figure derived from a guess. A failed DUMP still throws - that is the payload.
+        val density = try {
+            deviceCommandExecutor.run(device, DeviceCommand.WmDensity).decodeToString()
+        } catch (failure: DeviceCommandException) {
+            log.d { "wm density failed, reporting an unknown density: ${failure.message}" }
+            ""
+        }
+        return HierarchySnapshotMapper.toModel.map(HierarchyDumpStdout(dump = dump, density = density))
+    }
 
     /**
      * Configured AVDs merged with the running instances.

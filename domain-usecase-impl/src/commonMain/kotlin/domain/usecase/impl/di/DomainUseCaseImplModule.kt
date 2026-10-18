@@ -15,6 +15,7 @@ import domain.usecase.api.source.usecase.configuration.SetThemeUseCase
 import domain.usecase.api.source.usecase.configuration.SetUnitSystemUseCase
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
 import domain.usecase.api.source.usecase.device.DetectToolsUseCase
+import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
@@ -36,6 +37,7 @@ import domain.usecase.impl.source.usecase.configuration.SetThemeUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.SetUnitSystemUseCaseImpl
 import domain.usecase.impl.source.usecase.device.BootEmulatorUseCaseImpl
 import domain.usecase.impl.source.usecase.device.DetectToolsUseCaseImpl
+import domain.usecase.impl.source.usecase.device.DumpHierarchyUseCaseImpl
 import domain.usecase.impl.source.usecase.device.ObserveDeviceDiscoveryUseCaseImpl
 import domain.usecase.impl.source.usecase.device.ObserveMirrorStatsUseCaseImpl
 import domain.usecase.impl.source.usecase.device.RestartAdbServerUseCaseImpl
@@ -72,4 +74,5 @@ public val domainUseCaseImplModule: Module = module {
     singleOf(::RefreshDiscoveryUseCaseImpl) bind RefreshDiscoveryUseCase::class
     singleOf(::SetAdbPathUseCaseImpl) bind SetAdbPathUseCase::class
     singleOf(::RestartAdbServerUseCaseImpl) bind RestartAdbServerUseCase::class
+    singleOf(::DumpHierarchyUseCaseImpl) bind DumpHierarchyUseCase::class
 }

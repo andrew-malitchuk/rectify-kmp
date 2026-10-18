@@ -3,24 +3,30 @@
     "spec": "android-device-discovery-mirroring",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-15T06:01:56Z"
+    "updatedAt": "2026-10-17T09:06:45Z"
   },
   {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-15T06:01:56Z"
+    "updatedAt": "2026-10-17T09:06:45Z"
   },
   {
     "spec": "drag-annotate-frozen-frame",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-15T06:01:56Z"
+    "updatedAt": "2026-10-17T09:06:45Z"
   },
   {
     "spec": "error-handling-and-recovery",
-    "currentStage": "preparation",
+    "currentStage": "done",
     "verdict": "",
-    "updatedAt": "2026-10-15T06:02:30Z"
+    "updatedAt": "2026-10-17T09:06:45Z"
+  },
+  {
+    "spec": "measure-mode",
+    "currentStage": "done",
+    "verdict": "complete-with-waivers",
+    "updatedAt": "2026-10-17T09:06:45Z"
   }
 ]

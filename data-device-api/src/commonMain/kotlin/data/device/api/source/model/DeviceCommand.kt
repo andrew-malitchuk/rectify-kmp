@@ -26,4 +26,14 @@ public sealed interface DeviceCommand {
 
     /** Ask a running emulator for its AVD name. */
     public data object EmuAvdName : DeviceCommand
+
+    /**
+     * Dump the accessibility view hierarchy as XML on stdout.
+     *
+     * Costs ~2.7 s on real hardware and moves tens of kilobytes, so it carries its own
+     * budget ([data.device.api.source.tuning.MirrorTuning.DumpTimeoutMs]) rather than the
+     * host-command default. The payload is NOT well-formed XML — see
+     * [data.device.api.source.parse.parseUiAutomatorDump].
+     */
+    public data object UiAutomatorDump : DeviceCommand
 }

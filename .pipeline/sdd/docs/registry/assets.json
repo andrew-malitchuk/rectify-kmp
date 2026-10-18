@@ -1,0 +1,112 @@
+[
+  {
+    "id": "kit-icon-set",
+    "name": "Rectify kit icon set (26 ImageVectors)",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/icon/",
+    "tags": [
+      "icon",
+      "imagevector",
+      "generated",
+      "feather-style",
+      "pack",
+      "26-glyphs",
+      "presentation-core-ui"
+    ],
+    "description": "Hand-maintained 24x24 stroke ImageVector pack, one top-level `public val <Name>: ImageVector` per file, no Phosphor/Material dependency anywhere. 26 glyphs: AlertTriangle, Battery, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, Folder, HardDrive, Home, Image, Lock, Map, MoreVertical, Plus, RefreshCcw, Settings, Smartphone, Star, Sun, Type, Wifi, Wizard, X (the 27th file in the directory is RectifyLogo, catalogued separately). Icons are tinted at the call site with Theme.color.* -- they carry no baked colour. Add a new glyph with the /kmp-convert-svg skill rather than hand-writing path data."
+  },
+  {
+    "id": "icon-catalogue",
+    "name": "iconCatalogue / resolveIcon",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/icon/IconCatalogue.kt",
+    "tags": [
+      "icon",
+      "lookup",
+      "string-keyed",
+      "17-entries"
+    ],
+    "description": "String-keyed lookup over 17 of the kit icons -- `public val iconCatalogue: List<Pair<String, ImageVector>>` plus `public fun resolveIcon(key: String): ImageVector`. Keys: hard_drive, settings, wifi, smartphone, refresh, clock, file_text, home, lock, book, image, type, sun, alert, battery, folder, plus. Use this when an icon has to be chosen from data (a serialized name) rather than referenced statically; note it does NOT cover all 26 glyphs."
+  },
+  {
+    "id": "rectify-logo",
+    "name": "RectifyLogo",
+    "path": "presentation-core-ui/src/commonMain/kotlin/presentation/core/ui/source/kit/atom/icon/RectifyLogo.kt",
+    "tags": [
+      "brand",
+      "logo",
+      "imagevector",
+      "placeholder",
+      "replace-me"
+    ],
+    "description": "The in-app brand mark as an ImageVector, filled with Theme.color.inkMain so it tracks light/dark for free. Currently a NEUTRAL PLACEHOLDER (plain rounded square, no wordmark) deliberately shipped to be replaced -- see .claude/rules/icon-branding-placeholder.md, which requires replacing it together with the Android adaptive icon and the three iOS PNGs. Rendered by SplashSuccessContent. A second logo composable (AppIcon.kt) was deleted as dead code -- do not recreate one."
+  },
+  {
+    "id": "font-roboto-flex",
+    "name": "Roboto Flex (UI typeface)",
+    "path": "presentation-core-styling/src/commonMain/composeResources/font/roboto_flex.ttf",
+    "tags": [
+      "font",
+      "variable",
+      "ui",
+      "sans",
+      "composeResources",
+      "1.6MB"
+    ],
+    "description": "The app's UI typeface, loaded by the internal RobotoFontFamily() in presentation-core-styling/source/attribute/Typography.kt and baked into every non-mono ThemeTypography role. Note the recorded waiver: design ACs reference SF Pro, which has never existed in this repo -- Roboto Flex is the ratified substitute, so residual 8-40pt text-width deltas against the comps are font-substitution artefacts, not layout defects."
+  },
+  {
+    "id": "font-jetbrains-mono",
+    "name": "JetBrains Mono (data/mono typeface)",
+    "path": "presentation-core-styling/src/commonMain/composeResources/font/jetbrains_mono.ttf",
+    "tags": [
+      "font",
+      "monospace",
+      "data",
+      "composeResources",
+      "189KB"
+    ],
+    "description": "Monospace face behind the Theme.typography.mono* roles (monoData, monoMeta, monoBadge, monoTag, monoRuler) -- serials, adb commands, ruler ticks, diagnostics. Loaded by the internal JetBrainsMonoFontFamily()."
+  },
+  {
+    "id": "strings-en",
+    "name": "English strings (values/strings.xml)",
+    "path": "presentation-core-localisation/src/commonMain/composeResources/values/strings.xml",
+    "tags": [
+      "strings",
+      "localisation",
+      "composeResources",
+      "en-only",
+      "95-keys"
+    ],
+    "description": "The ONLY shipped locale: ~95 keys under rectify_kmp.presentation_core_localisation.generated.resources.Res.string.*. Key convention is <feature>_<element> (onboarding_welcome_title, settings_erase_confirm_body, mirror_error_*, mirror_banner_*). No values-<code>/ directory exists yet -- adding a language means a new file plus an entry in SettingsState's languageOptions/languageCodes. Some keys are known-unused (mirror_status_ready, mirror_emulator_none); grep before assuming a key is live."
+  },
+  {
+    "id": "android-launcher-icon",
+    "name": "Android adaptive launcher icon",
+    "path": "aos-application/src/main/res/",
+    "tags": [
+      "icon",
+      "android",
+      "launcher",
+      "adaptive",
+      "vector-drawable",
+      "placeholder",
+      "replace-me"
+    ],
+    "description": "Placeholder adaptive icon: drawable/ic_launcher_foreground.xml + drawable-night/ic_launcher_foreground.xml (mark geometry), drawable/ic_launcher_monochrome.xml (Android 13+ themed variant), drawable{,-night}/ic_launcher_background.xml (flat fills), wired through mipmap-anydpi-v26/ and -v33/ ic_launcher{,_round}.xml. minSdk 27 means the adaptive icon is the only resource Android ever resolves -- there are deliberately no mipmap-*dpi PNG fallbacks and none should be regenerated."
+  },
+  {
+    "id": "ios-app-icon",
+    "name": "iOS AppIcon (three appearances)",
+    "path": "ios-application/ios-application/Assets.xcassets/AppIcon.appiconset/",
+    "tags": [
+      "icon",
+      "ios",
+      "appicon",
+      "png",
+      "1024",
+      "placeholder",
+      "replace-me"
+    ],
+    "description": "Three fully-opaque 1024x1024 PNGs for Apple's current three-appearance format -- app-icon-1024.png (default), -dark, -tinted -- already declared in Contents.json, so replacement is PNG bytes only, no plist or JSON edit. No alpha channel is permitted. Assets.xcassets also holds AccentColor.colorset."
+  }
+]

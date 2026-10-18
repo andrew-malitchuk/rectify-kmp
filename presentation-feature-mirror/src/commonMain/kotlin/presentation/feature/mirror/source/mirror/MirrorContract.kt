@@ -1,5 +1,6 @@
 package presentation.feature.mirror.source.mirror
 
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
@@ -190,6 +191,13 @@ public data class MirrorDropBanner(
  *   pixels either, for the same reason this class carries no frame: the bitmap itself lives on
  *   [MirrorViewModel.frozenFrame]. Annotations, unlike pixels, DO belong here — they are small,
  *   value-equal and change only when the user acts.
+ * @property measure The measuring readout in flight, or `null` while nothing is being measured.
+ *   Fully computed and value-equal (see [MeasureReadout]), so it costs a state copy no more than
+ *   an annotation does — the same reason the staged list lives here and the pixels do not.
+ * @property hierarchyStatus Whether a view hierarchy is available for [frozen]. The snapshot
+ *   itself is **not** here: it is a few hundred nodes per dump, read only by the measuring
+ *   arithmetic and never rendered directly, so it lives on [MirrorViewModel.frozenHierarchy]
+ *   beside the bitmaps. Only this four-state verdict is reduced.
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -205,6 +213,8 @@ public data class MirrorUiState(
     val avds: List<String> = emptyList(),
     val selectedAvd: String? = null,
     val frozen: FrozenFrame? = null,
+    val measure: MeasureReadout? = null,
+    val hierarchyStatus: HierarchyStatus = HierarchyStatus.Absent,
 ) {
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
@@ -362,6 +372,23 @@ public sealed interface MirrorIntent {
      */
     public data object Reconnect : MirrorIntent
 
+    /**
+     * Measure one annotation against the captured hierarchy — Option held down (FR-36).
+     *
+     * @property index 1-based annotation index. An index that is no longer staged measures
+     *   nothing rather than failing: the annotation can be deleted between the two intents.
+     */
+    public data class StartMeasure(val index: Int) : MirrorIntent
+
+    /**
+     * Option released — write the readout's `⌥` line into the annotation's note and drop it.
+     *
+     * Carries no index: [MirrorUiState.measure] already names the annotation it was computed
+     * for, and taking the index from the readout rather than from the key event is what stops
+     * the note landing on a different annotation after a delete renumbered the list.
+     */
+    public data object EndMeasure : MirrorIntent
+
     /** Restart the discovery collection — the error card's "Retry" (AC-26, AC-53). */
     public data object RetryDiscovery : MirrorIntent
 
@@ -504,3 +531,142 @@ public data class FrozenFrame(
     public val selected: StagedAnnotation?
         get() = annotations.firstOrNull { it.index == selectedIndex }
 }
+
+/**
+ * Unit every measurement in the panel is labelled in.
+ *
+ * [Px] is not a preference — it is what an **unknown device density** degrades to. A wrong
+ * density scales every figure it touches, so raw px with an honest label beats a confidently
+ * wrong `dp` (see `core/measure`'s `toDisplayUnit`).
+ *
+ * @property suffix Machine text appended to a number, e.g. the `dp` of `48×17dp`. Never
+ *   localised — these strings go into bug reports and must read the same on every machine.
+ */
+public enum class MeasureUnit(public val suffix: String) {
+    /** Density-independent pixels — the normal case. */
+    Dp("dp"),
+
+    /** Raw device pixels, used when density is unknown. */
+    Px("px"),
+}
+
+/**
+ * Which row of the measuring panel a value or guide belongs to.
+ *
+ * @property label Lowercase machine word used in the `⌥` note line (`top 15dp`). [Size] carries
+ *   one for completeness; the note line prints its value unlabelled because `48×17dp` already
+ *   says what it is.
+ */
+public enum class MeasureSide(public val label: String) {
+    /** The node's own width × height. */
+    Size("size"),
+
+    /** Gap above the node. */
+    Top("top"),
+
+    /** Gap to the right of the node. */
+    Right("right"),
+
+    /** Gap below the node. */
+    Bottom("bottom"),
+
+    /** Gap to the left of the node. */
+    Left("left"),
+}
+
+/**
+ * Whether a view hierarchy is available to measure against.
+ *
+ * [Unavailable] and [Absent] are deliberately distinct, for the same reason
+ * [MirrorErrorKind.PollFailed] is distinct from [MirrorErrorKind.NoDevice]: "nobody has asked
+ * for a dump yet" and "the dump was attempted and the device would not give one" need different
+ * UI, and folding them together misreports one as the other.
+ */
+public enum class HierarchyStatus {
+    /** No dump has been attempted for the current frozen frame. */
+    Absent,
+
+    /** A dump is in flight — it costs ~2.7 s, so this state is visible to the user. */
+    Dumping,
+
+    /** A usable snapshot is held. */
+    Ready,
+
+    /** The dump was attempted and produced nothing usable. */
+    Unavailable,
+}
+
+/**
+ * One already-formatted row of the measuring panel.
+ *
+ * Formatted and not numeric: `×`, `Δ`, the unit suffix and the suppression rule are all decided
+ * in `core/measure` where they are unit-testable, so the UI only ever places strings. The same
+ * precedent as [MirrorErrorCard] carrying no copy — except here the strings are machine text,
+ * never localised.
+ *
+ * @property side Which row this is.
+ * @property value Formatted figure, e.g. `48×17dp` or `15dp`.
+ */
+public data class MeasureValue(
+    val side: MeasureSide,
+    val value: String,
+)
+
+/**
+ * One dashed guide drawn over the frozen frame, in **device pixels**.
+ *
+ * Used for both the four gap guides and the single alignment rail — same geometry, same label
+ * shape, so one type carries both rather than two near-identical ones.
+ *
+ * A guide whose gap falls under one display unit is **absent from the list entirely** (FR-39),
+ * never present with a rounded-up `1` label.
+ *
+ * @property side Which gap this guide measures, or [MeasureSide.Top] for the alignment rail.
+ * @property label Formatted numeral, e.g. `15dp`, or `Δ6dp` on the rail.
+ * @property from Start point in device pixels.
+ * @property to End point in device pixels.
+ */
+public data class MeasureGuide(
+    val side: MeasureSide,
+    val label: String,
+    val from: IntOffset,
+    val to: IntOffset,
+)
+
+/**
+ * Everything the measuring overlay and panel draw for one annotation.
+ *
+ * Fully computed and fully formatted: it is the output of one pure `core/measure.measure(...)`
+ * call over a hierarchy snapshot, so the reducer stores it and the UI places it, and neither
+ * does arithmetic. Value-equal, so it can live in [MirrorUiState] without making a state copy
+ * expensive.
+ *
+ * @property annotationIndex 1-based badge number of the annotation being measured.
+ * @property nodeId Snapped node's label, or `View (no match)` when nothing snapped — a
+ *   first-class outcome (FR-41) in which every value below is still measured, against the
+ *   annotation's own rect and the frame edges.
+ * @property targetRect The snapped node's bounds, or the annotation's own when nothing snapped.
+ * @property neighbourRects Bounds of the nearest neighbour on each side that exists, in
+ *   `[left, right, top, bottom]` order, each with a 1px height floor so a hairline divider stays
+ *   visible.
+ * @property values The five panel rows, in display order, already formatted.
+ * @property guides Gap guides to draw; a side whose gap is under one display unit is absent.
+ * @property rail The alignment rail, populated **only** for the top-misalignment finding — it
+ *   means "these two edges should have lined up", which neither of the other findings says.
+ * @property finding The single finding message, or `null` when there is nothing to report.
+ *   Never more than one, by construction.
+ * @property unit Unit every figure here is labelled in.
+ * @property noteLine The `⌥` one-liner pasted into the annotation's note.
+ */
+public data class MeasureReadout(
+    val annotationIndex: Int,
+    val nodeId: String,
+    val targetRect: DeviceRect,
+    val neighbourRects: List<DeviceRect>,
+    val values: List<MeasureValue>,
+    val guides: List<MeasureGuide>,
+    val rail: MeasureGuide?,
+    val finding: String?,
+    val unit: MeasureUnit,
+    val noteLine: String,
+)

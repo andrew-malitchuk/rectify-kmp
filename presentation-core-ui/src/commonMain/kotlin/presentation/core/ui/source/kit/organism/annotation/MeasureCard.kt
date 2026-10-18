@@ -50,8 +50,10 @@ public data class MeasureSpec(
  * card: it reports a misalignment, which is an annotation-grade problem rather than a
  * measurement.
  *
- * Unlike [CommentPopover] this is a panel, not an overlay — it lives in the sidebar and follows
- * the theme normally.
+ * Unlike [CommentPopover] this is a panel rather than a tailed bubble: it is self-contained,
+ * carries no pointer at anything, and follows the theme normally. Where it sits is the caller's
+ * choice — `MirrorAnnotationStage` floats it over the frozen frame at `TopStart`, which is how
+ * measure mode presents it; a sidebar is equally valid.
  *
  * @param nodeId Identifier of the measured node, e.g. `TextView#item_price`.
  * @param specs Measured dimensions, rendered in order.
@@ -59,6 +61,8 @@ public data class MeasureSpec(
  * @param title Card title.
  * @param index Optional measurement index shown top-right, e.g. `1` renders as `#1`.
  * @param finding Optional misalignment note shown in a red block at the bottom.
+ * @param footer Optional sentence below the finding, inside the card's own border — what becomes
+ *   of these numbers, or why there are none to show.
  */
 @Composable
 public fun MeasureCard(
@@ -68,6 +72,7 @@ public fun MeasureCard(
     title: String = "Measuring",
     index: Int? = null,
     finding: String? = null,
+    footer: String? = null,
 ) {
     Column(
         modifier = modifier
@@ -148,6 +153,16 @@ public fun MeasureCard(
                 )
             }
         }
+
+        // Below the finding and inside the border, in the card's own padded column: the sentence
+        // is about the card's contents, so it must not look like a caption floating under it.
+        if (footer != null) {
+            Text(
+                text = footer,
+                style = Theme.typography.body,
+                color = Theme.color.ink3,
+            )
+        }
     }
 }
 
@@ -165,12 +180,18 @@ private fun MeasureCardPreview() {
                 index = 1,
                 specs = listOf(
                     MeasureSpec("Size", "48×17dp"),
-                    MeasureSpec("Top", "9dp"),
+                    // 15, not the 9 this preview shipped with. The design's own measure() over
+                    // its own ELS fixture gives 15 for item_price (nearest node above is
+                    // divider_1, bottom edge 183, so 198 - 183 = 15); no node in the fixture has
+                    // a bottom edge at 189, so 9 was never run through the algorithm. Corrected
+                    // per the step-2 gate addendum, "the design's real measure() recovered".
+                    MeasureSpec("Top", "15dp"),
                     MeasureSpec("Right", "20dp"),
                     MeasureSpec("Bottom", "49dp"),
                     MeasureSpec("Left", "62dp"),
                 ),
                 finding = "top Δ6dp vs item_title · expected 0",
+                footer = "Numbers attach to the annotation and go into the prompt.",
             )
         }
     }

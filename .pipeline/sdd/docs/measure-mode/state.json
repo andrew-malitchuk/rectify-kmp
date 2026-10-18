@@ -1,0 +1,134 @@
+{
+  "spec": "measure-mode",
+  "currentStage": "done",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done"
+    },
+    "validation": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    },
+    "reflection": {
+      "status": "skipped",
+      "reason": "effort=fast defers reflection to a manual batch run of /sdd-build-reflect-retrospective"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "worktreeBranch": "task/wave-1",
+      "needsHumanReview": true
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 2
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 3,
+      "worktreeBranch": "task/wave-3"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 3,
+      "worktreeBranch": "task/wave-3"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 4,
+      "worktreeBranch": "task/wave-4"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 5,
+      "worktreeBranch": "task/batch-a"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 6,
+      "worktreeBranch": "task/batch-a"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 7,
+      "worktreeBranch": "task/batch-a"
+    },
+    "T-9": {
+      "status": "done",
+      "wave": 8,
+      "worktreeBranch": "task/batch-b"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 9,
+      "worktreeBranch": "task/batch-b"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 10,
+      "worktreeBranch": "task/batch-c",
+      "needsHumanReview": true
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 11,
+      "worktreeBranch": "task/batch-c",
+      "needsHumanReview": true
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 12,
+      "needsHumanReview": true
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  },
+  "delegation": {
+    "from": "operator",
+    "at": "2026-10-17",
+    "scope": "wave-4 onward including Stage 5 and Stage 6 gates",
+    "note": "Decisions recorded in execution/GATE-step2-go-no-go.md addenda. Unverifiable visual ACs close as blocked, never waived."
+  },
+  "verdict": "complete-with-waivers"
+}

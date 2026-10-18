@@ -1,0 +1,104 @@
+# measure-mode — verdict
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | validation |
+| step | verdict |
+| status | done |
+| producedBy | orchestrator-under-operator-delegation |
+| schemaVersion | 1 |
+| createdAt | 2026-10-17T08:59:01Z |
+| updatedAt | 2026-10-17T08:59:01Z |
+
+## Gate
+
+### type
+
+human
+
+### approvedBy
+
+orchestrator-under-operator-delegation
+
+### approved
+
+true
+
+### at
+
+2026-10-17T08:59:01Z
+
+## Provenance
+
+### selfHash
+
+d89995b840ce1bd1b758ea24493424c5346926eb89ed4a065228e312f7999e84
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| plan/plan.json | 6c44577da075cc3e5585af1c8fc8afa4d2b5d70dc1bfc5115184e0bb62c1a30a |
+| backlog/backlog.json | 6f849f4416e8adcf94559bb05055afe9181ce0fe26bbcf6da2d9619f09dab0d8 |
+
+## Data
+
+### verdict
+
+complete-with-waivers
+
+### tasks
+
+| id | status | satisfiesAC |
+| --- | --- | --- |
+| T-1 | done | ["AC-57", "AC-58", "AC-65", "AC-69"] |
+| T-2 | done | ["AC-69", "AC-72"] |
+| T-3 | done | ["AC-69"] |
+| T-4 | done | ["AC-65", "AC-69"] |
+| T-5 | done | ["AC-69", "AC-72"] |
+| T-6 | done | ["AC-57", "AC-58", "AC-59"] |
+| T-7 | done | ["AC-60", "AC-61", "AC-62", "AC-63", "AC-64", "AC-66"] |
+| T-8 | done | ["AC-65", "AC-68", "AC-10"] |
+| T-9 | done | ["AC-70", "AC-72"] |
+| T-10 | done | ["AC-69", "AC-70", "AC-72"] |
+| T-11 | done | ["AC-10", "AC-11", "AC-71"] |
+| T-12 | done | ["AC-67", "AC-11"] |
+| T-13 | done | ["AC-10", "AC-11", "AC-67", "AC-69", "AC-71", "AC-72"] |
+
+### unsatisfied
+
+#### blockedOnHuman
+
+- AC-10 (the on-device Option-hold snap, demo)
+- AC-67 (the panel's rendered geometry and copy, demo)
+- AC-71 (Alt-held activation observed on a real window, demo)
+- AC-11's red-highlight half (inspection; its note-attachment half is asserted)
+
+#### note
+
+These four are BLOCKED, not waived in the ordinary sense: nothing was decided to be acceptable-as-is. They are unverifiable on this host and remain unproven until a human runs execution/MANUAL-CHECKS.md. Recorded as waivers only because this schema has no blocked state; each waiver below says so explicitly.
+
+### waivers
+
+| id | item | reason | acceptedBy |
+| --- | --- | --- | --- |
+| W-1 | AC-10, AC-67, AC-71 and AC-11's red-highlight half — every criterion whose verificationMethod is demo or inspection | BLOCKED, NOT ACCEPTED. Two independent environment limits, both measured rather than assumed. (1) In-process Skiko fails on this host, so no Compose UI test can run - the drag-annotate W-1 precedent, still true, and the reason all 107 measure tests are pure logic. (2) Screen Recording is denied to this session, so screencapture returns 'could not create image from display'. What is NOT true is that the host cannot render: ./gradlew :desktop-application:run loads Skiko, opens a window and runs clean for over 30s with the measure code in it. A human at this machine needs no extra setup. Runnable instructions are in execution/MANUAL-CHECKS.md as MC-1..MC-5, each naming what correct and what failure look like. Until they are run these criteria are unproven, and this spec must not be read as having demonstrated them. | orchestrator-under-operator-delegation |
+| W-2 | The dropped-frame delta across a freeze-with-dump (T-13 DoD) | BLOCKED. Needs the app streaming from the device while a human reads the TransportStats row. The operator's ruling was that the dump does not pause the capture loop and the fps dip is accepted as measurable later; 'later' has not yet happened. The number is unrecorded, not zero. | orchestrator-under-operator-delegation |
+| W-3 | AC-69's hardware half - dump failure, timeout and empty-return observed on a device | PARTIALLY BLOCKED, and stronger than it looks. The logic IS asserted: dumpFailureReducesUnavailableWithoutAlteringTheFreeze and dumpSuccessReducesReadyWithoutAlteringTheFreeze pin that a failing dump neither blocks nor delays the freeze and that the outcome is never discarded, and parseUiAutomatorDump has 19 never-throws cases over truncated, empty, malformed and entity-escaped input. What is unobserved is a REAL failure on hardware: the T-1 spike deliberately never attempted a FLAG_SECURE screen, so the one input most likely to return empty in the field has never been tried. This is the single most valuable manual check remaining. | orchestrator-under-operator-delegation |
+| W-4 | Three coverage gaps reported honestly by their implementers and left uncovered | ACCEPTED as-is, with the cost understood. (a) The dumpJob cancellation path in releaseHierarchy() has no test, so a late dump resolving about a released frame would not be caught; the symptom would be a stale Ready status, visible and minor. (b) The design's max(h,1) neighbour-height floor is unreachable from the oracle because no ELS node has h==0. (c) The mid-axis guide rounding is unasserted at sub-pixel level: the design's mid-y is a real-valued 206.5 on an odd-height target and the implementation truncates to 206, since IntOffset cannot carry half a pixel. | orchestrator-under-operator-delegation |
+| W-5 | Four backlog AC and DoD clauses superseded mid-execution by recorded rulings | ACCEPTED, and reconciled against execution/GATE-step2-go-no-go.md rather than the backlog's original wording. (a) T-5's 'dump and wm density in exactly one DeviceCommandExecutor call' was impossible against T-3's two frozen sealed cases and was reworded to the invariant it was groping for - a snapshot is never built from one half without the other - which the named HierarchyDumpStdout input makes a type-level property. (b) The node-id scheme became a four-step chain (resource-id -> text -> content-desc -> class[n]) because resource-id is 6 percent on Compose and Compose classes are anonymous. (c) The misalignment thresholds moved from raw px to the display unit in use. (d) MeasureCard gained an additive footer parameter, so 'no signature change' reads 'no breaking signature change'. | operator (a, b, d) and orchestrator-under-operator-delegation (c) |
+
+### openChangeRequests
+
+
+### humanRemarks
+
+- The operator delegated all decisions from wave 4 onward and left the session; every ruling since is recorded in execution/GATE-step2-go-no-go.md with its reasoning and what was rejected.
+- Four of the thirteen tasks surfaced a defect in their own frozen tests rather than editing them to pass. Every one of those claims was independently verified and every one was real: an unsatisfiable single{} predicate, a ToolResolver harness that could not see its fake adb, a non-void @Test method that JUnit rejected before the body ran, and a KDoc premise that DeleteAnnotation's renumbering made impossible. The last of those exposed a genuine bug - a readout outliving the index it named - fixed in the shared path rather than at one caller.
+- The single most consequential finding of the whole spec came from tracing real data rather than from any requirement: the hierarchy root always wins snapTarget, because it contains every node and has the largest area. Against a real dump every measure would have snapped to the whole screen and the feature could not have worked. It appears nowhere in the plan or the backlog.
+
+### changelogRef
+
+validation/changelog.md

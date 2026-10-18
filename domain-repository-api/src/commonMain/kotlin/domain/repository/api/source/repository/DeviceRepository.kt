@@ -1,6 +1,7 @@
 package domain.repository.api.source.repository
 
 import domain.core.source.model.device.DiscoveryModel
+import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
@@ -54,6 +55,18 @@ public interface DeviceRepository {
      * Cancelling the collector stops the capture loop and kills any in-flight child process.
      */
     public fun mirror(deviceId: String): Flow<MirrorFrameModel>
+
+    /**
+     * Captures the view hierarchy of the device identified by [deviceId].
+     *
+     * Geometry and density are read together inside this one call, so a snapshot is never
+     * assembled from a dump without its density. The frame size comes from the dump's own
+     * root node, not from `wm size` — see [HierarchySnapshotModel].
+     *
+     * An unreadable dump is [HierarchySnapshotModel.Empty], not an exception; a density the
+     * device would not report is `densityDpi = 0`. Only a failed command throws.
+     */
+    public suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel
 
     /** Live statistics of the active mirroring session. */
     public fun observeMirrorStats(): Flow<MirrorStatsModel>
