@@ -10,6 +10,7 @@ kotlin {
             implementation(projects.dataPreferenceApi)
             implementation(projects.dataDeviceApi)
             implementation(projects.dataDatabaseApi)
+            implementation(projects.dataDatabaseImpl)
             implementation(projects.domainCore)
             implementation(projects.domainRepositoryApi)
             implementation(libs.koin.core)
