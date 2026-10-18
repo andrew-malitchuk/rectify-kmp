@@ -1,6 +1,6 @@
 {
   "spec": "history-batch-tracking",
-  "updatedAt": "2026-10-18T20:32:32Z",
+  "updatedAt": "2026-10-18T20:57:22Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -106,11 +106,35 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 193876,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-request": {
+      "tokens": 40792,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-verdict": {
+      "tokens": 97487,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1849212,
+    "tokens": 2181367,
     "durationMs": 0,
-    "invocations": 19
+    "invocations": 22
   }
 }

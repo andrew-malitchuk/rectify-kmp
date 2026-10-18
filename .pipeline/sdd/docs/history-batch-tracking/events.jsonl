@@ -52,3 +52,6 @@
 {"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "start", "at": "2026-10-18T20:53:18Z", "spec": "history-batch-tracking"}
 {"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 97487, "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
 {"stage": "validation", "event": "end", "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "review", "event": "start", "at": "2026-10-18T20:57:22Z", "spec": "history-batch-tracking"}
+{"stage": "review", "step": "panel", "agent": "sdd-build-correctness-review", "event": "start", "at": "2026-10-18T20:57:29Z", "spec": "history-batch-tracking"}
+{"stage": "review", "step": "panel", "agent": "sdd-build-correctness-review", "event": "end", "tokens": 157742, "at": "2026-10-18T21:05:14Z", "spec": "history-batch-tracking"}

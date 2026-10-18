@@ -3,10 +3,14 @@ package data.repository.impl
 import data.repository.impl.core.store.FileSystemBatchFileStore
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -44,6 +48,33 @@ class FileSystemBatchFileStoreTest {
 
         assertEquals(File(root, ".._.._etc_pwn_ed").absolutePath, dirPath)
         assertTrue(File(dirPath).canonicalPath.startsWith(root.canonicalPath), "the batch directory stayed inside the root")
+    }
+
+    @Test
+    fun writeRejectsABatchIdThatSanitisesToTheHistoryRootItself() = runBlocking {
+        // The sanitiser keeps '.', so these three survive it and resolve onto the root or
+        // its parent -- they are refused outright rather than rewritten (F-6).
+        val store = FileSystemBatchFileStore(root)
+
+        assertNull(store.write("", listOf("f" to byteArrayOf(1))))
+        assertNull(store.write(".", listOf("f" to byteArrayOf(1))))
+        assertNull(store.write("..", listOf("f" to byteArrayOf(1))))
+        assertFalse(File(root.parentFile, "f").exists(), "nothing was written outside the root")
+    }
+
+    @Test
+    fun writeCreatesAnOwnerOnlyDirectoryAndOwnerOnlyFiles() = runBlocking {
+        val dirPath = FileSystemBatchFileStore(root).write("batch-1", listOf("frame.png" to byteArrayOf(1)))!!
+
+        if (!FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) return@runBlocking
+        assertEquals(
+            "rwx------",
+            PosixFilePermissions.toString(Files.getPosixFilePermissions(File(dirPath).toPath())),
+        )
+        assertEquals(
+            "rw-------",
+            PosixFilePermissions.toString(Files.getPosixFilePermissions(File(dirPath, "frame.png").toPath())),
+        )
     }
 
     @Test

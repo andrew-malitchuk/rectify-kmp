@@ -932,6 +932,10 @@ public class MirrorViewModel(
                 // Read off the frame that was sent, so it is the pre-reset count by
                 // construction rather than by ordering luck (FR-19).
                 val count = frozen.annotations.size
+                // Read here, not at the toast: the user waited on the publish, not on the
+                // thumbnail encode and history write that follow it (and the first send in a
+                // process pays Skiko's one-off native-library load inside that encode).
+                val elapsedMs = started.elapsedNow().inWholeMilliseconds
                 if (state.session is MirrorSession.Lost) {
                     // AF-5 (Stage 5): reset to Idle here, not Sent. Leaving the terminal phase
                     // set kept AC-19's final dot visible but let the overlay outlive the state it
@@ -961,7 +965,7 @@ public class MirrorViewModel(
                         count = count,
                         summary = toastLabel(
                             count = count,
-                            elapsedMs = started.elapsedNow().inWholeMilliseconds,
+                            elapsedMs = elapsedMs,
                             // Off the published envelope, never re-derived (AF-4).
                             hierarchyAttached = envelope.hierarchyAvailable,
                         ),
