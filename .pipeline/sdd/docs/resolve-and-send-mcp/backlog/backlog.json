@@ -1,0 +1,1274 @@
+{
+  "spec": "resolve-and-send-mcp",
+  "stage": "backlog",
+  "step": "backlog",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-backlog-validate",
+  "provenance": {
+    "selfHash": "13736f4c3b002eb7483a12681dfff64471a26926e7be014daa6853d369d3d83b",
+    "inputs": [
+      {
+        "artifact": "plan/plan.json",
+        "hash": "290d3fc7fcdfa323bad3dd726b49401b5ae9a35bb9e81aae4bbd84904fb1de18"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T13:32:37Z",
+  "updatedAt": "2026-10-18T13:32:37Z",
+  "data": {
+    "epics": [
+      {
+        "id": "E-1",
+        "title": "Retain discarded payload source data (frame bytes, hierarchy dump)",
+        "tasks": [
+          "T-1",
+          "T-2"
+        ]
+      },
+      {
+        "id": "E-2",
+        "title": "Cross-process handoff infrastructure (:data-handoff-api)",
+        "tasks": [
+          "T-3"
+        ]
+      },
+      {
+        "id": "E-3",
+        "title": "Send pipeline core logic (projections, crop encoding, envelope assembly, contract, ViewModel handler, PP-TD-2 fix)",
+        "tasks": [
+          "T-4",
+          "T-5",
+          "T-6",
+          "T-7",
+          "T-8",
+          "T-9"
+        ]
+      },
+      {
+        "id": "E-4",
+        "title": "UI wiring onto shipped kit components",
+        "tasks": [
+          "T-10"
+        ]
+      },
+      {
+        "id": "E-5",
+        "title": "Local stdio MCP server (:mcp-application)",
+        "tasks": [
+          "T-11"
+        ]
+      },
+      {
+        "id": "E-6",
+        "title": "Documentation",
+        "tasks": [
+          "T-12"
+        ]
+      },
+      {
+        "id": "E-7",
+        "title": "Cross-target build gate and manual end-to-end demo",
+        "tasks": [
+          "T-13"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T-1",
+        "epic": "E-1",
+        "title": "Retain the frozen frame's raw PNG bytes as a HeldFrame (one value, one read)",
+        "description": "Introduce a private internal data class HeldFrame(bitmap: ImageBitmap, bytes: ByteArray) in MirrorViewModel backed by one MutableStateFlow<HeldFrame?> for the live frame and one for the frozen frame. observeFrames' map stage currently discards the captured MirrorFrameModel at MirrorViewModel.kt:219-223 after decoding it into an ImageBitmap; carry it through so the collect body constructs exactly one HeldFrame per frame. stageAnnotation must read the live holder with exactly ONE .value read and copy it into the frozen holder at the same moment currentFrozenFrame is set, so frame.png is guaranteed to be the pixels the user annotated. The public frame: StateFlow<ImageBitmap?> keeps its existing type and is assigned from the same collect body; nothing else pairs off it. resumeLive/stopSession/selectPlatform clear both holders with the frame. HeldFrame must never enter MirrorUiState (reduced state stays pixel-free per presentation-feature-mirror/CLAUDE.md deviation 2).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A fake transport emitting two frames with distinguishable bytes and distinguishable bitmaps proves the frozen HeldFrame's bitmap and bytes come from the SAME frame, never a mix (the read-atomicity invariant)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "frame.png eventually assembled from this bytes field is byte-identical to the original adb-captured bytes — no decode/re-encode round trip."
+          },
+          {
+            "id": "TAC-3",
+            "text": "HeldFrame and its bytes do not appear anywhere in MirrorUiState (grep-level check)."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "NFR-3"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:210-225 (observeFrames), :353-356 (stageAnnotation freeze)"
+          },
+          {
+            "type": "code",
+            "ref": "data-device-impl/.../source/DeviceSourcesProvider.kt — the PNG-signature trim precedent that makes frame.png a byte copy"
+          }
+        ],
+        "expectedOutput": "MirrorViewModel.kt edited in place: new private HeldFrame class, two private StateFlow<HeldFrame?> holders, observeFrames and stageAnnotation updated, plus a commonTest proving the pairing invariant with a two-distinguishable-frames fake.",
+        "hypothesis": "Pairing bitmap+bytes as ONE value on ONE StateFlow makes both the write and the read atomic; two co-assigned separate flows would leave stageAnnotation performing two independent .value reads that a newly arrived frame can straddle, silently mismatching frame.png against the annotated pixels.",
+        "definitionOfReady": [
+          "MirrorViewModel.kt, MirrorFakes.kt read and understood",
+          "F-6 (payload-preview) merged on branch"
+        ],
+        "definitionOfDone": [
+          "desktopTest green for the HeldFrame pairing test",
+          "grep confirms stageAnnotation performs exactly ONE .value read to obtain the frozen bitmap+bytes pair",
+          "grep confirms no MirrorUiState field references a ByteArray or ImageBitmap",
+          "explicitApi() passes for any new public declaration (HeldFrame itself stays private/internal)"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Re-encoding the frame for any purpose",
+          "Any UI change"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-2",
+        "epic": "E-1",
+        "title": "Thread the raw uiautomator dump through HierarchySnapshotModel.rawDump",
+        "description": "Add rawDump: String = \"\" to domain-core's HierarchySnapshotModel, defaulted so every existing construction site (including HierarchySnapshotModel.Empty and every test fixture) keeps compiling untouched. Populate it in HierarchySnapshotMapper.toModel from the HierarchyDumpStdout.dump text it already holds and currently discards (HierarchySnapshotMapper.kt:52-62). Do not re-serialize XML from parsed nodes — ship exactly what the device emitted. rawDump must stay out of MirrorUiState; it rides on the existing frozenHierarchy snapshot outside reduced state, same as today.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "HierarchySnapshotMapper.toModel populates rawDump with HierarchyDumpStdout.dump verbatim, including the adb trailer."
+          },
+          {
+            "id": "TAC-2",
+            "text": "HierarchySnapshotModel.Empty still has rawDump == \"\"."
+          },
+          {
+            "id": "TAC-3",
+            "text": "No MirrorUiState field references rawDump (grep-level check)."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "FR-17"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "domain-core/src/commonMain/kotlin/domain/core/source/model/device/HierarchySnapshotModel.kt"
+          },
+          {
+            "type": "code",
+            "ref": "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/HierarchySnapshotMapper.kt:52-62"
+          }
+        ],
+        "expectedOutput": "HierarchySnapshotModel gains a defaulted rawDump field; HierarchySnapshotMapper.toModel fills it; a data-repository-impl commonTest proves the mapping.",
+        "hypothesis": "parseUiAutomatorDump keeps only the attributes measure-mode needs, so re-synthesizing XML from parsed nodes at send time would ship a document the device never emitted; threading the already-held raw text through is the only non-lossy path.",
+        "definitionOfReady": [
+          "measure-mode (F-5) merged on branch",
+          "HierarchySnapshotMapper.kt read and understood"
+        ],
+        "definitionOfDone": [
+          "domain-core:desktopTest and data-repository-impl:desktopTest green",
+          "every existing HierarchySnapshotModel construction site still compiles with no edits (defaulted field)",
+          "explicitApi() passes for the new public field",
+          "domain-core gains no new dependency (domain-layer.md: zero dependencies)"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "Re-serializing XML from HierarchySnapshotModel.nodes",
+          "Any hierarchy UI change"
+        ],
+        "predictedScope": [
+          "domain-core/src/commonMain/kotlin/domain/core/source/model/device/HierarchySnapshotModel.kt",
+          "domain-core/src/commonTest/**",
+          "data-repository-impl/src/commonMain/kotlin/data/repository/impl/core/mapper/HierarchySnapshotMapper.kt",
+          "data-repository-impl/src/commonTest/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-3",
+        "epic": "E-2",
+        "title": "Create :data-handoff-api — envelope, AnnotationHandoff, FileSlotAnnotationHandoff, factory, settings.gradle.kts, CLAUDE.md, and its full desktopTest suite",
+        "description": "New library-convention-plugin Gradle module :data-handoff-api (+ libs.plugins.kotlin.serialization, no di plugin — deliberately Koin-free so :mcp-application's classpath stays envelope+serialization only). commonMain: source/envelope/AnnotationEnvelope.kt (@Serializable, version: Int FIRST field, plus EnvelopeDevice/EnvelopeAnnotation/HandoffImage per the plan's dataModel) and source/handoff/AnnotationHandoff.kt (ONE public interface — declared deviation 1 from preparation's two-interface wording — with suspend publish(envelope, images), suspend latest(): AnnotationEnvelope?, and resolve(envelope, name): String). desktopMain (internal): core/slot/FileSlotAnnotationHandoff.kt implementing the interface via temp-write + Files.move(ATOMIC_MOVE, REPLACE_EXISTING) to <root>/latest.json, images written to <root>/<sentAtMs>/<name> BEFORE the move, pruning every sibling numeric directory latest.json does not name after each publish, owner-only POSIX permissions on <root> where supported, and resolve() rejecting any name containing '/' or '..' before composing a file:// URI (the slot is untrusted input even though Rectify wrote it). source/handoff/FileSlotFactory.kt: public fun fileSlotAnnotationHandoff(root: Path = defaultHandoffRoot()) — root is the test seam. Register the module in settings.gradle.kts under the // data group, and write an initial data-handoff-api/CLAUDE.md describing the module's responsibility (expanded later in T-12's documentation pass).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "publish then latest() returns an equal envelope by content (not identity)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "latest() called twice with no publish in between returns byte-identical/equal-content envelopes (AC-81 at the storage layer)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "A second publish replaces the slot and the old per-send directory is pruned."
+          },
+          {
+            "id": "TAC-4",
+            "text": "An absent slot returns null from latest(), never an exception."
+          },
+          {
+            "id": "TAC-5",
+            "text": "version survives the round trip and is the FIRST key in the serialized JSON (AC-32)."
+          },
+          {
+            "id": "TAC-6",
+            "text": "Image bytes round-trip byte-identically at <root>/<sentAtMs>/<name>."
+          },
+          {
+            "id": "TAC-7",
+            "text": "resolve() rejects any name containing '/' or '..'."
+          },
+          {
+            "id": "TAC-8",
+            "text": "latest.json.tmp does not survive a successful publish; any latest.json present on disk always parses."
+          },
+          {
+            "id": "TAC-9",
+            "text": "A garbage latest.json yields null-or-error, never an exception escaping latest()."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "AC-32",
+          "AC-81",
+          "NFR-4",
+          "NFR-12",
+          "NFR-15",
+          "FR-17",
+          "FR-57",
+          "SC-26"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-core/CLAUDE.md — 'No external dependencies allowed — this module is a leaf', the evidence the envelope cannot live there"
+          },
+          {
+            "type": "code",
+            "ref": "desktop-application/build.gradle.kts + desktop-application/CLAUDE.md — the plain-JVM/bespoke-Gradle precedent this module's library-convention build.gradle.kts does NOT need to deviate from"
+          },
+          {
+            "type": "code",
+            "ref": "plan.json#architecture.interfaces 'AnnotationHandoff' and 'data-handoff-api/build.gradle.kts' for the exact contract and build file"
+          }
+        ],
+        "expectedOutput": "New :data-handoff-api module with commonMain envelope+interface, desktopMain FileSlotAnnotationHandoff+factory, settings.gradle.kts include, data-handoff-api/CLAUDE.md, and a desktopTest suite covering publish/read/read-again identity, replacement+prune, absent slot, version round trip, path-traversal rejection, and no surviving .tmp.",
+        "hypothesis": "A single-slot atomic file drop under the user's home directory makes AC-81's idempotent 'latest' a property of storage rather than code, and is retrievable whether or not Rectify is running at tool-call time — the only option provable on the desktop-only test target given Claude Code spawns the MCP server as a separate OS process.",
+        "definitionOfReady": [
+          "F-6 (payload-preview) merged — PAYLOAD_FORMAT_VERSION exists",
+          "Reviewer has acknowledged this module stays Koin-free (declared deviation 2)"
+        ],
+        "definitionOfDone": [
+          "./gradlew :data-handoff-api:build (--max-workers=1) and :data-handoff-api:desktopTest green",
+          "Zero new gradle/libs.versions.toml entries",
+          "explicitApi() passes on every public declaration in source/",
+          "No core/ directory outside core/slot/ (package-layout.md: only internal declarations go in core/)",
+          "settings.gradle.kts includes :data-handoff-api",
+          "data-handoff-api/CLAUDE.md exists"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "A second AnnotationHandoffReader interface (declared deviation 1)",
+          "Encryption at rest",
+          "A ring buffer / history (F-9's territory)",
+          "The deep documentation pass covered by T-12"
+        ],
+        "predictedScope": [
+          "settings.gradle.kts",
+          "data-handoff-api/build.gradle.kts",
+          "data-handoff-api/CLAUDE.md",
+          "data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/envelope/AnnotationEnvelope.kt",
+          "data-handoff-api/src/commonMain/kotlin/data/handoff/api/source/handoff/AnnotationHandoff.kt",
+          "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/core/slot/FileSlotAnnotationHandoff.kt",
+          "data-handoff-api/src/desktopMain/kotlin/data/handoff/api/source/handoff/FileSlotFactory.kt",
+          "data-handoff-api/src/desktopTest/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "L",
+        "subtasks": []
+      },
+      {
+        "id": "T-4",
+        "epic": "E-3",
+        "title": "Add presentation-feature-mirror/core/send/ pure projections: sendSteps/sendTrailing, canSend, toastLabel, mintSessionId",
+        "description": "commonMain, internal, Compose-free, one concern per file (per bugs.json#PP-TD-6's lesson): SendProjection.kt — sendSteps(phase: SendPhase, session: MirrorSession, hierarchy: HierarchyStatus): List<StatusStep> and sendTrailing(phase, session): String?, including the 'Stream dropped' Error-state first step when session is Lost (SC-27) while the remaining three still complete. SendGate.kt — canSend(state: MirrorUiState): Boolean = frozen != null && stagedCount > 0 && !state.send.isInFlight, DELIBERATELY not testing the session (SC-27, and what closes F-3's deferred AC-29 clause); read by the composable, the reducer and the hoisted Cmd+Enter holder — one definition, three consumers. SendLabels.kt — toastLabel(count, elapsedMs): String producing 'Sent N annotations to Claude Code · frame + hierarchy · 1.4s', floored at 0.1s, one decimal, singular/plural handled like buildPrompt. SessionId.kt — mintSessionId(deviceId, frameId, sentAtMs): String producing '<deviceId>-f<frameId>-<sentAtMs>' with 'unknown' degradation for a null/blank deviceId.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "sendSteps returns the four labels in the correct order and state for every SendPhase/HierarchyStatus/session combination the plan enumerates, including the Lost-session 'Stream dropped' Error branch."
+          },
+          {
+            "id": "TAC-2",
+            "text": "sendTrailing returns 'live', 'failed', 'sent', or null per phase/session."
+          },
+          {
+            "id": "TAC-3",
+            "text": "canSend is false at zero staged, false with no frozen frame, false in Preparing/Publishing, true with ≥1 staged and Idle, and TRUE while the session is Lost."
+          },
+          {
+            "id": "TAC-4",
+            "text": "toastLabel handles singular/plural, the literal ' · ' separators, one decimal place, and never prints '0s' for a sub-100ms elapsed value."
+          },
+          {
+            "id": "TAC-5",
+            "text": "mintSessionId produces the exact documented format, degrades to 'unknown' for null/blank deviceId, and differs across two sentAtMs values."
+          }
+        ],
+        "linkedAC": [
+          "AC-17",
+          "AC-19",
+          "AC-20",
+          "FR-16",
+          "FR-18",
+          "FR-58",
+          "SC-27"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../molecule/status/StatusLine.kt:163-193 — its own @Preview already renders both AC-19 variants verbatim"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/PayloadLabels.kt and PayloadGate.kt — the buildPrompt singular/plural precedent and the hasPayload-style pure-predicate precedent"
+          },
+          {
+            "type": "code",
+            "ref": "bugs.json#PP-TD-6 — core/payload file-naming lesson this task's one-concern-per-file split is explicitly avoiding repeating"
+          }
+        ],
+        "expectedOutput": "Five new internal commonMain files under presentation-feature-mirror/core/send/ (SendProjection, SendGate, SendLabels, SessionId — EnvelopeAssembly is T-6) each with a commonTest covering every documented branch.",
+        "hypothesis": "With no Compose UI-test harness in this repo, AC-19's animated ordering and AC-17/AC-20's guard logic are only provable by pulling every assertable rule into pure, Compose-free functions — the same move core/payload's hasPayload and hierarchyOutlineDisplay already made.",
+        "definitionOfReady": [
+          "MirrorContract's existing MirrorSession/HierarchyStatus/MirrorUiState.stagedCount read and understood",
+          "F-3's MirrorSession.Lost semantics (AS-31) understood"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green for all four files' test suites",
+          "every commonTest backtick name is plain-word camelCase, no comma, no colon (presentation-feature-mirror/CLAUDE.md)",
+          "explicitApi() N/A (all internal) — but internal visibility is explicit on every declaration",
+          "core/send/ has exactly one concern per file by name, matching the plan's component list"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "EnvelopeAssembly (T-6)",
+          "CropEncoder (T-5)",
+          "Any Compose code"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendProjection.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendGate.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SendLabels.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/SessionId.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/core/send/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 1,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-5",
+        "epic": "E-3",
+        "title": "Add CropEncoder + the new presentation-feature-mirror desktopMain/androidMain/iosMain source sets (AwtCropEncoder, Unsupported actuals, provideHandoffSources)",
+        "description": "commonMain: public fun interface CropEncoder { public suspend fun encode(frame: ImageBitmap, rect: DeviceRect): ByteArray? } in source/mirror/CropEncoder.kt, mirroring the existing decodeFrame seam. commonMain: internal object UnsupportedAnnotationHandoff in core/unsupported/UnsupportedAnnotationHandoff.kt (throws on publish, returns null from latest — declared deviation 2: it lives here, not in :data-handoff-api, so that module stays Koin-free). NEW desktopMain source set: core/crop/AwtCropEncoder.kt (internal) — frame.toAwtImage().getSubimage(rect clamped to frame bounds) -> ImageIO.write(png) on Dispatchers.IO, returning null rather than throwing. NEW androidMain and iosMain source sets with Unsupported* actuals so every target keeps linking. internal expect fun Module.provideHandoffSources() in source/mirror/, with desktopMain binding single<AnnotationHandoff> { fileSlotAnnotationHandoff() } and single<CropEncoder> { AwtCropEncoder() }, androidMain/iosMain binding UnsupportedAnnotationHandoff and a null-returning CropEncoder — verbatim copy of data-device-impl's provideDeviceSources()/Unsupported* shape. Add the :data-handoff-api dependency to presentation-feature-mirror's build.gradle.kts.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "AwtCropEncoder.encode clamps the rect to frame bounds first, then encodes a PNG off the main thread, returning null (never throwing) on failure."
+          },
+          {
+            "id": "TAC-2",
+            "text": "provideHandoffSources binds AnnotationHandoff with single<T> { } (never singleOf) on desktopMain, and Unsupported* actuals on androidMain/iosMain."
+          },
+          {
+            "id": "TAC-3",
+            "text": "A cross-target compile (androidMain/iosMain/desktopMain) links with no Unsupported-actual gaps."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "AS-29",
+          "AS-30",
+          "NFR-3"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "data-device-impl/.../source/DeviceSourcesProvider.kt — the internal expect fun Module.provideX() + Unsupported* shape to copy"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/payload/CropWindow.kt — bugs.json#PP-TD-1: only srcOffset/srcSize are device-pixel-space and export-safe; dstSize/scale are preview-only"
+          }
+        ],
+        "expectedOutput": "CropEncoder fun interface, UnsupportedAnnotationHandoff object, new desktopMain/androidMain/iosMain source sets for presentation-feature-mirror with AwtCropEncoder and the three provideHandoffSources actuals, plus build.gradle.kts gaining the :data-handoff-api dependency.",
+        "hypothesis": "Injecting crop encoding as a seam (mirroring decodeFrame) keeps commonTest free of any real image dependency while giving desktop a real AWT/ImageIO implementation; Unsupported* actuals keep Android/iOS linking without pretending the feature works there (AS-29).",
+        "definitionOfReady": [
+          "T-3 merged (AnnotationHandoff interface + fileSlotAnnotationHandoff() factory exist)"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green",
+          "./gradlew :presentation-feature-mirror:build (--max-workers=1) green across android/ios/desktop targets",
+          "explicitApi() passes on CropEncoder (public); UnsupportedAnnotationHandoff and AwtCropEncoder stay internal",
+          "no empty core/ directory added where not needed (package-layout.md)"
+        ],
+        "dependsOn": [
+          "T-3"
+        ],
+        "outOfScope": [
+          "Using skiko's Image.makeFromBitmap path (documented fallback only, not needed here)",
+          "EnvelopeAssembly (T-6)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/build.gradle.kts",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/CropEncoder.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/unsupported/UnsupportedAnnotationHandoff.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/ (provideHandoffSources expect)",
+          "presentation-feature-mirror/src/desktopMain/kotlin/presentation/feature/mirror/core/crop/AwtCropEncoder.kt",
+          "presentation-feature-mirror/src/desktopMain/kotlin/presentation/feature/mirror/source/mirror/ (provideHandoffSources desktop actual)",
+          "presentation-feature-mirror/src/androidMain/kotlin/presentation/feature/mirror/source/mirror/ (provideHandoffSources android actual)",
+          "presentation-feature-mirror/src/iosMain/kotlin/presentation/feature/mirror/source/mirror/ (provideHandoffSources ios actual)"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-6",
+        "epic": "E-3",
+        "title": "Add core/send/EnvelopeAssembly consuming F-6's buildPrompt and cropWindow srcOffset/srcSize only",
+        "description": "commonMain, internal, presentation-feature-mirror/core/send/EnvelopeAssembly.kt: suspend assembleEnvelope(frozen, frameBytes, hierarchy, encodeCrop, sentAtMs, deviceId) -> Pair<AnnotationEnvelope, List<HandoffImage>>. Reuses F-6's buildPrompt (promptOverride ?: buildPrompt(...)) unchanged, and F-6's cropWindow(...) for padded source geometry using ONLY .srcOffset and .srcSize (already device-pixel space; bugs.json#PP-TD-1 means .dstSize/.scale are preview-only and must NOT be used). Passes PAYLOAD_FORMAT_VERSION in as the version argument — the const stays internal to core/payload/PayloadEstimate.kt and is never moved or re-exported (AS-28). Mints the sessionId via T-4's mintSessionId exactly once per call. Hierarchy branch: empty hierarchyXml + hierarchyAvailable=false when HierarchyStatus is Absent/Unavailable or the platform is iOS (AS-29). A null-returning CropEncoder for one annotation yields cropPath=null for that annotation WITHOUT aborting the send.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "version in the assembled envelope equals PAYLOAD_FORMAT_VERSION."
+          },
+          {
+            "id": "TAC-2",
+            "text": "promptOverride wins over buildPrompt when set; buildPrompt is used when promptOverride is null."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Annotation count and rects survive assembly unchanged."
+          },
+          {
+            "id": "TAC-4",
+            "text": "A null-returning CropEncoder yields cropPath null for that one annotation and does not abort the send."
+          },
+          {
+            "id": "TAC-5",
+            "text": "hierarchyXml is empty with hierarchyAvailable false when the snapshot is Empty/Absent/Unavailable or platform is iOS."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "AC-32",
+          "AS-28",
+          "AS-29",
+          "FR-17",
+          "FR-57"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/.../core/payload/ — F-6's buildPrompt, cropWindow, PAYLOAD_FORMAT_VERSION"
+          },
+          {
+            "type": "code",
+            "ref": "bugs.json#PP-TD-1 — cropWindow's dstSize/scale are preview geometry, wrong for export"
+          },
+          {
+            "type": "code",
+            "ref": "data-handoff-api/.../source/envelope/AnnotationEnvelope.kt (T-3)"
+          }
+        ],
+        "expectedOutput": "presentation-feature-mirror/core/send/EnvelopeAssembly.kt plus its commonTest suite covering every branch above.",
+        "hypothesis": "The payload bundle F-6 already computes (prompt, crop geometry, hierarchy status) can be projected into the wire envelope with zero new business rules beyond version-stamping and hierarchy-availability branching — EnvelopeAssembly should consume, never recompute.",
+        "definitionOfReady": [
+          "T-1 (HeldFrame bytes), T-2 (rawDump), T-3 (AnnotationEnvelope/HandoffImage types), T-4 (mintSessionId), T-5 (CropEncoder seam) all merged"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green",
+          "grep confirms EnvelopeAssembly references only cropWindow(...).srcOffset/.srcSize, never .dstSize/.scale",
+          "grep confirms PAYLOAD_FORMAT_VERSION is not re-exported or moved out of core/payload"
+        ],
+        "dependsOn": [
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-4",
+          "T-5"
+        ],
+        "outOfScope": [
+          "The MirrorViewModel call site (T-9)",
+          "A PromptOverride(text, seededAgainst) contract change (PP-TD-7, explicitly deferred)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/core/send/EnvelopeAssembly.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/core/send/EnvelopeAssembly*"
+        ],
+        "parallelizable": false,
+        "executionGroup": 3,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-7",
+        "epic": "E-3",
+        "title": "Fix bugs.json#PP-TD-2: ClearStaged also clears promptOverride, with its regression test (SC-30)",
+        "description": "One-line reducer fix in the ONE reducer every Clear routes through: MirrorViewModel.kt:536-544 currently copies the frozen frame with annotations = emptyList() and selectedIndex = null, leaving promptOverride intact. Add promptOverride = null to that copy. Root-cause fix (every Clear caller routes through this reducer), not a guard added at the send site. In scope because F-7's EnvelopeAssembly reads promptOverride ?: buildPrompt(...), so an unfixed stale override would now ship a WRONG PROMPT to the agent (previously only mis-rendered a preview). Do NOT attempt the deeper PP-TD-7 PromptOverride(text, seededAgainst) contract change — explicitly out of scope, needs its own task and gate.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Set promptOverride, dispatch ClearStaged, assert frozen.promptOverride is null while the frame itself survives (SC-30)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Stage new annotations on the same frame after Clear and assert the next assembled prompt describes the NEW annotations, not the old override."
+          }
+        ],
+        "linkedAC": [
+          "SC-30",
+          "FR-17"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt:536-544"
+          },
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/bugs.json#PP-TD-2"
+          }
+        ],
+        "expectedOutput": "One-line change to the ClearStaged reducer in MirrorViewModel.kt plus a regression test named clearStagedAlsoClearsPromptOverride.",
+        "hypothesis": "promptOverride surviving ClearStaged was cosmetic while only a preview panel read it; now that EnvelopeAssembly reads the same field for the payload actually sent to the agent, the same one-line reducer fix closes a latent bug before it escalates from cosmetic to wrong-payload.",
+        "definitionOfReady": [
+          "MirrorViewModel.kt:536-544 read and verified against bugs.json#PP-TD-2"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green including clearStagedAlsoClearsPromptOverride",
+          "test name contains no comma or colon"
+        ],
+        "dependsOn": [],
+        "outOfScope": [
+          "PP-TD-7's PromptOverride(text, seededAgainst) contract change"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-8",
+        "epic": "E-3",
+        "title": "Extend MirrorContract: SendPhase, MirrorUiState.send, MirrorIntent.ResolveAndSend, MirrorSideEffect.SendComplete",
+        "description": "public enum class SendPhase { Idle, Preparing, Publishing, Sent, Failed } with a public val isInFlight: Boolean (true for Preparing/Publishing); MirrorUiState.send: SendPhase = SendPhase.Idle (exactly one new reduced-state field, a value-equal enum — no ByteArray/ImageBitmap/rawDump); public data object MirrorIntent.ResolveAndSend; public data class MirrorSideEffect.SendComplete(count: Int, summary: String, sessionId: String) — a side effect because only the host can show a toast and touch the clipboard, same reasoning as the shipped MirrorSideEffect.LocateAdb. ResumeLive, Reconnect, ClearStaged, EditPrompt, canResumeLive and stagedCount are reused UNCHANGED.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "SendPhase.isInFlight is true for Preparing and Publishing only."
+          },
+          {
+            "id": "TAC-2",
+            "text": "MirrorUiState gains exactly one new field (send: SendPhase); existing fields and their defaults are unchanged."
+          },
+          {
+            "id": "TAC-3",
+            "text": "MirrorSideEffect.SendComplete carries count, summary and sessionId so the host needs no additional ViewModel query."
+          }
+        ],
+        "linkedAC": [
+          "AC-17",
+          "AC-19",
+          "AC-20",
+          "AC-21",
+          "FR-16",
+          "FR-18",
+          "FR-58"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt"
+          }
+        ],
+        "expectedOutput": "MirrorContract.kt extended with SendPhase, MirrorUiState.send, MirrorIntent.ResolveAndSend and MirrorSideEffect.SendComplete; a small commonTest asserting isInFlight's two true cases.",
+        "hypothesis": "A single value-equal enum field is the entire reduced-state cost of this feature; every byte-bearing value (HeldFrame, rawDump) stays on private StateFlows beside frame/frozenFrame/frozenHierarchy, never entering MirrorUiState.",
+        "definitionOfReady": [
+          "T-4 merged (SendGate.canSend signature settled against MirrorUiState shape)"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green",
+          "explicitApi() passes: every new public declaration has an explicit visibility modifier and explicit return type",
+          "grep confirms MirrorUiState gained exactly one new field"
+        ],
+        "dependsOn": [
+          "T-4"
+        ],
+        "outOfScope": [
+          "The ViewModel handler that dispatches on these (T-9)",
+          "Any UI rendering"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-9",
+        "epic": "E-3",
+        "title": "Implement the MirrorViewModel send handler with the four constructor seams; wire Koin; update MirrorFakes",
+        "description": "Append four constructor parameters in decodeFrame's existing style: private val handoff: AnnotationHandoff (REQUIRED, no default — defaulting it would turn a missing Koin binding into a silent runtime no-op), private val encodeCrop: CropEncoder = CropEncoder { _, _ -> null }, private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() }, private val elapsed: TimeSource = TimeSource.Monotonic. Handle MirrorIntent.ResolveAndSend: guard on canSend(state); guard separately on the frozen HeldFrame being present and reduce SendPhase.Failed with a Kermit warning if absent (canSend cannot see bytes; a silent no-op on an enabled button is worse than a visible failure); reduce SendPhase.Preparing, assemble the envelope off the main thread via EnvelopeAssembly, reduce SendPhase.Publishing, call handoff.publish, measure elapsed with the injected monotonic seam; on success capture stagedCount BEFORE resetting, post SendComplete, resume live UNLESS the session is Lost (SC-27), and clear the staged batch (FR-19/AC-21); on failure reduce SendPhase.Failed and leave the frozen frame, its HeldFrame bytes and the staged list untouched (AS-31/AC-20/SC-25). Wire via Koin using viewModel { MirrorViewModel(...) } with explicit get<T>() calls (never viewModelOf) at PresentationFeatureMirrorModule.kt:24-25, and update MirrorFakes.kt:271's fake construction site.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "A second ResolveAndSend while in flight is dropped (reducer guard, the Cmd+Enter path's backstop)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "A ResolveAndSend at zero staged is dropped."
+          },
+          {
+            "id": "TAC-3",
+            "text": "Success resumes live and resets the counter to 0, reading stagedCount BEFORE the reset so the toast reports the pre-reset count."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Success while the session is Lost does NOT resume live (SC-27) — frame stays pinned, toast still confirms."
+          },
+          {
+            "id": "TAC-5",
+            "text": "Failure leaves the frozen frame, its HeldFrame bytes and the annotation list unchanged, and re-enables the button (AS-31/AC-20/SC-25)."
+          },
+          {
+            "id": "TAC-6",
+            "text": "A send with no HeldFrame reduces SendPhase.Failed with a Kermit warning rather than returning silently."
+          },
+          {
+            "id": "TAC-7",
+            "text": "No assembly, encoding or file write runs on the main dispatcher (AS-30, review check)."
+          }
+        ],
+        "linkedAC": [
+          "AC-17",
+          "AC-18",
+          "AC-20",
+          "AC-21",
+          "AS-30",
+          "AS-31",
+          "SC-25",
+          "SC-27",
+          "FR-19"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/di/PresentationFeatureMirrorModule.kt:20-25 — existing viewModel { } + explicit get<T>() pattern, NOT viewModelOf"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt:271 — the fake construction site needing the four new seams"
+          },
+          {
+            "type": "code",
+            "ref": "plan.json#architecture.interfaces 'MirrorViewModel constructor seams (all four, all defaulted)'"
+          }
+        ],
+        "expectedOutput": "MirrorViewModel.kt gains the send handler and four constructor seams; PresentationFeatureMirrorModule.kt and MirrorFakes.kt updated at their two call sites; a commonTest suite against a fake AnnotationHandoff covering every branch above.",
+        "hypothesis": "canSend plus a separate HeldFrame-presence guard, both evaluated inside the Orbit-serialized intent handler, are sufficient to make a double-click or a stale Cmd+Enter a safe no-op without a lock, because Orbit already serializes intents through one container.",
+        "definitionOfReady": [
+          "T-3 (AnnotationHandoff), T-6 (EnvelopeAssembly), T-8 (SendPhase/MirrorIntent/MirrorSideEffect) all merged"
+        ],
+        "definitionOfDone": [
+          "presentation-feature-mirror:desktopTest green for the full send-handler suite",
+          "both Koin/fake call sites (PresentationFeatureMirrorModule.kt, MirrorFakes.kt) updated and compiling",
+          "review confirms viewModel { } + get<T>() style retained (not viewModelOf)",
+          "review confirms assembly/encode/publish run off the main dispatcher"
+        ],
+        "dependsOn": [
+          "T-3",
+          "T-6",
+          "T-8"
+        ],
+        "outOfScope": [
+          "The RectifyWindow/UI wiring that dispatches ResolveAndSend (T-10)"
+        ],
+        "predictedScope": [
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorViewModel.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/di/PresentationFeatureMirrorModule.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/MirrorFakes.kt",
+          "presentation-feature-mirror/src/commonTest/kotlin/presentation/feature/mirror/**"
+        ],
+        "parallelizable": false,
+        "executionGroup": 4,
+        "estimate": "L",
+        "subtasks": []
+      },
+      {
+        "id": "T-10",
+        "epic": "E-4",
+        "title": "Wire RectifyWindow and MirrorContent: live Resolve & Send button, Clear guard, hoisted Cmd+Enter send-action holder, StatusLine overlay, snackbar host with explicit finite duration, AWT clipboard",
+        "description": "Pure wiring onto already-shipped kit components — no new design-system component. RectifyWindow.kt:304's stubbed AppButton(text = \"Resolve & Send\", onClick = {}, shortcut = \"⌘↵\", enabled = false) gets enabled=canSend(state), busy=state.send.isInFlight, busyText=\"Sending…\", onClick dispatching MirrorIntent.ResolveAndSend; Clear is disabled for the same in-flight window. Cmd+Enter: declare `var sendAction by remember { mutableStateOf<(() -> Unit)?>(null) }` beside shellState (onPreviewKeyEvent is a Window PARAMETER per RectifyWindow.kt:134-141 and cannot see into the content lambda), assign it from inside MirrorHost via `LaunchedEffect(canSend) { sendAction = if (canSend) { { onIntent(MirrorIntent.ResolveAndSend) } } else null }`, and extend handleShellShortcut to consume Cmd+Enter only when sendAction != null, invoking it. Mount a top-aligned StatusLine overlay inside MirrorContent, visible while state.send != SendPhase.Idle, fed by T-4's sendSteps/sendTrailing projection. Newly mount StackedSnackbarHost at the RectifyWindow layer (the desktop root does not go through SafeContainer today) and call showSnackbar(title, description, actionTitle=\"Open session\", action = { copyToClipboard(sessionId) }, duration) with an EXPLICIT finite StackedSnackbarDuration — the host state type is spelled StackedSnakbarHostState (sic) and showSnackbar defaults to Indefinite; passing none means the toast never dismisses. Add compose-application/desktopMain/core/clipboard/SystemClipboard.kt: internal copyToClipboard(text: String) via java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null), wrapped in runCatching + a Kermit warning, mirroring core/chooser/AdbPathChooser.kt's placement. Add @Preview (light+dark) pairs for the status overlay and the toast per compose-preview-convention.md. Read Theme.motion.reducedMotion from the Theme (never a boolean parameter) for any overlay animation (A11Y-6).",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "Resolve & Send is disabled at zero staged, enabled at ≥1 staged, and disabled while a send is in flight (AC-17/AC-20)."
+          },
+          {
+            "id": "TAC-2",
+            "text": "Clear is disabled for the same in-flight window Resolve & Send is."
+          },
+          {
+            "id": "TAC-3",
+            "text": "The Cmd+Enter holder is non-null if and only if canSend(state) is true (A11Y-2) — proven via canSend plus the reducer guard; the live key dispatch itself is demo-only, matching F-1's Cmd+1/2/3 precedent."
+          },
+          {
+            "id": "TAC-4",
+            "text": "showSnackbar is called with an explicit finite StackedSnackbarDuration, never relying on the Indefinite default."
+          },
+          {
+            "id": "TAC-5",
+            "text": "copyToClipboard failure is caught and logged, never surfaced as a failed send."
+          },
+          {
+            "id": "TAC-6",
+            "text": "@Preview pairs exist (light+dark) for the status overlay and the toast."
+          }
+        ],
+        "linkedAC": [
+          "AC-17",
+          "AC-19",
+          "AC-20",
+          "FR-16",
+          "FR-18",
+          "FR-58"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt:134-141 (onPreviewKeyEvent scope), :294-305 (Resolve & Send stub, Clear, CounterBadge slots)"
+          },
+          {
+            "type": "code",
+            "ref": "presentation-core-ui/.../atom/snackbar/StackedSnakbarHostState.kt:79-128 — name typo'd in source; showSnackbar(title, description, actionTitle, action, duration) defaults duration to Indefinite"
+          },
+          {
+            "type": "code",
+            "ref": "compose-application/src/desktopMain/kotlin/dev/rectify/io/core/chooser/AdbPathChooser.kt — the core/chooser placement SystemClipboard.kt mirrors"
+          },
+          {
+            "type": "figma",
+            "ref": "design-rectify-ui-kit.html — Resolve & Send primary button, Clear ghost, send status steps (+failure variant), send-complete toast"
+          },
+          {
+            "type": "code",
+            "ref": "plan.json#architecture.interfaces 'Cmd+Enter wiring' and 'Frame/bytes pairing' for the exact corrected snippets"
+          }
+        ],
+        "expectedOutput": "RectifyWindow.kt wired (button, Clear guard, hoisted Cmd+Enter holder, StackedSnackbarHost mount, clipboard call), new compose-application/desktopMain/core/clipboard/SystemClipboard.kt, MirrorContent.kt gaining the StatusLine overlay, plus @Preview pairs.",
+        "hypothesis": "Every component this step needs (AppButton enabled/busy/busyText, CounterBadge.Sent, StatusLine's own @Preview, StackedSnackbarHost) already ships in the kit verified against source — so this step is wiring existing props/callbacks, not building anything new.",
+        "definitionOfReady": [
+          "T-8 (SendPhase/MirrorIntent/MirrorSideEffect) and T-9 (send handler + SendComplete side effect) merged"
+        ],
+        "definitionOfDone": [
+          "./gradlew :compose-application:build :presentation-feature-mirror:build desktop-target compile green",
+          "manual check recorded (not asserted in CI) that the toast dismisses after its explicit duration and that the Cmd+Enter live key path matches canSend",
+          "no Color/dp/TextStyle literal introduced at any new call site (design-tokens.md)",
+          "@Preview pairs exist and render in both light and dark"
+        ],
+        "dependsOn": [
+          "T-8",
+          "T-9"
+        ],
+        "outOfScope": [
+          "Any new design-system component",
+          "Localising the new strings (recorded debt)"
+        ],
+        "predictedScope": [
+          "compose-application/src/desktopMain/kotlin/dev/rectify/io/source/window/RectifyWindow.kt",
+          "compose-application/src/desktopMain/kotlin/dev/rectify/io/core/clipboard/SystemClipboard.kt",
+          "presentation-feature-mirror/src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContent.kt"
+        ],
+        "parallelizable": false,
+        "executionGroup": 5,
+        "estimate": "M",
+        "subtasks": []
+      },
+      {
+        "id": "T-11",
+        "epic": "E-5",
+        "title": "Create :mcp-application — bespoke build.gradle.kts, Main.kt read loop, McpDispatcher, tool-result rendering, and its pure String->String tests",
+        "description": "New plain-JVM module (no convention plugin — all four model KotlinMultiplatformExtension, so this extends :desktop-application's already-documented bespoke-Gradle precedent by one, per decision 6's human gate): plugins { alias(libs.plugins.kotlinJvm); alias(libs.plugins.kotlin.serialization); application }, jvmToolchain(21), implementation(projects.dataHandoffApi) + libs.kotlinx.serialization.json only (no Compose/Koin/Skiko), testImplementation(kotlin(\"test\")) (sanctioned per-module exception — this module has no convention plugin to wire it once). mainClass dev.rectify.io.mcp.source.entry.MainKt, applicationName \"rectify-mcp\". McpDispatcher.kt (internal): a pure suspend fun handle(line: String): String? over an injected AnnotationHandoff — null means 'notification, write nothing' — dispatching initialize (echo MCP_PROTOCOL_VERSION), notifications/initialized, tools/list (exactly one tool, get_latest_annotation, empty object inputSchema), tools/call -> get_latest_annotation (metadata+prompt+hierarchy inline, images by file:// reference per decision 8; empty slot -> explicit 'No annotation has been sent yet.' text with isError false; newer envelope version -> isError true naming BOTH version numbers plus the rebuild command; corrupt slot -> isError true with the parse message, never throws). Main.kt: runBlocking { generateSequence(::readLine).forEach { dispatcher.handle(it)?.let(::writeFrame) } }, exit 0 on stdin EOF; writeFrame is the ONLY function in the module touching System.out — every diagnostic goes to System.err via a stderr helper, logging the resolved handoff root once at startup. Register :mcp-application in settings.gradle.kts.",
+        "type": "business-logic",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "initialize replies with the named MCP_PROTOCOL_VERSION constant."
+          },
+          {
+            "id": "TAC-2",
+            "text": "notifications/initialized returns null (nothing written)."
+          },
+          {
+            "id": "TAC-3",
+            "text": "tools/list contains exactly one tool named get_latest_annotation with an empty object inputSchema."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Unknown method yields -32601; unparseable input yields -32700 with id null; the loop keeps reading in both cases."
+          },
+          {
+            "id": "TAC-5",
+            "text": "get_latest_annotation on an empty slot yields the explicit 'No annotation has been sent yet.' text, isError false."
+          },
+          {
+            "id": "TAC-6",
+            "text": "get_latest_annotation on a populated slot yields the documented JSON with prompt, hierarchy and file:// refs; a second call with no publish in between yields a byte-identical result (AC-81)."
+          },
+          {
+            "id": "TAC-7",
+            "text": "An envelope with a newer version yields isError true naming BOTH the envelope's version and the server's supported version (AC-32)."
+          },
+          {
+            "id": "TAC-8",
+            "text": "A corrupt slot yields a tool error and the function still returns rather than throwing out of the loop."
+          },
+          {
+            "id": "TAC-9",
+            "text": "Every dispatcher response is exactly one line with no embedded newline (the stdout-corruption guard)."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "AC-32",
+          "AC-81",
+          "FR-56",
+          "FR-17",
+          "NFR-4",
+          "NFR-12",
+          "NFR-15",
+          "AS-32",
+          "SC-26",
+          "SC-28",
+          "SC-29"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "desktop-application/build.gradle.kts + desktop-application/CLAUDE.md — the documented plain-JVM bespoke-Gradle precedent this module extends by one"
+          },
+          {
+            "type": "code",
+            "ref": "plan.json#architecture.interfaces 'mcp-application/build.gradle.kts', 'MCP wire — tools/list entry', 'MCP wire — get_latest_annotation success result', 'MCP wire — the other three responses' for the exact contracts"
+          },
+          {
+            "type": "code",
+            "ref": "data-device-impl/CLAUDE.md — ProcessRunner's two transferable hazards for a stdin/stdout read loop"
+          }
+        ],
+        "expectedOutput": ":mcp-application module: build.gradle.kts, Main.kt, McpDispatcher.kt, tool-result rendering helpers, and a src/test suite covering every branch above plus an in-process integration test against a real FileSlotAnnotationHandoff over a temp root.",
+        "hypothesis": "A hand-rolled ~3-method JSON-RPC layer over kotlinx-serialization is cheaper and more honest than adding an MCP SDK or JSON-RPC library dependency that does not exist in the catalog, given the entire exposed surface is initialize/tools-list/tools-call plus readLine/println framing.",
+        "definitionOfReady": [
+          "T-3 merged (:data-handoff-api's AnnotationEnvelope + AnnotationHandoff + fileSlotAnnotationHandoff() factory exist)"
+        ],
+        "definitionOfDone": [
+          "./gradlew :mcp-application:build (--max-workers=1) and :mcp-application:test green",
+          "grep confirms :mcp-application has exactly one println/stdout write site, inside writeFrame; every diagnostic goes to System.err",
+          "Zero new gradle/libs.versions.toml entries",
+          "settings.gradle.kts includes :mcp-application",
+          "no Compose/Koin/Skiko dependency anywhere on this module's classpath"
+        ],
+        "dependsOn": [
+          "T-3"
+        ],
+        "outOfScope": [
+          "Multi-client support, auth/pairing, tool discovery beyond the one tool, transport reconnection, wait_for_annotations (AS-32, explicit future work)",
+          "Generating or writing the user's actual Claude Code MCP config (T-12 documents an example only)"
+        ],
+        "predictedScope": [
+          "settings.gradle.kts",
+          "mcp-application/build.gradle.kts",
+          "mcp-application/src/main/kotlin/dev/rectify/io/mcp/source/entry/Main.kt",
+          "mcp-application/src/main/kotlin/dev/rectify/io/mcp/core/rpc/McpDispatcher.kt",
+          "mcp-application/src/test/**"
+        ],
+        "parallelizable": true,
+        "executionGroup": 2,
+        "estimate": "L",
+        "subtasks": []
+      },
+      {
+        "id": "T-12",
+        "epic": "E-6",
+        "title": "Documentation: .mcp.json.example, :mcp-application/CLAUDE.md, :data-handoff-api/CLAUDE.md, root CLAUDE.md module list",
+        "description": "Write the checked-in .mcp.json.example at the repo root naming the :mcp-application installDist launcher path (./mcp-application/build/install/rectify-mcp/bin/rectify-mcp) with a one-line note that `./gradlew :mcp-application:installDist` must run first and the path may need to be absolute depending on where Claude Code is launched from. Expand :mcp-application/CLAUDE.md with a 'Wiring this into Claude Code' section (naming MCP_PROTOCOL_VERSION as the first thing to check on a handshake failure, and the resolved-handoff-root startup log line as the first thing to check on 'No annotation has been sent yet.' after a successful send) and the module's bespoke-Gradle NFR-15 deviation rationale. Finalize :data-handoff-api/CLAUDE.md (started minimally in T-3) with the module's responsibility, the one-interface declared deviation, and the Koin-free rationale. Update root CLAUDE.md's module list to include :data-handoff-api and :mcp-application (it is already stale from three prior merged specs — do not add to that).",
+        "type": "documentation",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": ".mcp.json.example exists at the repo root with a valid mcpServers.rectify entry naming the installDist launcher path."
+          },
+          {
+            "id": "TAC-2",
+            "text": ":mcp-application/CLAUDE.md documents the Claude Code wiring steps and the MCP_PROTOCOL_VERSION/handoff-root troubleshooting pointers."
+          },
+          {
+            "id": "TAC-3",
+            "text": ":data-handoff-api/CLAUDE.md documents the module's responsibility and both declared deviations from preparation's wording."
+          },
+          {
+            "id": "TAC-4",
+            "text": "Root CLAUDE.md's module list includes :data-handoff-api and :mcp-application."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "FR-56",
+          "NFR-15"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": "plan.json#architecture.interfaces 'Claude Code MCP discovery (CLOSED, with one precise residual open question)' for the exact .mcp.json.example contents"
+          },
+          {
+            "type": "code",
+            "ref": "desktop-application/CLAUDE.md — the precedent documentation style for a plain-JVM module's CLAUDE.md"
+          }
+        ],
+        "expectedOutput": "New .mcp.json.example at repo root; :mcp-application/CLAUDE.md and :data-handoff-api/CLAUDE.md finalized; root CLAUDE.md module list updated.",
+        "hypothesis": "Documenting rather than generating the Claude Code MCP config entry is the correct trust boundary: writing into a user's own MCP config from inside an app is an action nobody asked for, and installDist must have run first anyway.",
+        "definitionOfReady": [
+          "T-3 merged (:data-handoff-api/CLAUDE.md exists to finalize)",
+          "T-11 merged (:mcp-application exists with its installDist launcher path and MCP_PROTOCOL_VERSION constant)"
+        ],
+        "definitionOfDone": [
+          ".mcp.json.example is valid JSON",
+          "no username or machine-specific absolute path is hardcoded into the checked-in example beyond the documented relative launcher path",
+          "root CLAUDE.md module list is accurate against settings.gradle.kts after T-3/T-11"
+        ],
+        "dependsOn": [
+          "T-3",
+          "T-11"
+        ],
+        "outOfScope": [
+          "Generating or mutating the user's actual Claude Code MCP configuration",
+          "A copy pass moving toolbar/toast/status strings into strings.xml (recorded debt, different owner)"
+        ],
+        "predictedScope": [
+          ".mcp.json.example",
+          "mcp-application/CLAUDE.md",
+          "data-handoff-api/CLAUDE.md",
+          "CLAUDE.md"
+        ],
+        "parallelizable": true,
+        "executionGroup": 3,
+        "estimate": "S",
+        "subtasks": []
+      },
+      {
+        "id": "T-13",
+        "epic": "E-7",
+        "title": "Cross-target build gate and the mandatory manual end-to-end demo against a real Claude Code session",
+        "description": "Run the cross-target build gate: ./gradlew :presentation-feature-mirror:build :data-handoff-api:build :mcp-application:build --max-workers=1 (bugs.json#PP-TD-8: the Kotlin/Native release linker OOMs under parallel linkReleaseFramework tasks — use --max-workers=1, do not chase it as a defect introduced by this spec) plus :presentation-feature-mirror:desktopTest :data-handoff-api:desktopTest :mcp-application:test. A green desktop suite alone does not count — commonTest compiles for every target and Kotlin/Native is stricter than the JVM. Then perform and RECORD the mandatory manual demo, which CI provably cannot cover: ./gradlew :mcp-application:installDist; add the documented .mcp.json.example entry to a real Claude Code MCP config; run the desktop app against a real Android device or AVD; stage annotations; click Resolve & Send (and separately verify Cmd+Enter); watch the StatusLine sequence Streaming -> Frozen -> Dumping hierarchy -> Sent and the completion toast with its 'Open session' clipboard action; have a real Claude Code session call get_latest_annotation and receive the payload; call it a second time with no new send in between and confirm an identical result (AC-81). Record the transcript, the measured end-to-end elapsed time against the <=2s NFR-3 target, and the inline tool-result byte size against the 512 KB budget, in the execution report. This is a hard exit criterion, not optional, and is explicitly NOT asserted as an automated test — the plan records five things CI provably cannot cover (AC-18/AC-81 end-to-end, AC-19's animation, the live Cmd+Enter dispatch, torn writes, and NFR-3's 2s budget) and this task's acceptance IS the recorded demo, not a green CI checkbox.",
+        "type": "test",
+        "acceptanceCriteria": [
+          {
+            "id": "TAC-1",
+            "text": "./gradlew :presentation-feature-mirror:build :data-handoff-api:build :mcp-application:build --max-workers=1 is green."
+          },
+          {
+            "id": "TAC-2",
+            "text": "./gradlew :presentation-feature-mirror:desktopTest :data-handoff-api:desktopTest :mcp-application:test is green."
+          },
+          {
+            "id": "TAC-3",
+            "text": "A recorded manual demo transcript shows a real Claude Code session calling get_latest_annotation and receiving the complete payload, and a second call returning the identical result (AC-81)."
+          },
+          {
+            "id": "TAC-4",
+            "text": "The recorded demo includes the measured end-to-end elapsed time (NFR-3, informational — not a CI gate) and the inline tool-result byte size against the 512 KB budget."
+          },
+          {
+            "id": "TAC-5",
+            "text": "Every new commonTest backtick name is plain-word camelCase with no comma and no colon."
+          },
+          {
+            "id": "TAC-6",
+            "text": "explicitApi() passes across all new/modified modules."
+          },
+          {
+            "id": "TAC-7",
+            "text": "No new entry was added to gradle/libs.versions.toml across the whole spec."
+          }
+        ],
+        "linkedAC": [
+          "AC-18",
+          "AC-19",
+          "AC-81",
+          "NFR-3",
+          "AS-30",
+          "FR-58"
+        ],
+        "references": [
+          {
+            "type": "code",
+            "ref": ".pipeline/sdd/docs/registry/bugs.json#PP-TD-8 — the Kotlin/Native release linker OOM precedent and its --max-workers=1 mitigation"
+          },
+          {
+            "type": "code",
+            "ref": "plan.json#definitionOfDone and #testStrategy.coverageGoal — the exact five CI-unprovable gaps this task's manual demo exists to close"
+          }
+        ],
+        "expectedOutput": "A green cross-target build/test run plus a recorded manual-demo transcript (elapsed time, inline payload size, AC-81 repeat-call confirmation) attached to the execution report — no source files are expected to change as part of this task beyond fixing any build-gate failures surfaced by it.",
+        "hypothesis": "AC-18 and AC-81's literal end-to-end claims require a real external Claude Code process this repo neither starts nor controls; everything automatable up to that boundary (file-slot round trip, dispatcher branches) is already covered by T-3/T-11's own tests, so this task's unique, non-duplicated value is the cross-target compile gate plus the one thing that can only be proven by hand.",
+        "definitionOfReady": [
+          "T-3, T-7, T-9, T-10, T-11, T-12 all merged",
+          "An Android device or AVD available for the manual demo (hierarchy dump is Android-only)",
+          "A real Claude Code installation available to add the .mcp.json entry to"
+        ],
+        "definitionOfDone": [
+          "Cross-target build gate green (recorded in the execution report, --max-workers=1)",
+          "Manual demo transcript recorded, including the AC-81 repeat-call confirmation and the NFR-3 timing measurement",
+          "The five documented CI-unprovable gaps are explicitly called out as demo-only in the execution report rather than silently claimed as tested"
+        ],
+        "dependsOn": [
+          "T-3",
+          "T-7",
+          "T-9",
+          "T-10",
+          "T-11",
+          "T-12"
+        ],
+        "outOfScope": [
+          "Building an automated harness for any of the five CI-unprovable gaps",
+          "Fixing defects found during the demo beyond what this spec's own tasks already cover — a new defect found here is a new bug ticket, not silently patched in this task"
+        ],
+        "predictedScope": [
+          "**/* (read-only verification across every module this spec touched; no planned source edits)"
+        ],
+        "parallelizable": false,
+        "executionGroup": 6,
+        "estimate": "M",
+        "subtasks": []
+      }
+    ],
+    "executionPlan": {
+      "waves": [
+        {
+          "wave": 1,
+          "parallel": [
+            "T-1",
+            "T-2",
+            "T-3",
+            "T-4"
+          ]
+        },
+        {
+          "wave": 2,
+          "parallel": [
+            "T-5",
+            "T-7",
+            "T-8",
+            "T-11"
+          ]
+        },
+        {
+          "wave": 3,
+          "parallel": [
+            "T-6",
+            "T-12"
+          ]
+        },
+        {
+          "wave": 4,
+          "parallel": [
+            "T-9"
+          ]
+        },
+        {
+          "wave": 5,
+          "parallel": [
+            "T-10"
+          ]
+        },
+        {
+          "wave": 6,
+          "parallel": [
+            "T-13"
+          ],
+          "hardstop": true
+        }
+      ],
+      "graph": [
+        {
+          "task": "T-1",
+          "dependsOn": []
+        },
+        {
+          "task": "T-2",
+          "dependsOn": []
+        },
+        {
+          "task": "T-3",
+          "dependsOn": []
+        },
+        {
+          "task": "T-4",
+          "dependsOn": []
+        },
+        {
+          "task": "T-5",
+          "dependsOn": [
+            "T-3"
+          ]
+        },
+        {
+          "task": "T-7",
+          "dependsOn": []
+        },
+        {
+          "task": "T-8",
+          "dependsOn": [
+            "T-4"
+          ]
+        },
+        {
+          "task": "T-11",
+          "dependsOn": [
+            "T-3"
+          ]
+        },
+        {
+          "task": "T-6",
+          "dependsOn": [
+            "T-1",
+            "T-2",
+            "T-3",
+            "T-4",
+            "T-5"
+          ]
+        },
+        {
+          "task": "T-12",
+          "dependsOn": [
+            "T-3",
+            "T-11"
+          ]
+        },
+        {
+          "task": "T-9",
+          "dependsOn": [
+            "T-3",
+            "T-6",
+            "T-8"
+          ]
+        },
+        {
+          "task": "T-10",
+          "dependsOn": [
+            "T-8",
+            "T-9"
+          ]
+        },
+        {
+          "task": "T-13",
+          "dependsOn": [
+            "T-3",
+            "T-7",
+            "T-9",
+            "T-10",
+            "T-11",
+            "T-12"
+          ]
+        }
+      ]
+    },
+    "readyForExecution": true,
+    "sequenceNotes": {
+      "cyclesFound": [],
+      "serializedForScopeOverlap": [
+        "T-7 moved from wave 1 to wave 2: both T-1 and T-7 edit MirrorViewModel.kt with no dependsOn edge between them; co-scheduling them in the same worktree-parallel wave would guarantee a merge conflict on the same file. T-7 has no dependency forcing wave 1 and every wave-2 task (T-5, T-8, T-11) is scope-disjoint from it, so it serializes one wave later at zero cost to the critical path.",
+        "T-8/T-10 file-overlap flagged by the brief was checked and found moot: T-8's real predictedScope is MirrorContract.kt only, T-10's is RectifyWindow.kt/SystemClipboard.kt/MirrorContent.kt — no shared file. They are also already separated by the T-9 dependency chain (T-8 -> T-9 -> T-10), so no additional serialization was needed.",
+        "T-9 (MirrorViewModel.kt + PresentationFeatureMirrorModule.kt + MirrorFakes.kt) runs alone in wave 4 and T-10 (RectifyWindow.kt/MirrorContent.kt) alone in wave 5 — both already isolated by real dependency edges, not just scope policy.",
+        "Validator pass (iteration 1): re-checked every same-wave pair against predictedScope. Wave 1 (T-1/T-2/T-3/T-4), wave 2 (T-5/T-7/T-8/T-11) and wave 3 (T-6/T-12) are file-disjoint at the source level. T-7 and T-8 (both wave 2) both touch presentation-feature-mirror and declare the same generic commonTest wildcard, but their real source files (MirrorViewModel.kt vs MirrorContract.kt per their own predictedScope entries) are distinct, so this is wildcard imprecision rather than a genuine collision; not reclassified as a defect."
+      ],
+      "terminalWaveTasks": [
+        "T-13"
+      ],
+      "dependsOnEdits": [
+        "T-12: added T-3 (previously only T-11). T-12's own description and predictedScope finalize data-handoff-api/CLAUDE.md, a file T-3 creates; plan.json step 13 only lists dependsOn:[12] but the task body's real file scope needs T-3's artifact directly. This is transitively already implied through T-11 -> T-3 and does not change T-12's wave (still wave 3, right after T-11's wave 2), it only makes the declared graph match the true file-ownership chain. Validator pass: T-12's definitionOfReady text was updated to name T-3 explicitly alongside T-11, matching the dependsOn array (it previously only named T-11).",
+        "T-5 dependsOn T-3 verified and KEPT: T-5's scope is not just the CropEncoder fun interface (which takes no data-handoff-api type) but also provideHandoffSources()'s desktopMain actual, which binds single<AnnotationHandoff> { fileSlotAnnotationHandoff() } — both the interface and the factory function are T-3 artifacts. Splitting CropEncoder out of T-5 to parallelize it in wave 1 was considered and rejected: the task is decomposed as one unit and definitionOfReady already names T-3 explicitly; re-splitting it is out of scope for a sequencing pass that must not restructure task bodies.",
+        "Validator pass (iteration 1): FR-19 ('resume live mirroring and reset the staged counter to 0 after success') is a required traceability-matrix row with no task claiming it — T-9 is the task that actually implements the resumeLive/counter-reset success branch (see its description and TAC-3/TAC-4), so FR-19 was added to T-9.linkedAC. No task body, dependency edge or wave assignment changed."
+      ],
+      "criticalPath": [
+        "T-3",
+        "T-5",
+        "T-6",
+        "T-9",
+        "T-10",
+        "T-13"
+      ],
+      "criticalPathLength": 6
+    }
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "human",
+    "approved": true,
+    "at": "2026-10-18T13:32:37Z"
+  },
+  "survey": [
+    {
+      "question": "Approve the backlog for resolve-and-send-mcp (F-7) and unlock Stage 4 (Execution)?",
+      "options": [
+        "Approve — proceed to Execution (Recommended)",
+        "Hold — something below needs resolving first"
+      ],
+      "answer": "Approve — proceed to Execution (Recommended)",
+      "source": "user-edited"
+    },
+    {
+      "question": "Acknowledge before execution starts: NFR-3 (send completes in <=2s) has no automated test anywhere in this backlog — it is measured exactly once, by hand, in T-13's manual demo, and never re-checked by CI afterward. Proceed on that basis?",
+      "options": [
+        "Yes — a one-time manual measurement is sufficient for this NFR at fast tier (Recommended)",
+        "No — add an automated performance assertion (requires a plan change)"
+      ],
+      "answer": "Yes — a one-time manual measurement is sufficient for this NFR at fast tier (Recommended)",
+      "source": "user-edited"
+    }
+  ]
+}
