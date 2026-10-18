@@ -165,6 +165,19 @@ internal fun historyBadgeCount(entries: List<HistoryEntryModel>): Int? =
     inProgressCount(entries).takeIf { it > 0 }
 
 /**
+ * Whether a row has a BEFORE frame to diff against, i.e. whether its Verify button is live.
+ *
+ * **Not** gated on [BatchStatusModel] (FR-21 / AC-23). `Fixed` is written by nothing in the
+ * app — only the agent would ever set it, and it does not — so a status gate made the button
+ * unreachable on every row that exists. The real precondition is the frame: a batch whose disk
+ * write failed carries no `framePath` and has nothing to compare. The button stays visible and
+ * disabled rather than vanishing, so the control is discoverable; a path that pointed at a
+ * file the user has since deleted still falls through to `VerifyError.NotOnDisk` at run time,
+ * because a stored path is a hint, never a guarantee.
+ */
+internal fun canVerify(entry: HistoryEntryModel): Boolean = entry.framePath != null
+
+/**
  * Singular/plural key for the meta line's note count.
  *
  * Two keys rather than a `<plurals>` resource: this repo has zero plural resources, and

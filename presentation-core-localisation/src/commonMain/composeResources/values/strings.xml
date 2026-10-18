@@ -179,7 +179,7 @@
     <string name="mirror_history_meta">%1$s · %2$s · #%3$s</string>
     <string name="mirror_history_meta_note_one">%1$d note</string>
     <string name="mirror_history_meta_note_other">%1$d notes</string>
-    <!-- Shown only on a Fixed batch; opens the verify view. -->
+    <!-- On every sent batch; opens the verify view. Disabled when the frame is not on disk. -->
     <string name="mirror_history_verify">Verify</string>
     <string name="mirror_history_status_sent">Sent</string>
     <string name="mirror_history_status_in_progress">In progress</string>

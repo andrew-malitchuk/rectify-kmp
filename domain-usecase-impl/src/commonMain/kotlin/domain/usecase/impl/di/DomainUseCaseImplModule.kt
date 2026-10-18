@@ -22,8 +22,10 @@ import domain.usecase.api.source.usecase.device.RestartAdbServerUseCase
 import domain.usecase.api.source.usecase.device.RefreshDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.SetAdbPathUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
+import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
 import domain.usecase.impl.source.usecase.configuration.GetApplicationLanguageUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.GetOnboardingStatusUseCaseImpl
 import domain.usecase.impl.source.usecase.configuration.GetSidePanelWidthUseCaseImpl
@@ -46,8 +48,10 @@ import domain.usecase.impl.source.usecase.device.RestartAdbServerUseCaseImpl
 import domain.usecase.impl.source.usecase.device.RefreshDiscoveryUseCaseImpl
 import domain.usecase.impl.source.usecase.device.SetAdbPathUseCaseImpl
 import domain.usecase.impl.source.usecase.device.StartMirroringUseCaseImpl
+import domain.usecase.impl.source.usecase.history.GetSentBatchUseCaseImpl
 import domain.usecase.impl.source.usecase.history.ObserveHistoryUseCaseImpl
 import domain.usecase.impl.source.usecase.history.RecordSentBatchUseCaseImpl
+import domain.usecase.impl.source.usecase.history.UpdateBatchStatusUseCaseImpl
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -83,4 +87,6 @@ public val domainUseCaseImplModule: Module = module {
     // History
     singleOf(::RecordSentBatchUseCaseImpl) bind RecordSentBatchUseCase::class
     singleOf(::ObserveHistoryUseCaseImpl) bind ObserveHistoryUseCase::class
+    singleOf(::GetSentBatchUseCaseImpl) bind GetSentBatchUseCase::class
+    singleOf(::UpdateBatchStatusUseCaseImpl) bind UpdateBatchStatusUseCase::class
 }

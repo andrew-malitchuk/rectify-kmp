@@ -34,6 +34,7 @@ import presentation.core.ui.source.kit.atom.button.AppButton
 import presentation.core.ui.source.kit.atom.button.AppButtonSize
 import presentation.core.ui.source.kit.molecule.row.HistoryRow
 import presentation.feature.mirror.core.history.HistoryBucket
+import presentation.feature.mirror.core.history.canVerify
 import presentation.feature.mirror.core.history.groupHistory
 import presentation.feature.mirror.core.history.metaTime
 import presentation.feature.mirror.core.history.noteCountKey
@@ -174,15 +175,13 @@ private fun HistoryEntryRow(entry: HistoryEntryModel, onIntent: (MirrorIntent) -
             }
         },
         trailing = {
-            // F-9 owns the diff; this release only has to give a fixed batch somewhere to
-            // click (AC-36). Any other status has nothing to verify yet.
-            if (entry.status == BatchStatusModel.Fixed) {
-                AppButton(
-                    text = verifyLabel,
-                    onClick = { onIntent(MirrorIntent.VerifyBatch(entry.id)) },
-                    size = AppButtonSize.ListAction,
-                )
-            }
+            // Every sent batch, never a status gate (FR-21 / AC-23): see `canVerify`.
+            AppButton(
+                text = verifyLabel,
+                onClick = { onIntent(MirrorIntent.VerifyBatch(entry.id)) },
+                size = AppButtonSize.ListAction,
+                enabled = canVerify(entry),
+            )
         },
     )
 }
@@ -237,9 +236,11 @@ private const val HOUR_MS = 60L * 60L * 1000L
 private const val DAY_MS = 24L * HOUR_MS
 
 /**
- * All five statuses across all three groups, so the tone table and the Fixed-only Verify button
- * are both visible in one render. The `FollowUpSent` row carries deliberately undecodable bytes:
- * a corrupt thumbnail must fall back to the bare plate rather than crash the list.
+ * All five statuses across all three groups, so the tone table and the Verify button are both
+ * visible in one render. The button is on every row regardless of status; the `FollowUpSent`
+ * row has no `framePath`, which is the one thing that disables it. That row also carries
+ * deliberately undecodable bytes: a corrupt thumbnail must fall back to the bare plate rather
+ * than crash the list.
  */
 private fun previewState(): MirrorUiState {
     val now = Clock.System.now().toEpochMilliseconds()
@@ -252,6 +253,7 @@ private fun previewState(): MirrorUiState {
                 status = BatchStatusModel.Fixed,
                 title = "Price sits 6px below the title",
                 annotationCount = 3,
+                framePath = "/Users/dev/.rectify/history/f12/frame.png",
             ),
             HistoryEntryModel(
                 id = "emulator-5554-f11-${now - 2 * HOUR_MS}",
@@ -259,6 +261,7 @@ private fun previewState(): MirrorUiState {
                 status = BatchStatusModel.InProgress,
                 title = "Checkout button is 16dp off the margin",
                 annotationCount = 1,
+                framePath = "/Users/dev/.rectify/history/f11/frame.png",
             ),
             HistoryEntryModel(
                 id = "emulator-5554-f10-${now - 3 * HOUR_MS}",
@@ -266,6 +269,7 @@ private fun previewState(): MirrorUiState {
                 status = BatchStatusModel.Sent,
                 title = "",
                 annotationCount = 2,
+                framePath = "/Users/dev/.rectify/history/f10/frame.png",
             ),
             HistoryEntryModel(
                 id = "emulator-5554-f9-${now - DAY_MS}",
@@ -273,6 +277,7 @@ private fun previewState(): MirrorUiState {
                 status = BatchStatusModel.Verified,
                 title = "Promo placeholder clipped at 360dp",
                 annotationCount = 1,
+                framePath = "/Users/dev/.rectify/history/f9/frame.png",
             ),
             HistoryEntryModel(
                 id = "emulator-5554-f8-${now - 5 * DAY_MS}",

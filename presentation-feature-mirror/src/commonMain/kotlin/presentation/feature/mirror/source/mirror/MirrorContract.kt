@@ -661,10 +661,17 @@ public sealed interface MirrorIntent {
     public data object EndMeasure : MirrorIntent
 
     /**
-     * Re-capture the device and diff it against a sent batch (FR-32 / AC-36 / SC-8).
+     * Re-capture the device and diff it against a sent batch (FR-21 / AC-23 / SC-8).
+     *
+     * Fired from **any** sent batch, never only a `Fixed` one: nothing in the app writes
+     * [domain.core.source.model.history.BatchStatusModel.Fixed], so a status gate would make
+     * this intent unreachable. The row's button is instead disabled when the batch has no
+     * frame on disk to diff against.
      *
      * Requires a live mirror session: there is no one-shot capture pipeline, so a run with
-     * nothing streaming fails with [VerifyError.NoLiveSession] rather than guessing.
+     * nothing streaming fails with [VerifyError.NoLiveSession] rather than guessing. A frame
+     * whose stored path has gone stale since the row was drawn fails with
+     * [VerifyError.NotOnDisk].
      *
      * @property batchId [domain.core.source.model.history.HistoryEntryModel.id] of the row the
      *   button sits on.

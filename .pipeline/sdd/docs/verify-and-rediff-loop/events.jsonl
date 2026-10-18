@@ -26,3 +26,5 @@
 {"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T22:33:22Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-1", "agent": "sdd-build-business-implement", "event": "end", "tokens": 130655, "at": "2026-10-18T22:46:11Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-2", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T22:46:11Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-2", "agent": "sdd-build-business-implement", "event": "end", "tokens": 123128, "at": "2026-10-18T22:55:28Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-3", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T22:55:29Z", "spec": "verify-and-rediff-loop"}

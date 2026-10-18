@@ -57,6 +57,16 @@
       "status": "done",
       "wave": 1,
       "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T22:55:28Z"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T22:55:28Z"
     }
   },
   "effort": "fast",
