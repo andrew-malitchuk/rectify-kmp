@@ -82,6 +82,11 @@
       "status": "done",
       "wave": 6,
       "updatedAt": "2026-10-18T20:10:55Z"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 7,
+      "updatedAt": "2026-10-18T20:15:49Z"
     }
   },
   "effort": "fast",

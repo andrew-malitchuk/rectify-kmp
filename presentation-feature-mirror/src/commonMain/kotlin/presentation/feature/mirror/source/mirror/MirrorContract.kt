@@ -10,6 +10,7 @@ import domain.core.source.model.history.HistoryEntryModel
 // Aliased: these properties carry the same names as the functions they delegate to, and an
 // alias says which one is being called without the reader having to know Kotlin's overload
 // resolution order.
+import presentation.feature.mirror.core.history.inProgressCount as inProgressCountOf
 import presentation.feature.mirror.core.send.canClear as canClearGate
 import presentation.feature.mirror.core.send.canSend as canSendGate
 
@@ -267,6 +268,14 @@ public data class MirrorUiState(
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
     public val stagedCount: Int get() = frozen?.annotations?.size ?: 0
+
+    /**
+     * How many batches the agent is still working on — the History tab's badge (AC-34).
+     *
+     * Same delegate shape, and the same reason, as [canSend]: the count lives in `core/history`
+     * (internal by `package-layout.md`) and its reader is the shell in `:compose-application`.
+     */
+    public val inProgressCount: Int get() = inProgressCountOf(history)
 
     /** Row under the cursor, or `null` when the list is empty. */
     public val highlightedRow: MirrorRow? get() = rows.getOrNull(highlightedIndex)
