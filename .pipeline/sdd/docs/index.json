@@ -46,5 +46,11 @@
     "currentStage": "review",
     "verdict": "complete-with-waivers",
     "updatedAt": "2026-10-18T21:15:52Z"
+  },
+  {
+    "spec": "verify-and-rediff-loop",
+    "currentStage": "preparation",
+    "verdict": "",
+    "updatedAt": "2026-10-18T21:16:28Z"
   }
 ]

@@ -1,0 +1,366 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "stage": "preparation",
+  "step": "preparation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "sdd-build-preparation-compile",
+  "provenance": {
+    "selfHash": "e29fafc0ed03b1a471853efe650050f47d7db2da68a4c1f984fb4a95ae212144",
+    "inputs": [
+      {
+        "artifact": "preparation/input.json",
+        "hash": "216dc83b00387b1a224ecb006a5773fc4b440e4ebcd595dfa121ba08cd970e4e"
+      },
+      {
+        "artifact": "preparation/clarify.json",
+        "hash": "d304c4c8e354bd6f7f5d74d4f2022e7994a08a0269ebadc7f4f33c651e7df78d"
+      },
+      {
+        "artifact": "preparation/brainstorm.json",
+        "hash": "cee62064884b629828d5f46d40a52714972ad0cd9615f68df10ba7c5feb99dba"
+      }
+    ]
+  },
+  "createdAt": "2026-10-18T21:39:01Z",
+  "updatedAt": "2026-10-18T21:39:01Z",
+  "data": {
+    "summary": "F-9 closes the Rectify loop: a 'Verify' action on any sent History batch re-captures the live device screen, diffs it per annotation against the batch's stored frozen frame (pixel-region diff of the box plus a hierarchy/layout diff of the matched node, reusing F-5 measure-mode), marks each annotation Fixed or Still off, and lets the user send a one-click follow-up that re-stages exactly the still-off annotations back through F-7. It removes the dead BatchStatusModel.Fixed gate on the Verify button (FR-37/AC-39) and starts using F-8's unused HistoryRepository.updateStatus hook (Verified, Follow-up sent).",
+    "problemStatement": "F-8 shipped a Verify button gated to BatchStatusModel.Fixed, but nothing in v1 ever writes Fixed, so the button is dead on arrival and the PRD's differentiator (per-annotation, per-region pixel+hierarchy verification) is unbuilt. Users have no way to confirm an agent's fix actually landed without manually re-comparing frames by eye, and no tight way to push back just the annotations that are still wrong.",
+    "confirmedRequirements": {
+      "functional": [
+        {
+          "id": "FR-21",
+          "text": "On any sent batch (not gated on a 'Fixed' status, since nothing in v1 is confirmed to set one), provide a 'Verify' action that re-captures the live screen and diffs it, per annotation box, against the original frozen frame; matches mark the annotation resolved, mismatches surface a one-click follow-up that re-stages that single annotation for re-send."
+        },
+        {
+          "id": "FR-37",
+          "text": "Remove the BatchStatusModel.Fixed gate on the History row's Verify button (MirrorHistoryTab.kt HistoryEntryRow trailing slot) so it renders and is clickable for every sent batch regardless of status."
+        },
+        {
+          "id": "FR-38",
+          "text": "On Verify click, enter a Verify phase that re-captures the live device frame and hierarchy for the device that sent the batch (AS-1/AS-2, AS-1 as amended below), reusing the existing mirror capture pipeline rather than a new one."
+        },
+        {
+          "id": "FR-39",
+          "text": "[AMENDED — correction #1, overrides clarify decision #4] For each annotation, read the matching region from the frozen and re-captured frames via ImageBitmap.readPixels(startX, startY, w, h) — a commonMain member, with the annotation rect as the region arguments — and compute the pixel-region diff as pure IntArray arithmetic in commonMain (no PixelDiffer seam, no expect/actual, no fun interface for the diff itself). A separate fun interface BatchFileReader (desktop java.io impl, null-returning Android/iOS stand-ins, matching the BatchFileStore/CropEncoder pattern) is added solely to read frame.png and crop files off disk."
+        },
+        {
+          "id": "FR-40",
+          "text": "For each annotation, re-run F-5 measure-mode's node matching against the re-captured hierarchy and compare it to the original stored measurement, producing a dp-delta result string in the same format as live measure-mode (e.g. 'top Δ6dp → 0dp')."
+        },
+        {
+          "id": "FR-41",
+          "text": "[AMENDED — correction #2, change-evidence semantics] Mark an annotation's verdict 'Fixed' iff: the hierarchy node matched on both sides AND the matched node's layout finding is gone in the AFTER measurement AND the pixel region shows change-evidence (regionPx < MIN_REGION_PIXELS, where the ratio is statistically meaningless and the hierarchy half decides alone, OR changedRatio > REGION_CHANGE_RATIO). Anything else — including an unmatched hierarchy node — is 'Still off', never silently skipped as 'Fixed'."
+        },
+        {
+          "id": "FR-42",
+          "text": "Render the Verify view per design-verify-view.md as a new phase inside the existing MirrorHost/MirrorContent composition (no second MirrorHost call site): two 296×640 frames (BEFORE/AFTER) with per-annotation rects coloured by verdict, a 300px 'Verification' panel with result rows and verdict words, an 'AGENT CHANGES' section cut for v1 (see out-of-scope), footer actions 'Send follow-up · N' and 'Mark all as verified', a four-step header strip, and a '← Back to live' chip that resets to the live mirror with the History tab selected."
+        },
+        {
+          "id": "FR-43",
+          "text": "'Send follow-up · N' re-stages exactly the N still-off annotations (plural; AC-42) into a new AnnotationEnvelope sourced from the re-captured (AFTER) frame and its crops — not the stale frozen frame — renumbered 1..N for the envelope, and re-enters F-7's send path via MirrorIntent.ResolveAndSend by reusing resolveAndSend() unchanged except for one pendingFollowUpBatchId hook that writes Follow-up sent on its success path."
+        },
+        {
+          "id": "FR-44",
+          "text": "'Mark all as verified' force-sets every annotation's verdict to Fixed without further diffing and writes the batch status to Verified; if a run is still in progress it cancels verifyJob first so a late completion cannot overwrite the override."
+        },
+        {
+          "id": "FR-45",
+          "text": "Persist verify outcomes through HistoryRepository.updateStatus: Verified when a run ends with every annotation Fixed (or via the Mark-all override), Follow-up sent immediately after a follow-up send succeeds (written on the ORIGINAL batch; the follow-up itself records its own new Sent row). No v1 code path writes In progress or BatchStatusModel.Fixed — that remains an intentional gap (see out-of-scope)."
+        },
+        {
+          "id": "FR-46",
+          "text": "If the re-captured frame's pixel dimensions differ from the stored frozen frame's, abort the diff before any per-annotation comparison runs and surface an error state (SizeMismatch) rather than comparing misaligned regions."
+        },
+        {
+          "id": "FR-47",
+          "text": "Reconcile the crop-index convention mismatch (0-based in history storage, 1-based in the AnnotationHandoff envelope) by never reading crop-N.png on the read side at all — the diff loop reads full-res frame.png plus stored rects, which strictly dominates the crops and makes the conflict vanish there. The only conversion point is the follow-up envelope build (mapIndexed → StagedAnnotation(index = i + 1)), where history's 0-based iteration order is renumbered 1-based for F-7."
+        }
+      ],
+      "nonFunctional": [
+        {
+          "id": "NFR-7",
+          "category": "reliability",
+          "text": "History and batch metadata persist locally and survive app restarts."
+        },
+        {
+          "id": "NFR-9",
+          "category": "ux",
+          "text": "All screens support full light and dark theme parity using the defined signal-color system (red = bug, green = fixed, orange = warning, blue = measurement) with sufficient contrast in both themes. Satisfied in-place by the already-shipped VerificationRow/VerificationOutcome molecule and Theme.color.sentFixed/warnStillOff tokens."
+        },
+        {
+          "id": "NFR-15",
+          "category": "performance",
+          "text": "Re-capture and the per-annotation diff loop run off the UI thread (Dispatchers.Default, consistent with AnnotationHandoff's existing suspend contract) and show a visible in-progress state (VerifyPhase: Loading/Recapturing/Diffing/Ready), since N region diffs plus a ~2.7s hierarchy dump can take long enough to need one."
+        },
+        {
+          "id": "NFR-16",
+          "category": "reliability",
+          "text": "A device disconnect mid-verify aborts the run cleanly: no partial status write, the original batch status is untouched, and the user lands in a retryable state rather than a stuck spinner. Reuses the existing flatMapLatest(sessionDeviceId) teardown that already cancels in-flight jobs."
+        },
+        {
+          "id": "NFR-17",
+          "category": "maintainability",
+          "text": "MET-3's <5% false-positive target is not automatically verifiable in this codebase in v1 — there is no golden before/after dataset and no Compose UI-test harness. Diff thresholds (CHANNEL_NOISE_FLOOR, REGION_CHANGE_RATIO, MIN_REGION_PIXELS) are named tunable constants with stated ceilings, validated by manual spot-check only; MET-3 is recorded as unverified-in-v1 rather than asserted by an automated test."
+        }
+      ]
+    },
+    "acceptanceCriteria": [
+      {
+        "id": "AC-23",
+        "text": "Given any sent batch, when the user clicks 'Verify', then the app re-captures the live screen and diffs it, per annotation box, against the stored frozen frame using a pixel-region diff plus a hierarchy/layout diff of the matched node.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-24",
+        "text": "[AMENDED — correction #2, change-evidence semantics replaces the self-defeating literal wording] Given a Verify diff, an annotation is marked 'Fixed' only when its hierarchy node matches, its layout finding is gone in the AFTER measurement, AND its pixel region shows change-evidence (regionPx < MIN_REGION_PIXELS, or changedRatio > REGION_CHANGE_RATIO); given any of these fails, the annotation is 'Still off' and a one-click follow-up re-stages exactly the still-off annotations for re-send. The original wording ('no material difference → resolved') is rejected because it would report an agent that changed nothing as having fixed the bug.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-39",
+        "text": "Given the History tab, when a row's batch status is anything other than Fixed (e.g. Sent), then the Verify button is still rendered and clickable — the BatchStatusModel.Fixed gate at MirrorHistoryTab.kt:179 is removed, superseding F-8's AC-36.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-40",
+        "text": "Given Verify is clicked, when the re-captured frame's pixel dimensions differ from the stored frozen frame's (resolution or orientation changed), then no per-annotation diff runs and an error state is shown instead of a misaligned comparison.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-41",
+        "text": "Given a Verify run, when an annotation's original hierarchy node cannot be matched in the re-captured hierarchy (moved, renamed, or removed), then that annotation's verdict is 'Still off' regardless of its pixel-region diff result.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-42",
+        "text": "Given at least one annotation is 'Still off' after Verify, when the user clicks 'Send follow-up · N', then exactly the N still-off annotations are re-staged from the re-captured (AFTER) frame and crops and sent through F-7's existing send path, and the batch status updates to Follow-up sent.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-43",
+        "text": "Given a Verify run completes with every annotation 'Fixed', or the user clicks 'Mark all as verified', then the batch status updates to Verified via HistoryRepository.updateStatus.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-44",
+        "text": "Given a Verify run is in progress (re-capture or diffing), when the device disconnects, then the run aborts, the original batch status is left unchanged, and the user can retry Verify once reconnected.",
+        "priority": "must",
+        "verificationMethod": "test"
+      },
+      {
+        "id": "AC-45",
+        "text": "Given the diff reads image bytes for comparison, then it reads the full-resolution stored frame.png (never crop-N.png, never the ≤128px thumbnail BLOB), reusing stored rects for region extraction.",
+        "priority": "must",
+        "verificationMethod": "inspection"
+      }
+    ],
+    "scope": {
+      "in": [
+        "Make the Verify action reachable on any sent batch (delete the BatchStatusModel.Fixed gate).",
+        "Per-annotation pixel-region diff (commonMain IntArray arithmetic, no seam) plus hierarchy/layout diff (reusing F-5 measure-mode) combined by a closed AND-rule into Fixed/Still off.",
+        "New read path: HistoryEntryDao.findById, BatchFileReader (new fun interface), HistoryRepository.get(batchId), GetSentBatchUseCase/UpdateBatchStatusUseCase.",
+        "New MirrorStage.Verify phase rendered inside the existing single MirrorHost/MirrorContent composition (BEFORE/AFTER frame columns, Verification panel, four-step strip, footer actions, Back to live chip).",
+        "One-click 'Send follow-up · N' re-staging exactly the still-off annotations from the AFTER frame through the existing resolveAndSend()/F-7 path with a pendingFollowUpBatchId hook.",
+        "'Mark all as verified' override.",
+        "Persisting Verified and Follow-up sent via HistoryRepository.updateStatus.",
+        "Abort/error states: SizeMismatch, NotOnDisk, HierarchyUnusable, NoLiveSession, Disconnected.",
+        "densityDpi sourced from the fresh AFTER dump for both sides (no schema change, no migration)."
+      ],
+      "out": [
+        "The 'AGENT CHANGES' file-diff section (CartItemView.kt +4 −2) — no data source exists; cut for v1, matching F-8's precedent.",
+        "Automated or CI-measured verification of the MET-3 <5% false-positive number — recorded unverified-in-v1 (NFR-17).",
+        "Writing BatchStatusModel.InProgress or BatchStatusModel.Fixed from any v1 flow.",
+        "Re-targeting Verify to a device other than the one that sent the batch, or verifying against a different app build.",
+        "Android/iOS Verify UI or pixel diffing — desktop-only, matching F-7/F-8.",
+        "Batch-level (whole-screen) diffing or verifying more than one batch at a time — per-annotation, per-region by design.",
+        "A one-shot/cold-start capture pipeline (Verify requires an active mirror session — see AS-1 amendment).",
+        "A densityDpi schema column/migration.",
+        "Temporal stabilisation of the AFTER frame (multi-sample to defeat mid-animation capture).",
+        "Device serial matching (deviceLabel remains a display label only)."
+      ]
+    },
+    "constraints": [
+      {
+        "type": "tech",
+        "text": "The Verify view must not introduce a second MirrorHost call site; it is a new phase rendered inside the existing MirrorHost/MirrorContent composition in presentation-feature-mirror, per that file's single-call-site KDoc warning."
+      },
+      {
+        "type": "tech",
+        "text": "[AMENDED — correction #1] Pixel diffing is pure IntArray arithmetic in commonMain (RegionDiff.changedRatio) with a ~10-line ImageBitmap.readPixels edge function — no PixelDiffer seam of any kind (not expect/actual, not fun interface). BatchFileReader (fun interface, desktop java.io impl, null-returning Android/iOS stand-ins) is the one genuinely new seam, used only to read bytes off disk, same shape as CropEncoder/BatchFileStore."
+      },
+      {
+        "type": "tech",
+        "text": "The diff must read the full-resolution frame.png (never crop-N.png, never the ≤128px thumbnail BLOB) F-8 persists on disk."
+      },
+      {
+        "type": "tech",
+        "text": "Hierarchy/layout diffing reuses F-5 measure-mode's existing node-matching (snapTarget) and finding/dp-delta formatting (findingOf/deltaLabel/plainValueLabel/displayDelta) rather than a new layout-diff algorithm."
+      },
+      {
+        "type": "tech",
+        "text": "[CORRECTED — recon was wrong] Adding the Verify stage DOES require a ~2-line RectifyWindow.kt edit: the MirrorHost content lambda widens by one more parameter (a 5th StateFlow<VerifyFrames?> argument), following the same precedent as its earlier 3→4 widening for frozenHierarchy."
+      },
+      {
+        "type": "tech",
+        "text": "No database schema change or migration: densityDpi is not persisted; both sides' dp labels use density from the fresh AFTER hierarchy dump (database.md: F-8's stay-at-version-1 is a one-off, not reusable precedent for skipping a real migration if a column were added)."
+      },
+      {
+        "type": "business",
+        "text": "Desktop (macOS) only in v1, matching F-7/F-8 scope and NFR-10."
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "AS-1",
+        "text": "[AMENDED — correction #3, false as originally written] Original wording assumed an on-demand capture pipeline exists without the live mirror running. The recon proves StartMirroringUseCase is stream-only with no one-shot capture use case. Adopted: Verify requires an active mirror session on the device — it reads currentHeld.value atomically (the same freezing pattern stageAnnotation already uses) and fails with a clear 'start mirroring first' error (NoLiveSession) otherwise."
+      },
+      {
+        "id": "AS-2",
+        "text": "The device used for Verify is the same device that was mirrored when the batch was originally sent; v1 does not attempt to re-target a disconnected/replaced device (deviceLabel is a display label, not a serial, and is not used to enforce this)."
+      },
+      {
+        "id": "AS-3",
+        "text": "F-5's measure-mode node-matching can run headlessly (without the Option-hover UI) against a stored hierarchy snapshot to compute a dp-delta; no new matching algorithm is needed — findingOf is reused directly as the layout oracle."
+      },
+      {
+        "id": "AS-4",
+        "text": "F-8's persisted frame.png, crop files, and hierarchy XML are sufficient diff inputs; no additional data needs to be captured at send-time beyond what F-8 already stores (densityDpi being the one known gap, addressed via the AFTER-dump fallback, not a schema change)."
+      },
+      {
+        "id": "AS-5",
+        "text": "PRD Stage-4's resolution ('Verify is available on any sent batch regardless of status; History status chips remain informational only') is authoritative and supersedes F-8's AC-36 gate outright — this consolidation does not re-open that question."
+      }
+    ],
+    "dependencies": [
+      {
+        "on": "F-7 (resolve-and-send-mcp)",
+        "note": "One-click follow-up reuses resolveAndSend()/MirrorIntent.ResolveAndSend/AnnotationEnvelope assembly/CropEncoder unchanged except for one pendingFollowUpBatchId hook on its success path."
+      },
+      {
+        "on": "F-8 (history-batch-tracking)",
+        "note": "Consumes HistoryRepository.updateStatus, stored frame.png/crop files, BatchStatusModel values, and the existing (inert) MirrorIntent.VerifyBatch stub/verifyBatch handler seam. Also inherits F-8 review debt: crop-index 0-vs-1-based convention (resolved by never reading crops on the read path, FR-47) and observeAll's missing LIMIT (explicitly NOT to be copied into the new findById query)."
+      },
+      {
+        "on": "F-5 (measure-mode)",
+        "note": "Hierarchy/layout diff reuses measure-mode's node matching (snapTarget), the finding oracle (findingOf), and dp-delta result-string formatting (deltaLabel/plainValueLabel/displayDelta/SEPARATOR)."
+      }
+    ],
+    "chosenApproach": "No PixelDiffer seam of any kind: pixel-region diffing is pure IntArray arithmetic in commonMain (RegionDiff.changedRatio), fed by a ~10-line ImageBitmap.readPixels edge function (RegionPixels.kt) — overriding clarify's original expect/actual decision because the recon proved readPixels is already a commonMain member and a seam here would both violate 'no interface with one implementation' and destroy unit-testability (presentation-feature-mirror's desktopTest has no Skiko). The one genuinely new seam is BatchFileReader (fun interface, desktop java.io impl, null Android/iOS stand-ins) to read frame.png/crop files off disk, since BatchFileStore is write-only. A thin new read path (HistoryEntryDao.findById → HistoryDataSource.getBatch → HistoryRepository.get(batchId) → GetSentBatchUseCase) reuses the existing SentBatchModel as the read model and re-parses stored hierarchy XML through the existing HierarchySnapshotMapper, never reading crop-N.png (full-res frame.png + stored rects dominate, sidestepping the 0-based/1-based crop-index conflict). Per-annotation verdict is a closed, three-conjunct AND-rule: hierarchy node matched on both sides AND the matched node's F-5 finding is gone in AFTER AND the pixel region shows change-evidence (regionPx below MIN_REGION_PIXELS, or changedRatio above REGION_CHANGE_RATIO) — this corrects AC-24's self-defeating literal wording ('no material difference → resolved', which would call an untouched region 'Fixed'). Verify is a new MirrorStage.Verify phase inside the existing single MirrorHost/MirrorContent composition (no new Destination, no second call site), with the two BEFORE/AFTER bitmaps delivered via a new plain StateFlow<VerifyFrames?> as a 5th content-lambda argument (a real, small RectifyWindow.kt edit, correcting the recon). Verify requires an active mirror session (AS-1 corrected: no on-demand capture pipeline exists) and reads currentHeld.value atomically. densityDpi for both BEFORE and AFTER labels comes from the fresh AFTER hierarchy dump — no schema change or migration, since a migration could never retroactively supply density for existing rows anyway. A non-empty hierarchy that projects to zero candidates (display-override coordinate mismatch) aborts the run with a distinct error rather than emitting false 'Still off' verdicts for every annotation. The one-click follow-up re-stages exactly the N still-off annotations (plural, per AC-42) from the AFTER frame/crops, renumbered 1-based for the envelope, by reusing resolveAndSend() unchanged plus one pendingFollowUpBatchId hook that writes 'Follow-up sent' on the ORIGINAL batch on success.",
+    "rationale": "Every architectural choice follows the ladder: reuse an existing commonMain API (ImageBitmap.readPixels) over inventing a new seam; reuse an existing oracle (F-5's findingOf) over a new layout-diff algorithm; reuse an existing model (SentBatchModel) over a new read-model type; reuse an existing composition (MirrorHost/MirrorStage) over a new Destination; reuse an existing send path (resolveAndSend) over a new envelope pipeline. The three corrections of record (no seam; change-evidence AND-rule for AC-24; AS-1 requires a live session) were all forced by evidence the recon supplied after the clarify stage closed, and are recorded explicitly rather than silently overridden, per this project's own precedent (F-8's FR-30/FR-35 corrections). MET-3 is honestly recorded as unverified-in-v1 rather than asserted by a nonexistent test harness — three named, KDoc'd tunable constants (CHANNEL_NOISE_FLOOR, REGION_CHANGE_RATIO, MIN_REGION_PIXELS) stand in for a golden-dataset tuning pass that is written down as an upgrade path but not built, matching the project's documented 'no Compose UI-test harness' ceiling.",
+    "architectureOverview": "Data/domain (new, all small): HistoryEntryDao.@Transaction @Query findById(id) → HistoryDataSource.getBatch(id) → BatchFileReader (new fun interface beside BatchFileStore) → HistoryRepositoryImpl.get(batchId): SentBatchModel? (reused type; hierarchy XML re-parsed via existing HierarchySnapshotMapper, densityDpi comes back 0 and is replaced by the AFTER dump's density) → GetSentBatchUseCase / UpdateBatchStatusUseCase (two thin resultLauncher wrappers; HistoryRepository.updateStatus currently has zero callers). Presentation (presentation-feature-mirror): core/verify/ package — RegionPixels.kt (the only ImageBitmap-touching file, ~10 lines, untested because Skiko is absent from desktopTest), RegionDiff.kt (pure IntArray→Float, fully unit-tested), VerifyThresholds.kt (three named constants), VerifyVerdict.kt (the AND-rule in one expression, returns existing VerificationOutcome), BeforeAfterFormat.kt (the one missing formatter, built on F-5's existing label functions). MirrorContract.kt gains MirrorStage.Verify, VerifyUiState/VerifyRow/VerifyPhase/VerifyError, and SendFollowUp/MarkAllVerified/ExitVerify intents. MirrorViewModel gains verifyJob (copied from the dumpJob cancellation precedent), verifyFrames: MutableStateFlow<VerifyFrames?> (the 5th MirrorHost content arg), and pendingFollowUpBatchId. The run: (1) snapshot sessionDeviceId + currentHeld.value atomically, null ⇒ NoLiveSession; (2) GetSentBatchUseCase, null ⇒ NotOnDisk; (3) decode stored frame bytes, compare IntSize to live frame, mismatch ⇒ SizeMismatch (abort before any per-annotation work); (4) DumpHierarchyUseCase for the AFTER hierarchy (phase=Recapturing drives NFR-15's progress UI); (5) project both snapshots against the one shared IntSize — non-empty-but-zero-candidates ⇒ HierarchyUnusable (abort), empty-to-begin-with degrades per-annotation to NO_MATCH (AC-41); (6) per annotation: measure() both sides, regionPixels+changedRatio, verdictOf, beforeAfterLabel, publish VerifyFrames and reduce rows; (7) all-Fixed ⇒ UpdateBatchStatusUseCase(Verified). At every suspension point a device change/disconnect ⇒ Disconnected, no status write, retryable (reuses the existing flatMapLatest(sessionDeviceId) teardown). MirrorHistoryTab.kt's BatchStatusModel.Fixed gate at line 179 is deleted along with its collateral comments (line 240 preview KDoc, strings.xml:182, MirrorContract.kt:490-500 KDoc).",
+    "techStack": [
+      "Pixel region read: ImageBitmap.readPixels(IntArray, startX, startY, w, h, 0, w) in commonMain behind a ~10-line clamping helper — no seam, no new dependency (overrides clarify decision #4).",
+      "Pixel metric: per-pixel Chebyshev distance in RGB (max(|Δr|,|Δg|,|Δb|) > CHANNEL_NOISE_FLOOR), changedRatio = changedCount/n, integer-only, alpha ignored — catches chroma-only changes a luma metric would miss, no float pipeline/dependency needed.",
+      "Thresholds: CHANNEL_NOISE_FLOOR=10/255, REGION_CHANGE_RATIO=0.02f, MIN_REGION_PIXELS=64, three internal consts in VerifyThresholds.kt, each KDoc'd with its ceiling and tuning method (NFR-17/MET-3).",
+      "Verdict rule: Fixed ⇔ nodeMatched && afterFinding == null && (regionPx < MIN_REGION_PIXELS || changedRatio > REGION_CHANGE_RATIO); anything else is StillOff.",
+      "File read seam: fun interface BatchFileReader { suspend fun read(path: String): ByteArray? } — java.io desktop impl, null Android/iOS stand-ins, same shape as BatchFileStore, never throws.",
+      "Read model: reuse the existing SentBatchModel as the read-path type (no new VerifyBatchModel).",
+      "Hierarchy re-parse: existing HierarchySnapshotMapper.toModel(HierarchyDumpStdout(storedXml, \"\")) inside the repository (presentation never imports data-device-api).",
+      "Density: take densityDpi from the fresh AFTER dump for both sides; no schema change, no migration.",
+      "Frame pair delivery: data class VerifyFrames(before, after) on a plain StateFlow, 5th MirrorHost content arg — pixels never enter reduced state.",
+      "Concurrency: verifyJob: Job?, all decode/diff under withContext(Dispatchers.Default), device identity re-checked at each suspension point, VerifyPhase in reduced state (dumpJob precedent).",
+      "Testing: commonTest over IntArrays and pure functions only; no bitmap ever constructed in tests (Skiko absent from desktopTest); backtick test names avoid commas/colons for compileTestKotlinIosArm64."
+    ],
+    "openRisks": [
+      {
+        "text": "Threshold tuning is unvalidated (MET-3). The constants are a first guess from reasoning about antialiasing, caret and scroll cases, not from measurement.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "Three named constants in one file with KDoc ceilings; 'Mark all as verified' is always available as the human override; recorded as unverified-in-v1 per NFR-17; golden-corpus upgrade path written down, not built."
+      },
+      {
+        "text": "A display-override device (documented Pixel 8 984×2132-vs-1080×2400 case) makes projectMeasureNodes discard the hierarchy and would otherwise produce N confident, wrong 'Still off' verdicts.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Explicit non-empty-but-rejected check on both sides → VerifyError.HierarchyUnusable, abort before any verdict; kept distinct from the empty-snapshot case so AC-41 still applies."
+      },
+      {
+        "text": "The Skiko trap: if any diff code drifts into an ImageBitmap-typed helper, the feature's own tests stop compiling or throw LibraryLoadException.",
+        "likelihood": "med",
+        "impact": "high",
+        "mitigation": "Exactly one file (RegionPixels.kt, ~10 lines) is allowed to mention ImageBitmap; RegionDiff takes IntArrays only; enforced by KDoc note and by tests that never construct a bitmap."
+      },
+      {
+        "text": "dumpHierarchy costs ~2.7s and N region diffs follow, so a naive implementation reads as a frozen window.",
+        "likelihood": "high",
+        "impact": "med",
+        "mitigation": "VerifyPhase drives a visible progress state (NFR-15); work on Dispatchers.Default; verifyJob cancellable from ExitVerify, a new Verify, or a device change."
+      },
+      {
+        "text": "Reusing resolveAndSend() as 'unchanged' needs a pendingFollowUpBatchId hook; a sloppy edit could make every normal send try to write FollowUpSent.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "Nullable field, null-checked, cleared in a finally; one ViewModel test asserting a plain send writes no status."
+      },
+      {
+        "text": "The 0-based (history) vs 1-based (envelope) crop index could resurface when renumbering follow-up annotations.",
+        "likelihood": "low",
+        "impact": "med",
+        "mitigation": "Never read crop-N.png at all; the only conversion point is the mapIndexed building StagedAnnotation(index = i + 1); one test over a 2-of-3 still-off selection."
+      },
+      {
+        "text": "Verify requiring a live mirror session (AS-1 corrected) may read as a bug on the History tab ('I clicked Verify and got an error').",
+        "likelihood": "med",
+        "impact": "low",
+        "mitigation": "A specific, actionable error state naming the device to start mirroring, not a generic failure."
+      },
+      {
+        "text": "Scope creep: F-9 touches data, domain, repository, presentation and the shell call site at once.",
+        "likelihood": "med",
+        "impact": "med",
+        "mitigation": "Implementation steps ordered so the pure diff logic (read path + core/verify/*) is independently testable and mergeable before any UI exists."
+      }
+    ],
+    "openQuestions": [
+      "Should a later feature give the coding agent an MCP-side signal to write BatchStatusModel.InProgress, or does that value stay permanently unused?",
+      "Should Verify ever support re-targeting a reconnected-but-different device than the one that sent the original batch (would need a persisted device serial, not just deviceLabel)?",
+      "Should the 'AGENT CHANGES' file-diff section come back later via a git-diff-capable MCP tool, or is it permanently out of scope?",
+      "Should a densityDpi column with a real Room migration be added later so historical batches carry their own density, rather than relying on the AFTER-dump fallback indefinitely?",
+      "Should the follow-up envelope reframe the comment for the agent ('still off after your fix: ...') via promptOverride, or continue re-sending verbatim?",
+      "Should temporal stabilisation (sampling two AFTER frames ~250ms apart) be added if manual spot-checks show animation-driven flakiness in the pixel conjunct?",
+      "Should MET-3 tuning move from manual spot-check to a hand-labelled before/after corpus with a parameterised test once such a corpus exists?"
+    ],
+    "readyForPlan": true,
+    "artifacts": {
+      "input": "input.json",
+      "clarify": "clarify.json",
+      "brainstorm": "brainstorm.json"
+    },
+    "survey": [
+      {
+        "question": "This Preparation deliverable consolidates Stage 1 with three correction-of-record amendments carried forward verbatim from the brainstorm: (1) no PixelDiffer seam — pure commonMain IntArray diffing instead; (2) AC-24 reworded to change-evidence semantics (Fixed requires the region to have visibly changed, not just 'no material difference'); (3) AS-1 corrected — Verify requires an active mirror session, there is no on-demand capture pipeline. Does this deliverable accurately capture Stage 1's agreed scope and is it ready to gate into Plan?",
+        "options": [
+          "Yes — approved as consolidated, proceed to Plan (readyForPlan: true)",
+          "No — revise before proceeding"
+        ],
+        "answer": "Yes — approved as consolidated, proceed to Plan (readyForPlan: true)",
+        "source": "ai-proposed",
+        "rationale": "All three amendments are evidence-driven corrections already closed by brainstorm's own survey (Q1 overrides clarify decision #4; Q2 adopts change-evidence semantics; Q4 corrects AS-1), not new decisions. No contradiction was found between clarify and brainstorm once these overrides are applied, and FR-21/AC-23's 'any sent batch' reading is consistently normative across all three artifacts against the one inconsistent reference (US-9's PRD-level 'on Fixed batches' phrasing, which the clarify survey already resolved in FR-21's favor)."
+      },
+      {
+        "question": "AC-24's literal original wording ('no material difference → resolved') is self-defeating and has been rewritten in this deliverable to the change-evidence semantics (nodeMatched && afterFinding==null && pixel-change-evidence). Should the AC text itself be amended as done here, or should the plan instead keep AC-24's original sentence verbatim and treat change-evidence purely as an implementation note?",
+        "options": [
+          "Amend AC-24's text directly to change-evidence semantics (as done in this deliverable) — the plan traces to the corrected wording",
+          "Keep AC-24's original sentence verbatim in the trace table; record change-evidence only as a separate implementation note"
+        ],
+        "answer": "Amend AC-24's text directly to change-evidence semantics (as done in this deliverable) — the plan traces to the corrected wording",
+        "source": "ai-proposed",
+        "rationale": "Leaving self-defeating prose as the literal trace target invites a future reviewer to implement the broken literal reading ('an agent that did nothing passes'). Amending the AC text in place, with the amendment flagged and the original quoted, matches this project's own precedent of recording corrections directly in the artifact (F-8's FR-30/FR-35) rather than hiding them in a separate note."
+      }
+    ]
+  },
+  "gate": {
+    "type": "human",
+    "approvedBy": "orchestrator-autonomous",
+    "approved": true,
+    "at": "2026-10-18T21:39:01Z"
+  }
+}
