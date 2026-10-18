@@ -131,5 +131,12 @@
     "validation": "fast",
     "review": "fast",
     "reflection": "fast"
+  },
+  "merged": {
+    "into": "development",
+    "at": "2026-10-18T18:08:28Z",
+    "openItems": [
+      "CR-OPEN-1: T-13 manual end-to-end demo not performed — AC-18/AC-81 verified server-side only, NFR-3 unmeasured"
+    ]
   }
 }
