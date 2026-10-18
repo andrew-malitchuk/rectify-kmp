@@ -32,6 +32,7 @@ dependencyResolutionManagement {
 include(":compose-application")
 include(":aos-application")
 include(":desktop-application")
+include(":mcp-application")
 
 // common
 include(":common-core")

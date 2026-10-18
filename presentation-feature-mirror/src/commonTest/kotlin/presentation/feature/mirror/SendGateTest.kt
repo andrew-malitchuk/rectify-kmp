@@ -1,11 +1,11 @@
 package presentation.feature.mirror
 
 import androidx.compose.ui.unit.IntSize
-import presentation.feature.mirror.core.send.MirrorUiState
-import presentation.feature.mirror.core.send.SendPhase
 import presentation.feature.mirror.core.send.canSend
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
+import presentation.feature.mirror.source.mirror.MirrorUiState
+import presentation.feature.mirror.source.mirror.SendPhase
 import presentation.feature.mirror.source.mirror.StagedAnnotation
 import kotlin.test.Test
 import kotlin.test.assertFalse
