@@ -38,6 +38,7 @@ include(":common-core")
 
 // data
 include(":data-core")
+include(":data-handoff-api")
 include(":data-device-api")
 include(":data-device-impl")
 include(":data-preference-api")

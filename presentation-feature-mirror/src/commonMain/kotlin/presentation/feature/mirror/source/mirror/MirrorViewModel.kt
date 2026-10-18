@@ -55,6 +55,17 @@ private suspend fun decodePng(bytes: ByteArray): ImageBitmap? =
     withContext(Dispatchers.Default) { runCatching { bytes.decodeToImageBitmap() }.getOrNull() }
 
 /**
+ * The decoded bitmap and the raw bytes it was decoded from (T-1 / TAC-1).
+ *
+ * Pairing both on ONE value is what makes a freeze's read atomic: with two separate flows,
+ * [MirrorViewModel.stageAnnotation] would need two independent `.value` reads to rebuild this
+ * pair, and a newly arrived frame could land between them, pinning a bitmap from one frame
+ * alongside bytes from another. [MirrorViewModel.frozenHeld] is the only thing that reads this
+ * type; it must never reach [MirrorUiState] (TAC-3).
+ */
+internal data class HeldFrame(val bitmap: ImageBitmap, val bytes: ByteArray)
+
+/**
  * The mirror surface's state machine.
  *
  * Two deliberate splits make this cheap at ten frames a second:
@@ -100,6 +111,14 @@ public class MirrorViewModel(
     /** `null` while nothing streams — the gate both discovery and the capture loop read. */
     private val sessionDeviceId = MutableStateFlow<String?>(null)
 
+    /**
+     * The live frame as ONE [HeldFrame] — bitmap and the bytes it decoded from.
+     *
+     * Written in the same statement as [currentFrame], from the same collected value, so a
+     * freeze needs exactly one `.value` read to obtain a bitmap and bytes that agree.
+     */
+    private val currentHeld = MutableStateFlow<HeldFrame?>(null)
+
     private val currentFrame = MutableStateFlow<ImageBitmap?>(null)
 
     /** The latest decoded frame. Deliberately not part of [MirrorUiState]. */
@@ -116,6 +135,23 @@ public class MirrorViewModel(
      * [MirrorUiState.frozen]. The annotation list is the opposite case and does live in state.
      */
     public val frozenFrame: StateFlow<ImageBitmap?> = currentFrozenFrame.asStateFlow()
+
+    private val currentFrozenHeld = MutableStateFlow<HeldFrame?>(null)
+
+    /**
+     * T-1 (TAC-1) test seam: the decoded bitmap and the raw bytes it was decoded from, pinned as
+     * ONE [HeldFrame] value so a freeze's read is atomic.
+     *
+     * `internal`, not `public`: nothing on the public surface pairs bytes with the bitmap
+     * ([frame] / [frozenFrame] stay `ImageBitmap`-only) and a [HeldFrame] must never reach
+     * [MirrorUiState] (TAC-3 / `presentation-feature-mirror/CLAUDE.md` deviation 2). `internal`
+     * is exactly the visibility this needs: invisible outside the module, visible to this
+     * module's own tests — see `MirrorViewModelHeldFramePairingTest`.
+     *
+     * Set by [stageAnnotation] at the same moment [frozenFrame] is, from the same single read
+     * of [currentHeld]; cleared wherever the pinned frame is released.
+     */
+    internal val frozenHeld: StateFlow<HeldFrame?> = currentFrozenHeld.asStateFlow()
 
     private val currentFrozenHierarchy = MutableStateFlow(HierarchySnapshotModel.Empty)
 
@@ -216,11 +252,20 @@ public class MirrorViewModel(
                         flowOf(null)
                     } else {
                         startMirroring(device)
-                            .map { captured -> decodeFrame(captured.bytes) }
+                            // The captured bytes ride along with the bitmap they decoded to:
+                            // frame.png must be the adb capture itself, never a re-encode, and
+                            // only one value on one flow makes the freeze's read atomic.
+                            .map { captured ->
+                                decodeFrame(captured.bytes)
+                                    ?.let { bitmap -> HeldFrame(bitmap, captured.bytes) }
+                            }
                             .catch { onSessionLost(device) }
                     }
                 }
-                .collect { bitmap -> currentFrame.value = bitmap }
+                .collect { held ->
+                    currentHeld.value = held
+                    currentFrame.value = held?.bitmap
+                }
         }
     }
 
@@ -246,7 +291,7 @@ public class MirrorViewModel(
         // iOS is detected but not mirrorable this release, so switching platform must stop the
         // running session rather than leave a frozen frame on the stage.
         sessionDeviceId.value = null
-        currentFrozenFrame.value = null
+        releaseFrozenFrame()
         releaseHierarchy()
         reduce {
             state.copy(platform = platform, session = MirrorSession.Idle, frozen = null)
@@ -325,7 +370,7 @@ public class MirrorViewModel(
 
     private fun stopSession() = intent {
         sessionDeviceId.value = null
-        currentFrozenFrame.value = null
+        releaseFrozenFrame()
         releaseHierarchy()
         reduce { state.copy(session = MirrorSession.Idle, frozen = null).withoutMeasurements() }
     }
@@ -351,9 +396,14 @@ public class MirrorViewModel(
      * lambda against the winning value whenever it loses the race.
      */
     private fun stageAnnotation(rect: DeviceRect) = intent {
-        val held = currentFrame.value ?: return@intent
+        val held = currentHeld.value ?: return@intent
         val freezing = currentFrozenFrame.value == null
-        if (freezing) currentFrozenFrame.value = held
+        if (freezing) {
+            // Both halves of the SAME read, pinned together: the bytes behind frame.png are
+            // guaranteed to be the ones the pinned bitmap was decoded from (TAC-1).
+            currentFrozenFrame.value = held.bitmap
+            currentFrozenHeld.value = held
+        }
         // Stamped HERE, in the intent body, and never inside `reduce`: the reducer's CAS loop
         // re-runs its lambda on a lost race, so an increment in there would burn two ids on one
         // freeze (T-1 / TAC-4).
@@ -365,7 +415,7 @@ public class MirrorViewModel(
         reduce {
             val frozen = state.frozen
                 ?: FrozenFrame(
-                    deviceSize = IntSize(width = held.width, height = held.height),
+                    deviceSize = IntSize(width = held.bitmap.width, height = held.bitmap.height),
                     frameId = stampedFrameId,
                     deviceLabel = stampedDeviceLabel,
                 )
@@ -420,6 +470,15 @@ public class MirrorViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Unpins the frozen frame — both the bitmap the stage renders and the [HeldFrame] behind
+     * it, which are only ever written and cleared together.
+     */
+    private fun releaseFrozenFrame() {
+        currentFrozenFrame.value = null
+        currentFrozenHeld.value = null
     }
 
     /** Drops the captured hierarchy and any dump still running for a frame being released. */
@@ -649,7 +708,7 @@ public class MirrorViewModel(
             .orEmpty()
 
     private fun resumeLive() = intent {
-        currentFrozenFrame.value = null
+        releaseFrozenFrame()
         releaseHierarchy()
         reduce { state.copy(frozen = null).withoutMeasurements() }
     }
