@@ -8,3 +8,9 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-18T18:36:31Z", "spec": "history-batch-tracking"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 60992, "at": "2026-10-18T18:39:33Z", "spec": "history-batch-tracking"}
 {"stage": "preparation", "event": "end", "at": "2026-10-18T18:39:33Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "event": "start", "at": "2026-10-18T18:39:40Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "at": "2026-10-18T18:39:40Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 175616, "at": "2026-10-18T18:56:58Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-18T18:57:30Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 171240, "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
+{"stage": "plan", "event": "end", "at": "2026-10-18T19:11:17Z", "spec": "history-batch-tracking"}
