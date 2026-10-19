@@ -1,6 +1,6 @@
 {
   "spec": "ios-platform-support",
-  "updatedAt": "2026-10-19T02:11:52Z",
+  "updatedAt": "2026-10-19T02:56:20Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -34,11 +34,27 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-plan-draft": {
+      "tokens": 169783,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-refine": {
+      "tokens": 235447,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 287373,
+    "tokens": 692603,
     "durationMs": 0,
-    "invocations": 4
+    "invocations": 6
   }
 }

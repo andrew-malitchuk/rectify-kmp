@@ -14,3 +14,11 @@
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-19T02:25:36Z", "spec": "ios-platform-support"}
 {"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 235447, "at": "2026-10-19T02:56:19Z", "spec": "ios-platform-support"}
 {"stage": "plan", "event": "end", "at": "2026-10-19T02:56:20Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "event": "start", "at": "2026-10-19T02:56:26Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "start", "at": "2026-10-19T02:56:26Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "decompose", "agent": "sdd-build-backlog-decompose", "event": "end", "tokens": 143845, "at": "2026-10-19T03:04:29Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "start", "at": "2026-10-19T03:04:29Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "sequence", "agent": "sdd-build-backlog-sequence", "event": "end", "tokens": 154828, "at": "2026-10-19T03:14:35Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "start", "at": "2026-10-19T03:14:35Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "step": "validate", "agent": "sdd-build-backlog-validate", "event": "end", "tokens": 147608, "at": "2026-10-19T03:22:21Z", "spec": "ios-platform-support"}
+{"stage": "backlog", "event": "end", "at": "2026-10-19T03:22:21Z", "spec": "ios-platform-support"}
