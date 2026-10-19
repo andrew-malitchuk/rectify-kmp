@@ -1,6 +1,6 @@
 {
   "spec": "verify-and-rediff-loop",
-  "currentStage": "review",
+  "currentStage": "done",
   "stages": {
     "preparation": {
       "status": "done"
@@ -15,6 +15,9 @@
       "status": "done"
     },
     "validation": {
+      "status": "done"
+    },
+    "review": {
       "status": "done"
     }
   },

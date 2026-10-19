@@ -1,6 +1,6 @@
 {
   "spec": "verify-and-rediff-loop",
-  "updatedAt": "2026-10-19T01:05:04Z",
+  "updatedAt": "2026-10-19T01:44:01Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -76,11 +76,11 @@
       "failures": 0
     },
     "sdd-build-business-implement": {
-      "tokens": 900862,
+      "tokens": 1070166,
       "retries": 0,
       "failureRate": 0.0,
       "durationMs": 0,
-      "invocations": 7,
+      "invocations": 8,
       "failures": 0
     },
     "sdd-build-frontend-implement": {
@@ -130,11 +130,19 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 186520,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 2724404,
+    "tokens": 3080228,
     "durationMs": 0,
-    "invocations": 23
+    "invocations": 25
   }
 }
