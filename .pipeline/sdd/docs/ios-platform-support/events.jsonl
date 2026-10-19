@@ -8,3 +8,9 @@
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "start", "at": "2026-10-19T02:08:36Z", "spec": "ios-platform-support"}
 {"stage": "preparation", "step": "preparation", "agent": "sdd-build-preparation-compile", "event": "end", "tokens": 71609, "at": "2026-10-19T02:11:52Z", "spec": "ios-platform-support"}
 {"stage": "preparation", "event": "end", "at": "2026-10-19T02:11:52Z", "spec": "ios-platform-support"}
+{"stage": "plan", "event": "start", "at": "2026-10-19T02:11:59Z", "spec": "ios-platform-support"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "start", "at": "2026-10-19T02:11:59Z", "spec": "ios-platform-support"}
+{"stage": "plan", "step": "draft", "agent": "sdd-build-plan-draft", "event": "end", "tokens": 169783, "at": "2026-10-19T02:25:28Z", "spec": "ios-platform-support"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "start", "at": "2026-10-19T02:25:36Z", "spec": "ios-platform-support"}
+{"stage": "plan", "step": "refine", "agent": "sdd-build-plan-refine", "event": "end", "tokens": 235447, "at": "2026-10-19T02:56:19Z", "spec": "ios-platform-support"}
+{"stage": "plan", "event": "end", "at": "2026-10-19T02:56:20Z", "spec": "ios-platform-support"}

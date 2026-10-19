@@ -3,60 +3,60 @@
     "spec": "android-device-discovery-mirroring",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "drag-annotate-frozen-frame",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "error-handling-and-recovery",
     "currentStage": "done",
     "verdict": "",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "history-batch-tracking",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
+  },
+  {
+    "spec": "ios-platform-support",
+    "currentStage": "plan",
+    "verdict": "",
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "measure-mode",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "payload-preview",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "resolve-and-send-mcp",
     "currentStage": "review",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   },
   {
     "spec": "verify-and-rediff-loop",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T01:44:01Z"
-  },
-  {
-    "spec": "ios-platform-support",
-    "currentStage": "preparation",
-    "verdict": "",
-    "updatedAt": "2026-10-19T01:44:56Z"
+    "updatedAt": "2026-10-19T02:11:52Z"
   }
 ]
