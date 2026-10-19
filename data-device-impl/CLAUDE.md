@@ -55,7 +55,9 @@ holds while every target still links. The `expect`/`actual` Koin provider mirror
 of either to fall back on, and the two desktop transports are the SAME `ScreencapMirrorTransport`
 class twice, differing only in which executor they were handed. A forgotten qualifier is a crash
 at app launch that compiling cannot catch — `DeviceSourcesModuleTest` resolves all three graphs
-and asserts no unqualified resolution succeeds, which is the only machine guard there is.
+and asserts no unqualified resolution succeeds, and `ComposedDeviceGraphTest` over in
+data-repository-impl resolves `DeviceRepository` across `dataDeviceImplModule` +
+`dataRepositoryImplModule` together, which is the seam one-module-at-a-time resolution misses.
 
 ## ProcessRunner — the non-obvious parts
 
@@ -107,7 +109,7 @@ load-bearing:
 
 ## Testing
 
-31 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
+35 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
 read, warning-line trim, non-PNG and truncated stdout costing one frame rather than the session,
 the overdue-slot arithmetic, the fps window, per-session stat reset, and a vanished device ending
 the loop. All hardware-free.
@@ -119,11 +121,18 @@ authorised handset.
 The rest cover `AdbHostSourceImpl`'s daemon commands, `ToolResolver`'s user-path seam
 (including the three rejection cases above), and the Koin graphs. All hardware-free.
 
-`IosHostSourceImpl` and `IosDeviceCommandExecutor` get no unit test of their own, deliberately:
-every method spawns, and a real spawn inside `runTest`'s virtual clock always times out (the
-same reason `ToolResolver` takes injected predicates). `SimctlRealToolchainTest` is the honest
-coverage — it runs the real `xcrun simctl list devices available` through `ProcessRunner` and
-SKIPS, rather than fails, when `xcrun` is absent.
+`IosHostSourceImpl` gets no unit test of its own: every method spawns, and a real spawn inside
+`runTest`'s virtual clock always times out (the same reason `ToolResolver` takes injected
+predicates). `SimctlRealToolchainTest` is the honest coverage — it runs the real
+`xcrun simctl list devices available` through `ProcessRunner` and SKIPS, rather than fails,
+when `xcrun` is absent.
+
+`IosDeviceCommandExecutorTest` does cover `IosDeviceCommandExecutor`, using
+`AdbDeviceCommandExecutorTest`'s shape — `runBlocking` plus fake `xcrun`/`idb` shell scripts on a
+fake `PATH`, never `runTest`. Three behaviours: the already-booted swallow (both the swallowed
+and the propagated case exit with the SAME code and differ only in stderr, so an implementation
+keying on the number instead of the token fails), the idb temp-file fallback, and tool
+classification with its per-udid cache.
 
 One of the daemon tests genuinely spawns a real child and pays both a ~3.2 s fork and a 3 s
 timeout, so it takes ~6.5 s. That is deliberate: a stubbed clock catches a wrong comparison but

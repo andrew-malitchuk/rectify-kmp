@@ -10,7 +10,7 @@
 | producedBy | sdd-build-plan-refine |
 | schemaVersion | 1 |
 | createdAt | 2026-10-19T02:56:19Z |
-| updatedAt | 2026-10-19T02:56:19Z |
+| updatedAt | 2026-10-19T05:52:37Z |
 
 ## Gate
 
@@ -34,7 +34,7 @@ true
 
 ### selfHash
 
-8177e678932847be44b64be314ff086cf456d447fe1d37d89ad028ee18b6257a
+69edd9e6f6f5eca6b6ef71fc602ede32817013db2ad2ab98db859ce0f36f07d0
 
 ### inputs
 
@@ -522,8 +522,8 @@ Orbit MVI, unchanged. MirrorViewModel's `state.platform` stays the SINGLE source
 
 | metric | target |
 | --- | --- |
-| iOS frame capture round-trip (`xcrun simctl io <udid> screenshot --type=png -`) | <=100ms to hit MirrorTuning.CaptureFloorMs (~10fps). ASPIRATION, NOT A PREDICTION — plausibly 200-400ms. Measure once a simulator is booted and record the number. Do NOT add an iOS tuning constant to paper over a miss. |
-| `idb list-targets` per poll | MirrorTuning.HostCommandTimeoutMs = 3000ms (existing). Timeout degrades the physical list to empty; the simctl half is unaffected. |
+| iOS frame capture round-trip (`xcrun simctl io <udid> screenshot --type=png -`) | MEASURED 2026-10-19 on a booted iPhone 16 / iOS 18.1: median 300ms, min 277, max 608 (cold), n=10 through the adapter's exact argv. The plan predicted 200-400ms and said to record the number rather than paper over a miss - so recorded: the iOS ceiling is ~3.3 fps, NOT the ~10 fps MirrorTuning.CaptureFloorMs=100 assumes for Android. No iOS tuning constant was added; ScreencapMirrorTransport's adaptive loop simply never sleeps on iOS because CaptureFloorMs - captureMs is always <= 0, which the reuse decision handles unmodified. Any 'about 10 fps' claim is Android-only. |
+| `idb list-targets` per poll | AMENDED (audit AF-3): MirrorTuning.DaemonStartTimeoutMs = 15000ms, NOT the 3000ms originally budgeted. idb list-targets was MEASURED at 5.27s on this host (three runs within 0.02s), so a 3s budget would have missed on EVERY call and left the physical-device list permanently and silently empty. Shipped code uses the 15s constant; no new tuning value was introduced. Timeout still degrades the physical list to empty while the simctl half is unaffected. |
 | `xcrun simctl list devices available` per poll | MirrorTuning.HostCommandTimeoutMs = 3000ms (existing). |
 | `xcrun simctl boot <udid>` | MirrorTuning.DaemonStartTimeoutMs = 15000ms (existing, reused — honours the no-new-tuning-constants rule). |
 | Android discovery/mirroring characteristics after the extraction | Byte-identical behaviour. pollAndroid() is a verbatim move; any measurable change is an AC-49 failure, not a tuning question. |

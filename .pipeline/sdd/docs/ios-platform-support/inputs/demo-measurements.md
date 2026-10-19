@@ -49,3 +49,40 @@ has one.
 - `idb screenshot -` remains **UNMEASURED**: no trusted physical iPhone on this host.
 - No GUI was driven. Clicking "Boot simulator" in a rendered error card is still
   manual-not-executed; what is proven is that the command the button dispatches works.
+
+---
+
+# captureRoundTripMs — measured (closes audit finding AF-4)
+
+The plan's performance budget asked for this number "once a simulator is booted". A
+simulator was booted, so here it is. Ten consecutive captures through the **exact argv the
+adapter uses**, against a booted iPhone 16 (iOS 18.1):
+
+```
+608 349 336 328 305 279 294 278 277 279   (ms)
+n=10  min=277  median=300  max=608  mean=333
+```
+The 608 ms first sample is cold-start; steady state is ~280 ms.
+
+## What this changes
+
+**The iOS mirror ceiling is ~3.3 fps, not 10.** `MirrorTuning.CaptureFloorMs = 100` exists
+to cap Android at ~10 fps, and its own KDoc admits the figure is unmeasured. On iOS that
+floor is **never the binding constraint** — the capture itself is, by a factor of three.
+`ScreencapMirrorTransport`'s adaptive loop handles this correctly without modification
+(it waits `CaptureFloorMs - captureMs`, which is simply always ≤ 0 here, so it never
+sleeps), which is a point in favour of the reuse decision rather than against it. But any
+doc or expectation that says "about 10 fps" is Android-only and should not be read as a
+cross-platform claim.
+
+**Frame weight differs enormously with content.** An idle/黑 springboard capture was
+**68 641 bytes**; a booted simulator showing real UI was **3 049 017 bytes** — 44× larger.
+At ~3.3 fps that is roughly **9 MB/s** moving through `ProcessRunner`'s stdout buffer and
+into `decodeToImageBitmap()`. Android's `screencap` output on a 1080×2400 device is in the
+same order, so this is not iOS-specific, but it is worth knowing before anyone raises the
+frame rate.
+
+## Honest limits of this measurement
+Single device, single runtime, idle UI, this host only. It is a ballpark that refutes the
+10 fps assumption for iOS; it is not a tuned budget. `idb screenshot` (the physical-device
+path) is still **UNMEASURED** — no trusted hardware here.

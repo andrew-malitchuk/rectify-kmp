@@ -1,6 +1,6 @@
 {
   "spec": "ios-platform-support",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -9,6 +9,9 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -152,6 +155,16 @@
       "status": "done",
       "wave": 11,
       "updatedAt": "2026-10-19T04:49:21Z"
+    },
+    "T-25": {
+      "status": "done",
+      "wave": 12,
+      "updatedAt": "2026-10-19T05:23:54Z"
+    },
+    "T-26": {
+      "status": "done",
+      "wave": 13,
+      "updatedAt": "2026-10-19T05:23:54Z"
     }
   },
   "effort": "fast",

@@ -20,5 +20,13 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)
         }
+        // Desktop-only and TEST-only: the composed-graph test registers the real
+        // `dataDeviceImplModule` next to this module's own, which is the seam `initKoin()`
+        // crosses. Production code here still sees data-device-API only.
+        val desktopTest by getting {
+            dependencies {
+                implementation(projects.dataDeviceImpl)
+            }
+        }
     }
 }
