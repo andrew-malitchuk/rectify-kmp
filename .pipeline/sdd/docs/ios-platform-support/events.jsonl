@@ -39,3 +39,8 @@
 {"stage": "execution", "event": "end", "at": "2026-10-19T05:23:54Z", "spec": "ios-platform-support"}
 {"stage": "validation", "event": "start", "at": "2026-10-19T05:24:01Z", "spec": "ios-platform-support"}
 {"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "start", "at": "2026-10-19T05:24:01Z", "spec": "ios-platform-support"}
+{"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "end", "tokens": 155865, "at": "2026-10-19T05:58:51Z", "spec": "ios-platform-support"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "start", "at": "2026-10-19T05:58:51Z", "spec": "ios-platform-support"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 67315, "at": "2026-10-19T06:04:20Z", "spec": "ios-platform-support"}
+{"stage": "validation", "event": "end", "at": "2026-10-19T06:04:20Z", "spec": "ios-platform-support"}
+{"stage": "review", "event": "start", "at": "2026-10-19T06:04:20Z", "spec": "ios-platform-support"}
