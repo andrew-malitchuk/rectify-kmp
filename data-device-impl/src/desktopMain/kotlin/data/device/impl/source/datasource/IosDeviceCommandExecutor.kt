@@ -12,15 +12,18 @@ import data.device.impl.core.process.ProcessRunner
 import data.device.impl.core.tool.ToolResolver
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 
 /**
  * THE already-booted token, quoted from `simctl`'s own stderr.
  *
- * Matched on the text and never on the exit code: the code this failure carries was never
- * measured on this host (no simulator was booted to measure it against), so asserting a
- * number would be a guess dressed as a fact. Booting a simulator that is already up is what a
- * user clicking "Boot simulator" twice does — it is a success, not an error.
+ * Matched on the text and never on the exit code. The code HAS since been measured on this
+ * host — it is **149** (CoreSimulator error 405), recorded in the spec's demo measurements —
+ * and that is what vindicates the decision rather than reversing it: 149 is unguessable, so a
+ * version of this guard written against a number would have been a guess dressed as a fact.
+ * Booting a simulator that is already up is what a user clicking "Boot simulator" twice does —
+ * it is a success, not an error.
  */
 private const val ALREADY_BOOTED = "Unable to boot device in current state: Booted"
 
@@ -104,7 +107,15 @@ internal class IosDeviceCommandExecutor(
     }
 
     private suspend fun screencapViaTempFile(argv: List<String>): ByteArray {
-        val sink = File.createTempFile("rectify-idb-", ".png")
+        // 0600 AT CREATION, not chmod afterwards: this file is a full screenshot of the
+        // user's device and the shared temp dir is world-readable at the default umask. F-8
+        // shipped exactly this bug once already (a world-readable history archive beside a
+        // 0700 sibling) - the attribute closes the window a later chmod would leave open.
+        val sink = Files.createTempFile(
+            "rectify-idb-",
+            ".png",
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")),
+        ).toFile()
         return try {
             // Substituted, not hand-built: buildDeviceArgv stays the single construction point
             // and its selector invariant is untouched — a temp path is not a device id.

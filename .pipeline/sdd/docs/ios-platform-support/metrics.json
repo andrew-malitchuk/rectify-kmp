@@ -1,6 +1,6 @@
 {
   "spec": "ios-platform-support",
-  "updatedAt": "2026-10-19T02:56:20Z",
+  "updatedAt": "2026-10-19T06:04:20Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -50,11 +50,67 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 143845,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 154828,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 147608,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-business-implement": {
+      "tokens": 1024727,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 6,
+      "failures": 0
+    },
+    "sdd-build-test-audit": {
+      "tokens": 180434,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 155865,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-verdict": {
+      "tokens": 67315,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 692603,
+    "tokens": 2567225,
     "durationMs": 0,
-    "invocations": 6
+    "invocations": 18
   }
 }

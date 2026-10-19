@@ -78,9 +78,12 @@ command is needed, add a case to the closed set.
   parentheses — `iPhone SE (3rd generation)`). Never throws; an `(unavailable, …)` row is
   dropped. Parser DRIFT is caught one layer up, in `IosHostSourceImpl`, which raises output it
   recognised nothing in rather than reporting a silent empty bench.
-- `parseIdbTargets` splits `idb list-targets` on `|`, keeps `target_type == device`, and
-  decides "trusted" behind one named token set so that assumption can be corrected in one
-  place. Never throws.
+- `parseIdbTargets` splits `idb list-targets` on `|` and returns **both** target types —
+  `idb` lists simulators beside handsets — and decides "trusted" behind one named token set so
+  that assumption can be corrected in one place. Never throws. Selecting the physical half is
+  the caller's job and there is exactly one correct way to do it: the `isPhysical` predicate
+  next to the parser. `trusted` is `true` for every simulator by construction, so a caller that
+  skips the filter counts shut-down simulators as connected phones.
 - `ToolProbeCandidates` returns an **ordered** list — `$ANDROID_HOME`, `$ANDROID_SDK_ROOT`,
   `~/Library/Android/sdk`, `/opt/homebrew/bin`, `/usr/local/bin`, then PATH. PATH alone is not
   enough: a Finder-launched `.app` inherits a minimal PATH that excludes `/opt/homebrew/bin`, so

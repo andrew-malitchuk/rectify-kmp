@@ -64,7 +64,8 @@
     <string name="mirror_picker_subtitle">Switch platform or device any time from the toolbar.</string>
     <string name="mirror_section_platform">PLATFORM</string>
     <string name="mirror_section_source">SOURCE</string>
-    <string name="mirror_source_summary">%1$d found · adb devices -l</string>
+    <!-- The listing command is an ARGUMENT, not copy: iOS has no adb to run. -->
+    <string name="mirror_source_summary">%1$d found · %2$s</string>
     <string name="mirror_group_physical">Physical device</string>
     <string name="mirror_group_emulator">Virtual devices</string>
     <string name="mirror_row_boot">Boot</string>
@@ -96,6 +97,9 @@
     <string name="mirror_status_no_device_attached">adb devices → %1$d attached</string>
     <string name="mirror_status_awaiting_choice">%1$d devices attached — waiting for choice</string>
     <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
+    <!-- The two iOS blocked states. Both pair with a Blocked dot, and neither may name adb. -->
+    <string name="mirror_status_simulator_not_booted">no simulator booted</string>
+    <string name="mirror_status_device_not_trusted">iPhone not trusted yet</string>
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
     <string name="mirror_tool_not_found">not found</string>
@@ -132,8 +136,8 @@
     <string name="mirror_error_action_boot_emulator">Boot emulator instead</string>
     <string name="mirror_error_action_mirror_device">Mirror %1$s</string>
     <!-- Mirror - the two iOS error cards the design drew as err-sim and err-trust. Wired by
-         F-10; the shared four above keep their adb wording until the platform-aware copy
-         split lands with the error-stage work. -->
+         F-10. The shared four above keep their adb wording for Android only; their iOS
+         wording is the *_ios block below, which the projection selects by platform. -->
     <string name="mirror_error_simulator_not_booted_title">No simulator is running</string>
     <string name="mirror_error_simulator_not_booted_body">Xcode knows about your simulators but none of them is booted. Boot one, or pick a different simulator.</string>
     <string name="mirror_error_device_not_trusted_title">This iPhone hasn't been trusted</string>

@@ -3,60 +3,60 @@
     "spec": "android-device-discovery-mirroring",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "app-shell-window-layout",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "drag-annotate-frozen-frame",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "error-handling-and-recovery",
     "currentStage": "done",
     "verdict": "",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "history-batch-tracking",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "ios-platform-support",
-    "currentStage": "execution",
-    "verdict": "",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "currentStage": "review",
+    "verdict": "complete-with-waivers",
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "measure-mode",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "payload-preview",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "resolve-and-send-mcp",
     "currentStage": "review",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   },
   {
     "spec": "verify-and-rediff-loop",
     "currentStage": "done",
     "verdict": "complete-with-waivers",
-    "updatedAt": "2026-10-19T03:22:21Z"
+    "updatedAt": "2026-10-19T06:04:20Z"
   }
 ]

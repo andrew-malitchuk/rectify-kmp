@@ -34,9 +34,9 @@ private val UNTRUSTED_STATE_TOKENS = setOf(
  * Parses the stdout of `idb list-targets`.
  *
  * Never throws: a row without the four columns it needs is skipped. Both simulators and
- * physical handsets are returned — the caller selects on [IosTargetResource.targetType] —
- * because `idb` lists both and silently dropping half of its answer would hide a device the
- * user is holding.
+ * physical handsets are returned — the caller selects with [isPhysical] — because `idb`
+ * lists both and silently dropping half of its answer would hide a device the user is
+ * holding.
  *
  * The captured fixture was taken with NO `idb_companion` running: every row read
  * `No Companion Connected`, the command still exited 0 and still listed every target. A
@@ -50,6 +50,18 @@ public fun parseIdbTargets(output: String): List<IosTargetResource> = output.lin
     .filter { it.isNotEmpty() }
     .mapNotNull(::parseTargetRow)
     .toList()
+
+/**
+ * THE physical-handset predicate, and the only correct way to read a [parseIdbTargets] row.
+ *
+ * `idb list-targets` lists simulators beside handsets, and [IosTargetResource.trusted] is
+ * `true` for every simulator by construction — so a caller that skips this filter counts a
+ * shut-down simulator as a connected phone, offers it as a mirror target and can never reach
+ * the boot-a-simulator state (AC-31). Public because the row is parsed here and classified by
+ * the repository, which is a module away.
+ */
+public val IosTargetResource.isPhysical: Boolean
+    get() = targetType.equals(PHYSICAL_TARGET, ignoreCase = true)
 
 private fun parseTargetRow(line: String): IosTargetResource? {
     val columns = line.split(COLUMN_SEPARATOR).map(String::trim)

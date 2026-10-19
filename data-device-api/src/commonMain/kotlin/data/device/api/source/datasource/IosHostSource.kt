@@ -41,10 +41,15 @@ public interface IosHostSource {
     public suspend fun listSimulators(): List<SimulatorResource>
 
     /**
-     * Lists physical iOS targets via `idb list-targets`; may be empty.
+     * Lists the targets `idb list-targets` prints, VERBATIM; may be empty.
      *
-     * Returns the untrusted ones too — [IosTargetResource.trusted] classifies them — because a
-     * handset the user is holding has to be visible even when it cannot be driven yet.
+     * Simulators included — `idb` lists both kinds and the row is reported as the tool gave
+     * it. Callers wanting the physical half filter on
+     * [isPhysical][data.device.api.source.parse.isPhysical]; `trusted` is `true` for every
+     * simulator, so it is not that filter.
+     *
+     * Returns the untrusted handsets too — [IosTargetResource.trusted] classifies them —
+     * because a handset the user is holding has to be visible even when it cannot be driven yet.
      */
     public suspend fun listDevices(): List<IosTargetResource>
 }

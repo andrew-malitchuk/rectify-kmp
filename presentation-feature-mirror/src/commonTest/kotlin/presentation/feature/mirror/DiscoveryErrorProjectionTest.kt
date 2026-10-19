@@ -477,6 +477,29 @@ class DiscoveryErrorProjectionTest {
     }
 
     /**
+     * COR-5 — the two iOS blocked states, which had no branch of their own at all.
+     *
+     * Both are waiting on a PERSON (boot a simulator, tap Trust), which is what the Blocked
+     * dot means here; the grey Offline default put "Waiting for device…" beside a card that
+     * had already said what the user has to do.
+     */
+    @Test
+    fun theIosBlockedStatesAreBlockedAndNotOffline() {
+        assertEquals(
+            expected = verdicts(
+                "simulatorNotBooted" to StatusIndicatorState.Blocked,
+                "deviceNotTrusted" to StatusIndicatorState.Blocked,
+            ),
+            actual = verdicts(
+                "simulatorNotBooted" to iosStateOf(simulatorNotBooted())
+                    .let { it.indicatorDot(it.errorCard(NOW)) },
+                "deviceNotTrusted" to iosStateOf(deviceNotTrusted())
+                    .let { it.indicatorDot(it.errorCard(NOW)) },
+            ),
+        )
+    }
+
+    /**
      * AF-5 — the reachable moment for AC-28's card, pinned so it cannot become dead UI.
      *
      * The audit found the card unreachable on a COLD start: `isPickerOpen` defaults to true,

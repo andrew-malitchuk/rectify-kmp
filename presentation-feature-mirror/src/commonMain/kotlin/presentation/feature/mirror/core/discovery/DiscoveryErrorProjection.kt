@@ -180,8 +180,13 @@ private fun MirrorUiState.discoveryTool(): String = when (platform) {
     PlatformModel.Ios -> XCRUN
 }
 
-/** The exact listing command the multi-device card's footer reports, per platform. */
-private fun MirrorUiState.listDevicesCommand(): String = when (platform) {
+/**
+ * The exact listing command reported on screen, per platform.
+ *
+ * Internal rather than private because the PICKER's source summary names the same command and
+ * used to hardcode adb's spelling in a string resource — two readers, one spelling.
+ */
+internal fun MirrorUiState.listDevicesCommand(): String = when (platform) {
     PlatformModel.Android -> "$ADB devices -l"
     PlatformModel.Ios -> IDB_LIST_TARGETS_COMMAND
 }
@@ -267,6 +272,11 @@ internal fun MirrorUiState.indicatorDot(card: MirrorErrorCard?): StatusIndicator
     discovery is DiscoveryModel.ToolMissing -> StatusIndicatorState.Blocked
     discovery is DiscoveryModel.PollFailed -> StatusIndicatorState.Blocked
     discovery is DiscoveryModel.NoDeviceFound -> StatusIndicatorState.Blocked
+    // COR-5. The iOS pair belongs in the same clause for the same reason: an unbooted
+    // simulator and an untrusted iPhone are both waiting on a person, and the err-sim card
+    // used to render beside a grey OFFLINE dot reading "Waiting for device…".
+    discovery is DiscoveryModel.SimulatorNotBooted -> StatusIndicatorState.Blocked
+    discovery is DiscoveryModel.DeviceNotTrusted -> StatusIndicatorState.Blocked
     // The card is PASSED IN rather than recomputed. It used to call errorCard(nowMs = 0L),
     // which both duplicated the work and quietly asked the projection a question with a
     // fabricated clock — harmless for the kind, but the kind of shortcut that stops being

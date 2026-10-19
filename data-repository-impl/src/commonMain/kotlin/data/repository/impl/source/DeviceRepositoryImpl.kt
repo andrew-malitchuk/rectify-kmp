@@ -13,6 +13,7 @@ import data.device.api.source.model.DeviceId
 import data.device.api.source.model.DeviceResource
 import data.device.api.source.model.DeviceStateResource
 import data.device.api.source.model.ToolKind
+import data.device.api.source.parse.isPhysical
 import data.device.api.source.tuning.MirrorTuning
 import data.preference.api.source.datasource.AdbPathPreferenceSource
 import data.preference.api.source.model.AdbPathPreference
@@ -276,7 +277,11 @@ internal class DeviceRepositoryImpl(
         toolVersion.value = probe.version.orEmpty()
         val simulators = iosHostSource.listSimulators()
         val handsets = try {
-            iosHostSource.listDevices()
+            // PHYSICAL rows only. `idb list-targets` lists simulators too and `trusted` is
+            // true for every one of them, so an unfiltered list counted 54 shut-down
+            // simulators as 54 connected phones, listed each of them twice and made
+            // SimulatorNotBooted unreachable on any Mac where idb resolves.
+            iosHostSource.listDevices().filter { it.isPhysical }
         } catch (failure: DeviceCommandException) {
             log.d { "idb would not list targets, reporting simulators only: ${failure.message}" }
             emptyList()
