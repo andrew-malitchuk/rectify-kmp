@@ -1,0 +1,2 @@
+{"stage": "preparation", "event": "start", "at": "2026-10-19T01:45:54Z", "spec": "ios-platform-support"}
+{"stage": "preparation", "step": "input", "agent": "sdd-build-discussion-aggregate", "event": "start", "at": "2026-10-19T01:45:55Z", "spec": "ios-platform-support"}

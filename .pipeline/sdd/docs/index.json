@@ -52,5 +52,11 @@
     "currentStage": "done",
     "verdict": "complete-with-waivers",
     "updatedAt": "2026-10-19T01:44:01Z"
+  },
+  {
+    "spec": "ios-platform-support",
+    "currentStage": "preparation",
+    "verdict": "",
+    "updatedAt": "2026-10-19T01:44:56Z"
   }
 ]

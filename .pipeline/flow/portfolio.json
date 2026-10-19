@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T09:45:58Z",
+  "generatedAt": "2026-10-19T01:44:24Z",
   "producedBy": "sdd-flow-generate-portfolio",
   "sources": {
     "prd": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs",
@@ -208,10 +208,10 @@
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/history-batch-tracking",
           "inputPrepared": false
         },
         "qa": {
@@ -222,7 +222,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -270,7 +270,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "ready"
       },
       "sync": {
         "status": "in-sync",
@@ -390,10 +390,10 @@
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "review",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/resolve-and-send-mcp",
           "inputPrepared": false
         },
         "qa": {
@@ -404,7 +404,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "ready"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
@@ -436,10 +436,10 @@
           "bundle": null
         },
         "sdd": {
-          "status": "not-started",
-          "stage": null,
-          "verdict": null,
-          "spec": null,
+          "status": "done",
+          "stage": "done",
+          "verdict": "complete-with-waivers",
+          "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/verify-and-rediff-loop",
           "inputPrepared": false
         },
         "qa": {
@@ -450,7 +450,7 @@
           "attached": null,
           "cases": 0
         },
-        "overall": "blocked-deps"
+        "overall": "qa-ready"
       },
       "sync": {
         "status": "in-sync",
