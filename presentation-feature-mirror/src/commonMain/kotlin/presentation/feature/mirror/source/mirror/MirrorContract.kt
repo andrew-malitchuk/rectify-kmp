@@ -1,5 +1,6 @@
 package presentation.feature.mirror.source.mirror
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import domain.core.source.model.device.DiscoveryModel
@@ -7,6 +8,7 @@ import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.core.source.model.history.HistoryEntryModel
+import presentation.core.ui.source.kit.molecule.row.VerificationOutcome
 // Aliased: these properties carry the same names as the functions they delegate to, and an
 // alias says which one is being called without the reader having to know Kotlin's overload
 // resolution order.
@@ -107,6 +109,14 @@ public enum class MirrorStage {
      * costs no `adb` reconnection.
      */
     Frozen,
+
+    /**
+     * The BEFORE/AFTER verification of one sent batch (F-9).
+     *
+     * Derived **ahead of [Frozen]** — see [MirrorUiState.stage] for why, and for the one
+     * consequence that ordering has on [MirrorIntent.SendFollowUp].
+     */
+    Verify,
 }
 
 /**
@@ -245,6 +255,10 @@ public enum class SendPhase {
  *   comparison a `ByteArray` forces costs one extra state emission per database change rather
  *   than per rendered frame. The list is rendered with `key = { it.id }`, so an unchanged row is
  *   not recomposed by that emission.
+ * @property verify The verification run in flight or on screen, or `null` when there is none.
+ *   Value-equal and pixel-free by construction — the two bitmaps it is rendered with ride
+ *   a plain `StateFlow<VerifyFrames?>` instead (deviation 2). Non-`null` is what puts the stage in
+ *   [MirrorStage.Verify], ahead of [frozen].
  */
 public data class MirrorUiState(
     val platform: PlatformModel = PlatformModel.Android,
@@ -264,6 +278,7 @@ public data class MirrorUiState(
     val hierarchyStatus: HierarchyStatus = HierarchyStatus.Absent,
     val send: SendPhase = SendPhase.Idle,
     val history: List<HistoryEntryModel> = emptyList(),
+    val verify: VerifyUiState? = null,
 ) {
 
     /** How many annotations are staged — the toolbar's counter badge (AC-48). */
@@ -327,11 +342,22 @@ public data class MirrorUiState(
      * The picker wins while it is open — it is a decision the user has to make. Escalated
      * discovery closes it (there is nothing left to pick), which is what lets the passive
      * NO SIGNAL stage of AC-4 appear without a second flag.
+     *
+     * **[verify] outranks [frozen]**, and that ordering has one consequence worth stating
+     * where it is created rather than where it bites: staging a follow-up sets [frozen], so a
+     * [MirrorIntent.SendFollowUp] that did not also clear [verify] would leave the user pinned
+     * on a stale Verify view with F-7's send and send-failure UI unreachable behind it.
+     * `SendFollowUp` therefore tears the verify state down in the SAME reduction that sets the
+     * frozen frame. Verify ranks above Frozen because the run holds its own BEFORE/AFTER
+     * pixels: showing the pinned live frame underneath it would be showing a third frame
+     * nobody asked for.
      */
     public val stage: MirrorStage
         get() = when {
             isPickerOpen -> MirrorStage.Picker
             platform == PlatformModel.Ios -> MirrorStage.IosDeferred
+            // Ahead of Frozen - see the KDoc, and SendFollowUp's teardown obligation.
+            verify != null -> MirrorStage.Verify
             // Ahead of Streaming: the session is still running under a frozen frame, and the
             // stage must show the pinned pixels rather than the ones still arriving.
             frozen != null -> MirrorStage.Frozen
@@ -339,6 +365,158 @@ public data class MirrorUiState(
             else -> MirrorStage.NoSignal
         }
 }
+
+/** How far a verification run has got — the progress strip's only data source (NFR-15). */
+public enum class VerifyPhase {
+    /** Reading the sent batch back off disk. */
+    Loading,
+
+    /** Re-capturing the hierarchy from the device — the ~2.7 s step. */
+    Recapturing,
+
+    /** Measuring and diffing each annotation. */
+    Diffing,
+
+    /** Every row has its verdict. */
+    Ready,
+}
+
+/**
+ * Why a verification run produced no verdicts at all.
+ *
+ * Every case is a distinct, user-legible reason rather than one generic failure, because the
+ * alternative to naming the reason is implying a verdict — and "Still off" on a run that never
+ * ran is the single most expensive lie this tool can tell. A [VerifyUiState] carrying any of
+ * these always carries an EMPTY [VerifyUiState.rows] list, and no batch status is written.
+ */
+public enum class VerifyError {
+    /**
+     * Nothing is streaming from the device, so there is no AFTER frame to diff against.
+     *
+     * Verify is not a one-shot capture: `StartMirroringUseCase` is stream-only and no on-demand
+     * capture pipeline exists, so a verification genuinely requires a live session. The copy
+     * names the device and says to start mirroring (SC-23).
+     */
+    NoLiveSession,
+
+    /**
+     * The sent batch is no longer readable — either no such batch, or its `frame.png` is gone
+     * because the user deleted `~/.rectify/history/`. A stored path is a hint, never a
+     * guarantee.
+     */
+    NotOnDisk,
+
+    /**
+     * The stored frame and the live frame are different sizes (a rotation, a resolution change
+     * or a different device), so every rect would land somewhere else. Caught once, before any
+     * per-annotation work (SC-22).
+     */
+    SizeMismatch,
+
+    /**
+     * A non-empty hierarchy projects to ZERO candidates against the shared frame size — the
+     * display-override case (a Pixel 8 reporting 984×2132 nodes on a 1080×2400 frame).
+     *
+     * Distinct from an empty hierarchy, which still degrades per annotation to "no match"
+     * (AC-41): here the nodes exist but are in a coordinate space the frame cannot be matched
+     * against, so every verdict would be confident and wrong.
+     */
+    HierarchyUnusable,
+
+    /** The device went away mid-run. The batch's status is left exactly as it was (SC-21). */
+    Disconnected,
+}
+
+/**
+ * One annotation's verification result — semantics only, no copy and no pixels.
+ *
+ * [outcome] deliberately has **no default**: a caller that forgets it must be a compile error,
+ * never a silently optimistic `Fixed`.
+ *
+ * @property index 0-based position in the sent batch, i.e. history's own order. (The envelope's
+ *   1-based numbering belongs to the send path and is not reused here.)
+ * @property comment What the tester wrote when the annotation was filed.
+ * @property beforeRect Where the matched node sat on the frame the annotation was drawn on, in
+ *   device pixels — the annotation's own rect when nothing matched, which is also every batch
+ *   whose hierarchy was never stored or can no longer be read.
+ * @property afterRect Where the matched node sits now; equal to [beforeRect] when nothing moved.
+ * @property resultLine The machine-produced BEFORE → AFTER measurement line, already formatted
+ *   by `core/verify` — the BEFORE finding's own measurement on both frames where there is one,
+ *   the node's size on each frame otherwise. Never localised — it is numbers, like every other
+ *   mono readout here.
+ * @property outcome The verdict, from `verdictOf`.
+ */
+public data class VerifyRow(
+    val index: Int,
+    val comment: String,
+    val beforeRect: DeviceRect,
+    val afterRect: DeviceRect,
+    val resultLine: String,
+    val outcome: VerificationOutcome,
+)
+
+/**
+ * The verification panel's whole reduced state.
+ *
+ * **Invariant: an [error] always comes with an empty [rows] list** — [fixedCount] and
+ * [rowCount] are therefore `0 of 0` on any abort, and an abort can never be read as a set of
+ * verdicts. Enforced at construction, not merely by convention, so no reducer can produce the
+ * mixed state in the first place.
+ *
+ * Pixel-free by construction (deviation 2): the BEFORE/AFTER bitmaps ride a plain
+ * `StateFlow<VerifyFrames?>` beside the live frame, never this.
+ *
+ * @property batchId The sent batch under verification.
+ * @property deviceLabel Device the batch was captured on, for the header and for
+ *   [VerifyError.NoLiveSession]'s copy.
+ * @property sentAtMs When the batch was sent, epoch milliseconds.
+ * @property recapturedAtMs When the AFTER capture was taken, epoch milliseconds; `0` until
+ *   [VerifyPhase.Recapturing] has completed.
+ * @property phase How far the run has got.
+ * @property rows One row per annotation, in batch order. Empty while loading and empty on any
+ *   [error].
+ * @property error Why the run produced nothing, or `null` while it is fine.
+ */
+public data class VerifyUiState(
+    val batchId: String,
+    val deviceLabel: String,
+    val sentAtMs: Long = 0,
+    val recapturedAtMs: Long = 0,
+    val phase: VerifyPhase = VerifyPhase.Loading,
+    val rows: List<VerifyRow> = emptyList(),
+    val error: VerifyError? = null,
+) {
+    init {
+        require(error == null || rows.isEmpty()) {
+            "an aborted verify run must carry no verdicts - $error came with ${rows.size} rows"
+        }
+    }
+
+    /** How many annotations came back [VerificationOutcome.Fixed] — the `n` of `n of m`. */
+    public val fixedCount: Int get() = rows.count { it.outcome == VerificationOutcome.Fixed }
+
+    /** How many annotations were verified at all — the `m` of `n of m`. */
+    public val rowCount: Int get() = rows.size
+
+    /** The rows a follow-up would re-send — "Send follow-up · N" is hard-disabled at `0`. */
+    public val stillOffRows: List<VerifyRow>
+        get() = rows.filter { it.outcome == VerificationOutcome.StillOff }
+}
+
+/**
+ * The two bitmaps a verification run is rendered with.
+ *
+ * `public`, unlike the internal `HeldFrame`, because `:compose-application`'s window hands this
+ * flow into `MirrorHost`'s content lambda. It is the ONE place pixels are allowed near this
+ * contract — on a plain `StateFlow`, never inside [MirrorUiState] (deviation 2).
+ *
+ * @property before The frame as it was sent, decoded from the stored `frame.png`.
+ * @property after The frame as re-captured for this run.
+ */
+public data class VerifyFrames(
+    val before: ImageBitmap,
+    val after: ImageBitmap,
+)
 
 /**
  * Every user action on the mirror surface.
@@ -487,17 +665,45 @@ public sealed interface MirrorIntent {
     public data object EndMeasure : MirrorIntent
 
     /**
-     * Ask the agent to verify a batch the user believes is fixed (FR-32 / AC-36 / SC-8).
+     * Re-capture the device and diff it against a sent batch (FR-21 / AC-23 / SC-8).
      *
-     * A stub this release: the handler logs the id and nothing else. F-9 owns the actual
-     * re-capture and diff; F-8 ships only the affordance, so the Verify button on a
-     * [domain.core.source.model.history.BatchStatusModel.Fixed] row has a real intent to fire
-     * rather than a placeholder that would crash.
+     * Fired from **any** sent batch, never only a `Fixed` one: nothing in the app writes
+     * [domain.core.source.model.history.BatchStatusModel.Fixed], so a status gate would make
+     * this intent unreachable. The row's button is instead disabled when the batch has no
+     * frame on disk to diff against.
+     *
+     * Requires a live mirror session: there is no one-shot capture pipeline, so a run with
+     * nothing streaming fails with [VerifyError.NoLiveSession] rather than guessing. A frame
+     * whose stored path has gone stale since the row was drawn fails with
+     * [VerifyError.NotOnDisk].
      *
      * @property batchId [domain.core.source.model.history.HistoryEntryModel.id] of the row the
      *   button sits on.
      */
     public data class VerifyBatch(val batchId: String) : MirrorIntent
+
+    /**
+     * Re-send the annotations a run reported as still off, as a new batch.
+     *
+     * Staging sets [MirrorUiState.frozen], and [MirrorStage.Verify] outranks
+     * [MirrorStage.Frozen], so the handler MUST clear the verify state in the same reduction
+     * or the user stays pinned on the stale Verify view with the send UI hidden behind it.
+     */
+    public data object SendFollowUp : MirrorIntent
+
+    /**
+     * Override the verdicts and record the batch as verified — the user's judgement wins.
+     */
+    public data object MarkAllVerified : MirrorIntent
+
+    /**
+     * Leave the verify stage — the "← Back to live" chip, and the only exit.
+     *
+     * Its handler cancels the run and clears ALL FOUR verify-scoped fields, or the next run
+     * inherits the last one's leftovers: [MirrorUiState.verify], the `verifyFrames` flow, the
+     * retained `verifyAfterHeld` frame and `pendingFollowUpBatchId`.
+     */
+    public data object ExitVerify : MirrorIntent
 
     /** Restart the discovery collection — the error card's "Retry" (AC-26, AC-53). */
     public data object RetryDiscovery : MirrorIntent
@@ -747,6 +953,25 @@ public enum class HierarchyStatus {
 }
 
 /**
+ * Which rule produced a measurement's single finding.
+ *
+ * Public, and on [MeasureReadout], because two consumers need the RULE rather than its message:
+ * the overlay draws an alignment rail for [TopMisalignment] and nothing else, and the verify
+ * row picks which BEFORE → AFTER line to format. Re-deriving either by matching on the message
+ * string would make a copy tweak a behaviour change.
+ */
+public enum class FindingKind {
+    /** The target's top edge is just off its left neighbour's. */
+    TopMisalignment,
+
+    /** The target's left edge is just off its top neighbour's. */
+    LeftMisalignment,
+
+    /** A tappable node is shorter than the touch-target floor. */
+    TouchTarget,
+}
+
+/**
  * One already-formatted row of the measuring panel.
  *
  * Formatted and not numeric: `×`, `Δ`, the unit suffix and the suppression rule are all decided
@@ -805,6 +1030,14 @@ public data class MeasureGuide(
  *   means "these two edges should have lined up", which neither of the other findings says.
  * @property finding The single finding message, or `null` when there is nothing to report.
  *   Never more than one, by construction.
+ * @property findingKind Which rule produced [finding], `null` alongside it.
+ * @property leftNeighbourTopPx Top edge of the nearest LEFT neighbour, `null` when there is
+ *   none — the edge [FindingKind.TopMisalignment] is measured against. Carried separately from
+ *   [neighbourRects], which drops absent sides and is therefore positionally ambiguous, and
+ *   carried whether or not the finding fired: the AFTER side of a before/after line needs the
+ *   same edge precisely in the good case, where the finding is gone.
+ * @property topNeighbourLeftPx Left edge of the nearest TOP neighbour, the
+ *   [FindingKind.LeftMisalignment] counterpart of [leftNeighbourTopPx].
  * @property unit Unit every figure here is labelled in.
  * @property noteLine The `⌥` one-liner pasted into the annotation's note.
  */
@@ -819,4 +1052,7 @@ public data class MeasureReadout(
     val finding: String?,
     val unit: MeasureUnit,
     val noteLine: String,
+    val findingKind: FindingKind? = null,
+    val leftNeighbourTopPx: Int? = null,
+    val topNeighbourLeftPx: Int? = null,
 )

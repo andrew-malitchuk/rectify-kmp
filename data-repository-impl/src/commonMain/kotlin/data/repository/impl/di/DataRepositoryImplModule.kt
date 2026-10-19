@@ -17,5 +17,6 @@ public val dataRepositoryImplModule: Module = module {
     // default, which Koin would otherwise try to resolve as a dependency.
     single<DeviceRepository> { DeviceRepositoryImpl(get(), get(), get(), get(), get(), get()) }
     provideBatchStore()
+    provideBatchFileReader()
     singleOf(::HistoryRepositoryImpl) bind HistoryRepository::class
 }

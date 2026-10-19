@@ -8,6 +8,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import presentation.core.ui.source.kit.atom.pill.StatusPillTone
 import presentation.feature.mirror.core.history.HistoryBucket
+import presentation.feature.mirror.core.history.canVerify
 import presentation.feature.mirror.core.history.groupHistory
 import presentation.feature.mirror.core.history.historyBadgeCount
 import presentation.feature.mirror.core.history.inProgressCount
@@ -25,7 +26,9 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_his
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * TAC-1 to TAC-6 — the History tab's pure decisions.
@@ -198,4 +201,30 @@ class HistoryFormattingTest {
         assertEquals(Res.string.mirror_history_meta_note_other, noteCountKey(0))
         assertEquals(Res.string.mirror_history_meta_note_other, noteCountKey(3))
     }
+
+    /**
+     * AC-23 — the Verify button is no longer gated on `BatchStatusModel.Fixed`.
+     *
+     * Nothing in the app ever writes `Fixed`, so the old gate hid the button on every row that
+     * can actually exist. Sweeping all five statuses pins that none of them can gate it again.
+     */
+    @Test
+    fun canVerifyIsTrueForEverySentStatusOnceTheFrameIsOnDisk() {
+        BatchStatusModel.entries.forEach { status ->
+            assertTrue(
+                canVerify(entry(id = "s-1", sentAtMs = at(day = 10, hour = 9), status = status).withFrame()),
+                "status $status must not gate the Verify button",
+            )
+        }
+    }
+
+    @Test
+    fun canVerifyIsFalseOnlyWhenTheBatchHasNoFrameOnDisk() {
+        val row = entry(id = "s-1", sentAtMs = at(day = 10, hour = 9), status = BatchStatusModel.Sent)
+        assertFalse(canVerify(row))
+        assertTrue(canVerify(row.withFrame()))
+    }
+
+    private fun HistoryEntryModel.withFrame(): HistoryEntryModel =
+        copy(framePath = "/Users/dev/.rectify/history/$id/frame.png")
 }

@@ -1,0 +1,142 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "currentStage": "done",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done"
+    },
+    "validation": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-18T22:46:11Z"
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T22:55:28Z"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-18T22:55:28Z"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 3,
+      "updatedAt": "2026-10-18T23:01:08Z"
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 3,
+      "updatedAt": "2026-10-18T23:01:08Z"
+    },
+    "T-9": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-18T23:17:39Z"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-18T23:37:55Z"
+    },
+    "T-15": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-18T23:37:55Z"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-18T23:51:04Z"
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 7,
+      "updatedAt": "2026-10-19T00:03:37Z"
+    },
+    "T-14": {
+      "status": "done",
+      "wave": 7,
+      "updatedAt": "2026-10-19T00:03:37Z"
+    },
+    "T-16": {
+      "status": "done",
+      "wave": 8,
+      "updatedAt": "2026-10-19T00:16:10Z"
+    },
+    "T-17": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T00:46:56Z"
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  },
+  "verdict": "complete-with-waivers"
+}

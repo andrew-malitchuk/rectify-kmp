@@ -59,10 +59,10 @@ internal object ProcessRunner {
             // error on stderr is exactly that case.
             val stdout = async(Dispatchers.IO) { process.inputStream.drain() }
             val stderr = async(Dispatchers.IO) { process.errorStream.drain() }
-            // withTimeoutOrNull, never withTimeout: `resultLauncher` up in domain-usecase-impl
-            // catches Throwable, CancellationException included, so a
-            // TimeoutCancellationException thrown here would be swallowed into a generic
-            // failure AND would look like real cancellation to every coroutine in between.
+            // withTimeoutOrNull, never withTimeout: a TimeoutCancellationException thrown here
+            // IS a CancellationException, and `resultLauncher` up in domain-usecase-impl now
+            // rethrows those rather than mapping them, so it would unwind the caller as if
+            // someone had cancelled the job instead of surfacing a named timeout Failure.
             //
             // Both drains are awaited INSIDE the budget, not after it. A child can exit
             // cleanly while a grandchild it spawned still holds the write end of the pipe -

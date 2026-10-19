@@ -81,6 +81,7 @@ import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorStageContent
 import presentation.feature.mirror.source.mirror.MirrorStatusLine
 import presentation.feature.mirror.source.mirror.MirrorUiState
+import presentation.feature.mirror.source.mirror.VerifyFrames
 import java.awt.Dimension
 import kotlin.math.roundToInt
 
@@ -206,7 +207,10 @@ public fun ApplicationScope.RectifyWindow() {
                                 else -> Unit
                             }
                         },
-                    ) { mirror, frame, hierarchy, onMirrorIntent ->
+                        // The fifth slot is a verification run's BEFORE/AFTER pair; the only
+                        // surface that draws it is the verify stage, so it travels down to
+                        // MirrorStageContent and nowhere else.
+                    ) { mirror, frame, hierarchy, verifyFrames, onMirrorIntent ->
                         // AC-49: the first annotation of a frozen frame reveals the Notes tab, and
                         // only the first — the key stays true from the second one on, so a user who
                         // has walked over to Payload is not yanked back on every drag.
@@ -215,15 +219,24 @@ public fun ApplicationScope.RectifyWindow() {
                             if (hasStaged) shellState.selectTab(ShellTab.Notes)
                         }
 
-                        // The shortcut and the button are the same predicate by construction: the
-                        // holder is null whenever the button is disabled, so ⌘↩ cannot start a send
-                        // the toolbar refuses to (A11Y-2 / TAC-3).
+                        // One primary action at a time, never two (A11Y-2 / TAC-3). The two
+                        // branches below are mutually exclusive by construction and not by
+                        // luck: `canSend` is false for as long as a verify stage is up (see
+                        // core/send/SendGate), which is exactly when the follow-up branch can
+                        // fire. So ⌘↩ and the toolbar button always dispatch the SAME intent,
+                        // and ⌘↩ is dark whenever the button is.
+                        //
+                        // The verify stage prints the same ⌘↩ hint on its own primary action,
+                        // so the holder points at the follow-up while that stage owns the
+                        // screen — the same precedence MirrorUiState.stage gives Verify over
+                        // Frozen. A hint for a key that does nothing is what is avoided here.
                         val canSend = mirror.canSend
-                        LaunchedEffect(canSend) {
-                            sendAction = if (canSend) {
-                                { onMirrorIntent(MirrorIntent.ResolveAndSend) }
-                            } else {
-                                null
+                        val followUpCount = mirror.verify?.stillOffRows?.size ?: 0
+                        LaunchedEffect(canSend, followUpCount) {
+                            sendAction = when {
+                                followUpCount > 0 -> { { onMirrorIntent(MirrorIntent.SendFollowUp) } }
+                                canSend -> { { onMirrorIntent(MirrorIntent.ResolveAndSend) } }
+                                else -> null
                             }
                         }
 
@@ -231,6 +244,7 @@ public fun ApplicationScope.RectifyWindow() {
                             state = shellState,
                             mirror = mirror,
                             frame = frame,
+                            verifyFrames = verifyFrames,
                             onIntent = onMirrorIntent,
                             sidePanel = { tab ->
                                 // Exhaustive by design (no `else`): the tab strip is what
@@ -339,6 +353,7 @@ private fun StackedSnakbarHostState.showSendComplete(effect: MirrorSideEffect.Se
  * @param sidePanel Panel content for the live session, or `null` while none exists.
  * @param mirror Mirror state snapshot.
  * @param frame Latest decoded device frame, or `null` when nothing is streaming.
+ * @param verifyFrames BEFORE/AFTER pair of a verification run, or `null` when there is none.
  * @param onIntent Mirror intent sink.
  */
 @Composable
@@ -351,6 +366,7 @@ internal fun RectifyShellContent(
     sidePanel: (@Composable ColumnScope.(ShellTab) -> Unit)? = null,
     mirror: MirrorUiState = MirrorUiState(),
     frame: ImageBitmap? = null,
+    verifyFrames: VerifyFrames? = null,
     onIntent: (MirrorIntent) -> Unit = {},
 ) {
     RectifyWindowShell(
@@ -443,6 +459,7 @@ internal fun RectifyShellContent(
                 frame = frame,
                 onIntent = onIntent,
                 modifier = Modifier.align(Alignment.Center),
+                verifyFrames = verifyFrames,
             )
         },
     )
@@ -490,7 +507,9 @@ private fun isMacOs(): Boolean =
  * nothing to select, so the event must pass through to whatever else wants it (SC-4).
  *
  * ⌘↩ joins it on the same terms (AC-17): consumed **only** when [sendAction] is non-null, which
- * `MirrorHost` keeps in lockstep with `canSend`. A disabled send therefore lets the event fall
+ * `MirrorHost` keeps in lockstep with whichever primary action is live — `ResolveAndSend` on a
+ * frozen frame, `SendFollowUp` while the verify stage owns the screen, and never both, because
+ * `canSend` is false for the whole of that stage. No live action therefore lets the event fall
  * through instead of swallowing a Return the rest of the window might want — the same SC-4
  * reasoning as the panel check below.
  *

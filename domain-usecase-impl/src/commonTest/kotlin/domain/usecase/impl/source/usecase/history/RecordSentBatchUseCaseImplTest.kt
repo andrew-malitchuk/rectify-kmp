@@ -40,6 +40,7 @@ private class ThrowingHistoryRepository(private val toThrow: Throwable) : Histor
     override suspend fun record(batch: SentBatchModel): Unit = throw toThrow
 
     override fun observe(): Flow<List<HistoryEntryModel>> = emptyFlow()
+    override suspend fun get(batchId: String): SentBatchModel? = throw NotImplementedError()
     override suspend fun updateStatus(batchId: String, status: BatchStatusModel): Unit =
         throw NotImplementedError()
 }

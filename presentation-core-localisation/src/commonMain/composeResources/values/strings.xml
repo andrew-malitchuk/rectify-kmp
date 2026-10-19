@@ -179,7 +179,7 @@
     <string name="mirror_history_meta">%1$s · %2$s · #%3$s</string>
     <string name="mirror_history_meta_note_one">%1$d note</string>
     <string name="mirror_history_meta_note_other">%1$d notes</string>
-    <!-- Shown only on a Fixed batch; opens the verify view. -->
+    <!-- On every sent batch; opens the verify view. Disabled when the frame is not on disk. -->
     <string name="mirror_history_verify">Verify</string>
     <string name="mirror_history_status_sent">Sent</string>
     <string name="mirror_history_status_in_progress">In progress</string>
@@ -190,4 +190,38 @@
     <string name="mirror_history_footer">claude · session %1$s</string>
     <!-- A11Y: the thumbnail is a crop of the annotated region of the reported screen. -->
     <string name="mirror_history_thumbnail_description">Screenshot of %1$s</string>
+    <!-- Mirror - Verify view (FR-21 / AC-23 / AC-24 / AC-40 / AC-42 / AC-43). Only the CHROME is
+         localised: the result line of each row is a measurement built by core/verify out of F-5's
+         formatters (`top 6dp - 0dp`), machine data exactly like the measure panel's readout, and
+         is never translated. The five error bodies are deliberately five different sentences -
+         an aborted run that reads as one generic failure is indistinguishable from a verdict. -->
+    <string name="mirror_verify_panel_title">Verification</string>
+    <!-- Fixed count over the number of annotations verified, e.g. "2 of 3 fixed". -->
+    <string name="mirror_verify_summary">%1$d of %2$d fixed</string>
+    <!-- The verdict word in a result row; passed into VerificationRow.outcomeLabel. -->
+    <string name="mirror_verify_outcome_fixed">Fixed</string>
+    <string name="mirror_verify_outcome_still_off">Still off</string>
+    <!-- Column captions over the two frames; the clock is appended by core/verify. -->
+    <string name="mirror_verify_column_before">BEFORE</string>
+    <string name="mirror_verify_column_after">AFTER</string>
+    <!-- Footer actions. The count is the number of rows that are still off. -->
+    <string name="mirror_verify_send_follow_up">Send follow-up · %1$d</string>
+    <string name="mirror_verify_mark_all">Mark all as verified</string>
+    <!-- The single exit from the verify view. -->
+    <string name="mirror_verify_back_to_live">← Back to live</string>
+    <!-- Progress steps. The recapture alone costs ~2.7 s, so the run says where it is. -->
+    <string name="mirror_verify_phase_loading">Loading batch</string>
+    <string name="mirror_verify_phase_recapturing">Recapturing</string>
+    <string name="mirror_verify_phase_diffing">Diffing regions</string>
+    <!-- One title and one body per VerifyError. Each names what went wrong and what to do. -->
+    <string name="mirror_verify_error_no_live_session_title">Start mirroring first</string>
+    <string name="mirror_verify_error_no_live_session_body">Nothing is streaming from %1$s, so there is no fresh frame to compare against. Start mirroring that device, then run Verify again.</string>
+    <string name="mirror_verify_error_not_on_disk_title">This batch is no longer on disk</string>
+    <string name="mirror_verify_error_not_on_disk_body">The frame stored for this batch cannot be read, so there is nothing to compare the device against. Batches whose files were removed cannot be verified.</string>
+    <string name="mirror_verify_error_size_mismatch_title">The screen size changed</string>
+    <string name="mirror_verify_error_size_mismatch_body">The stored frame and the live frame are different sizes, so every annotation would land somewhere else. Put the device back in the orientation and resolution it was captured in, then run Verify again.</string>
+    <string name="mirror_verify_error_hierarchy_unusable_title">The view hierarchy does not match the frame</string>
+    <string name="mirror_verify_error_hierarchy_unusable_body">The device reported its views in a different coordinate space from the frame, so every verdict would be confident and wrong. Turn off any display size override, then run Verify again.</string>
+    <string name="mirror_verify_error_disconnected_title">The device went away</string>
+    <string name="mirror_verify_error_disconnected_body">The connection dropped part way through, so nothing was verified and the status of this batch is unchanged. Reconnect the device, then run Verify again.</string>
 </resources>

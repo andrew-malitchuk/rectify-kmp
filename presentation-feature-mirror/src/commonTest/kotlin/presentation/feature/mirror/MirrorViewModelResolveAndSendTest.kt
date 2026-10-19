@@ -26,11 +26,13 @@ import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorSession
 import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.SendPhase
+import presentation.feature.mirror.source.mirror.VerifyError
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -509,9 +511,17 @@ class MirrorViewModelResolveAndSendTest {
         assertEquals(listOf(entry), viewModel.currentState.history)
     }
 
-    /** F-9's stub is a real intent: it reaches the ViewModel, logs, and changes nothing. */
+    /**
+     * VerifyBatch is no longer the inert stub F-8 shipped.
+     *
+     * This test used to assert that the intent changed NOTHING, which was the honest statement
+     * of what the log-and-return stub did. F-9's run replaced it, so the assertion is inverted
+     * rather than deleted: the intent now always reduces a [VerifyUiState], and with nothing
+     * streaming that state is the named abort. The run itself is covered by
+     * `MirrorViewModelVerifyTest`; what belongs here is the proof that the stub is gone.
+     */
     @Test
-    fun verifyBatchIsAnInertStubRatherThanACrash() = runTest(mainDispatcher) {
+    fun verifyBatchIsNoLongerAnInertStub() = runTest(mainDispatcher) {
         val viewModel = mirrorViewModel(discovery = scriptedPhoneDiscovery())
         subscribe(viewModel)
         advanceUntilIdle()
@@ -520,6 +530,7 @@ class MirrorViewModelResolveAndSendTest {
         viewModel.handleIntent(MirrorIntent.VerifyBatch("batch-1"))
         settle()
 
-        assertEquals(before, viewModel.currentState)
+        assertNotEquals(before, viewModel.currentState, "the stub is gone -- the run reduces")
+        assertEquals(VerifyError.NoLiveSession, viewModel.currentState.verify?.error)
     }
 }

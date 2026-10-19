@@ -70,5 +70,11 @@
     "area": "presentation-feature-mirror/core/discovery/DiscoveryProjection.kt",
     "title": "EmulatorModel.toRow sets no detail, unlike DeviceModel.toRow",
     "detail": "Information gap in the device picker as well as the prompt; AVD name and API level are known. Cross-spec: belongs to android-device-discovery-mirroring and its own gate. Does NOT replace RCR-2s formatting-boundary guard, which must stay because MirrorRow.detail defaults empty, selectedRowDetailWithoutTransport ends in orEmpty, and transport-stripping can legitimately empty a detail."
+  },
+  {
+    "id": "PP-TD-10",
+    "status": "fixed",
+    "fixedIn": "verify-and-rediff-loop wave 1",
+    "detail": "FakeFrameBitmap.readPixels now fills the caller buffer with a real nested loop honouring startX/startY/width/height/bufferOffset/stride; verified by three deliberate mutations, each of which failed a named test."
   }
 ]

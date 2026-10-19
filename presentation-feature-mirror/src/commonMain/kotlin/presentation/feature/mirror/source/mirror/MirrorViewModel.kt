@@ -9,6 +9,7 @@ import data.handoff.api.source.envelope.HandoffImage
 import data.handoff.api.source.handoff.AnnotationHandoff
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.PlatformModel
+import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.SentAnnotationModel
 import domain.core.source.model.history.SentBatchModel
 import domain.usecase.api.source.usecase.device.BootEmulatorUseCase
@@ -17,8 +18,10 @@ import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
+import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -48,12 +51,20 @@ import presentation.feature.mirror.core.discovery.applyDiscovery
 import presentation.feature.mirror.core.history.cropAndScale
 import presentation.feature.mirror.core.history.thumbnailRect
 import presentation.feature.mirror.core.history.unionRect
+import presentation.feature.mirror.core.measure.MeasureNode
+import presentation.feature.mirror.core.measure.NO_MATCH_NODE_ID
 import presentation.feature.mirror.core.measure.measure
 import presentation.feature.mirror.core.measure.projectMeasureNodes
 import presentation.feature.mirror.core.measure.replaceNoteLine
 import presentation.feature.mirror.core.payload.PAYLOAD_FORMAT_VERSION
 import presentation.feature.mirror.core.picker.nextSelectableIndex
 import presentation.feature.mirror.core.send.assembleEnvelope
+import presentation.feature.mirror.core.verify.changedRatio
+import presentation.feature.mirror.core.verify.followUpAnnotations
+import presentation.feature.mirror.core.verify.regionPixels
+import presentation.feature.mirror.core.verify.beforeAfterLine
+import presentation.feature.mirror.core.verify.verdictOf
+import presentation.core.ui.source.kit.molecule.row.VerificationOutcome
 import presentation.feature.mirror.core.send.canSend
 import presentation.feature.mirror.core.send.toastLabel
 import co.touchlab.kermit.Logger
@@ -159,6 +170,10 @@ private fun sentBatch(
  *   losing every batch instead of a startup wiring error.
  * @property observeHistory The recorded batches, newest first — collected once at container
  *   init into [MirrorUiState.history]. REQUIRED for the same reason as [recordSentBatch].
+ * @property getSentBatch Rehydrates one recorded batch — the BEFORE half of a verification run
+ *   (F-9 / AC-23). REQUIRED, no default, for the same reason as [recordSentBatch].
+ * @property updateBatchStatus Moves a verified batch to [BatchStatusModel.Verified] (AC-43).
+ *   REQUIRED, no default, for the same reason as [recordSentBatch].
  * @property decodeFrame Seam for PNG decoding — a parameter so tests need no real image.
  * @property handoff T-9's publish target for a resolved send (AC-17/AC-19/FR-16/FR-18).
  *   REQUIRED, no default — a default would turn a missing Koin binding into a silent runtime
@@ -184,6 +199,8 @@ public class MirrorViewModel(
     private val dumpHierarchy: DumpHierarchyUseCase,
     private val recordSentBatch: RecordSentBatchUseCase,
     private val observeHistory: ObserveHistoryUseCase,
+    private val getSentBatch: GetSentBatchUseCase,
+    private val updateBatchStatus: UpdateBatchStatusUseCase,
     private val decodeFrame: suspend (ByteArray) -> ImageBitmap? = ::decodePng,
     private val handoff: AnnotationHandoff,
     private val encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
@@ -255,6 +272,79 @@ public class MirrorViewModel(
     /** The dump in flight, so a clear site can cancel it instead of reducing a stale verdict. */
     private var dumpJob: Job? = null
 
+    private val currentVerifyFrames = MutableStateFlow<VerifyFrames?>(null)
+
+    /**
+     * The BEFORE/AFTER pair a verification run renders, or `null` outside one.
+     *
+     * A fourth `StateFlow` beside [frame], [frozenFrame] and [frozenHierarchy], for the same
+     * reason the first two are: these are bitmaps, and deviation 2 keeps pixels out of the
+     * reduced state. [MirrorUiState.verify] carries the row semantics and nothing else.
+     */
+    public val verifyFrames: StateFlow<VerifyFrames?> = currentVerifyFrames.asStateFlow()
+
+    /**
+     * The verification run in flight, so a second [MirrorIntent.VerifyBatch] or an
+     * [MirrorIntent.ExitVerify] can cancel it rather than let a stale verdict land.
+     *
+     * The [dumpJob] precedent taken one step further: the whole run — its reductions included —
+     * is the ONE coroutine `intent {}` returns, so a cancel can never be raced by a reduce that
+     * was already dispatched from a separate job.
+     */
+    private var verifyJob: Job? = null
+
+    /**
+     * Which verification run owns the stage, bumped by every start and every cancel.
+     *
+     * [verifyJob]'s `cancel()` is NOT enough on its own and cannot be made to be. Orbit's
+     * `reduce` is `internalStateFlow.update {}` — a `suspend fun` with no suspension point in
+     * it, so it carries no cancellation check and a cancelled run's reduction still lands.
+     * Underneath it, the dump is a blocking `adb` process read that nothing can interrupt, so
+     * the cancelled run genuinely runs to completion.
+     *
+     * A run therefore carries the id it started on and re-checks it at every resume point, the
+     * same shape as the existing `sessionDeviceId` checks beside it. A stale run returns
+     * SILENTLY: unlike a device loss there is nothing to tell the user — the view it would
+     * report into is gone or belongs to someone else. This is what stops an abandoned run
+     * throwing the user back into Verify reading "the device went away", republishing its
+     * pixels after the exit that dropped them, or writing [BatchStatusModel.Verified] over the
+     * human's own "Mark all as verified".
+     */
+    private var verifyRunId: Int = 0
+
+    /**
+     * The live frame the AFTER half of a run was measured against, retained for the follow-up.
+     *
+     * `internal`, exactly like [frozenHeld] and for the same reason: a [HeldFrame] must never
+     * reach [MirrorUiState], but this module's own tests have to see that
+     * [MirrorIntent.ExitVerify] let go of it (`bugs.json#PP-TD-2`).
+     */
+    internal var verifyAfterHeld: HeldFrame? = null
+        private set
+
+    /**
+     * The AFTER dump the run measured against, retained for the follow-up — or `null` when the
+     * run produced none it could measure with (an empty dump).
+     *
+     * A plain field and not reduced state, for the reason `presentation-feature-mirror/CLAUDE.md`
+     * deviation 2 gives for [frozenHierarchy] itself: a few hundred nodes, identity-compared,
+     * read only by arithmetic. It pairs with [verifyAfterHeld] — the same frame, so attaching it
+     * to the follow-up is the one case where the dump provably describes the frame being sent.
+     */
+    internal var verifyAfterHierarchy: HierarchySnapshotModel? = null
+        private set
+
+    /**
+     * The batch a follow-up send is being published FOR, or `null` for a plain send.
+     *
+     * Declared and cleared here, with the other four verify-scoped fields, because
+     * [exitVerify]'s whole job is that none of them survives an exit — a leftover id would make
+     * the next, unrelated send write a status on a batch it has nothing to do with
+     * (`bugs.json#PP-TD-2`). The send path that consumes it lands with the follow-up itself.
+     */
+    internal var pendingFollowUpBatchId: String? = null
+        private set
+
     /**
      * Freezes so far this session, stamped onto [FrozenFrame.frameId].
      *
@@ -302,6 +392,9 @@ public class MirrorViewModel(
             MirrorIntent.LocateAdb -> locateAdb()
             is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
             is MirrorIntent.VerifyBatch -> verifyBatch(intent.batchId)
+            MirrorIntent.ExitVerify -> exitVerify()
+            MirrorIntent.SendFollowUp -> sendFollowUp()
+            MirrorIntent.MarkAllVerified -> markAllVerified()
         }
     }
 
@@ -382,11 +475,467 @@ public class MirrorViewModel(
     }
 
     /**
-     * F-9's seam (FR-32 / AC-36 / SC-8). Logs and returns — the Verify button needs a real
-     * intent to fire today, and the re-capture-and-diff behind it is the next feature's.
+     * Re-captures the device and diffs it, annotation by annotation, against the batch that was
+     * sent (FR-32 / AC-23 / AC-24 / SC-8).
+     *
+     * Seven ordered steps, all of them inside the ONE coroutine `intent {}` returns, cancelled
+     * through [verifyJob] and — because a cancel alone cannot stop them — retired through
+     * [verifyRunId]:
+     *
+     * 1. **The BEFORE batch** comes from [getSentBatch]; absent, or with a `frame.png` that is
+     *    gone or no longer decodable, is [VerifyError.NotOnDisk]. It is read FIRST, ahead of
+     *    the session check, for one reason: it is the only place the device's real name lives,
+     *    and the very next step's copy prints that name.
+     * 2. **A live session is required.** `StartMirroringUseCase` is stream-only and there is no
+     *    one-shot capture anywhere in this app, so the AFTER frame can only be the one already
+     *    streaming. [currentHeld] is read ONCE, exactly as [stageAnnotation] reads it, so the
+     *    bitmap and the bytes behind it agree. Nothing streaming is
+     *    [VerifyError.NoLiveSession].
+     * 3. **One frame size, or none.** A stored frame that disagrees with the live one means a
+     *    rotation, a resolution change or a different device, so every stored rect would land
+     *    somewhere else: [VerifyError.SizeMismatch], raised BEFORE any per-annotation work.
+     *    From here there is exactly one [IntSize] and one density for both sides.
+     * 4. **The AFTER hierarchy** is a fresh dump — the ~2.7 s step (T-1), which is why
+     *    [VerifyPhase.Recapturing] exists and why this whole run is cancellable. A dump that
+     *    FAILS means the device went away ([DumpHierarchyUseCase] degrades an unreadable dump
+     *    to [HierarchySnapshotModel.Empty] and fails only on a dead device, a missing `adb` or
+     *    a timeout), so it reads as [VerifyError.Disconnected].
+     * 5. **Projection is all-or-nothing.** [projectMeasureNodes] discards a snapshot whose own
+     *    frame size disagrees with the frame (the measured Pixel 8 984x2132-vs-1080x2400
+     *    display override), so a NON-EMPTY dump that projects to zero candidates is a
+     *    coordinate-space mismatch: every verdict would be confident and wrong, hence
+     *    [VerifyError.HierarchyUnusable] and zero rows. A dump that was empty to begin with is
+     *    a different case and is NOT an abort — it degrades per annotation to `View (no match)`
+     *    and therefore to "Still off", exactly as AC-41 asks.
+     * 6. **Per annotation**, in history's own 0-based order: one [measure] against the AFTER
+     *    candidates (it already snaps and already computes its finding — there is no second
+     *    oracle), one region read per frame, one [changedRatio], one [verdictOf].
+     * 7. **The terminal write** happens only when there are rows AND all of them are fixed. The
+     *    emptiness guard is the point: without it a zero-annotation batch would satisfy "every
+     *    row is fixed" vacuously and mark itself [BatchStatusModel.Verified] having verified
+     *    nothing.
+     *
+     * Every abort carries a named [VerifyError] with an EMPTY row list and writes no status —
+     * a run that could not run must never be readable as a set of verdicts.
+     *
+     * **A cancel is checked for, not relied on.** [verifyRunId] is captured when the run starts
+     * and re-checked at every resume point, because `verifyJob?.cancel()` cannot actually stop
+     * this: Orbit's `reduce` has no suspension point and therefore no cancellation check, and
+     * `adb`'s dump is a blocking process read nothing can interrupt. A stale run returns
+     * silently at the first check it reaches — it reduces nothing, releases nothing and writes
+     * no status. See [verifyRunId].
+     *
+     * **A device change does not CANCEL this run, and must not.** The `flatMapLatest`
+     * teardown on [sessionDeviceId] tears down the capture loop and leaves [verifyJob] alone,
+     * because a cancelled run reduces nothing at all: the stage would sit on
+     * [VerifyPhase.Recapturing] with no error and no way back. The run instead re-reads
+     * [sessionDeviceId] after every suspension point — decode, dump, diff — and ends itself
+     * with [VerifyError.Disconnected], which is a state the user can retry from. A device
+     * SWAP reads the same way as a device loss: the comparison is against the id the run
+     * started on, not against null.
+     *
+     * **Both hierarchies are projected**, not just the AFTER one: `HistoryRepository.get`
+     * parses the stored dump in the data layer (where the parser legally lives) and hands it
+     * back as [SentBatchModel.hierarchy], so step 6 measures the annotation TWICE — once per
+     * frame — and [VerifyRow] carries node-to-node geometry on both sides. Only the AFTER
+     * measurement feeds `verdictOf`; the BEFORE one exists to say what the complaint measured
+     * when it was filed. A batch with no stored dump (or one stored before this existed) snaps
+     * to nothing on the BEFORE side, which degrades every row to the annotation's own rect and
+     * the size line — exactly the behaviour that shipped before.
+     *
+     * **Still a real gap — density.** The stored dump is `uiautomator dump` stdout alone, so
+     * the BEFORE snapshot's own `densityDpi` is the `0` sentinel. The fresh AFTER density is
+     * applied to both sides rather than labelling half the row in px; persisting it would cost
+     * a column, a `@Database` bump and a migration that could not help any row already on disk.
      */
     private fun verifyBatch(batchId: String) {
-        log.i { "Verify requested for batch $batchId — the diff lands with F-9" }
+        // Cancelled HERE rather than inside the new run: a second Verify must not be able to
+        // interleave with the old one's reductions at all.
+        cancelVerifyRun()
+        releaseVerify()
+        val runId = verifyRunId
+        verifyJob = intent { runVerify(batchId, runId) }
+    }
+
+    /**
+     * Cancels whatever run is in flight and retires its id in the same breath.
+     *
+     * The two always go together — see [verifyRunId] for why `cancel()` alone cannot stop a
+     * run — so they are one call rather than two lines repeated at four sites.
+     */
+    private fun cancelVerifyRun() {
+        verifyJob?.cancel()
+        verifyJob = null
+        verifyRunId++
+    }
+
+    /** `true` once [runId]'s run has been cancelled or superseded — see [verifyRunId]. */
+    private fun isStale(runId: Int): Boolean = runId != verifyRunId
+
+    private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.runVerify(
+        batchId: String,
+        runId: Int,
+    ) {
+        val deviceId = sessionDeviceId.value
+        val after = currentHeld.value
+        var view = VerifyUiState(
+            batchId = batchId,
+            // Provisional: the batch's own label replaces it below, and every abort from there
+            // on names the device the batch was actually sent from.
+            deviceLabel = state.selectedDeviceName.orEmpty(),
+            sentAtMs = state.history.firstOrNull { it.id == batchId }?.sentAtMs ?: 0L,
+        )
+        reduce { state.copy(verify = view) }
+
+        // Read BEFORE the NoLiveSession abort, not after it. That abort's copy names the device
+        // ("Nothing is streaming from %s"), and in its own primary scenario -- the app opened on
+        // history with nothing selected -- `selectedDeviceName` is null, so deferring the read
+        // rendered the sentence with a hole in it. The batch is the only place the right name
+        // exists, and one read on an aborting path is cheaper than a wrong sentence.
+        val batch = getSentBatch(batchId).getOrNull()
+        if (isStale(runId)) return
+        if (batch != null) view = view.copy(deviceLabel = batch.deviceLabel, sentAtMs = batch.sentAtMs)
+        if (deviceId == null || after == null) return abortVerify(runId, view, VerifyError.NoLiveSession)
+
+        val beforeBytes = batch?.frameBytes
+        if (batch == null || beforeBytes == null) {
+            return abortVerify(runId, view, VerifyError.NotOnDisk)
+        }
+        val before = decodeFrame(beforeBytes) ?: return abortVerify(runId, view, VerifyError.NotOnDisk)
+        if (isStale(runId)) return
+        if (sessionDeviceId.value != deviceId) return abortVerify(runId, view, VerifyError.Disconnected)
+
+        if (before.width != after.bitmap.width || before.height != after.bitmap.height) {
+            log.w {
+                "Verify $batchId: stored frame ${before.width}x${before.height} does not match " +
+                    "the live ${after.bitmap.width}x${after.bitmap.height}"
+            }
+            return abortVerify(runId, view, VerifyError.SizeMismatch)
+        }
+        val frameSize = IntSize(width = after.bitmap.width, height = after.bitmap.height)
+
+        view = view.copy(phase = VerifyPhase.Recapturing)
+        reduce { state.copy(verify = view) }
+        val snapshot = dumpHierarchy(deviceId).getOrNull()
+        // Stale FIRST: a run the user walked away from must not report that the device went
+        // away. On a real handset the blocking `adb` read is not interruptible at all, so this
+        // run reaches here with a perfectly good dump and no stage left to put it on.
+        if (isStale(runId)) return
+        if (snapshot == null || sessionDeviceId.value != deviceId) {
+            return abortVerify(runId, view, VerifyError.Disconnected)
+        }
+
+        val nodes = projectMeasureNodes(snapshot, frameSize)
+        if (snapshot.nodes.isNotEmpty() && nodes.isEmpty()) {
+            log.w {
+                "Verify $batchId: hierarchy is ${snapshot.frameWidthPx}x${snapshot.frameHeightPx} " +
+                    "but the frame is ${frameSize.width}x${frameSize.height} — nothing to measure"
+            }
+            return abortVerify(runId, view, VerifyError.HierarchyUnusable)
+        }
+
+        // Projected against the SAME frame size as the AFTER side, not against its own: step 3
+        // already proved both frames measure the same, so a stored dump in another coordinate
+        // space is as unmeasurable here as it is there. It is NOT an abort though — a BEFORE
+        // side that cannot be projected costs the row its before/after line and nothing else.
+        val beforeNodes = batch.hierarchy?.let { projectMeasureNodes(it, frameSize) }.orEmpty()
+
+        view = view.copy(phase = VerifyPhase.Diffing, recapturedAtMs = nowMs())
+        reduce { state.copy(verify = view) }
+        verifyAfterHeld = after
+        // Retained only when it PROJECTS: an empty dump measures nothing, so a follow-up over
+        // it has to go out as Absent rather than claim a tree that snaps to no annotation.
+        verifyAfterHierarchy = snapshot.takeIf { nodes.isNotEmpty() }
+        currentVerifyFrames.value = VerifyFrames(before = before, after = after.bitmap)
+        // The pixel work is up to a full frame per annotation, so it stays off the reducer's
+        // own context — the same hop decodePng and the send path already take (AS-30).
+        val rows = withContext(Dispatchers.Default) {
+            batch.annotations.mapIndexed { index, annotation ->
+                verifyRow(
+                    index = index,
+                    annotation = annotation,
+                    nodes = nodes,
+                    beforeNodes = beforeNodes,
+                    before = before,
+                    after = after.bitmap,
+                    frameSize = frameSize,
+                    // From the FRESH dump, applied to both sides: `wm density` was never
+                    // persisted, so the stored hierarchy cannot supply one (AC-23's data gap).
+                    densityDpi = snapshot.densityDpi,
+                )
+            }
+        }
+        if (isStale(runId)) return
+        if (sessionDeviceId.value != deviceId) return abortVerify(runId, view, VerifyError.Disconnected)
+
+        view = view.copy(phase = VerifyPhase.Ready, rows = rows)
+        reduce { state.copy(verify = view) }
+
+        // Guarded on emptiness, not merely on `all` — see step 7 in this function's KDoc.
+        // And on the run id, so a "Mark all as verified" or an exit that landed between the
+        // reduction above and here cannot be overwritten by the run it just retired.
+        if (!isStale(runId) && rows.isNotEmpty() && rows.all { it.outcome == VerificationOutcome.Fixed }) {
+            // Logged and dropped, never surfaced (AF-3): the run genuinely succeeded and the
+            // verdicts on screen are real — only the durable label did not stick. Same rule as
+            // the F-8 history write: a failed status write can never fail the thing it labels.
+            updateBatchStatus(batchId, BatchStatusModel.Verified).onFailure { error ->
+                log.w(error) { "Verified status not written for $batchId" }
+            }
+        }
+    }
+
+    /**
+     * Ends the run with a named reason and NO verdicts (C-2).
+     *
+     * [VerifyUiState] enforces the empty-rows half at construction; this is the only place that
+     * sets an error, so "every abort is rowless and writes no status" is one call site, not a
+     * rule spread over six returns.
+     *
+     * The pixel pair goes with the verdicts (T-15). The last two aborts are reachable AFTER the
+     * run published [verifyFrames] and retained [verifyAfterHeld] — a disconnect noticed at the
+     * post-diff check is the common one — and leaving those behind would hand the stage two
+     * full-size bitmaps for a run that has no rows, and leave a follow-up croppable from a
+     * frame nobody is looking at, and a surviving [verifyAfterHierarchy] attaches a dead run's
+     * node tree to the next send. The five verify-scoped fields must agree in BOTH directions,
+     * not only on the way out through [exitVerify].
+     */
+    private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.abortVerify(
+        runId: Int,
+        view: VerifyUiState,
+        error: VerifyError,
+    ) {
+        // The backstop for the per-step checks: an abort is a reduction AND a teardown of the
+        // five shared fields, so a stale one would both re-open the stage and strip the run
+        // that legitimately owns it.
+        if (isStale(runId)) return
+        releaseVerify()
+        reduce { state.copy(verify = view.copy(rows = emptyList(), error = error)) }
+    }
+
+    /**
+     * One annotation's verdict: both measurements, the region diff, and the AND-rule.
+     *
+     * [measure] is called once PER FRAME and the two calls have different jobs. The AFTER one
+     * gives the verdict both halves it needs — `matched` is its node id not being the no-match
+     * sentinel, and the finding is the one `findingOf` already produced; re-running either
+     * would be a second oracle free to disagree with the first. The BEFORE one is display
+     * only: it says where the annotated node sat and what was wrong with it when the batch was
+     * sent, and it never reaches [verdictOf]. With no stored hierarchy it snaps to nothing and
+     * reports the annotation's own rect, which is what this row carried before.
+     *
+     * The SAME rect is read on both frames: it is the region the annotation is about, and the
+     * question the pixels answer is whether anything in it moved at all.
+     */
+    private fun verifyRow(
+        index: Int,
+        annotation: SentAnnotationModel,
+        nodes: List<MeasureNode>,
+        beforeNodes: List<MeasureNode>,
+        before: ImageBitmap,
+        after: ImageBitmap,
+        frameSize: IntSize,
+        densityDpi: Int,
+    ): VerifyRow {
+        val rect = DeviceRect(
+            left = annotation.left,
+            top = annotation.top,
+            right = annotation.right,
+            bottom = annotation.bottom,
+        )
+        val readout = measure(
+            annotation = rect,
+            // measure() names annotations by their 1-based badge; VerifyRow keeps history's
+            // own 0-based order. The two numbering schemes meet here and nowhere else.
+            index = index + 1,
+            nodes = nodes,
+            frameSize = frameSize,
+            densityDpi = densityDpi,
+        )
+        val beforeReadout = measure(
+            annotation = rect,
+            index = index + 1,
+            nodes = beforeNodes,
+            frameSize = frameSize,
+            // The AFTER dump's density on the BEFORE frame too: the stored dump never carried
+            // one, and labelling the two halves of one line in different units is worse.
+            densityDpi = densityDpi,
+        )
+        val beforePixels = before.regionPixels(rect, frameSize)
+        val afterPixels = after.regionPixels(rect, frameSize)
+        val changed = if (beforePixels == null || afterPixels == null) {
+            0f
+        } else {
+            changedRatio(beforePixels, afterPixels)
+        }
+        return VerifyRow(
+            index = index,
+            comment = annotation.comment,
+            beforeRect = beforeReadout.targetRect,
+            afterRect = readout.targetRect,
+            resultLine = beforeAfterLine(
+                before = beforeReadout,
+                after = readout,
+                densityDpi = densityDpi,
+            ),
+            outcome = verdictOf(
+                matched = readout.nodeId != NO_MATCH_NODE_ID,
+                afterFinding = readout.finding,
+                changedRatio = changed,
+                regionPx = beforePixels?.size ?: 0,
+            ),
+        )
+    }
+
+    /**
+     * Re-sends the rows a run reported as still off, as a NEW batch (AC-42 / FR-47 / SC-9).
+     *
+     * The whole re-stage is four assignments and one reduction, and then the send path F-7
+     * already ships runs unchanged — including its failure and retry UI:
+     *
+     * - **[currentFrozenHeld] becomes [verifyAfterHeld]**, with [currentFrozenFrame] beside it
+     *   as everywhere else in this class. That one pairing is what makes "cropped from the
+     *   AFTER frame" true with no new crop code: `resolveAndSend` encodes crops and `frame.png`
+     *   out of the held frame it finds, and the one it now finds is the re-captured one.
+     * - **The annotations are renumbered** by `followUpAnnotations` — the only place the rows'
+     *   0-based history order becomes a 1-based badge, which the envelope's `crop-N.png` names
+     *   depend on.
+     * - **[FrozenFrame.promptOverride] is explicitly `null`** (`bugs.json#PP-TD-7`/`PP-TD-2`):
+     *   an override belongs to the frame it was typed against, and carrying the old one onto a
+     *   new frame would describe annotations it was never about. The comments ride along
+     *   verbatim — v1 re-files the complaint, it does not reframe it.
+     * - **[MirrorUiState.verify] is cleared in the SAME reduction that sets `frozen`.**
+     *   [MirrorStage.Verify] is derived AHEAD of [MirrorStage.Frozen], so a staging that left
+     *   it set would pin the user on a stale Verify view with the send UI unreachable behind
+     *   it (the coupling is recorded on [MirrorUiState.stage] itself).
+     *
+     * **The hierarchy goes with the frame too** — [verifyAfterHierarchy], not whatever the
+     * previous frozen frame left behind. It was dumped against the AFTER frame this stages, so
+     * it is the one node tree that provably describes what is being sent; a follow-up therefore
+     * carries the same payload an ordinary send does. A run whose dump measured nothing leaves
+     * it `null` and the follow-up is honestly sent with `hierarchyStatus = Absent`.
+     *
+     * [pendingFollowUpBatchId] is a plain field and not reduced state precisely so it survives
+     * that teardown — see where it is declared, and [resolveAndSend], which consumes it.
+     */
+    private fun sendFollowUp() {
+        // Cancelled out here rather than inside the intent, exactly as [exitVerify] does it: an
+        // in-flight run must not be able to reduce a verdict over the frame being staged.
+        cancelVerifyRun()
+        intent {
+            val view = state.verify ?: return@intent
+            val held = verifyAfterHeld ?: return@intent
+            // Read before [releaseVerify] clears it — it is one of the five fields that go.
+            val hierarchy = verifyAfterHierarchy
+            val stillOff = view.stillOffRows
+            // The button is hard-disabled at zero and [resolveAndSend] owns the in-flight
+            // window; both are re-checked here so a stray dispatch cannot stage an empty batch
+            // or re-freeze the frame a publish is already reading.
+            if (stillOff.isEmpty() || state.send.isInFlight) return@intent
+
+            currentFrozenFrame.value = held.bitmap
+            currentFrozenHeld.value = held
+            // The run owned that frame; the frozen slot owns it now. Everything else it held
+            // goes with it, through the same helper [exitVerify] uses -- the pending id is
+            // re-armed below, deliberately AFTER this.
+            releaseVerify()
+            // Drops whatever the PREVIOUS frozen frame left behind (and any dump still running
+            // for it), then attaches the run's own AFTER dump — the one taken against this very
+            // frame. A run that produced nothing measurable leaves Empty, i.e. Absent.
+            releaseHierarchy()
+            if (hierarchy != null) currentFrozenHierarchy.value = hierarchy
+            val frozen = FrozenFrame(
+                deviceSize = IntSize(width = held.bitmap.width, height = held.bitmap.height),
+                annotations = followUpAnnotations(stillOff),
+                // Stamped in the intent body, never inside `reduce` -- same CAS reason as
+                // [stageAnnotation]'s.
+                frameId = ++freezeCounter,
+                deviceLabel = state.selectedRowDetailWithoutTransport(),
+                promptOverride = null,
+            )
+            pendingFollowUpBatchId = view.batchId
+            reduce {
+                state.copy(frozen = frozen, verify = null, send = SendPhase.Idle)
+                    .withoutMeasurements()
+                    // After [withoutMeasurements], which zeroes the status for the frame that
+                    // just went away; the retained dump is the new frame's, and `Ready` is what
+                    // makes `resolveAndSend` attach it (AS-29 / AF-4's one gate).
+                    .copy(
+                        hierarchyStatus =
+                            if (hierarchy != null) HierarchyStatus.Ready else HierarchyStatus.Absent,
+                    )
+            }
+            // Dispatched AFTER the reduce has landed, so the send reads the batch this just
+            // staged rather than the state it replaced.
+            resolveAndSend()
+        }
+    }
+
+    /**
+     * The tester's override: this batch is fixed, whatever the diff said (AC-43 / SC-20).
+     *
+     * The run is cancelled FIRST, so a late completion cannot reduce its own verdicts over the
+     * human's — the same ordering, for the same reason, as [verifyBatch]'s own cancel.
+     *
+     * **It does not leave the stage, and that is deliberate.** Forcing every row to
+     * [VerificationOutcome.Fixed] is what the user sees happen: the panel's `n of m` becomes
+     * `m of m` and every row flips. Exiting in the same breath would throw that confirmation
+     * away and make the override indistinguishable from a click that did nothing.
+     * [MirrorIntent.ExitVerify] stays the one and only exit — it is the documented owner of
+     * the five-field teardown, and the "← Back to live" chip is on screen throughout.
+     *
+     * A rowless view writes nothing: an error carries no verdicts by construction, and a run
+     * that has not produced any rows yet has nothing to overrule — marking a batch verified on
+     * a view with zero rows is exactly the vacuous write step 7 of [runVerify] guards against,
+     * and this manual path reaches the same end state under the same rule.
+     */
+    private fun markAllVerified() {
+        cancelVerifyRun()
+        intent {
+            val view = state.verify ?: return@intent
+            if (view.error != null || view.rows.isEmpty()) return@intent
+            reduce {
+                val current = state.verify ?: return@reduce state
+                state.copy(
+                    verify = current.copy(
+                        rows = current.rows.map { it.copy(outcome = VerificationOutcome.Fixed) },
+                    ),
+                )
+            }
+            // Logged and dropped, never surfaced (AF-3): the override stands on screen whatever
+            // the database says — the forced rows are the human's judgement, not a write result.
+            updateBatchStatus(view.batchId, BatchStatusModel.Verified).onFailure { error ->
+                log.w(error) { "Verified status not written for ${view.batchId}" }
+            }
+        }
+    }
+
+    /**
+     * Leaves the verify stage — the "← Back to live" chip, and the only exit (TAC-7).
+     *
+     * All five verify-scoped fields go together, which is the whole point
+     * (`bugs.json#PP-TD-2`): a surviving [VerifyUiState] pins the user on a stale view with the
+     * send UI hidden behind it, surviving pixels render the wrong pair into the next run, a
+     * surviving [verifyAfterHeld] crops a follow-up from a frame nobody is looking at, a
+     * surviving [verifyAfterHierarchy] attaches a dead run's node tree to the next send, and a
+     * surviving [pendingFollowUpBatchId] writes a status on the next, unrelated send.
+     *
+     * The job is cancelled BEFORE the clearing intent is dispatched, so an in-flight run cannot
+     * reduce a verdict in between. Clearing [MirrorUiState.verify] is also all the routing this
+     * needs: the stage derivation falls straight back to the frozen frame or the live one, and
+     * the side panel is already on History — it is where the Verify button was pressed.
+     */
+    private fun exitVerify() {
+        cancelVerifyRun()
+        releaseVerify()
+        intent { reduce { state.copy(verify = null) } }
+    }
+
+    /** Drops everything a verification run owns outside the reduced state. */
+    private fun releaseVerify() {
+        currentVerifyFrames.value = null
+        verifyAfterHeld = null
+        verifyAfterHierarchy = null
+        pendingFollowUpBatchId = null
     }
 
     private suspend fun onSessionLost(deviceId: String) {
@@ -884,6 +1433,17 @@ public class MirrorViewModel(
      * is by construction the pre-reset count.
      */
     private fun resolveAndSend() = intent {
+        // Read once and cleared in the same breath, BEFORE the first guard and before any
+        // suspension: that is the `finally` this needs, bought without one. No path out of
+        // this handler -- a dropped dispatch, a failure, a cancellation -- can leave the id
+        // behind for the next, unrelated send to write a status with (`bugs.json#PP-TD-2`).
+        //
+        // Ceiling, taken knowingly: a follow-up whose publish FAILS and is then retried
+        // through F-7's retry publishes the same batch but no longer relabels the original,
+        // which keeps its `Sent` status. A status label is the only thing lost, and the
+        // alternative -- an id that outlives its send -- is the bug this guard exists for.
+        val followUpFor = pendingFollowUpBatchId
+        pendingFollowUpBatchId = null
         if (!canSend(state)) return@intent
         val frozen = state.frozen
         val held = currentFrozenHeld.value
@@ -959,6 +1519,15 @@ public class MirrorViewModel(
                 }
                 recordSentBatch(sentBatch(envelope, images, held.bytes, thumbPng)).onFailure { error ->
                     log.w(error) { "History not recorded for ${envelope.sessionId} -- the send stands" }
+                }
+                // AC-42's other half, and only ever on SUCCESS: the ORIGINAL batch is marked
+                // as followed up, after the follow-up's own `Sent` row exists, in the same
+                // logged-and-dropped failure domain as that write. A plain send has no pending
+                // id and writes nothing at all.
+                if (followUpFor != null) {
+                    updateBatchStatus(followUpFor, BatchStatusModel.FollowUpSent).onFailure { error ->
+                        log.w(error) { "Follow-up status not written for $followUpFor" }
+                    }
                 }
                 postSideEffect(
                     MirrorSideEffect.SendComplete(

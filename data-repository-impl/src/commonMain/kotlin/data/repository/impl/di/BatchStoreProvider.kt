@@ -14,3 +14,10 @@ import org.koin.core.module.Module
  * Shape copied verbatim from `presentation-feature-mirror`'s `Module.provideHandoffSources()`.
  */
 internal expect fun Module.provideBatchStore()
+
+/**
+ * Registers a [data.repository.impl.source.store.BatchFileReader] in the Koin module.
+ *
+ * Same split as [provideBatchStore] and for the same reason: only desktop has files to read.
+ */
+internal expect fun Module.provideBatchFileReader()

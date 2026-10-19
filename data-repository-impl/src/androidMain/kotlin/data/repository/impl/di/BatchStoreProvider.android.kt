@@ -1,5 +1,6 @@
 package data.repository.impl.di
 
+import data.repository.impl.source.store.BatchFileReader
 import data.repository.impl.source.store.BatchFileStore
 import org.koin.core.module.Module
 
@@ -12,4 +13,14 @@ import org.koin.core.module.Module
  */
 internal actual fun Module.provideBatchStore() {
     single<BatchFileStore> { BatchFileStore { _, _ -> null } }
+}
+
+/**
+ * Android implementation of [provideBatchFileReader].
+ *
+ * Nothing was ever written on this target, so there is nothing to read back: the graph
+ * resolves with a reader that always answers `null` (AS-29).
+ */
+internal actual fun Module.provideBatchFileReader() {
+    single<BatchFileReader> { BatchFileReader { null } }
 }

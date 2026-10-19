@@ -1,0 +1,148 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "updatedAt": "2026-10-19T01:44:01Z",
+  "sealed": false,
+  "agents": {
+    "sdd-build-discussion-aggregate": {
+      "tokens": 51295,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-requirements-clarify": {
+      "tokens": 64425,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-architecture-brainstorm": {
+      "tokens": 122121,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-preparation-compile": {
+      "tokens": 72585,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-draft": {
+      "tokens": 165047,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-plan-refine": {
+      "tokens": 191359,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-decompose": {
+      "tokens": 120112,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-sequence": {
+      "tokens": 124784,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-backlog-validate": {
+      "tokens": 138164,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-business-implement": {
+      "tokens": 1070166,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 8,
+      "failures": 0
+    },
+    "sdd-build-frontend-implement": {
+      "tokens": 291455,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 2,
+      "failures": 0
+    },
+    "sdd-build-docs-implement": {
+      "tokens": 114602,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-test-audit": {
+      "tokens": 104707,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 157432,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-request": {
+      "tokens": 34580,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-verdict": {
+      "tokens": 70874,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-correctness-review": {
+      "tokens": 186520,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    }
+  },
+  "totals": {
+    "tokens": 3080228,
+    "durationMs": 0,
+    "invocations": 25
+  }
+}

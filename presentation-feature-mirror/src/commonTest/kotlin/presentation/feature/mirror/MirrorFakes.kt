@@ -14,6 +14,7 @@ import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.ToolModel
+import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.HistoryEntryModel
 import domain.core.source.model.history.SentBatchModel
 import domain.usecase.api.source.monad.Optional
@@ -26,8 +27,12 @@ import domain.usecase.api.source.usecase.device.DetectToolsUseCase
 import domain.usecase.api.source.usecase.device.ObserveDeviceDiscoveryUseCase
 import domain.usecase.api.source.usecase.device.ObserveMirrorStatsUseCase
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
+import domain.core.source.monad.Failure
+import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
+import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -173,13 +178,28 @@ internal class FakeObserveMirrorStats(
  * frame got pinned — which is the whole of AC-47 — with no native dependency and no
  * `build.gradle.kts` edit.
  */
-internal class FakeFrameBitmap(override val width: Int, override val height: Int) : ImageBitmap {
+internal class FakeFrameBitmap(
+    override val width: Int,
+    override val height: Int,
+    private val pixel: (x: Int, y: Int) -> Int = ::gradientPixel,
+) : ImageBitmap {
     override val config: ImageBitmapConfig = ImageBitmapConfig.Argb8888
     override val colorSpace: ColorSpace = ColorSpaces.Srgb
     override val hasAlpha: Boolean = false
 
     override fun prepareToDraw(): Unit = Unit
 
+    /**
+     * Fills the caller's buffer from [pixel], honouring every argument.
+     *
+     * It used to be `= Unit`, which left every region read all-zero: a BEFORE/AFTER pair then
+     * compared equal whatever the test intended, and every pixel assertion passed vacuously
+     * (bugs.json#PP-TD-10). A fake that silently answers nothing is worse than no fake.
+     *
+     * Row `r` of the requested region starts at `bufferOffset + r * stride`, so a stride wider
+     * than the region leaves the gap between rows untouched -- exactly what the real
+     * implementation does.
+     */
     override fun readPixels(
         buffer: IntArray,
         startX: Int,
@@ -188,8 +208,22 @@ internal class FakeFrameBitmap(override val width: Int, override val height: Int
         height: Int,
         bufferOffset: Int,
         stride: Int,
-    ): Unit = Unit
+    ) {
+        for (row in 0 until height) {
+            val rowStart = bufferOffset + row * stride
+            for (column in 0 until width) {
+                buffer[rowStart + column] = pixel(startX + column, startY + row)
+            }
+        }
+    }
 }
+
+/**
+ * The default [FakeFrameBitmap] content: deterministic, opaque, and different at every
+ * coordinate, so two regions of the same frame never compare equal by accident.
+ */
+internal fun gradientPixel(x: Int, y: Int): Int =
+    (0xFF shl 24) or (((x * 7) and 0xFF) shl 16) or (((y * 11) and 0xFF) shl 8) or ((x + y) and 0xFF)
 
 /**
  * A decoder whose output differs in **both** axes per frame, so an assertion on the pinned
@@ -237,10 +271,34 @@ internal class FakeSetAdbPath : SetAdbPathUseCase {
 }
 
 /**
+ * Runs [block] and, when the CALLER is cancelled mid-wait, returns [onCancellation] instead of
+ * letting the cancellation unwind.
+ *
+ * Deliberately worse-behaved than a bare `await()`, because the real thing is. A use case parked
+ * here stands in for `adb`'s blocking process read — which no `cancel()` can interrupt, so the
+ * dump genuinely COMPLETES after the user walked away — and for `domain-usecase-impl`'s
+ * `resultLauncher`, which used to catch `Throwable`, `CancellationException` included, and hand
+ * it back as an ordinary `Result`. A fake that unwound cleanly on `await()` was therefore better
+ * behaved than production, and every "a cancelled run lands nothing" test here was passing on
+ * the fake's good manners rather than on anything the ViewModel does (`review#COR-1`).
+ *
+ * `resultLauncher` rethrows cancellation now, but this stays: the uninterruptible `adb` read is
+ * real either way, so a cancelled run still resumes and still has to be stopped by
+ * `MirrorViewModel`'s own run-generation check rather than by the coroutine machinery.
+ */
+private suspend fun <T> uninterruptibly(onCancellation: T, block: suspend () -> T): T = try {
+    block()
+} catch (cancellation: CancellationException) {
+    onCancellation
+}
+
+/**
  * Resolves immediately with [result] by default — the right shape for every test that does not
  * care about the in-flight window. Set [manual] to gate resolution behind [resolve] instead, so
  * a test can assert the `Dumping` state deterministically before completing the dump, rather
  * than racing a real suspension against `advanceUntilIdle()`.
+ *
+ * **Cancellation is swallowed on purpose** — see [uninterruptibly].
  */
 internal class FakeDumpHierarchy(
     private val result: Result<HierarchySnapshotModel> = Result.success(HierarchySnapshotModel.Empty),
@@ -255,7 +313,9 @@ internal class FakeDumpHierarchy(
         if (!manual) return result
         val deferred = CompletableDeferred<Result<HierarchySnapshotModel>>()
         gate = deferred
-        return deferred.await()
+        // The cancelled case hands back [result], not a failure: that is what an uninterruptible
+        // process read does — it finishes, and the abandoned run walks on with a good dump.
+        return uninterruptibly(onCancellation = result) { deferred.await() }
     }
 
     /** Completes the most recently started call that is still pending. */
@@ -336,6 +396,55 @@ internal class FakeRecordSentBatch(
     }
 }
 
+/**
+ * Hands back one recorded batch, or the `NotFound` the real use case raises when the row or
+ * its `frame.png` is gone.
+ *
+ * [manual] mirrors [FakeDumpHierarchy]'s gate so a test can observe
+ * [presentation.feature.mirror.source.mirror.VerifyPhase.Loading] while the read is still in
+ * flight, rather than racing a real suspension against `advanceUntilIdle()`.
+ */
+internal class FakeGetSentBatch(
+    private val batch: SentBatchModel? = null,
+    private val manual: Boolean = false,
+) : GetSentBatchUseCase {
+
+    val calls: MutableList<String> = mutableListOf()
+    private var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun invoke(batchId: String): Result<SentBatchModel> {
+        calls += batchId
+        if (manual) {
+            val deferred = CompletableDeferred<Unit>()
+            gate = deferred
+            // Swallows cancellation, exactly like [FakeDumpHierarchy] — see [uninterruptibly].
+            uninterruptibly(onCancellation = Unit) { deferred.await() }
+        }
+        return batch?.let { Result.success(it) } ?: Result.failure(Failure.Logic.NotFound)
+    }
+
+    /** Releases a read parked behind [manual]. */
+    fun release() {
+        gate?.complete(Unit)
+    }
+}
+
+/**
+ * Records every write, so "exactly once" and "never" are both directly assertable;
+ * [failure] makes them all fail while still recording the attempt.
+ */
+internal class FakeUpdateBatchStatus(
+    private val failure: Throwable? = null,
+) : UpdateBatchStatusUseCase {
+
+    val writes: MutableList<Pair<String, BatchStatusModel>> = mutableListOf()
+
+    override suspend fun invoke(batchId: String, status: BatchStatusModel): Optional {
+        writes += batchId to status
+        return failure?.let { Result.failure(it) } ?: Result.success(Unit)
+    }
+}
+
 /** A history stream the test owns: empty until [emit] puts rows on it. */
 internal class FakeObserveHistory(
     initial: List<HistoryEntryModel> = emptyList(),
@@ -378,6 +487,8 @@ internal fun mirrorViewModel(
     dumpHierarchy: DumpHierarchyUseCase = FakeDumpHierarchy(),
     recordSentBatch: RecordSentBatchUseCase = FakeRecordSentBatch(),
     observeHistory: ObserveHistoryUseCase = FakeObserveHistory(),
+    getSentBatch: GetSentBatchUseCase = FakeGetSentBatch(),
+    updateBatchStatus: UpdateBatchStatusUseCase = FakeUpdateBatchStatus(),
     decodeFrame: suspend (ByteArray) -> ImageBitmap? = { null },
     handoff: AnnotationHandoff = FakeAnnotationHandoff(),
     encodeCrop: CropEncoder = CropEncoder { _, _ -> null },
@@ -395,6 +506,8 @@ internal fun mirrorViewModel(
     dumpHierarchy = dumpHierarchy,
     recordSentBatch = recordSentBatch,
     observeHistory = observeHistory,
+    getSentBatch = getSentBatch,
+    updateBatchStatus = updateBatchStatus,
     decodeFrame = decodeFrame,
     handoff = handoff,
     encodeCrop = encodeCrop,

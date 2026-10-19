@@ -1,0 +1,133 @@
+{
+  "spec": "verify-and-rediff-loop",
+  "entries": [
+    {
+      "task": "T-1",
+      "change": "Added HistoryEntryDao.findById(id) (@Transaction @Query, single-row-by-primary-key) and HistoryDataSource.getBatch, reusing the existing @Relation rather than ReadableDataSource.getById (Int-keyed, wrong shape).",
+      "reason": "The read side of history had no single-batch lookup; Verify needs exactly one row with its annotations.",
+      "crRef": ""
+    },
+    {
+      "task": "T-2",
+      "change": "Added BatchFileReader seam (fun interface) plus FileSystemBatchFileReader (java.io desktop impl, null-returning Android/iOS stand-ins), mirroring the existing write-only BatchFileStore.",
+      "reason": "F-8 only ever wrote frame.png/hierarchy.xml to disk; nothing could read them back for a diff.",
+      "crRef": ""
+    },
+    {
+      "task": "T-8",
+      "change": "Fixed FakeFrameBitmap.readPixels, previously `= Unit` (a known debt item, bugs.json#PP-TD-10), to fill the caller IntArray from a real backing array honouring startX/startY/width/height/bufferOffset/stride.",
+      "reason": "Prerequisite for RegionDiff tests: a no-op fake would make every pixel-diff assertion pass vacuously against all-zero pixels.",
+      "crRef": ""
+    },
+    {
+      "task": "T-5",
+      "change": "Added core/verify pure functions: RegionDiff.changedRatio (Chebyshev per-channel distance over IntArray), VerifyThresholds (CHANNEL_NOISE_FLOOR=10/255, REGION_CHANGE_RATIO=0.02f, MIN_REGION_PIXELS=64, each KDoc'd with its ceiling and tuning path), VerifyVerdict.verdictOf.",
+      "reason": "AC-24's change-evidence verdict logic needed a testable, Skiko-free core.",
+      "crRef": ""
+    },
+    {
+      "task": "T-3",
+      "change": "Added HistoryRepository.get(batchId): SentBatchModel?, composing the DAO @Relation with BatchFileReader; reads only framePath + hierarchyPath (never crop-N.png, never the thumbPng blob for diffing).",
+      "reason": "AC-45 requires the diff to read full-resolution frame bytes, never the stored crop or thumbnail.",
+      "crRef": ""
+    },
+    {
+      "task": "T-4",
+      "change": "Added GetSentBatchUseCase and UpdateBatchStatusUseCase, both returning Result<T>/Optional via the shared resultLauncher pattern.",
+      "reason": "Domain-layer seam for the repository read/write the ViewModel needed.",
+      "crRef": ""
+    },
+    {
+      "task": "T-6",
+      "change": "Added core/verify/RegionPixels.kt — the single file in core/verify naming ImageBitmap, wrapping ImageBitmap.readPixels as an extension.",
+      "reason": "Keeps every other core/verify function pure IntArray arithmetic, unit-testable without Skiko; this is the one deliberately uncovered edge.",
+      "crRef": ""
+    },
+    {
+      "task": "T-7",
+      "change": "Extended MirrorContract with MirrorStage.Verify, VerifyFrames, VerifyError variants (SizeMismatch, HierarchyUnusable, Disconnected, NoLiveSession) and the VerifyPhase state machine (Loading -> Recapturing -> Diffing -> Ready).",
+      "reason": "State shapes needed before verifyBatch could be implemented.",
+      "crRef": ""
+    },
+    {
+      "task": "T-9",
+      "change": "Implemented MirrorViewModel.verifyBatch — the seven-step cancellable run (read batch, check live session, re-capture, size-check, dump, per-annotation diff, write verdicts) — plus ExitVerify.",
+      "reason": "Core orchestration for AC-23/24/40/41/43/44.",
+      "crRef": ""
+    },
+    {
+      "task": "T-9 (CR-A)",
+      "change": "SentBatchModel now carries a parsed hierarchy (HierarchySnapshotModel?) alongside the raw XML; verifyBatch measures both BEFORE and AFTER sides against the shared frame size, so beforeRect/resultLine are real snapped values instead of a size fallback. FindingKind promoted from internal to the public contract (core/measure -> source/mirror) because MeasureReadout.findingKind is public under explicitApi().",
+      "reason": "Wave 4 shipped with the BEFORE side unmeasured (a size-only fallback); CR-A closed that gap. Cost ~90 lines against an ~6-line estimate — the resultLine formatting, not the hierarchy parse, was the actual size.",
+      "crRef": "CR-A"
+    },
+    {
+      "task": "T-10",
+      "change": "Added VerifyFrames plain StateFlow and wired it as a 5th content-lambda argument into the existing MirrorHost/MirrorContent composition (no new composition root).",
+      "reason": "BEFORE/AFTER bitmaps needed a delivery path to the stage composable.",
+      "crRef": ""
+    },
+    {
+      "task": "T-15",
+      "change": "Added releaseVerify(), a single helper clearing currentVerifyFrames/verifyAfterHeld/verifyAfterHierarchy/pendingFollowUpBatchId; every teardown path (restart, abort, sendFollowUp, exitVerify) routes through it.",
+      "reason": "Wave 5 found a leak where an aborted run left stale pixels/held frames behind for the next run.",
+      "crRef": ""
+    },
+    {
+      "task": "T-15 (CR-B)",
+      "change": "Added a fifth verify-scoped field retaining the fresh AFTER hierarchy snapshot (takeIf { nodes.isNotEmpty() }), so sendFollowUp attaches the run's own AFTER dump instead of sending Absent.",
+      "reason": "A follow-up was shipping a strictly poorer payload than an ordinary send — the AFTER dump was being released before sendFollowUp could read it. All five fields still clear through the one releaseVerify() helper, so the wave-5 leak class is not reintroduced.",
+      "crRef": "CR-B"
+    },
+    {
+      "task": "T-11",
+      "change": "Added MirrorVerifyStage.kt — two captioned frames side by side with per-annotation rects (neutral BEFORE, verdict-coloured AFTER), a Back-to-live chip, a three-step progress strip, and a 300dp Verification panel with Send-follow-up / Mark-all-verified. Zero new design-system components or colour tokens.",
+      "reason": "AC-23/24/39/40/42/43's rendered surface.",
+      "crRef": ""
+    },
+    {
+      "task": "T-12",
+      "change": "Deleted the BatchStatusModel.Fixed gate on the History tab's Verify button (MirrorHistoryTab.kt:177-185); the button now renders unconditionally, disabled only on framePath == null.",
+      "reason": "AC-39 supersedes F-8's AC-36 status gate — status may never disable Verify again.",
+      "crRef": ""
+    },
+    {
+      "task": "T-13",
+      "change": "Added the follow-up re-stage path: renumbers still-off annotations 1-based from the AFTER frame/crops and sends through F-7's unchanged resolveAndSend path; original batch flips to Follow-up sent.",
+      "reason": "AC-42.",
+      "crRef": ""
+    },
+    {
+      "task": "T-14",
+      "change": "Added the automatic all-Fixed Verified write (guarded on rows.isNotEmpty() && all Fixed) and the Mark-all-as-verified override (cancels any in-flight verifyJob first, refuses a rowless or errored view).",
+      "reason": "AC-43 / SC-20.",
+      "crRef": ""
+    },
+    {
+      "task": "T-14 (CR-C, post-audit)",
+      "change": "Both updateBatchStatus call sites (automatic all-Fixed write and Mark-all-verified) now consume the returned Result and log a failure via .onFailure { log.w(...) }, matching the pre-existing FollowUpSent site. Deliberately not escalated to UI — the verify run itself succeeded; only the durable status label failed to persist.",
+      "reason": "Audit finding AF-3: two of three updateBatchStatus call sites silently dropped a failed write, so the panel could show 'm of m fixed' while the database kept the old status with no trace anywhere.",
+      "crRef": "CR-C"
+    },
+    {
+      "task": "T-16",
+      "change": "Docs + hygiene grep sweep: no TODO/FIXME/HACK/println introduced, no raw Color(0x..)/inline TextStyle, convention sweep across database/domain/mappers/Koin/Orbit/package-layout/localisation/preview/testing all clean.",
+      "reason": "AC-45 inspection gate plus general release hygiene.",
+      "crRef": ""
+    },
+    {
+      "task": "T-17",
+      "change": "Release gates run: desktopTest suites for presentation-feature-mirror/data-repository-impl/data-database-impl/domain-usecase-impl, then cross-target build. The manual real-device end-to-end demo (send -> agent change -> Verify -> follow-up -> both status writes) was NOT executed, and MET-3's <5% false-positive target was recorded as unverified-in-v1 (no golden corpus, no Compose UI-test harness) — both honestly recorded in the wave-9 commit message rather than silently passed.",
+      "reason": "Release gate per the backlog's Definition of Done; the GUI-demo and accuracy gaps are carried forward as explicit waivers rather than blocking the spec indefinitely on infrastructure this repo does not have.",
+      "crRef": ""
+    },
+    {
+      "task": "registry",
+      "change": "Post-audit (commit 71c7acd): closed bugs.json#PP-TD-10 (fixedIn=verify-and-rediff-loop wave 1), added 11 new components.json entries (BatchFileReader, HistoryRepositoryGet, RegionDiff, VerifyThresholds, VerifyVerdict, BeforeAfterFormat, RegionPixels, VerifyLabels, FollowUp, MirrorVerifyStage, VerifyFrames), added the missing features.json entries for verify-and-rediff-loop (F-9) and resolve-and-send (F-7, which had merged without one).",
+      "reason": "Audit findings AF-4 (phantom-open bug already fixed in wave 1) and AF-5 (11 shipped components and two feature entries missing from the registry).",
+      "crRef": ""
+    }
+  ],
+  "summary": "F-9 (verify-and-rediff-loop) shipped the full Verify/re-diff/follow-up loop across 17 tasks in 9 waves plus three in-flight change requests (CR-A: the BEFORE hierarchy was unmeasured; CR-B: follow-up was dropping the AFTER hierarchy; CR-C, post-audit: two updateBatchStatus call sites silently swallowed write failures) and one registry-sync commit closing a stale bug and five missing registry entries. All 17 tasks are done, 0 AC/SC unsatisfied per their declared verificationMethod, 0 convention violations found across two independent audit passes. Two gaps remain open by design, not oversight: the manual real-device GUI demo was never driven (device was available but out of scope), and MET-3's <5% false-positive target has no golden corpus to verify against — both are carried as explicit human waivers rather than rounded up to 'complete'. Two further items are low-severity and informational only: backlog.json's T-11 text was never updated after the four-step progress strip was cut for lack of a data source, and data-database-impl's iOS test task is SKIPPED module-wide (pre-existing shape) so the one new DAO test runs on desktop only.",
+  "regressionRunPassed": true
+}

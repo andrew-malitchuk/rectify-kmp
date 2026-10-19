@@ -16,7 +16,9 @@ data.database.impl/
 │   ├── database/
 │   │   └── AppDatabase.kt                — @Database(version = 1), AppDatabaseConstructor
 │   ├── dao/
-│   │   └── HistoryEntryDao.kt            — internal @Dao: insert (transaction), observeAll, updateStatus
+│   │   └── HistoryEntryDao.kt            — internal @Dao: insert (transaction), observeAll,
+│   │                                        findById (transaction, single row by primary key,
+│   │                                        F-9's read path), updateStatus
 │   ├── datasource/
 │   │   └── HistoryDataSourceImpl.kt      — internal HistoryDataSource, unpacks the DAO's relation
 │   └── migration/
@@ -29,7 +31,8 @@ data.database.impl/
 │   │   ├── HistoryAnnotationEntity.kt    — public @Entity, FK CASCADE on HistoryEntryEntity.id
 │   │   └── HistoryEntryWithAnnotations.kt — public @Embedded/@Relation read shape
 │   └── datasource/
-│       └── HistoryDataSource.kt          — public: ObservableDataSource + AppendableDataSource + updateStatus
+│       └── HistoryDataSource.kt          — public: ObservableDataSource + AppendableDataSource,
+│                                            plus bespoke getBatch(id) and updateStatus(id, status)
 └── di/
     └── DataDatabaseImplModule.kt
 ```
@@ -100,6 +103,13 @@ This shipped at version 1 with **no `Migration`**, which is an exception, not th
 `~/.rectify/rectify.db`, a path nothing had ever written to, which is what made skipping the
 migration provably safe. The next schema change that touches `history_entry` or
 `history_annotation` on the *current* path needs a real `Migration` in `Migrations.kt`.
+
+**F-9 (verify-and-rediff-loop) stayed at version 1 too, with no new column.** It reads
+`history_entry`/`history_annotation` through `findById` only — the per-annotation `densityDpi`
+a verify run needs comes from the fresh AFTER hierarchy dump, not a stored column, because a
+`Migration` could never retroactively supply density for rows already on disk. Confirmed against
+`HistoryEntryEntity`/`HistoryAnnotationEntity` during F-9's planning: no column was added, so the
+version-bump-plus-`Migration` rule above was never triggered.
 
 ## KSP Configuration
 

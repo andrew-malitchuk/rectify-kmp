@@ -96,6 +96,9 @@ private val NoticeMaxWidth: Dp = 420.dp
  * @param frame Latest decoded frame, from `MirrorViewModel.frame`.
  * @param onIntent Intent sink.
  * @param modifier Modifier applied to the root composable.
+ * @param verifyFrames The BEFORE/AFTER pair of a verification run, from
+ *   `MirrorViewModel.verifyFrames`. Defaulted so every pre-existing call site and preview that
+ *   can never reach [MirrorStage.Verify] stays as it is.
  */
 @Composable
 public fun MirrorStageContent(
@@ -103,6 +106,7 @@ public fun MirrorStageContent(
     frame: ImageBitmap?,
     onIntent: (MirrorIntent) -> Unit,
     modifier: Modifier = Modifier,
+    verifyFrames: VerifyFrames? = null,
 ) {
     // Resolved ahead of the stage `when`, not inside its NoSignal branch. The plan said
     // NoSignal-only for the smallest blast radius, but of the four discovery states only
@@ -155,6 +159,14 @@ public fun MirrorStageContent(
                     hierarchyStatus = state.hierarchyStatus,
                     onIntent = onIntent,
                 )
+            }
+
+            // `state.verify` is what selected this branch, so the let is a smart-cast
+            // formality rather than a case: there is no reachable Verify stage without it.
+            // [verifyFrames] IS nullable here on purpose - the run shows its progress and its
+            // errors long before it has two bitmaps.
+            MirrorStage.Verify -> state.verify?.let { verify ->
+                MirrorVerifyStage(verify = verify, frames = verifyFrames, onIntent = onIntent)
             }
 
             MirrorStage.NoSignal -> NoSignalStage(
