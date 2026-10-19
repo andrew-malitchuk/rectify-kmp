@@ -10,7 +10,11 @@ import data.device.impl.core.process.ProcessRunner
 import data.device.impl.core.tool.ToolResolver
 
 /**
- * The sole device-scoped execution path on the desktop host.
+ * The `adb` device-scoped execution path on the desktop host.
+ *
+ * Renamed from `DeviceCommandExecutorImpl` for symmetry with [IosDeviceCommandExecutor]: both
+ * implement the one [DeviceCommandExecutor] interface, and the Koin qualifier picks which one
+ * a platform gets.
  *
  * Every argv it runs comes out of [buildDeviceArgv], which always emits
  * `[adb, -s, <device>, ...]` - there is no overload taking a raw string, so no caller can
@@ -18,7 +22,7 @@ import data.device.impl.core.tool.ToolResolver
  *
  * @property tools Locates the `adb` binary.
  */
-internal class DeviceCommandExecutorImpl(
+internal class AdbDeviceCommandExecutor(
     private val tools: ToolResolver,
 ) : DeviceCommandExecutor {
 

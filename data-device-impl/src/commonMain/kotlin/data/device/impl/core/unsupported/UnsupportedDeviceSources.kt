@@ -3,7 +3,6 @@ package data.device.impl.core.unsupported
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.IosHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
@@ -53,17 +52,11 @@ internal object UnsupportedAdbHostSource : AdbHostSource {
     override suspend fun killServer(): Unit = throw unsupported(HostCommand.KillServer)
 }
 
-/** No-op [IdbHostSource] for targets that cannot spawn a process. Deleted with T-12/T-13. */
-internal object UnsupportedIdbHostSource : IdbHostSource {
-
-    override suspend fun probe(): ToolProbe = absent(ToolKind.Idb)
-}
-
 /**
  * No-op [IosHostSource] for targets that cannot spawn a process.
  *
- * Added with the interface so the Android and iOS graphs have something to bind the moment
- * T-13 rewrites the three `provideDeviceSources()` actuals; nothing registers it yet.
+ * Bound by the Android and iOS `provideDeviceSources()` actuals in place of the deleted
+ * `UnsupportedIdbHostSource`, whose probe-only surface `probeIdb()` subsumes.
  */
 internal object UnsupportedIosHostSource : IosHostSource {
 
