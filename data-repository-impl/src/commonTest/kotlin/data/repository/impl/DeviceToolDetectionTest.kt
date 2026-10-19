@@ -59,7 +59,7 @@ class DeviceToolDetectionTest {
         // repository must pass that null through so the UI renders its placeholder.
         val transport = StatsTransport(TransportStats(fps = 4.2f, captureRoundTripMs = 260L, widthPx = 1080))
 
-        val stats = repository(transport = transport).observeMirrorStats().first()
+        val stats = repository(transport = transport).observeMirrorStats(PlatformModel.Android).first()
 
         assertNull(stats.latencyMs)
         assertEquals(4.2f, stats.fps)

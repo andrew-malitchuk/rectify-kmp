@@ -1,6 +1,7 @@
 package domain.usecase.impl.source.usecase.device
 
 import domain.core.source.model.device.HierarchySnapshotModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.monad.Failure
 import domain.repository.api.source.repository.DeviceRepository
 import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
@@ -19,13 +20,17 @@ internal class DumpHierarchyUseCaseImpl(
 ) : DumpHierarchyUseCase {
 
     /**
+     * @param platform Which device family [deviceId] belongs to.
      * @param deviceId Identifier of the device to capture.
      * @return A [Result] holding the snapshot.
      * @see DumpHierarchyUseCase.invoke
      */
-    override suspend fun invoke(deviceId: String): Result<HierarchySnapshotModel> = resultLauncher(
+    override suspend fun invoke(
+        platform: PlatformModel,
+        deviceId: String,
+    ): Result<HierarchySnapshotModel> = resultLauncher(
         errorMapper = Failure.Technical::Platform,
     ) {
-        deviceRepository.dumpHierarchy(deviceId)
+        deviceRepository.dumpHierarchy(platform, deviceId)
     }
 }

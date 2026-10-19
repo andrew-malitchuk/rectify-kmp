@@ -15,6 +15,7 @@ import data.device.api.source.model.ToolProbe
 import data.device.api.source.model.TransportStats
 import data.repository.impl.source.DeviceRepositoryImpl
 import domain.core.source.model.device.HierarchySnapshotModel
+import domain.core.source.model.device.PlatformModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +44,7 @@ class DeviceHierarchyDumpTest {
         val executor = FakeHierarchyDumpExecutor(dumpStdout = PARSEABLE_DUMP, densityStdout = DENSITY_LINE)
         val repository = repository(executor)
 
-        repository.dumpHierarchy("R5CT10ABCDE")
+        repository.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE")
 
         // Fails an implementation that issues the dump and forgets the density (or vice
         // versa), and one that issues either command more than once.
@@ -56,7 +57,7 @@ class DeviceHierarchyDumpTest {
         val executor = FakeHierarchyDumpExecutor(dumpStdout = PARSEABLE_DUMP, densityStdout = DENSITY_LINE)
         val repository = repository(executor)
 
-        val snapshot = repository.dumpHierarchy("R5CT10ABCDE")
+        val snapshot = repository.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE")
 
         assertEquals(420, snapshot.densityDpi)
         assertEquals(2, snapshot.nodes.size)
@@ -75,7 +76,7 @@ class DeviceHierarchyDumpTest {
         val executor = FakeHierarchyDumpExecutor(dumpStdout = "not xml at all, just garbage", densityStdout = "")
         val repository = repository(executor)
 
-        assertEquals(HierarchySnapshotModel.Empty, repository.dumpHierarchy("R5CT10ABCDE"))
+        assertEquals(HierarchySnapshotModel.Empty, repository.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE"))
     }
 
     @Test
@@ -83,7 +84,7 @@ class DeviceHierarchyDumpTest {
         val executor = FakeHierarchyDumpExecutor(dumpStdout = "", densityStdout = "")
         val repository = repository(executor)
 
-        assertEquals(HierarchySnapshotModel.Empty, repository.dumpHierarchy("R5CT10ABCDE"))
+        assertEquals(HierarchySnapshotModel.Empty, repository.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE"))
     }
 
     @Test
@@ -91,7 +92,7 @@ class DeviceHierarchyDumpTest {
         val executor = FakeHierarchyDumpExecutor(dumpStdout = PARSEABLE_DUMP, densityStdout = "")
         val repository = repository(executor)
 
-        val snapshot = repository.dumpHierarchy("R5CT10ABCDE")
+        val snapshot = repository.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE")
 
         assertEquals(0, snapshot.densityDpi)
         // Not the Empty case: nodes are still present, only the density is unknown. Per the

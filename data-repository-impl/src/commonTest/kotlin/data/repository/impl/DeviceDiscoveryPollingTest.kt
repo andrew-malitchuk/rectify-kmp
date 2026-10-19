@@ -19,6 +19,7 @@ import data.device.api.source.model.TransportStats
 import data.device.api.source.tuning.MirrorTuning
 import data.repository.impl.source.DeviceRepositoryImpl
 import domain.core.source.model.device.DiscoveryModel
+import domain.core.source.model.device.PlatformModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -378,7 +379,7 @@ class DeviceDiscoveryPollingTest {
         val repository = repository(adb)
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
 
         // Detecting plus the first poll land at 0; the next would normally be at 2000.
@@ -416,7 +417,7 @@ class DeviceDiscoveryPollingTest {
 
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
         advanceTimeBy(1)
 
@@ -434,7 +435,7 @@ class DeviceDiscoveryPollingTest {
         val repository = repository(adb, emulators, executor)
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
         return received
     }

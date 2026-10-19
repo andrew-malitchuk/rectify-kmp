@@ -1,6 +1,7 @@
 package domain.usecase.impl.source.usecase.device
 
 import domain.core.source.model.device.MirrorFrameModel
+import domain.core.source.model.device.PlatformModel
 import domain.repository.api.source.repository.DeviceRepository
 import domain.usecase.api.source.usecase.device.StartMirroringUseCase
 import kotlinx.coroutines.flow.Flow
@@ -18,9 +19,11 @@ internal class StartMirroringUseCaseImpl(
 ) : StartMirroringUseCase {
 
     /**
+     * @param platform Which device family [deviceId] belongs to.
      * @param deviceId Identifier of the device to mirror.
      * @return A [Flow] of [MirrorFrameModel].
      * @see StartMirroringUseCase.invoke
      */
-    override fun invoke(deviceId: String): Flow<MirrorFrameModel> = deviceRepository.mirror(deviceId)
+    override fun invoke(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel> =
+        deviceRepository.mirror(platform, deviceId)
 }

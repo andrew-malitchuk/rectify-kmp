@@ -27,6 +27,7 @@ import domain.core.source.model.device.EmulatorModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
 import co.touchlab.kermit.Logger
@@ -56,6 +57,11 @@ import kotlin.time.Clock
  *   read by `ToolResolver` at probe time — the resolver validates it, this does not.
  * @property nowMs Wall-clock reader. A parameter so the poll metadata is assertable under
  *   virtual time instead of needing a real two-second wait.
+ *
+ * Every `platform` parameter below is accepted and IGNORED: this class still always takes the
+ * adb path. The parameter exists so the dispatch seam is visible at the type level one commit
+ * before there is anything to dispatch to — the exhaustive `when` arrives with the iOS
+ * datasources, and until then an unused parameter is the proof that nothing changed.
  */
 private val log = Logger.withTag("DeviceRepository")
 
@@ -121,7 +127,7 @@ internal class DeviceRepositoryImpl(
         return listOf(adb, idbHostSource.probe()).map(ToolProbeMapper.toModel::map)
     }
 
-    override fun observeDiscovery(): Flow<DiscoveryModel> = flow {
+    override fun observeDiscovery(platform: PlatformModel): Flow<DiscoveryModel> = flow {
         emit(DiscoveryModel.Detecting)
         // Collector-local, so two collectors cannot race on it. A serial's AVD name cannot
         // change while it stays attached, which is what makes caching it safe - and worth
@@ -290,13 +296,13 @@ internal class DeviceRepositoryImpl(
         adbHostSource.startServer()
     }
 
-    override suspend fun bootEmulator(avdName: String) {
+    override suspend fun bootEmulator(platform: PlatformModel, avdName: String) {
         val avd = AvdName.of(avdName)
             ?: throw DeviceCommandException(listOf(ToolKind.Emulator.binaryName), null, "invalid AVD name $avdName")
         emulatorSource.boot(avd)
     }
 
-    override fun mirror(deviceId: String): Flow<MirrorFrameModel> {
+    override fun mirror(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel> {
         val device = DeviceId.of(deviceId)
             ?: return flow {
                 throw DeviceCommandException(listOf(ToolKind.Adb.binaryName), null, "invalid device id $deviceId")
@@ -304,7 +310,7 @@ internal class DeviceRepositoryImpl(
         return mirrorTransport.frames(device).map(MirrorFrameMapper.toModel::map)
     }
 
-    override fun observeMirrorStats(): Flow<MirrorStatsModel> =
+    override fun observeMirrorStats(platform: PlatformModel): Flow<MirrorStatsModel> =
         combine(mirrorTransport.stats, adbVersion) { stats, version ->
             MirrorStatsModel(
                 toolVersion = version,
@@ -327,7 +333,10 @@ internal class DeviceRepositoryImpl(
      * [HierarchyDumpStdout] enforces at the type level. See the wave-4 addendum in
      * `execution/GATE-step2-go-no-go.md`.
      */
-    override suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel {
+    override suspend fun dumpHierarchy(
+        platform: PlatformModel,
+        deviceId: String,
+    ): HierarchySnapshotModel {
         val device = DeviceId.of(deviceId)
             ?: throw DeviceCommandException(listOf(ToolKind.Adb.binaryName), null, "invalid device id $deviceId")
         val dump = deviceCommandExecutor.run(device, DeviceCommand.UiAutomatorDump).decodeToString()

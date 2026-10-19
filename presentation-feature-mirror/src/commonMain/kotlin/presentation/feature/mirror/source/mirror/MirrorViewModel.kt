@@ -417,7 +417,13 @@ public class MirrorViewModel(
     private fun observeDiscoveryWhileIdle() {
         viewModelScope.launch {
             sessionDeviceId
-                .flatMapLatest { device -> if (device == null) observeDiscovery() else emptyFlow() }
+                .flatMapLatest { device ->
+                    // The LITERAL, not `state.platform`: this collector runs outside `intent {}` and
+                    // has no state to read. Dispatch is Android-only this commit, so the
+                    // literal is exactly what the old call did; the platform key that replaces
+                    // it arrives with the iOS datasources.
+                    if (device == null) observeDiscovery(PlatformModel.Android) else emptyFlow()
+                }
                 .collect { discovery -> intent { reduce { state.applyDiscovery(discovery) } } }
         }
     }
@@ -430,7 +436,8 @@ public class MirrorViewModel(
                         // Clears the stage when a session ends, without a second signal path.
                         flowOf(null)
                     } else {
-                        startMirroring(device)
+                        // Same literal, same reason as [observeDiscoveryWhileIdle].
+                        startMirroring(PlatformModel.Android, device)
                             // The captured bytes ride along with the bitmap they decoded to:
                             // frame.png must be the adb capture itself, never a re-encode, and
                             // only one value on one flow makes the freeze's read atomic.
@@ -450,7 +457,8 @@ public class MirrorViewModel(
 
     private fun observeStats() {
         viewModelScope.launch {
-            observeMirrorStats()
+            // Same literal, same reason as [observeDiscoveryWhileIdle].
+            observeMirrorStats(PlatformModel.Android)
                 .conflate()
                 .collect { stats ->
                     intent { reduce { state.copy(stats = stats) } }
@@ -616,7 +624,7 @@ public class MirrorViewModel(
 
         view = view.copy(phase = VerifyPhase.Recapturing)
         reduce { state.copy(verify = view) }
-        val snapshot = dumpHierarchy(deviceId).getOrNull()
+        val snapshot = dumpHierarchy(state.platform, deviceId).getOrNull()
         // Stale FIRST: a run the user walked away from must not report that the device went
         // away. On a real handset the blocking `adb` read is not interruptible at all, so this
         // run reaches here with a perfectly good dump and no stage left to put it on.
@@ -1105,7 +1113,7 @@ public class MirrorViewModel(
                 send = if (state.send.isInFlight) state.send else SendPhase.Idle,
             )
         }
-        if (dumpTarget != null) dumpHierarchyFor(dumpTarget)
+        if (dumpTarget != null) dumpHierarchyFor(state.platform, dumpTarget)
     }
 
     /**
@@ -1129,10 +1137,10 @@ public class MirrorViewModel(
      * back to `View (no match)` — the status contradicting its own behaviour, which is the defect
      * AC-72 and the `Dumping` label both exist to prevent.
      */
-    private fun dumpHierarchyFor(deviceId: String) {
+    private fun dumpHierarchyFor(platform: PlatformModel, deviceId: String) {
         dumpJob?.cancel()
         dumpJob = viewModelScope.launch {
-            val snapshot = dumpHierarchy(deviceId).getOrNull()
+            val snapshot = dumpHierarchy(platform, deviceId).getOrNull()
             currentFrozenHierarchy.value = snapshot ?: HierarchySnapshotModel.Empty
             intent {
                 reduce {
@@ -1605,6 +1613,6 @@ public class MirrorViewModel(
      * what puts it in the list, so there is nothing to wait for here.
      */
     private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.boot(avdName: String) {
-        bootEmulator(avdName).onFailure { postSideEffect(MirrorSideEffect.BootFailed(avdName)) }
+        bootEmulator(state.platform, avdName).onFailure { postSideEffect(MirrorSideEffect.BootFailed(avdName)) }
     }
 }

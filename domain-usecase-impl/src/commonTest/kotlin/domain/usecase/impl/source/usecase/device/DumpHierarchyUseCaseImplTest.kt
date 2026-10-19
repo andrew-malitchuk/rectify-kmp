@@ -4,6 +4,7 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.core.source.monad.Failure
 import domain.repository.api.source.repository.DeviceRepository
@@ -31,7 +32,7 @@ class DumpHierarchyUseCaseImplTest {
             val repository = ThrowingDeviceRepository(RuntimeException("device offline"))
             val useCase = DumpHierarchyUseCaseImpl(repository)
 
-            val result = useCase("R5CT10ABCDE")
+            val result = useCase(PlatformModel.Android, "R5CT10ABCDE")
 
             assertIs<Failure.Technical.Platform>(result.exceptionOrNull())
         }
@@ -41,14 +42,18 @@ class DumpHierarchyUseCaseImplTest {
 /** A [DeviceRepository] whose [dumpHierarchy] always throws [toThrow]. */
 private class ThrowingDeviceRepository(private val toThrow: Throwable) : DeviceRepository {
 
-    override suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel = throw toThrow
+    override suspend fun dumpHierarchy(
+        platform: PlatformModel,
+        deviceId: String,
+    ): HierarchySnapshotModel = throw toThrow
 
     override suspend fun refreshDiscovery(): Unit = throw NotImplementedError()
     override suspend fun detectTools(): List<ToolModel> = throw NotImplementedError()
-    override fun observeDiscovery(): Flow<DiscoveryModel> = emptyFlow()
-    override suspend fun bootEmulator(avdName: String): Unit = throw NotImplementedError()
-    override fun mirror(deviceId: String): Flow<MirrorFrameModel> = emptyFlow()
-    override fun observeMirrorStats(): Flow<MirrorStatsModel> = emptyFlow()
+    override fun observeDiscovery(platform: PlatformModel): Flow<DiscoveryModel> = emptyFlow()
+    override suspend fun bootEmulator(platform: PlatformModel, avdName: String): Unit =
+        throw NotImplementedError()
+    override fun mirror(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel> = emptyFlow()
+    override fun observeMirrorStats(platform: PlatformModel): Flow<MirrorStatsModel> = emptyFlow()
     override suspend fun restartAdbServer(): Unit = throw NotImplementedError()
     override suspend fun setAdbPath(path: String): Unit = throw NotImplementedError()
 }

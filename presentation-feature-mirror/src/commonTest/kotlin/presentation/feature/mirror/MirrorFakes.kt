@@ -13,6 +13,7 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.HistoryEntryModel
@@ -95,7 +96,7 @@ internal class FakeObserveDiscovery(
     var subscriptions: Int = 0
         private set
 
-    override fun invoke(): Flow<DiscoveryModel> = flow {
+    override fun invoke(platform: PlatformModel): Flow<DiscoveryModel> = flow {
         subscriptions++
         script.forEach { emit(it) }
         awaitCancellation()
@@ -108,7 +109,7 @@ internal class FakeBootEmulator : BootEmulatorUseCase {
     val booted: MutableList<String> = mutableListOf()
     var failure: Throwable? = null
 
-    override suspend fun invoke(avdName: String): Optional {
+    override suspend fun invoke(platform: PlatformModel, avdName: String): Optional {
         booted += avdName
         return failure?.let { Result.failure(it) } ?: Result.success(Unit)
     }
@@ -135,7 +136,7 @@ internal class FakeStartMirroring : StartMirroringUseCase {
 
     private var midStreamFailure: Throwable? = null
 
-    override fun invoke(deviceId: String): Flow<MirrorFrameModel> = source
+    override fun invoke(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel> = source
         .onStart {
             startedDevices += deviceId
             activeCollectors++
@@ -165,7 +166,7 @@ internal class FakeStartMirroring : StartMirroringUseCase {
 internal class FakeObserveMirrorStats(
     private val script: Flow<MirrorStatsModel> = emptyFlow(),
 ) : ObserveMirrorStatsUseCase {
-    override fun invoke(): Flow<MirrorStatsModel> = script
+    override fun invoke(platform: PlatformModel): Flow<MirrorStatsModel> = script
 }
 
 /**
@@ -308,7 +309,10 @@ internal class FakeDumpHierarchy(
     val calls: MutableList<String> = mutableListOf()
     private var gate: CompletableDeferred<Result<HierarchySnapshotModel>>? = null
 
-    override suspend fun invoke(deviceId: String): Result<HierarchySnapshotModel> {
+    override suspend fun invoke(
+        platform: PlatformModel,
+        deviceId: String,
+    ): Result<HierarchySnapshotModel> {
         calls += deviceId
         if (!manual) return result
         val deferred = CompletableDeferred<Result<HierarchySnapshotModel>>()

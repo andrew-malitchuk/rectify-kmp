@@ -4,6 +4,7 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import kotlinx.coroutines.flow.Flow
 
@@ -38,23 +39,29 @@ public interface DeviceRepository {
      *
      * Emits [DiscoveryModel.Detecting] immediately, then one value per poll, forever, until
      * the collector stops. Every emission is a success value, a missing tool included.
+     *
+     * @param platform Which device family to poll.
      */
-    public fun observeDiscovery(): Flow<DiscoveryModel>
+    public fun observeDiscovery(platform: PlatformModel): Flow<DiscoveryModel>
 
     /**
      * Boots the emulator image named [avdName].
      *
      * Returns as soon as the emulator is launched; booting completes in the background and
      * the next discovery poll reports it as running.
+     *
+     * @param platform Which device family [avdName] names an image of.
      */
-    public suspend fun bootEmulator(avdName: String)
+    public suspend fun bootEmulator(platform: PlatformModel, avdName: String)
 
     /**
      * Streams frames from the device identified by [deviceId].
      *
      * Cancelling the collector stops the capture loop and kills any in-flight child process.
+     *
+     * @param platform Which device family [deviceId] belongs to.
      */
-    public fun mirror(deviceId: String): Flow<MirrorFrameModel>
+    public fun mirror(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel>
 
     /**
      * Captures the view hierarchy of the device identified by [deviceId].
@@ -65,14 +72,24 @@ public interface DeviceRepository {
      *
      * An unreadable dump is [HierarchySnapshotModel.Empty], not an exception; a density the
      * device would not report is `densityDpi = 0`. Only a failed command throws.
+     *
+     * @param platform Which device family [deviceId] belongs to.
      */
-    public suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel
+    public suspend fun dumpHierarchy(platform: PlatformModel, deviceId: String): HierarchySnapshotModel
 
-    /** Live statistics of the active mirroring session. */
-    public fun observeMirrorStats(): Flow<MirrorStatsModel>
+    /**
+     * Live statistics of the active mirroring session.
+     *
+     * @param platform Which device family the session streams from.
+     */
+    public fun observeMirrorStats(platform: PlatformModel): Flow<MirrorStatsModel>
 
     /**
      * Restarts the `adb` daemon: kills it, then starts it again.
+     *
+     * Deliberately NOT platform-parameterised: it is an Android-only affordance, and leaving
+     * it unqualified is what keeps it unreachable from a non-Android surface instead of
+     * giving that surface a daemon it does not have.
      *
      * Both halves are needed and in that order. `start-server` alone is a "make sure one
      * exists" command, not a repair command, so it cannot clear a daemon that is alive but
@@ -87,6 +104,8 @@ public interface DeviceRepository {
     /**
      * Records the path to the `adb` binary the user pointed Rectify at, or clears it when
      * [path] is empty.
+     *
+     * Android-only, and takes no `platform` for the same reason [restartAdbServer] does not.
      *
      * The path is deliberately NOT validated here. It arrives from a file dialog, so it is
      * outside the program's control, and the only honest place to check it is against the
