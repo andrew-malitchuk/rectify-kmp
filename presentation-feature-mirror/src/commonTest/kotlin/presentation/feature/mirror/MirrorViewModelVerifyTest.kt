@@ -29,6 +29,7 @@ import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorStage
 import presentation.feature.mirror.source.mirror.MirrorViewModel
+import presentation.feature.mirror.source.mirror.SendPhase
 import presentation.feature.mirror.source.mirror.VerifyError
 import presentation.feature.mirror.source.mirror.VerifyPhase
 import kotlin.test.AfterTest
@@ -73,6 +74,14 @@ private val UNMATCHED_RECT = DeviceRect(
     top = 1_600,
     right = 600 + MIN_REGION_PIXELS,
     bottom = 1_600 + MIN_REGION_PIXELS,
+)
+
+/** A second unmatched region, clear of both [RECT] and [UNMATCHED_RECT]. */
+private val OTHER_UNMATCHED_RECT = DeviceRect(
+    left = 100,
+    top = 1_000,
+    right = 100 + MIN_REGION_PIXELS,
+    bottom = 1_000 + MIN_REGION_PIXELS,
 )
 
 private fun phone(): DeviceModel = DeviceModel(
@@ -904,5 +913,302 @@ class MirrorViewModelVerifyTest {
             status.writes,
             "exactly one batch may be moved on, and it is the one the user asked about",
         )
+    }
+
+    // -- T-13: the follow-up re-stage -------------------------------------------------------------
+
+    /**
+     * Three annotations of which only the MIDDLE one is fixed.
+     *
+     * The order matters: the still-off rows are then the batch's 0th and 2nd, so a re-stage
+     * that kept either the rows' own indices or their original badges would be caught. A batch
+     * whose still-off rows happened to be the 1st and 2nd could not tell the three apart.
+     */
+    private fun mixedBatchOfThree(): SentBatchModel = sentBatch(
+        listOf(
+            annotation(UNMATCHED_RECT, comment = "the CTA is off by 4dp"),
+            annotation(RECT, comment = "the price is clipped"),
+            annotation(OTHER_UNMATCHED_RECT, comment = "the divider is missing"),
+        ),
+    )
+
+    /**
+     * Drains both clocks until [done] holds, for at most a few real seconds.
+     *
+     * [settle]'s fixed budget is right for the verify run but not for the send behind a
+     * follow-up: the history write on that path runs the process's first `cropAndScale`, whose
+     * first `ImageBitmap(w, h)` goes looking for Skiko. Waiting on the condition costs nothing
+     * when the work is already done — the same helper, for the same reason, as
+     * `MirrorViewModelResolveAndSendTest`'s.
+     */
+    private suspend fun TestScope.settleUntil(done: () -> Boolean) {
+        repeat(1_000) {
+            advanceUntilIdle()
+            if (done()) return
+            withContext(Dispatchers.Default) { delay(5) }
+        }
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun aFollowUpReStagesOnlyTheStillOffRowsRenumberedFromOne() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        // Parked in publish, so the staged batch is still on screen to be asserted against.
+        val handoff = FakeAnnotationHandoff(manual = true)
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        assertEquals(
+            2,
+            assertNotNull(viewModel.currentState.verify).stillOffRows.size,
+            "setup check -- a 2-of-3 run is what makes the renumbering observable",
+        )
+
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settle()
+
+        val frozen = assertNotNull(viewModel.currentState.frozen)
+        assertEquals(listOf(1, 2), frozen.annotations.map { it.index }, "not 1,2 of the rows")
+        assertEquals(
+            listOf("the CTA is off by 4dp", "the divider is missing"),
+            frozen.annotations.map { it.comment },
+            "the comments are re-sent verbatim",
+        )
+        assertEquals(
+            listOf(UNMATCHED_RECT, OTHER_UNMATCHED_RECT),
+            frozen.annotations.map { it.rect },
+            "the rects are the ones measured on the AFTER frame",
+        )
+        assertNull(frozen.promptOverride, "an override belongs to the frame it was typed on")
+    }
+
+    @Test
+    fun aFollowUpTearsTheVerifyStageDownInTheSameReduction() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val handoff = FakeAnnotationHandoff(manual = true)
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settle()
+
+        assertNull(viewModel.currentState.verify, "Verify outranks Frozen -- it must be cleared")
+        assertEquals(
+            MirrorStage.Frozen,
+            viewModel.currentState.stage,
+            "the send UI, including its failure state, has to own the screen now",
+        )
+        assertNull(viewModel.verifyFrames.value, "the run's pair goes with its view")
+        assertNull(viewModel.verifyAfterHeld, "the frame moved to the frozen slot, not a copy")
+    }
+
+    @Test
+    fun aSuccessfulFollowUpSendsTheAfterFrameAndMarksTheOriginalBatch() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val handoff = FakeAnnotationHandoff()
+        val record = FakeRecordSentBatch()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            recordSentBatch = record,
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+            encodeCrop = FakeCropEncoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settleUntil { status.writes.isNotEmpty() }
+
+        val envelope = handoff.published.single()
+        assertEquals(listOf(1, 2), envelope.annotations.map { it.index })
+        assertEquals(
+            listOf(AFTER_TAG),
+            handoff.publishedImages.single()
+                .single { it.name == "frame.png" }
+                .bytes
+                .toList(),
+            "the follow-up must carry the RE-CAPTURED frame, never the stored BEFORE one",
+        )
+        assertEquals(
+            listOf(BATCH_ID to BatchStatusModel.FollowUpSent),
+            status.writes,
+            "exactly one write, on the ORIGINAL batch -- the mixed run itself wrote none",
+        )
+        assertEquals(
+            envelope.sessionId,
+            record.recorded.single().id,
+            "the follow-up records its own Sent row, keyed by its own session",
+        )
+        assertNull(viewModel.pendingFollowUpBatchId, "nothing may outlive the send that used it")
+    }
+
+    @Test
+    fun aFollowUpWhosePublishFailsWritesNoStatus() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+            handoff = FakeAnnotationHandoff(failure = IllegalStateException("no handoff slot")),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settle()
+
+        assertEquals(SendPhase.Failed, viewModel.currentState.send)
+        assertTrue(status.writes.isEmpty(), "nothing was published -- nothing was followed up")
+        assertNotNull(viewModel.currentState.frozen, "the retry is over the same staged batch")
+        assertNull(viewModel.pendingFollowUpBatchId, "no later send may inherit this batch")
+    }
+
+    @Test
+    fun aPlainSendWithNoFollowUpPendingWritesNoStatus() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val record = FakeRecordSentBatch()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            recordSentBatch = record,
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.StageAnnotation(RECT))
+        settle()
+        viewModel.handleIntent(MirrorIntent.ResolveAndSend)
+        settleUntil { record.recorded.isNotEmpty() }
+
+        assertEquals(1, record.recorded.size, "setup check -- the plain send went through")
+        assertTrue(status.writes.isEmpty(), "a send that is not a follow-up moves no batch on")
+    }
+
+    // -- T-14: the mark-all override --------------------------------------------------------------
+
+    @Test
+    fun markAllVerifiedForcesEveryRowFixedAndWritesVerifiedOnce() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        assertTrue(status.writes.isEmpty(), "setup check -- the mixed run withheld Verified")
+
+        viewModel.handleIntent(MirrorIntent.MarkAllVerified)
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertTrue(verify.rows.all { it.outcome == VerificationOutcome.Fixed })
+        assertEquals(verify.rowCount, verify.fixedCount, "the panel now reads m of m")
+        assertEquals(listOf(BATCH_ID to BatchStatusModel.Verified), status.writes)
+        assertEquals(
+            MirrorStage.Verify,
+            viewModel.currentState.stage,
+            "the override stays on the view it overrode -- ExitVerify is the only exit",
+        )
+    }
+
+    /**
+     * SC-20's race, stated as what is actually observable.
+     *
+     * The override cancels the run FIRST, so the dump that answers afterwards reduces nothing:
+     * without the cancel this run lands three `StillOff` rows straight over the human's
+     * judgement. The view has no rows to force yet at this point, which is also why no status
+     * is written here — the override and the automatic path obey the same zero-row rule.
+     */
+    @Test
+    fun markAllVerifiedMidRunCancelsItSoNoLateVerdictLands() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.MarkAllVerified)
+        settle()
+        // The dump the cancelled run was parked on answers late.
+        dump.resolve(Result.success(snapshot()))
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertTrue(
+            verify.rows.isEmpty(),
+            "the cancelled run must not land verdicts over the override: ${verify.rows}",
+        )
+        assertTrue(status.writes.isEmpty(), "a rowless view has nothing to mark verified")
+    }
+
+    @Test
+    fun markAllVerifiedOnARowlessViewWritesNothing() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            // Aborts with NotOnDisk, so the view carries an error and no verdicts at all.
+            getSentBatch = FakeGetSentBatch(batch = null),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.MarkAllVerified)
+        settle()
+
+        assertEquals(VerifyError.NotOnDisk, viewModel.currentState.verify?.error)
+        assertTrue(status.writes.isEmpty(), "there is nothing to overrule on a run that failed")
     }
 }

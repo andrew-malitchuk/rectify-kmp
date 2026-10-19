@@ -60,6 +60,7 @@ import presentation.feature.mirror.core.payload.PAYLOAD_FORMAT_VERSION
 import presentation.feature.mirror.core.picker.nextSelectableIndex
 import presentation.feature.mirror.core.send.assembleEnvelope
 import presentation.feature.mirror.core.verify.changedRatio
+import presentation.feature.mirror.core.verify.followUpAnnotations
 import presentation.feature.mirror.core.verify.regionPixels
 import presentation.feature.mirror.core.verify.beforeAfterLine
 import presentation.feature.mirror.core.verify.verdictOf
@@ -361,11 +362,8 @@ public class MirrorViewModel(
             is MirrorIntent.AdbPathChosen -> adbPathChosen(intent.path)
             is MirrorIntent.VerifyBatch -> verifyBatch(intent.batchId)
             MirrorIntent.ExitVerify -> exitVerify()
-            // Declared ahead of their handlers so the contract is complete in one place; the
-            // bodies land with the re-stage (SendFollowUp) and the override (MarkAllVerified).
-            // Inert, never a TODO() that would crash a user who got to the button first.
-            MirrorIntent.SendFollowUp -> Unit
-            MirrorIntent.MarkAllVerified -> Unit
+            MirrorIntent.SendFollowUp -> sendFollowUp()
+            MirrorIntent.MarkAllVerified -> markAllVerified()
         }
     }
 
@@ -697,6 +695,115 @@ public class MirrorViewModel(
                 regionPx = beforePixels?.size ?: 0,
             ),
         )
+    }
+
+    /**
+     * Re-sends the rows a run reported as still off, as a NEW batch (AC-42 / FR-47 / SC-9).
+     *
+     * The whole re-stage is four assignments and one reduction, and then the send path F-7
+     * already ships runs unchanged — including its failure and retry UI:
+     *
+     * - **[currentFrozenHeld] becomes [verifyAfterHeld]**, with [currentFrozenFrame] beside it
+     *   as everywhere else in this class. That one pairing is what makes "cropped from the
+     *   AFTER frame" true with no new crop code: `resolveAndSend` encodes crops and `frame.png`
+     *   out of the held frame it finds, and the one it now finds is the re-captured one.
+     * - **The annotations are renumbered** by `followUpAnnotations` — the only place the rows'
+     *   0-based history order becomes a 1-based badge, which the envelope's `crop-N.png` names
+     *   depend on.
+     * - **[FrozenFrame.promptOverride] is explicitly `null`** (`bugs.json#PP-TD-7`/`PP-TD-2`):
+     *   an override belongs to the frame it was typed against, and carrying the old one onto a
+     *   new frame would describe annotations it was never about. The comments ride along
+     *   verbatim — v1 re-files the complaint, it does not reframe it.
+     * - **[MirrorUiState.verify] is cleared in the SAME reduction that sets `frozen`.**
+     *   [MirrorStage.Verify] is derived AHEAD of [MirrorStage.Frozen], so a staging that left
+     *   it set would pin the user on a stale Verify view with the send UI unreachable behind
+     *   it (the coupling is recorded on [MirrorUiState.stage] itself).
+     *
+     * The hierarchy goes with it: the dump on hand belongs to an older frozen frame, never to
+     * this freshly captured one, so the follow-up is honestly sent frameless-of-hierarchy
+     * (`hierarchyStatus = Absent`) rather than with another frame's node tree attached.
+     *
+     * [pendingFollowUpBatchId] is a plain field and not reduced state precisely so it survives
+     * that teardown — see where it is declared, and [resolveAndSend], which consumes it.
+     */
+    private fun sendFollowUp() {
+        // Cancelled out here rather than inside the intent, exactly as [exitVerify] does it: an
+        // in-flight run must not be able to reduce a verdict over the frame being staged.
+        verifyJob?.cancel()
+        verifyJob = null
+        intent {
+            val view = state.verify ?: return@intent
+            val held = verifyAfterHeld ?: return@intent
+            val stillOff = view.stillOffRows
+            // The button is hard-disabled at zero and [resolveAndSend] owns the in-flight
+            // window; both are re-checked here so a stray dispatch cannot stage an empty batch
+            // or re-freeze the frame a publish is already reading.
+            if (stillOff.isEmpty() || state.send.isInFlight) return@intent
+
+            currentFrozenFrame.value = held.bitmap
+            currentFrozenHeld.value = held
+            // The run owned that frame; the frozen slot owns it now. Everything else it held
+            // goes with it, through the same helper [exitVerify] uses -- the pending id is
+            // re-armed below, deliberately AFTER this.
+            releaseVerify()
+            // The dump on hand belongs to an older frozen frame, never to this freshly
+            // captured one, so the follow-up goes out honestly without a hierarchy rather
+            // than with another frame's node tree attached.
+            releaseHierarchy()
+            val frozen = FrozenFrame(
+                deviceSize = IntSize(width = held.bitmap.width, height = held.bitmap.height),
+                annotations = followUpAnnotations(stillOff),
+                // Stamped in the intent body, never inside `reduce` -- same CAS reason as
+                // [stageAnnotation]'s.
+                frameId = ++freezeCounter,
+                deviceLabel = state.selectedRowDetailWithoutTransport(),
+                promptOverride = null,
+            )
+            pendingFollowUpBatchId = view.batchId
+            reduce {
+                state.copy(frozen = frozen, verify = null, send = SendPhase.Idle)
+                    .withoutMeasurements()
+            }
+            // Dispatched AFTER the reduce has landed, so the send reads the batch this just
+            // staged rather than the state it replaced.
+            resolveAndSend()
+        }
+    }
+
+    /**
+     * The tester's override: this batch is fixed, whatever the diff said (AC-43 / SC-20).
+     *
+     * The run is cancelled FIRST, so a late completion cannot reduce its own verdicts over the
+     * human's — the same ordering, for the same reason, as [verifyBatch]'s own cancel.
+     *
+     * **It does not leave the stage, and that is deliberate.** Forcing every row to
+     * [VerificationOutcome.Fixed] is what the user sees happen: the panel's `n of m` becomes
+     * `m of m` and every row flips. Exiting in the same breath would throw that confirmation
+     * away and make the override indistinguishable from a click that did nothing.
+     * [MirrorIntent.ExitVerify] stays the one and only exit — it is the documented owner of
+     * the four-field teardown, and the "← Back to live" chip is on screen throughout.
+     *
+     * A rowless view writes nothing: an error carries no verdicts by construction, and a run
+     * that has not produced any rows yet has nothing to overrule — marking a batch verified on
+     * a view with zero rows is exactly the vacuous write step 7 of [runVerify] guards against,
+     * and this manual path reaches the same end state under the same rule.
+     */
+    private fun markAllVerified() {
+        verifyJob?.cancel()
+        verifyJob = null
+        intent {
+            val view = state.verify ?: return@intent
+            if (view.error != null || view.rows.isEmpty()) return@intent
+            reduce {
+                val current = state.verify ?: return@reduce state
+                state.copy(
+                    verify = current.copy(
+                        rows = current.rows.map { it.copy(outcome = VerificationOutcome.Fixed) },
+                    ),
+                )
+            }
+            updateBatchStatus(view.batchId, BatchStatusModel.Verified)
+        }
     }
 
     /**
@@ -1222,6 +1329,17 @@ public class MirrorViewModel(
      * is by construction the pre-reset count.
      */
     private fun resolveAndSend() = intent {
+        // Read once and cleared in the same breath, BEFORE the first guard and before any
+        // suspension: that is the `finally` this needs, bought without one. No path out of
+        // this handler -- a dropped dispatch, a failure, a cancellation -- can leave the id
+        // behind for the next, unrelated send to write a status with (`bugs.json#PP-TD-2`).
+        //
+        // Ceiling, taken knowingly: a follow-up whose publish FAILS and is then retried
+        // through F-7's retry publishes the same batch but no longer relabels the original,
+        // which keeps its `Sent` status. A status label is the only thing lost, and the
+        // alternative -- an id that outlives its send -- is the bug this guard exists for.
+        val followUpFor = pendingFollowUpBatchId
+        pendingFollowUpBatchId = null
         if (!canSend(state)) return@intent
         val frozen = state.frozen
         val held = currentFrozenHeld.value
@@ -1297,6 +1415,15 @@ public class MirrorViewModel(
                 }
                 recordSentBatch(sentBatch(envelope, images, held.bytes, thumbPng)).onFailure { error ->
                     log.w(error) { "History not recorded for ${envelope.sessionId} -- the send stands" }
+                }
+                // AC-42's other half, and only ever on SUCCESS: the ORIGINAL batch is marked
+                // as followed up, after the follow-up's own `Sent` row exists, in the same
+                // logged-and-dropped failure domain as that write. A plain send has no pending
+                // id and writes nothing at all.
+                if (followUpFor != null) {
+                    updateBatchStatus(followUpFor, BatchStatusModel.FollowUpSent).onFailure { error ->
+                        log.w(error) { "Follow-up status not written for $followUpFor" }
+                    }
                 }
                 postSideEffect(
                     MirrorSideEffect.SendComplete(

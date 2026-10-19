@@ -35,3 +35,5 @@
 {"stage": "execution", "step": "wave-5", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T23:29:33Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-5", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 100082, "at": "2026-10-18T23:37:55Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-6", "agent": "sdd-build-frontend-implement", "event": "start", "at": "2026-10-18T23:37:56Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-6", "agent": "sdd-build-frontend-implement", "event": "end", "tokens": 191373, "at": "2026-10-18T23:51:04Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-7", "agent": "sdd-build-business-implement", "event": "start", "at": "2026-10-18T23:51:04Z", "spec": "verify-and-rediff-loop"}
