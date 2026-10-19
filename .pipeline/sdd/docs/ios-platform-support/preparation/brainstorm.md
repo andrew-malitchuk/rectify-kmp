@@ -1,0 +1,249 @@
+# ios-platform-support — brainstorm
+
+## Envelope
+
+| field | value |
+| --- | --- |
+| stage | preparation |
+| step | brainstorm |
+| status | done |
+| producedBy | sdd-build-architecture-brainstorm |
+| schemaVersion | 1 |
+| createdAt | 2026-10-19T02:08:36Z |
+| updatedAt | 2026-10-19T02:08:36Z |
+
+## Gate
+
+### type
+
+human
+
+### approvedBy
+
+orchestrator-autonomous
+
+### approved
+
+true
+
+### at
+
+2026-10-19T02:08:36Z
+
+## Provenance
+
+### selfHash
+
+f5794360cf73ea8fdcbd4599c120dc4ee1b2a0c1b02c895899aaeceb9eb3742b
+
+### inputs
+
+| artifact | hash |
+| --- | --- |
+| preparation/input.json | de1f03b17a9b8d197b530b04d7c9ef96019e6fb2fdf4b6075231451e0b6d24f0 |
+| preparation/clarify.json | 19b420cc5a7c75b3fd98088e0c6f9bc1521b84b2796ca0d27c4e1aaa0a606779 |
+
+## Data
+
+### highLevelPlan
+
+- Stage A — widen the closed sets (data-device-api, commonMain, no behaviour change): add ToolKind.Simctl("xcrun", null); add DeviceCommand.SimulatorBoot; add HostCommand.{XcrunVersion, ListSimulators, IdbVersion, ListTargets}; change buildDeviceArgv's signature to take the ToolKind and branch the device selector per tool, with a structural NFR-5 check (FR-49, FR-50, NFR-5).
+- Stage B — hand-rolled parsers + resources (data-device-api, commonMain, fixture-testable, zero hardware): parseSimctlDevices over `xcrun simctl list devices available` plain text, parseIdbTargets over `idb list-targets` pipe-separated text, plus SimulatorResource / IosTargetResource. Precedent: parseAdbDevices / parseUiAutomatorDump (FR-51, NFR-18).
+- Stage C — the dispatch seam (domain + DI): thread `platform: PlatformModel` through exactly the five DeviceRepository methods that actually dispatch; qualify DeviceCommandExecutor and MirrorTransport with named("android")/named("ios") in DeviceSourcesProvider.desktop.kt; replace IdbHostSource with IosHostSource; add the matching Unsupported* registrations for the Android/iOS graphs (FR-48, FR-56, NFR-20).
+- Stage D — the iOS poll (data-repository-impl): split DeviceRepositoryImpl.poll() into pollAndroid()/pollIos(); pollIos produces DiscoveryModel.{Found, SimulatorNotBooted, DeviceNotTrusted, ToolMissing, NoDeviceFound}; fix the hardcoded ToolKind.Adb.binaryName in observeDiscovery's PollFailed catch so it names the platform's own tool (FR-51, FR-52).
+- Stage E — iOS mirroring, which is almost entirely wiring: IosDeviceCommandExecutorImpl maps DeviceCommand.Screencap to `xcrun simctl io <udid> screenshot --type=png -` (simulator) or `idb screenshot --udid <udid>` (physical); ScreencapMirrorTransport is instantiated a second time around it and is NOT edited (FR-54, AC-48).
+- Stage F — the two error cards end to end: delete MirrorStage.IosDeferred and its derivation branch; make errorCard() platform-aware; add MirrorErrorKind.{SimulatorNotBooted, DeviceNotTrusted}; add exactly one new intent (BootSimulator) and reuse OpenPicker / RetryDiscovery for the other three actions; add ~8 strings; extend applyDiscovery with two branches (FR-52, FR-53, AC-31, AC-46, AC-47).
+- Stage G — picker + regression: replace platformCards()'s `enabled = platform == Android`; relabel mirror_group_emulator neutrally; run the full existing Android suite plus a cross-target build (AC-49, SC-29, FR-55).
+
+### proposedArchitecture
+
+```
+Keep every existing interface and every existing transport/process primitive; add a platform parameter to the five DeviceRepository methods that genuinely dispatch, and resolve the per-platform implementations through qualified Koin bindings inside the one existing registration seam.
+
+The shape, concretely:
+
+1. `DeviceRepository` gains `platform: PlatformModel` on FIVE methods only — `observeDiscovery(platform)`, `mirror(platform, deviceId)`, `dumpHierarchy(platform, deviceId)`, `bootEmulator(platform, target)`, `observeMirrorStats(platform)`. The other four are deliberately left alone: `detectTools()` already probes every platform and now returns three ToolModels (adb, xcrun/simctl, idb) rather than two; `refreshDiscovery()` nudges whichever loop is running; `restartAdbServer()` and `setAdbPath(path)` are Android-only affordances whose KDoc is widened to say so. Adding `platform` to all nine for symmetry would touch four more use-case interfaces for zero dispatch value.
+
+2. `DeviceRepositoryImpl` takes two qualified instances per dispatching interface and selects with an exhaustive `when`, not a map lookup — compile-time totality for the same line count:
+```kotlin
+internal class DeviceRepositoryImpl(
+    private val adbHostSource: AdbHostSource,
+    private val iosHostSource: IosHostSource,
+    private val emulatorSource: EmulatorSource,
+    private val androidExecutor: DeviceCommandExecutor,
+    private val iosExecutor: DeviceCommandExecutor,
+    private val androidTransport: MirrorTransport,
+    private val iosTransport: MirrorTransport,
+    private val adbPathPreferenceSource: AdbPathPreferenceSource,
+    private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+) : DeviceRepository {
+    private fun executor(p: PlatformModel) = when (p) { Android -> androidExecutor; Ios -> iosExecutor }
+    private fun transport(p: PlatformModel) = when (p) { Android -> androidTransport; Ios -> iosTransport }
+}
+```
+`poll()` splits into `pollAndroid(avdNames, emptyPolls)` (today's body, byte-for-byte) and `pollIos(emptyPolls)` (new), and `observeDiscovery(platform)` picks one in its loop. NFR-20 holds because the Android branch is a MOVE, not a rewrite.
+
+3. Koin, in `DeviceSourcesProvider.desktop.kt` — the single seam, unchanged in location:
+```kotlin
+internal actual fun Module.provideDeviceSources() {
+    single { val p = get<AdbPathPreferenceSource>(); ToolResolver(userPath = { p.getData().path }) }
+    singleOf(::AdbHostSourceImpl) bind AdbHostSource::class
+    singleOf(::EmulatorSourceImpl) bind EmulatorSource::class
+    singleOf(::IosHostSourceImpl) bind IosHostSource::class
+    single<DeviceCommandExecutor>(named("android")) { AdbDeviceCommandExecutor(get()) }
+    single<DeviceCommandExecutor>(named("ios")) { IosDeviceCommandExecutor(get()) }
+    single<MirrorTransport>(named("android")) { ScreencapMirrorTransport(executor = get(named("android"))) }
+    single<MirrorTransport>(named("ios")) { ScreencapMirrorTransport(executor = get(named("ios"))) }
+}
+```
+Per `koin-di.md` the qualified registrations use explicit `single { … get() }` rather than `singleOf`. `AdbHostSource` and `EmulatorSource` stay UNQUALIFIED because they have no iOS sibling of the same shape, and `IosHostSource` is unqualified for the same reason — qualifying an interface with one implementation is noise.
+
+4. `ScreencapMirrorTransport` is registered TWICE and edited ZERO times. That is the whole of "iOS mirroring" at the transport layer; the difference between the two instances is which executor they were handed. This is the single biggest reason screenshot polling beat `idb video-stream`.
+
+5. The shadowing bug is fixed on both halves, as the survey requires. Poll half: `observeDiscovery(platform)` is a parameterised flow, so `MirrorViewModel.selectPlatform()` must cancel its discovery collection job and re-collect with the new platform — the adb loop is structurally gone the instant iOS is selected, not merely ignored. State half: `selectPlatform()` additionally resets `discovery = DiscoveryModel.Detecting, rows = emptyList()` so no stale Android emission survives the switch, and `errorCard()` gains a two-line guard returning `null` when `platform == Ios` and the discovery variant is one only the Android poll can produce. The guard is the provable half (pure, assertable in `commonTest` with no device); the job-cancel is the structural half.
+
+6. `MirrorStage.IosDeferred`, its `platform == Ios -> IosDeferred` derivation branch, the `mirror_ios_deferred` string and its render branch are all DELETED. iOS then flows through the same Picker/Mirror/NoSignal derivation Android uses, which is what makes every downstream surface work for free.
+```
+
+### components
+
+| name | responsibility |
+| --- | --- |
+| buildDeviceArgv (data-device-api/source/parse/DeviceArgv.kt) | The single argv construction point, now `buildDeviceArgv(tool: ToolKind, toolPath: String, device: DeviceId, command: DeviceCommand)`. Branches the device selector per tool — adb `-s <id>` prefix, simctl `simctl <sub> <udid>` positional, idb `<sub> --udid <id>` suffix — then enforces NFR-5 structurally rather than positionally (see the dedicated note in `exceptions`). |
+| ToolKind.Simctl | `Simctl("xcrun", null)`. The binary is `xcrun`; the argv branch inserts the `simctl` subcommand. Resolved from `/usr/bin` (always present with Xcode CLT) plus PATH — a new candidate entry in `probeCandidates` keyed off the kind, same mechanism as `sdkSubdirectory` today. |
+| parseSimctlDevices (data-device-api/source/parse) | Hand-rolled line scanner over `xcrun simctl list devices available` plain text: `-- iOS 18.1 --` runtime headers, `    iPhone 16 (UDID) (Booted\|Shutdown)` rows. Never throws; an unparseable line is skipped; `(unavailable, …)` rows are dropped. Returns `List<SimulatorResource>`. Same contract and same test style as `parseAdbDevices`. |
+| parseIdbTargets (data-device-api/source/parse) | Splits `idb list-targets` rows on `\|`, keeps `target_type == device`, reads name/udid/state. Untrusted detection lives behind one named constant set so it can be corrected in one place once measured (AS-2). Never throws. |
+| IosHostSource (data-device-api/source/datasource) — REPLACES IdbHostSource | `probeSimctl(): ToolProbe`, `probeIdb(): ToolProbe`, `listSimulators(): List<SimulatorResource>`, `listDevices(): List<IosTargetResource>`, `bootSimulator(DeviceId)`. One interface because one iOS poll uses both binaries; `IdbHostSource` is deleted rather than grown, since its only caller is `detectTools()`'s probe and `probeIdb()` subsumes it. |
+| IosHostSourceImpl (data-device-impl/src/desktopMain/.../source/datasource) | Resolves xcrun and idb through the existing `ToolResolver`, runs the four new HostCommands through `ProcessRunner.run()` at `MirrorTuning.HostCommandTimeoutMs`, and `bootSimulator` at `MirrorTuning.DaemonStartTimeoutMs`. No new tuning constants (SC-25). |
+| IosDeviceCommandExecutorImpl (data-device-impl/src/desktopMain) | Implements the existing `DeviceCommandExecutor`. Chooses `ToolKind.Simctl` vs `ToolKind.Idb` per call from the target set the last poll produced (simulator udids are known to be simulators), then `buildDeviceArgv(tool, path, device, command)` → `ProcessRunner.run`. `DeviceCommand.Screencap` and `SimulatorBoot` are supported; the uiautomator/wm/getprop members throw a documented unsupported-on-this-tool `DeviceCommandException`. |
+| DeviceRepositoryImpl.pollIos() | `probeSimctl` → ToolMissing if absent; `listSimulators()`; `listDevices()` wrapped so an idb failure (no `idb_companion`) degrades to an empty physical list rather than hiding simctl's answer; then classifies into DeviceNotTrusted / SimulatorNotBooted / NoDeviceFound / Found. The one place iOS semantics live. |
+| DiscoveryModel.SimulatorNotBooted / DiscoveryModel.DeviceNotTrusted (domain-core) | `SimulatorNotBooted(simulators: List<EmulatorModel>, toolVersion: String, lastPollEpochMs: Long)` and `DeviceNotTrusted(deviceId: String, deviceName: String, simulatorsAvailable: Boolean)`. Unprefixed per the confirmed survey. Both are SUCCESS values, per DiscoveryModel's existing contract — neither ever becomes a `Failure`. |
+| errorCard() platform guard (presentation-feature-mirror/core/discovery/DiscoveryErrorProjection.kt) | Signature unchanged — `platform` is already on `MirrorUiState`. Two new `when` arms for the iOS variants, plus an early guard that returns `null` when `platform == Ios` and the variant is Android-only. Stays pure and Compose-free, which is why AC-46's shadowing assertion is a plain `commonTest`. |
+| MirrorIntent.BootSimulator(udid) — the ONLY new intent | "Boot simulator" (AC-47). The other three card actions reuse what already exists: "Choose another" and "Use simulator" are both `MirrorIntent.OpenPicker`; "I've tapped Trust — retry" is `MirrorIntent.RetryDiscovery`. FR-53 asks for four new intents; three of them already ship. |
+| UnsupportedDeviceSources (data-device-impl/core/unsupported, commonMain) | Gains `UnsupportedIosHostSource`, and registers the SAME existing `UnsupportedDeviceCommandExecutor` / `UnsupportedMirrorTransport` instances under BOTH `named("android")` and `named("ios")`. Loses `UnsupportedIdbHostSource`. Four registrations, no new behaviour (FR-56). |
+
+### alternatives
+
+| title | pros | cons | tradeoffs | chosen |
+| --- | --- | --- | --- | --- |
+| Qualified Koin bindings + `platform` on five DeviceRepository methods (RECOMMENDED, confirmed by clarify survey) | ["Dispatch is explicit at the type level: a reader of `mirror(platform, id)` can see which device family it targets", "ScreencapMirrorTransport is reused verbatim as two instances — zero transport code written", "No hidden mutable platform state inside the data layer; the ViewModel's `state.platform` stays the single source of truth", "`observeDiscovery(platform)` being a parameterised flow is what forces the adb loop to actually stop on switch — fixing half the shadowing bug by construction"] | ["~45 files touched. Five DeviceRepository signatures ripple into 5 use-case interfaces, 5 use-case impls, MirrorViewModel, MirrorFakes and four data-repository-impl test files before a single line of iOS code is written", "AC-49's regression surface is that whole ripple", "Two live `MirrorTransport` instances exist even though only one can stream at a time"] | Buys explicitness and testability with a large mechanical diff. The diff is mechanical, which is the saving grace: it is a signature change with no logic change, so the existing Android suite is a real guard rather than a formality. | true |
+| Dispatching decorator over a StateFlow<PlatformModel> | ["Far smaller diff — DeviceRepository's signatures never change, so no use case and no ViewModel call site moves", "AC-49 is nearly free"] | ["Hides platform in mutable shared state: `mirror(deviceId)` reads one thing today and another after a toolbar click with no signature to show it", "Introduces a race nobody can see in the types — a `mirror()` call in flight while the platform flips targets the wrong tool", "Needs a setter path from the ViewModel into the data layer anyway, so the \"no call sites change\" saving is partly illusory"] | Smaller now, worse at 3am. Explicitly rejected by the confirmed clarify survey; recorded here only so the rejection is traceable. | false |
+| A single `PlatformDeviceSource` super-interface with two implementations (collapse the five datasources into one per platform) | ["DeviceRepositoryImpl would hold two fields instead of seven", "Each platform's quirks live behind one boundary"] | ["Forces a lowest-common-denominator shape on surfaces that genuinely differ (adb has a daemon lifecycle; simctl has none; emulator boot is a detached foreground process, simctl boot is not)", "Rewrites the Android path wholesale, putting NFR-20/AC-49 at real risk for an aesthetic win", "Deletes the existing fine-grained test fakes that four test files depend on"] | The textbook-prettiest option and the worst fit for a `could`-priority feature whose headline constraint is "do not change Android behaviour". | false |
+| `simctl list devices -j` (JSON) instead of plain text | ["A stable, documented, machine-readable contract that will not drift with Xcode's pretty-printer", "Carries `isAvailable` and `availabilityError` explicitly"] | ["data-device-api has zero dependencies beyond :data-core and no serialization plugin — this means adding kotlinx-serialization-json to a module that currently has nothing, or hand-rolling a JSON reader", "Contradicts the confirmed clarify survey answer \"Moot — no JSON parsing needed in v1\"", "The plain-text format is already trivially regex-shaped and matches `parseAdbDevices`' precedent exactly"] | JSON is the right answer the day hierarchy capture lands (v1.1 needs a real JSON reader anyway for AX). Until then it is a dependency bought for one list of three fields. Kept as the documented escape hatch if the plain-text parser ever breaks. | false |
+| `idb video-stream` for mirroring | ["Materially higher frame rate than screenshot polling", "Lower per-frame process overhead"] | ["Needs a second `ProcessRunner` entry point (`stream(argv): Flow<ByteArray>`) — `run()` buffers stdout to EOF", "Needs H.264/MJPEG decode, which `decodeToImageBitmap()` cannot do; `MirrorFrame.bytes` is contractually an encoded PNG", "Needs a second transport implementation, destroying the \"ScreencapMirrorTransport unchanged\" saving"] | Explicitly out of scope per the confirmed survey and the clarify outOfScope list. Revisit only if measured iOS screenshot latency proves 10fps unusable. | false |
+| Add `EmulatorModel.bootId: String?` to carry a shut-down simulator's udid | ["Honest: `runningDeviceId` keeps meaning \"the running instance\"", "Backwards compatible via a `null` default — Android untouched"] | ["A new field on a shared domain model for one platform's identifier quirk", "Needs matching reads in `DiscoveryProjection.toRow` and anywhere else that builds a boot target"] | The alternative — populate `runningDeviceId` with the udid even when shut down and widen its KDoc — is zero structural change and produces exactly the right row (`id = udid`, `serial = udid`, `kind = Boot` from `isRunning = false`). The only cost is one sentence of KDoc. Recommending the KDoc widening; if a second consumer ever keys "is running" off `runningDeviceId != null`, add the field then. | false |
+
+### exceptions
+
+- NFR-5, restated and strengthened. Today the invariant is POSITIONAL — `listOf(toolPath, "-s", device.value) + command.arguments()` — and it is enforced only by the shape of that one line. Nothing stops a future `arguments()` branch from appending a second target. simctl cannot express it at all (`xcrun simctl io <udid> screenshot --type=png -` puts the udid positionally after a subcommand), and idb puts it in `--udid` after the subcommand. The generalisation must therefore replace a positional guarantee with a STRUCTURAL one: `buildDeviceArgv` builds the per-tool argv in a `when (tool)`, then asserts `check(argv.count { it == device.value } == 1)` before returning. That single check is tool-agnostic, fails loudly for any future branch that forgets or duplicates the selector, and is strictly stronger than what ships today. Paired with the existing `DeviceId` private-constructor + closed-`DeviceCommand` defences, the argv remains unforgeable.
+- `check()` throwing `IllegalStateException` from a `commonMain` pure function is correct here and is not a violation of the mappers-never-throw rule: a selector-less argv is a programming error, not unexpected input. It must never be reachable from user data.
+- `DeviceCommand.{WmSize, WmDensity, GetProp, EmuAvdName, UiAutomatorDump}` have no iOS meaning. The iOS argv branch and `IosDeviceCommandExecutorImpl` throw a documented `DeviceCommandException` naming the tool and the unsupported command, rather than silently returning empty bytes.
+- `dumpHierarchy(Ios, …)` short-circuits to `HierarchySnapshotModel.Empty` in the repository WITHOUT spawning a process (FR-57, AC-50). It must not reach the executor and must not throw — the Verify loop and `attachedHierarchyXml` already handle the empty case.
+- `restartAdbServer()` and `setAdbPath()` must become unreachable from the iOS surface, not merely harmless: the iOS error cards offer no 'Restart adb' / 'Locate adb' action, and `errorCard()`'s iOS arms never emit `MirrorErrorKind.{ToolMissing with adb copy, NoDevice}`.
+- `observeDiscovery`'s `catch (failure: DeviceCommandException)` currently hardcodes `tool = ToolKind.Adb.binaryName` in its `PollFailed`. On the iOS branch that would report an adb failure for an xcrun one. It must take the platform's own binary name.
+- `DiscoveryProjection.demotedToCold()` rewrites `id = avdName ?: id`, which would strip a simulator's udid. Unreachable in practice because the iOS poll emits `SimulatorNotBooted` rather than `NoDeviceFound` when simulators exist — but that is an invariant worth a KDoc line, not an accident worth discovering later.
+
+### edgeCases
+
+- `xcrun` exists but `simctl` does not (Command Line Tools installed, full Xcode absent): `xcrun: error: unable to find utility "simctl"`. Probing for the `xcrun` binary alone is NOT sufficient — `probeSimctl()` must run `xcrun simctl help` (or treat a non-zero ListSimulators as not-found) and report ToolMissing with the install hint.
+- `idb list-targets` with no `idb_companion` running: may fail or hang. The budget already covers the hang (`HostCommandTimeoutMs`), but the poll must NOT let an idb failure erase simctl's perfectly good simulator list — the physical list degrades to empty and the simulators still render.
+- Simulator names are NOT unique across runtimes — 'iPhone 16' exists under both iOS 17.5 and iOS 18.1 on this host. Booting by name is ambiguous; every iOS boot path must carry the udid. This is why `runningDeviceId` carries the udid for shut-down simulators and why `BootSimulator` takes a udid rather than reusing `BootSelectedAvd`.
+- `xcrun simctl list devices available` hides unavailable runtimes; `… list devices` shows them with an `(unavailable, …)` suffix. Using `available` avoids offering a boot that cannot succeed; the parser still skips the suffix defensively.
+- A simulator booted from Simulator.app outside Rectify appears as `Booted` on the very next poll and becomes a normal `Running` row — no special casing needed, same as an externally started emulator today.
+- `simctl boot` on an already-booted simulator exits non-zero ('Unable to boot device in current state: Booted'). Treat that specific failure as success: the user's goal is achieved.
+- Platform switched mid-stream while a session is live: `selectPlatform()` already nulls `sessionDeviceId` and releases the frozen frame; it must now ALSO cancel the discovery collection job. A late in-flight emission from the old flow arriving after the switch is why `discovery` is reset to `Detecting` in the same reduction.
+- Both a booted simulator AND a trusted physical iPhone present: `Found(physical, emulators)` with ≥2 selectable physical rows would trigger `MultipleDevices` — correct and already handled, no iOS work.
+- A physical iPhone visible to idb but untrusted, AND a booted simulator present: `Found` wins, the untrusted device shows as a disabled row with its state verbatim (exactly how `parseAdbDevices` treats an `unauthorized` handset). `DeviceNotTrusted` is reserved for the case where the untrusted device is the ONLY candidate.
+- `simctl io screenshot` on a simulator that shuts down mid-stream: a non-zero exit propagates as `DeviceCommandException` through the unchanged transport and flips the session to `Lost` — identical to an unplugged Android handset, no new code.
+- iOS screenshot bytes: `simctl io … screenshot --type=png -` writes a clean PNG to stdout, so `trimToPngSignature` is a no-op rather than a necessity — but it stays in the path because the transport is reused verbatim, which is the point.
+- Running the app on Android or iOS hardware (not desktop): the qualified bindings must exist in `UnsupportedDeviceSources` or the Koin graph fails at startup. Easy to miss — it is not a desktop test failure (FR-56).
+
+### implementationSteps
+
+- 1. `data-device-api`: add `ToolKind.Simctl("xcrun", null)` with KDoc naming the xcrun+subcommand arrangement; add `DeviceCommand.SimulatorBoot`; add `HostCommand.{XcrunVersion, ListSimulators, IdbVersion, ListTargets}` with their argvs in `buildHostArgv`. Each gets an explicit 'widened for F-10 (FR-49)' KDoc line (FR-49).
+- 2. `data-device-api`: change `buildDeviceArgv` to `(tool, toolPath, device, command)`, branch the selector per tool, add the `check(argv.count { it == device.value } == 1)` guard. Update the one Android call site in `DeviceCommandExecutorImpl` (FR-50, NFR-5).
+- 3. `data-device-api`: add `SimulatorResource` / `IosTargetResource` and the two hand-rolled parsers with fixture tests captured from THIS host's Xcode 26.3 output (FR-51, NFR-18).
+- 4. `data-device-api`: add `IosHostSource`; delete `IdbHostSource`.
+- 5. `data-device-impl` desktopMain: `ToolResolver` learns `ToolKind.Simctl` — `/usr/bin` candidate, `readVersion` via `xcrun --version`, `installCommand` = 'xcode-select --install', `envHint` = ''; and `ToolKind.Idb.readVersion` stops returning `null` now that `IdbVersion` exists.
+- 6. `data-device-impl` desktopMain: `IosHostSourceImpl` and `IosDeviceCommandExecutorImpl`. Rename `DeviceCommandExecutorImpl` → `AdbDeviceCommandExecutor` for symmetry (one file, one import site).
+- 7. `data-device-impl`: rewrite `DeviceSourcesProvider.desktop.kt` per the architecture block; add the four Unsupported registrations in `UnsupportedDeviceSources` (FR-48, FR-56).
+- 8. `domain-core`: add the two `DiscoveryModel` variants; widen `EmulatorModel.runningDeviceId`'s KDoc.
+- 9. `domain-repository-api` + `domain-usecase-api` + `domain-usecase-impl`: thread `platform` through the five methods and their five use cases. Pure signature churn — no logic change (FR-48, NFR-20).
+- 10. `data-repository-impl`: split `poll()` into `pollAndroid()` (moved verbatim) and `pollIos()` (new); add the platform `when`s; fix the hardcoded `ToolKind.Adb.binaryName` in the PollFailed catch; add `SimulatorResourceMapper`; extend `ToolProbeMapper` for Simctl→Ios; update `DataRepositoryImplModule`'s constructor call (FR-51, FR-52).
+- 11. `data-repository-impl` tests: update the four existing constructor call sites, then ADD iOS poll tests against fake sources under virtual time, including the SimulatorNotBooted and DeviceNotTrusted classifications (AC-46, AC-49, SC-28).
+- 12. `presentation-feature-mirror`: delete `MirrorStage.IosDeferred`, its derivation branch, its render branch and `mirror_ios_deferred`. Add the two `MirrorErrorKind` members and `MirrorIntent.BootSimulator`. Extend `applyDiscovery` and `errorCard()` (including the platform guard). Wire `MirrorViewModel` — thread `state.platform` into the five calls, cancel/restart the discovery job in `selectPlatform()`, reset `discovery`/`rows`, add the `BootSimulator` handler (FR-52, FR-53, AC-31, AC-46, AC-47).
+- 13. `presentation-feature-mirror`: `MirrorErrorStage`'s two new branches, ~8 strings, `platformCards()`'s `enabled`, neutral `mirror_group_emulator` (FR-53, FR-55).
+- 14. One real-toolchain desktop test for AC-46: spawn `xcrun simctl list devices available` through `ProcessRunner`, feed the output to `parseSimctlDevices`, assert simulators found and none `Booted`. It must SKIP (not fail) when `xcrun` is absent, per the `ProcessRunnerTest` precedent (NFR-18).
+- 15. `./gradlew :data-device-api:desktopTest :data-device-impl:desktopTest :data-repository-impl:desktopTest :presentation-feature-mirror:desktopTest`, then a cross-target build (`:data-device-api:build :presentation-feature-mirror:build`) because `commonTest` compiles for iosArm64 and Kotlin/Native rejects commas and colons in backtick names (AC-49, SC-29).
+
+### gaps
+
+- AS-2 is unresolved and blocks the exact shape of `DeviceNotTrusted`: nobody has measured what `idb list-targets` actually prints for an untrusted physical iPhone. Mitigation is containment — one named token set in `parseIdbTargets`, correctable in one place — but the detection itself is a guess until measured.
+- No untrusted physical iPhone exists in this environment (AS-3), so AC-31's device-not-trusted half is fixture-driven and WAIVED per NFR-18. The waiver must be written into the plan's verification table, not implied.
+- `idb` against a physical device has never been exercised here — `idb_companion`'s running state at poll time is unknown (the probe explicitly says the binary existing proves nothing). The whole physical-iOS path (SC-26) ships code-review-verified only.
+- iOS screenshot latency is unmeasured. `MirrorTuning.CaptureFloorMs = 100` is itself still an unmeasured Android constant; SC-25's claim that iOS reaches the same ~10fps floor is an aspiration, not a prediction. `simctl io screenshot` plausibly costs 200–400 ms, which would halve the frame rate. The adaptive loop degrades gracefully and the stats report the truth, so this is an honesty gap rather than a correctness one.
+- No Compose UI-test harness exists, so `MirrorErrorStage`'s two new branches are covered by `@Preview` pairs and by the pure `errorCard()` projection tests only — the rendering itself is unverified by machine. Same as every other card today.
+- The `mirror_group_emulator` relabel is a single neutral string ('Virtual devices'). Platform-correct wording ('Emulators' / 'Simulators') needs a platform parameter on `DevicePickerPanel` — deliberately skipped as cosmetic.
+- `observeMirrorStats(platform)`'s `toolVersion` currently comes from the `adbVersion` StateFlow. The iOS branch needs an equivalent `simctlVersion` field; trivial, but it is a real second field, not free.
+- No measured fixture of this host's `xcrun simctl list devices available` output exists yet — step 3 depends on capturing it first. Cheap and available right now.
+
+### risks
+
+| text | likelihood | impact | mitigation |
+| --- | --- | --- | --- |
+| AC-49 regression: the five-signature change ripples through ~45 files before any iOS behaviour exists. A mechanical edit at that scale is where a quiet behaviour change hides. | med | high | Land Stage C as its own commit with ZERO iOS code and zero new tests: the only acceptable outcome is the existing Android suite green and `pollAndroid()` byte-identical to today's `poll()`. Review that commit as a pure refactor; `git diff --word-diff` should show only `platform` insertions. |
+| `simctl list devices` plain-text format drifts with an Xcode release and the parser silently returns an empty list, which renders as 'no simulators' rather than a visible failure. | med | med | The parser never throws (per repo convention), but `pollIos` distinguishes 'command succeeded, zero rows parsed, non-empty stdout' and emits `PollFailed(tool = "xcrun", reason = <stdout head>)` rather than `SimulatorNotBooted`. That is the same NoDeviceFound-vs-PollFailed distinction DiscoveryModel already makes and it makes the drift visible. `-j` remains the documented escape hatch. |
+| `idb list-targets` hangs or fails without a running `idb_companion`, stalling the whole iOS poll once per interval. | high | med | Already budgeted by `HostCommandTimeoutMs`; additionally the idb call is wrapped so its failure yields an empty physical list and never aborts the simctl half. Deliberately NO companion auto-start — that is somebody else's daemon (same reasoning that keeps `spawnDetached` out of the shutdown hook). |
+| Generalising `buildDeviceArgv` weakens NFR-5 — the security invariant this module exists to make unrepresentable. | low | high | Replace the positional guarantee with a structural one (`check` on exactly-one occurrence of `device.value`) and add a sweep test over every ToolKind × DeviceCommand pair asserting (a) argv[0] == toolPath, (b) the id appears exactly once, (c) no element matches the connect/-H/-P denylist. Net: stronger than today, and provable by a test rather than by reading one line. |
+| Deleting `MirrorStage.IosDeferred` routes iOS through the full stage machine, exposing every stage (Frozen, Verify, NoSignal) to a platform none of them were written against. | med | med | That exposure is the feature, and the recon says the stack below `HierarchySnapshotModel` is already rect/pixel-neutral. The one iOS-shaped hole is hierarchy, which is Android-gated and degrades to `""` (FR-57, AC-50). Add an explicit AC-50 inspection step rather than trusting the gate. |
+| iOS mirroring is materially slower than 10fps and the feature ships feeling broken. | med | low | Measure once a simulator is booted and record the number in the plan's verification table, the way `CaptureFloorMs`'s waiver is recorded. Do not add an iOS tuning constant to paper over it; `idb video-stream` is the named upgrade path and it is already written down as out of scope. |
+| Scope creep back into hierarchy capture, because `idb ui describe-all` looks tantalisingly close once the adapter exists. | med | med | FR-57 and AC-50 make 'iOS returns an empty hierarchy' an ASSERTED behaviour, not an omission. A test that fails if iOS ever starts returning nodes is the cheapest guard against accidentally half-shipping v1.1. |
+
+### readyMadeSolutions
+
+| name | ref | fit | license |
+| --- | --- | --- | --- |
+| ScreencapMirrorTransport | data-device-impl/src/desktopMain/.../source/transport/ScreencapMirrorTransport.kt | Reused VERBATIM as a second Koin-registered instance wrapping the iOS executor. The adaptive single-flight loop, `trimToPngSignature`, per-frame IHDR size read, dropped-frame arithmetic and fps window all apply unchanged. This is the single largest saving in the spec and the reason screenshot polling beat video-stream. | in-repo |
+| ProcessRunner | data-device-impl/src/desktopMain/.../core/process/ProcessRunner.kt | Reused unchanged — `run()` for every simctl/idb call including `simctl boot` (it returns once the boot is initiated rather than blocking like `emulator -avd`, so `spawnDetached` is NOT wanted here; `spawnDetached` stays the Android-emulator-only path). The two-pipe drain, `withTimeoutOrNull`, `destroyForcibly` and shutdown hook all carry over free. | in-repo |
+| ToolResolver + probeCandidates | data-device-impl/.../core/tool/ToolResolver.kt, data-device-api/.../source/tool/ToolProbeCandidates.kt | Resolves `xcrun` and `idb` with one new candidate entry and one new `readVersion` branch. Its injected `isExecutable`/`identifyAdb`/`userPath` lambdas are the established test seam and sidestep `runTest`'s virtual-clock-vs-real-process problem. | in-repo |
+| MirrorErrorCard / MirrorErrorStage / ErrorCard organism | presentation-feature-mirror/.../source/mirror/MirrorContract.kt, MirrorErrorStage, presentation-core-ui ErrorCard | Both iOS cards are new `MirrorErrorKind` members plus two `when` arms. The organism already takes title/body/kind/command/primary/secondary/diagnostic — exactly the err-sim and err-trust designs. `MirrorErrorCard.primaryDeviceId` already exists and carries the udid the Boot action needs. | in-repo |
+| MirrorIntent.OpenPicker and MirrorIntent.RetryDiscovery | presentation-feature-mirror/.../MirrorContract.kt:538, :709 | Three of FR-53's four 'new' intents already ship. 'Choose another' and 'Use simulator' are both OpenPicker; "I've tapped Trust — retry" is RetryDiscovery (which already cuts the poll interval short via `refreshDiscovery`). Only `BootSimulator(udid)` is genuinely new. | in-repo |
+| MirrorRowGroup{Physical,Emulator} + MirrorRowKind{Detail,Running,Boot} + nextSelectableIndex/pickerKeyAction | presentation-feature-mirror/.../source/mirror/MirrorContract.kt, core/picker/ | Physical/simulator maps 1:1 onto Physical/Emulator, `Boot` already means 'cold, committing boots it' — a shut-down simulator exactly. NFR-8 keyboard navigation knows nothing about adb and is free. | in-repo |
+| parseAdbDevices / parseUiAutomatorDump as the hand-rolled-parser precedent | data-device-api/.../source/parse/ | Sets the pattern the two new parsers copy: pure, in commonMain, never throws, fixture-tested with no hardware, keeps non-usable rows visible rather than hiding them (exactly what an untrusted iPhone needs). | in-repo |
+| DiscoveryModel's success-value contract and the NoDeviceFound-vs-PollFailed distinction | domain-core/.../source/model/device/DiscoveryModel.kt | The two new variants inherit it for free: a cold simulator and an untrusted phone are information to render, never a `Failure`. The existing 'we looked and saw nothing' vs 'we learned nothing' split is also the right model for simctl parse drift. | in-repo |
+| UnsupportedDeviceSources | data-device-impl/core/unsupported/UnsupportedDeviceSources.kt (commonMain) | The established answer for keeping the Android/iOS app graphs resolvable. The existing Unsupported executor and transport instances just get registered under both qualifiers; only `UnsupportedIosHostSource` is new (FR-56). | in-repo |
+| .claude/rules — koin-di, package-layout, error-handling, testing, platform-coverage, mappers | .claude/rules/*.md + data-device-api/CLAUDE.md + data-device-impl/CLAUDE.md | Already encode every binding rule this spec needs: explicit `single { get() }` over `singleOf` for qualifiers, `core/` vs `source/`, 'a missing tool is a success value', comma/colon-free backtick test names, all process code in desktopMain, mappers never throw. No new convention is invented by F-10. | in-repo |
+
+### techStack
+
+| area | choice | reason |
+| --- | --- | --- |
+| iOS simulator discovery | `xcrun simctl list devices available` (plain text) + hand-rolled `parseSimctlDevices` | Keeps the confirmed 'no JSON parsing in v1' answer true, adds no dependency to a module that currently has none beyond :data-core, and matches `parseAdbDevices`' precedent exactly. `-j` is the documented escape hatch if the text format drifts. |
+| iOS physical-device discovery | `idb list-targets`, pipe-split, filtered to `target_type == device` | Only idb sees physical devices; simctl is simulator-only. Its failure degrades to an empty physical list so simctl's answer survives a missing `idb_companion`. |
+| Simulator boot | `xcrun simctl boot <udid>` via `ProcessRunner.run()` at the existing `MirrorTuning.DaemonStartTimeoutMs` | `run()`, NOT `spawnDetached`: simctl boot returns once the boot is initiated and we want its exit code (an already-booted simulator exits non-zero and must be treated as success). `spawnDetached` exists for `emulator -avd`, a long-lived foreground process the user owns. Reusing DaemonStartTimeoutMs honours SC-25's 'no new tuning constants'. |
+| iOS frame capture | `xcrun simctl io <udid> screenshot --type=png -` (simulator) / `idb screenshot --udid <id>` (physical), polled by the unchanged ScreencapMirrorTransport | Both write an encoded PNG to stdout, which is exactly the `MirrorFrame.bytes` contract `decodeToImageBitmap()` needs. Zero new transport code, zero new ProcessRunner entry point. |
+| Tool identity | `ToolKind.Simctl("xcrun", null)` with the `simctl` subcommand inserted by the argv branch | `simctl` is not a binary on PATH; `xcrun` is (at `/usr/bin`). Modelling the real executable keeps `ToolResolver` honest, and `probeSimctl()` additionally verifies the subcommand resolves so a CLT-only Mac reports ToolMissing rather than failing at first use. |
+| Dispatch mechanism | Koin `named("android")` / `named("ios")` qualifiers on `DeviceCommandExecutor` and `MirrorTransport` only; explicit `single { … get(named(…)) }` per koin-di.md | Only those two interfaces have genuinely two implementations of the same shape. `AdbHostSource`, `EmulatorSource` and `IosHostSource` have one each — qualifying them would be ceremony. |
+| NFR-5 enforcement | Structural `check(argv.count { it == device.value } == 1)` inside the single `buildDeviceArgv`, plus an exhaustive ToolKind × DeviceCommand sweep test | A positional `[tool, -s, id]` guarantee cannot survive three tools with three selector conventions. A counted-occurrence invariant can, is tool-agnostic, and is machine-checkable — strictly stronger than what ships today. |
+| Test harness | `kotlin.test` in commonTest (free from the convention plugins) + one guarded real-toolchain desktopTest | Everything except the real `simctl` probe is pure and fixture-driven. The one real-spawn test follows `ProcessRunnerTest`'s precedent and skips rather than fails where `xcrun` is absent, because `runTest`'s virtual clock cannot host a spawned process. |
+
+### openDecisions
+
+| decision | options | recommendation |
+| --- | --- | --- |
+| What exactly identifies an untrusted physical iPhone in `idb list-targets` output (AS-2) | ["A state token in the row (e.g. 'unauthorized'/'not paired')", "A non-zero exit with a recognisable stderr from idb_companion", "Device present in list-targets but every device-scoped call fails"] | Contain, do not guess: one named token set in `parseIdbTargets` plus a fallback that classifies a physical target as untrusted when it is listed but not usable. Correct it from one place after a real measurement; the fixture test pins whatever is decided. |
+| Whether `bootEmulator` should be renamed `bootTarget` now that it boots simulators too | ["Keep the name, add `platform`, widen the KDoc", "Rename to bootTarget across repository + use case + ViewModel"] | Keep the name. The rename touches 6 files for zero behavioural value and inflates the AC-49 regression surface; the KDoc can carry the truth. Revisit if a third platform ever lands. |
+| Whether `observeMirrorStats` needs a second version field for the iOS tool | ["Add a `simctlVersion` StateFlow mirroring `adbVersion`", "Report an empty toolVersion on iOS in v1"] | Add the field. It is three lines, and a status line that goes blank on iOS looks like a bug to the user and a gap to the reviewer. |
+| Picker group label wording | ["One neutral string ('Virtual devices')", "Two strings chosen by state.platform ('Emulators' / 'Simulators')"] | One neutral string. The platform-correct pair needs a new parameter on DevicePickerPanel for a cosmetic win; note it as the upgrade path. |
+| Whether to ship the real-toolchain `simctl` test in the default suite | ["Always run, skip when xcrun is absent", "Tag/ignore it and run manually"] | Always run with a skip. AC-46's measured half is the one honest piece of hardware coverage this feature can claim — gating it behind a manual step throws it away. |
+
+### survey
+
+| question | options | answer | source | rationale |
+| --- | --- | --- | --- | --- |
+| How should `xcrun simctl list devices` output be read? | ["Plain text + hand-rolled parseSimctlDevices (matches parseAdbDevices precedent, zero new dependency)", "`-j` JSON + add kotlinx-serialization-json to data-device-api", "`-j` JSON + hand-rolled JSON reader"] | Plain text + hand-rolled parseSimctlDevices (matches parseAdbDevices precedent, zero new dependency) | ai-proposed | data-device-api has zero dependencies beyond :data-core and no serialization plugin; the clarify survey already answered 'no JSON parsing needed in v1'. The plain-text rows are regex-shaped and we need three fields. `-j` is the documented escape hatch if Xcode drifts the format, and JSON becomes mandatory anyway the day AX hierarchy capture lands in v1.1. |
+| What shape should the iOS host datasource take? | ["One `IosHostSource` (probeSimctl/probeIdb/listSimulators/listDevices/bootSimulator) REPLACING the probe-only IdbHostSource", "Keep IdbHostSource and add a sibling SimctlHostSource", "Grow IdbHostSource in place despite it also shelling xcrun"] | One `IosHostSource` (probeSimctl/probeIdb/listSimulators/listDevices/bootSimulator) REPLACING the probe-only IdbHostSource | ai-proposed | One iOS poll uses both binaries in one round trip, so splitting them creates two interfaces that are always injected together. IdbHostSource's only caller today is detectTools()'s probe, which probeIdb() subsumes — so this is a replacement (deletion) rather than an addition, and it costs exactly one Unsupported* stand-in instead of two. |
+| How many of DeviceRepository's nine methods should gain `platform: PlatformModel`? | ["The five that actually dispatch (observeDiscovery, mirror, dumpHierarchy, bootEmulator, observeMirrorStats)", "All nine, for uniformity", "Only observeDiscovery and mirror; leave the rest Android-shaped"] | The five that actually dispatch (observeDiscovery, mirror, dumpHierarchy, bootEmulator, observeMirrorStats) | ai-proposed | detectTools() already probes every platform, refreshDiscovery() just nudges the running loop, and restartAdbServer()/setAdbPath() are Android-only affordances the iOS cards never offer. Taking all nine would touch four more use-case interfaces and impls for zero dispatch value and a larger AC-49 regression surface. Taking only two leaves dumpHierarchy unable to honour FR-57/AC-50 without reaching the executor. |
+| How should a shut-down simulator carry the udid that `simctl boot` needs? (Simulator names are NOT unique across runtimes — 'iPhone 16' exists under both iOS 17.5 and 18.1 on this host.) | ["Populate the existing EmulatorModel.runningDeviceId with the udid even when shut down, and widen its KDoc", "Add a new EmulatorModel.bootId: String? = null field", "Encode the udid into the display name"] | Populate the existing EmulatorModel.runningDeviceId with the udid even when shut down, and widen its KDoc | ai-proposed | DiscoveryProjection.toRow then yields exactly the right row with zero structural change — `id = udid` (what boot needs), `serial = udid` (what the user sees), `kind = Boot` (driven by isRunning, not by runningDeviceId). Android is untouched because the Android path builds EmulatorModel through its own mapper. The only cost is one sentence of KDoc; add the real field the day a second consumer keys 'is running' off `runningDeviceId != null`. |
+| How does NFR-5 stay provable once buildDeviceArgv serves three tools with three selector conventions (adb `-s` prefix, simctl positional-after-subcommand, idb `--udid` suffix)? | ["Structural invariant: build per-tool in a `when`, then `check(argv.count { it == device.value } == 1)`, plus an exhaustive ToolKind × DeviceCommand sweep test", "Per-tool positional convention documented in KDoc only", "A `DeviceSelector` value type each tool branch must consume"] | Structural invariant: build per-tool in a `when`, then `check(argv.count { it == device.value } == 1)`, plus an exhaustive ToolKind × DeviceCommand sweep test | ai-proposed | Today's guarantee is positional and enforced only by the shape of one line — nothing stops a future arguments() branch adding a second target. A counted-occurrence check is tool-agnostic, fails loudly for any branch that forgets or duplicates the selector, and is machine-checkable. Net effect: NFR-5 is strictly stronger after this spec than before it, which is the only acceptable outcome for a security invariant being generalised. |
+| Should iOS screenshot capture reuse `DeviceCommand.Screencap` or get its own member? | ["Reuse Screencap — same semantics ('capture the screen as PNG on stdout'), argv differs per ToolKind", "Add DeviceCommand.IosScreenshot as a distinct member"] | Reuse Screencap — same semantics ('capture the screen as PNG on stdout'), argv differs per ToolKind | ai-proposed | This is precisely what lets ScreencapMirrorTransport be reused verbatim: the transport issues `Screencap` and the per-ToolKind argv branch decides whether that means `exec-out screencap -p` or `simctl io <udid> screenshot --type=png -`. A distinct member would force a platform-aware branch inside the transport, which is the one file this spec most wants to leave alone. The constraint against 'silently overloading an Android-shaped case with iOS semantics' is honoured by the KDoc being rewritten to the platform-neutral meaning it already has. |
