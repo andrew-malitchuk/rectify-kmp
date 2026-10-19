@@ -685,5 +685,104 @@
     "path": "src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorHistoryTab.kt",
     "specRef": "history-batch-tracking",
     "description": "The History side-panel tab: grouped LazyColumn(key = id) over the shipped HistoryRow molecule, thumbnail decoded behind remember(entry.id), Verify affordance on Fixed rows only, hairline footer, empty state. Zero new design-system components. Known issue A11Y-8: HistoryRow.onClick is non-nullable so the v1 no-op row still announces Role.Button."
+  },
+  {
+    "id": "BatchFileReader",
+    "name": "BatchFileReader",
+    "kind": "seam",
+    "module": "data-repository-impl",
+    "path": "src/commonMain/kotlin/data/repository/impl/source/store/BatchFileReader.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "fun interface read seam, the counterpart to the write-only BatchFileStore. java.io desktop impl reads frame.png and hierarchy.xml back out of ~/.rectify/history/<batchId>/; Android/iOS stand-ins return null. Never throws - a file the user deleted is simply null."
+  },
+  {
+    "id": "HistoryRepositoryGet",
+    "name": "HistoryRepository.get",
+    "kind": "repository-method",
+    "module": "data-repository-impl",
+    "path": "src/commonMain/kotlin/data/repository/impl/source/repository/HistoryRepositoryImpl.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "get(batchId): SentBatchModel? composes the DAO @Relation with BatchFileReader and parses the stored dump into SentBatchModel.hierarchy. Never reads crop-N.png - full-res frame.png plus the stored rects dominates, which also sidesteps the 0-vs-1-based crop index conflict. A batch whose frame.png is gone returns null."
+  },
+  {
+    "id": "RegionDiff",
+    "name": "RegionDiff",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/RegionDiff.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "Per-pixel Chebyshev distance in RGB over IntArray: changed(p) = max(|dr|,|dg|,|db|) > CHANNEL_NOISE_FLOOR, changedRatio = changed/n. Integer-only, one pass, alpha ignored. Per-channel max rather than luma so a chroma-only fix at equal luma is not missed. Takes IntArray, never ImageBitmap, so it is testable without Skiko."
+  },
+  {
+    "id": "VerifyThresholds",
+    "name": "VerifyThresholds",
+    "kind": "constants",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/VerifyThresholds.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "CHANNEL_NOISE_FLOOR = 10/255 (absorbs antialiasing, subpixel text, gamma), REGION_CHANGE_RATIO = 0.02f, MIN_REGION_PIXELS = 64. Each KDocd with its ceiling. MET-3s <5% false-positive target is unverifiable in v1 (no golden corpus); tests may only use these to CONSTRUCT an input, never as an expected value."
+  },
+  {
+    "id": "VerifyVerdict",
+    "name": "VerifyVerdict",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/VerifyVerdict.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "Change-evidence verdict, a correction of record against AC-24s literal wording: Fixed iff nodeMatched && afterFinding == null && (regionPx < MIN_REGION_PIXELS || changedRatio > REGION_CHANGE_RATIO). The literal no-material-difference-means-resolved reading would report an agent that did nothing as having fixed the bug. MIN_REGION_PIXELS short-circuits only the pixel conjunct."
+  },
+  {
+    "id": "BeforeAfterFormat",
+    "name": "BeforeAfterFormat",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/BeforeAfterFormat.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "Builds the designs result strings (top d6dp -> 0dp; height 24dp -> 32dp . want 48dp) from the existing core/measure primitives deltaLabel/plainValueLabel/displayDelta/SEPARATOR. Branch selection is driven by the BEFORE findings kind."
+  },
+  {
+    "id": "RegionPixels",
+    "name": "RegionPixels",
+    "kind": "edge-function",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/RegionPixels.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "The ONLY file in core/verify that names ImageBitmap, and only as an extension receiver: ImageBitmap.regionPixels(rect) wraps the commonMain readPixels member. Deliberately uncovered by tests - keeping it the single edge is what makes the rest of the diff path unit-testable."
+  },
+  {
+    "id": "VerifyLabels",
+    "name": "VerifyLabels",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/VerifyLabels.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "Pure projections behind the verify panel: frame captions, the n-of-m summary, the progress steps and the VerifyError-to-string-key mapping. Kept out of the composable so each is unit-testable."
+  },
+  {
+    "id": "FollowUp",
+    "name": "FollowUp",
+    "kind": "pure-functions",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/core/verify/FollowUp.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "Renumbers the still-off rows into 1-based StagedAnnotations for the follow-up re-stage. Pure, so the 0-based-to-1-based conversion is testable without the ViewModel harness."
+  },
+  {
+    "id": "MirrorVerifyStage",
+    "name": "MirrorVerifyStage",
+    "kind": "composable",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorVerifyStage.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "The Verify stage: two captioned frames side by side with per-annotation rects (neutral in BEFORE, verdict-coloured in AFTER), a Back-to-live chip wired to ExitVerify, a progress strip for the ~2.7s dump, and a 300dp Verification panel of VerificationRows with Send-follow-up and Mark-all-verified. Zero new kit components and zero new colour tokens. Overlay coordinates come from the measured painted box, never the nominal 296x640 (PP-TD-1)."
+  },
+  {
+    "id": "VerifyFrames",
+    "name": "VerifyFrames",
+    "kind": "state-holder",
+    "module": "presentation-feature-mirror",
+    "path": "src/commonMain/kotlin/presentation/feature/mirror/source/mirror/MirrorContract.kt",
+    "specRef": "verify-and-rediff-loop",
+    "description": "The BEFORE+AFTER bitmap pair, carried on a plain StateFlow and handed to the content lambda as MirrorHosts 5th argument - pixels never enter reduced state (module CLAUDE.md Deviation 2)."
   }
 ]

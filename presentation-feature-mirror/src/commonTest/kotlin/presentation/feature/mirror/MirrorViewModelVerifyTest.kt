@@ -524,6 +524,30 @@ class MirrorViewModelVerifyTest {
     }
 
     @Test
+    fun aFailedTerminalStatusWriteLeavesTheVerdictsAndThePhaseIntact() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus(failure = IllegalStateException("database is gone"))
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(listOf(BATCH_ID to BatchStatusModel.Verified), status.writes)
+        assertEquals(VerifyPhase.Ready, verify.phase, "a failed label write is not a failed run")
+        assertEquals(listOf(VerificationOutcome.Fixed), verify.rows.map { it.outcome })
+        assertNull(verify.error, "the durable label missing is not a VerifyError")
+    }
+
+    @Test
     fun aMixedRunWritesNoStatus() = runTest(mainDispatcher) {
         val mirroring = FakeStartMirroring()
         val status = FakeUpdateBatchStatus()
@@ -1311,6 +1335,33 @@ class MirrorViewModelVerifyTest {
             "the cancelled run must not land verdicts over the override: ${verify.rows}",
         )
         assertTrue(status.writes.isEmpty(), "a rowless view has nothing to mark verified")
+    }
+
+    @Test
+    fun aFailedOverrideStatusWriteLeavesTheForcedRowsIntact() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val status = FakeUpdateBatchStatus(failure = IllegalStateException("database is gone"))
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot())),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.MarkAllVerified)
+        settle()
+
+        val verify = assertNotNull(viewModel.currentState.verify)
+        assertEquals(listOf(BATCH_ID to BatchStatusModel.Verified), status.writes)
+        assertTrue(verify.rows.all { it.outcome == VerificationOutcome.Fixed })
+        assertEquals(verify.rowCount, verify.fixedCount, "the panel still reads m of m")
+        assertNull(verify.error, "the override is the human's judgement, not a write result")
+        assertEquals(MirrorStage.Verify, viewModel.currentState.stage)
     }
 
     @Test

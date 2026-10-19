@@ -257,5 +257,39 @@
     ],
     "description": "Desktop-only History tab in the right inspector panel: every sent annotation batch is persisted locally (Room parent+child tables, frame/crop PNGs under ~/.rectify/history/<batchId>/, a <=128px thumbnail as an inline BLOB) and listed grouped Today/Yesterday/Older with thumbnail, title, mono meta line, status chip and an in-progress tab badge that is omitted at zero. Persist runs inside publish.onSuccess before postSideEffect and can never fail a send. F-8 only ever writes status Sent; HistoryRepository.updateStatus exists for F-9. The Verify button on Fixed rows is an affordance only - the diff loop is F-9.",
     "waived": "Nine manual GUI demo steps unexecuted (no GUI run in this environment): AC-36, SC-8, the app-restart halves of AC-33/SC-15, and the <=150ms render budget. Automated halves are green."
+  },
+  {
+    "id": "verify-and-rediff-loop",
+    "name": "Verify & Re-diff Loop (F-9)",
+    "status": "done",
+    "specRef": "verify-and-rediff-loop",
+    "modules": [
+      "data-database-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-feature-mirror",
+      "presentation-core-localisation",
+      "compose-application"
+    ],
+    "description": "The closed loop and the PRDs strongest differentiator. Verify on any sent batch re-captures the live screen and diffs it per annotation box against the stored frozen frame, combining a Chebyshev RGB region diff with a hierarchy/layout diff built on F-5s measure toolkit. Verdict is change-evidence: Fixed requires the region to have visibly changed AND the layout finding to be gone. Still-off rows get a one-click follow-up that re-stages only those annotations over the re-captured frame and reuses F-7s send path unchanged. F-9 writes Verified and FollowUpSent through the updateStatus hook F-8 exposed.",
+    "waived": "MET-3s <5% false-positive target is unverifiable in v1 - no golden corpus and no Compose UI-test harness exist; the three thresholds are tunable constants with stated ceilings and a documented-not-built tuning path. The end-to-end GUI demo (press Verify, see two frames, send a follow-up) was not executed. data-database-impls iOS test tasks are NO-SOURCE, so HistoryEntryDaoFindByIdTest never runs on iOS.",
+    "notes": "Cut for lack of a data source: the four-step progress strip and the AGENT CHANGES file list (backlog T-11 still lists the strip - documentation inconsistency, not a missing feature)."
+  },
+  {
+    "id": "resolve-and-send-mcp",
+    "name": "Resolve & Send via Local MCP (F-7)",
+    "status": "done",
+    "specRef": "resolve-and-send-mcp",
+    "modules": [
+      "data-handoff-api",
+      "mcp-application",
+      "presentation-feature-mirror"
+    ],
+    "description": "Builds the annotation envelope (prompt, frozen frame PNG, hierarchy dump, per-annotation crops) and publishes it to a local file slot that the MCP server reads back. AnnotationEnvelope field order is wire-breaking. The slot is deliberately single-shot: publish prunes every sibling send directory except the newest, which is why F-8 must copy its own bytes at publish time.",
+    "waived": "",
+    "notes": "Registry entry added retroactively during F-9 - the spec merged without one."
   }
 ]

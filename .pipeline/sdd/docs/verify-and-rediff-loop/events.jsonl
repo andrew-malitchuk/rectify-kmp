@@ -42,3 +42,7 @@
 {"stage": "execution", "step": "wave-8", "agent": "sdd-build-docs-implement", "event": "start", "at": "2026-10-19T00:09:27Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-8", "agent": "sdd-build-docs-implement", "event": "end", "tokens": 114602, "at": "2026-10-19T00:16:10Z", "spec": "verify-and-rediff-loop"}
 {"stage": "execution", "step": "wave-9", "agent": "sdd-build-test-audit", "event": "start", "at": "2026-10-19T00:16:10Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "step": "wave-9", "agent": "sdd-build-test-audit", "event": "end", "tokens": 104707, "at": "2026-10-19T00:46:56Z", "spec": "verify-and-rediff-loop"}
+{"stage": "execution", "event": "end", "at": "2026-10-19T00:46:56Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "event": "start", "at": "2026-10-19T00:46:56Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "end", "tokens": 157432, "at": "2026-10-19T00:57:49Z", "spec": "verify-and-rediff-loop"}

@@ -612,7 +612,12 @@ public class MirrorViewModel(
 
         // Guarded on emptiness, not merely on `all` — see step 7 in this function's KDoc.
         if (rows.isNotEmpty() && rows.all { it.outcome == VerificationOutcome.Fixed }) {
-            updateBatchStatus(batchId, BatchStatusModel.Verified)
+            // Logged and dropped, never surfaced (AF-3): the run genuinely succeeded and the
+            // verdicts on screen are real — only the durable label did not stick. Same rule as
+            // the F-8 history write: a failed status write can never fail the thing it labels.
+            updateBatchStatus(batchId, BatchStatusModel.Verified).onFailure { error ->
+                log.w(error) { "Verified status not written for $batchId" }
+            }
         }
     }
 
@@ -830,7 +835,11 @@ public class MirrorViewModel(
                     ),
                 )
             }
-            updateBatchStatus(view.batchId, BatchStatusModel.Verified)
+            // Logged and dropped, never surfaced (AF-3): the override stands on screen whatever
+            // the database says — the forced rows are the human's judgement, not a write result.
+            updateBatchStatus(view.batchId, BatchStatusModel.Verified).onFailure { error ->
+                log.w(error) { "Verified status not written for ${view.batchId}" }
+            }
         }
     }
 

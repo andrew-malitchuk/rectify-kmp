@@ -1,0 +1,9 @@
+[
+  {
+    "at": "2026-10-19T00:57:49Z",
+    "category": "merge-conflict",
+    "issue": "id-keyed upsert conflict on 'PP-TD-10' in store 'bugs' (last-write-wins)",
+    "resolution": "last-write-wins",
+    "severity": "warn"
+  }
+]

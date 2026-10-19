@@ -402,13 +402,16 @@ internal class FakeGetSentBatch(
 }
 
 /** Records every status write, so "exactly once" and "never" are both directly assertable. */
-internal class FakeUpdateBatchStatus : UpdateBatchStatusUseCase {
+/** Records every write; [failure] makes them all fail while still recording the attempt. */
+internal class FakeUpdateBatchStatus(
+    private val failure: Throwable? = null,
+) : UpdateBatchStatusUseCase {
 
     val writes: MutableList<Pair<String, BatchStatusModel>> = mutableListOf()
 
     override suspend fun invoke(batchId: String, status: BatchStatusModel): Optional {
         writes += batchId to status
-        return Result.success(Unit)
+        return failure?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 }
 

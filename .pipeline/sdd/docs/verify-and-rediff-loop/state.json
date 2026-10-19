@@ -1,6 +1,6 @@
 {
   "spec": "verify-and-rediff-loop",
-  "currentStage": "execution",
+  "currentStage": "validation",
   "stages": {
     "preparation": {
       "status": "done"
@@ -9,6 +9,9 @@
       "status": "done"
     },
     "backlog": {
+      "status": "done"
+    },
+    "execution": {
       "status": "done"
     }
   },
@@ -112,6 +115,11 @@
       "status": "done",
       "wave": 8,
       "updatedAt": "2026-10-19T00:16:10Z"
+    },
+    "T-17": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T00:46:56Z"
     }
   },
   "effort": "fast",
