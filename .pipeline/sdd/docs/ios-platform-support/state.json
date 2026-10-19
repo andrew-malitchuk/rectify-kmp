@@ -107,6 +107,21 @@
       "status": "done",
       "wave": 6,
       "updatedAt": "2026-10-19T04:02:08Z"
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 7,
+      "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 8,
+      "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-23": {
+      "status": "done",
+      "wave": 8,
+      "updatedAt": "2026-10-19T04:15:25Z"
     }
   },
   "effort": "fast",

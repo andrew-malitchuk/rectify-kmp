@@ -92,10 +92,12 @@ class DeviceHierarchyDumpFallbackTest {
 
     private fun repository(executor: DeviceCommandExecutor): DeviceRepositoryImpl = DeviceRepositoryImpl(
         adbHostSource = FallbackNoOpAdbHostSource,
-        idbHostSource = FakeIdbHostSource(),
+        iosHostSource = FakeIosHostSource(),
         emulatorSource = FallbackNoOpEmulatorSource,
-        deviceCommandExecutor = executor,
-        mirrorTransport = FallbackNoOpMirrorTransport,
+        androidExecutor = executor,
+        iosExecutor = executor,
+        androidTransport = FallbackNoOpMirrorTransport,
+        iosTransport = FallbackNoOpMirrorTransport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
     )
 }

@@ -103,10 +103,12 @@ class DeviceHierarchyDumpTest {
 
     private fun repository(executor: DeviceCommandExecutor): DeviceRepositoryImpl = DeviceRepositoryImpl(
         adbHostSource = NoOpAdbHostSource,
-        idbHostSource = FakeIdbHostSource(),
+        iosHostSource = FakeIosHostSource(),
         emulatorSource = NoOpEmulatorSource,
-        deviceCommandExecutor = executor,
-        mirrorTransport = NoOpMirrorTransport,
+        androidExecutor = executor,
+        iosExecutor = executor,
+        androidTransport = NoOpMirrorTransport,
+        iosTransport = NoOpMirrorTransport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
     )
 }

@@ -1,18 +1,19 @@
 package data.device.impl.source
 
+import data.device.api.source.datasource.ANDROID_SOURCE
+import data.device.api.source.datasource.AdbHostSource
+import data.device.api.source.datasource.DeviceCommandExecutor
+import data.device.api.source.datasource.EmulatorSource
+import data.device.api.source.datasource.IOS_SOURCE
+import data.device.api.source.datasource.IosHostSource
+import data.device.api.source.datasource.MirrorTransport
+import data.device.impl.core.unsupported.UnsupportedAdbHostSource
+import data.device.impl.core.unsupported.UnsupportedDeviceCommandExecutor
+import data.device.impl.core.unsupported.UnsupportedEmulatorSource
+import data.device.impl.core.unsupported.UnsupportedIosHostSource
+import data.device.impl.core.unsupported.UnsupportedMirrorTransport
 import org.koin.core.module.Module
-
-/**
- * Koin qualifier for the Android half of a two-platform interface.
- *
- * Declared here, in `commonMain`, so all three `provideDeviceSources()` actuals spell it the
- * same way: a qualifier typo is not a compile error, it is a crash at app launch on whichever
- * platform got it wrong.
- */
-internal const val ANDROID_SOURCE: String = "android"
-
-/** Koin qualifier for the iOS half. @see ANDROID_SOURCE */
-internal const val IOS_SOURCE: String = "ios"
+import org.koin.core.qualifier.named
 
 /**
  * Registers the platform's device datasources in the Koin module.
@@ -30,3 +31,25 @@ internal const val IOS_SOURCE: String = "ios"
  * fails loudly instead of silently resolving whichever one was registered last.
  */
 internal expect fun Module.provideDeviceSources()
+
+/**
+ * The no-op graph both mobile targets register, written ONCE.
+ *
+ * Android and iOS registered byte-identical bodies until this existed, and that duplication
+ * was the hazard: a qualifier added to one actual and forgotten in the other is invisible on
+ * desktop and a Koin crash at launch on the target that missed it. One body means
+ * `DeviceSourcesModuleTest` can resolve the mobile graph from `desktopTest` — where the
+ * `androidMain`/`iosMain` actuals themselves are not even compiled — and actually guard it.
+ *
+ * There is no `adb` on a phone, so every source here fails loudly when called rather than
+ * silently doing nothing; the registrations exist so the graph RESOLVES on every target.
+ */
+internal fun Module.provideUnsupportedDeviceSources() {
+    single<AdbHostSource> { UnsupportedAdbHostSource }
+    single<EmulatorSource> { UnsupportedEmulatorSource }
+    single<IosHostSource> { UnsupportedIosHostSource }
+    single<DeviceCommandExecutor>(named(ANDROID_SOURCE)) { UnsupportedDeviceCommandExecutor }
+    single<DeviceCommandExecutor>(named(IOS_SOURCE)) { UnsupportedDeviceCommandExecutor }
+    single<MirrorTransport>(named(ANDROID_SOURCE)) { UnsupportedMirrorTransport }
+    single<MirrorTransport>(named(IOS_SOURCE)) { UnsupportedMirrorTransport }
+}

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import data.handoff.api.source.envelope.AnnotationEnvelope
 import data.handoff.api.source.envelope.HandoffImage
 import data.handoff.api.source.handoff.AnnotationHandoff
+import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.history.BatchStatusModel
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -210,6 +212,19 @@ public class MirrorViewModel(
 
     /** `null` while nothing streams — the gate both discovery and the capture loop read. */
     private val sessionDeviceId = MutableStateFlow<String?>(null)
+
+    /**
+     * The platform discovery is currently polling — a MIRROR of `state.platform`, never a
+     * second source of truth: [selectPlatform] writes both in one action and nothing else
+     * writes this.
+     *
+     * It exists because the three collectors below run OUTSIDE `intent {}` and so have no
+     * state to read. Making it the second `flatMapLatest` key is what structurally ends the
+     * adb poll on a switch to iOS: the previous inner flow is cancelled by the operator
+     * itself, with no Job to hand-roll and no "is this emission still relevant" check for a
+     * late Android poll to slip past.
+     */
+    private val discoveryPlatform = MutableStateFlow(PlatformModel.Android)
 
     /**
      * The live frame as ONE [HeldFrame] — bitmap and the bytes it decoded from.
@@ -416,13 +431,12 @@ public class MirrorViewModel(
      */
     private fun observeDiscoveryWhileIdle() {
         viewModelScope.launch {
-            sessionDeviceId
-                .flatMapLatest { device ->
-                    // The LITERAL, not `state.platform`: this collector runs outside `intent {}` and
-                    // has no state to read. Dispatch is Android-only this commit, so the
-                    // literal is exactly what the old call did; the platform key that replaces
-                    // it arrives with the iOS datasources.
-                    if (device == null) observeDiscovery(PlatformModel.Android) else emptyFlow()
+            combine(sessionDeviceId, discoveryPlatform, ::Pair)
+                .flatMapLatest { (device, platform) ->
+                    // TWO keys, one operator. A platform switch re-keys this exactly the way
+                    // starting a session does, so the adb poll is structurally gone rather
+                    // than merely ignored - the loop it ran in has been cancelled.
+                    if (device == null) observeDiscovery(platform) else emptyFlow()
                 }
                 .collect { discovery -> intent { reduce { state.applyDiscovery(discovery) } } }
         }
@@ -430,14 +444,17 @@ public class MirrorViewModel(
 
     private fun observeFrames() {
         viewModelScope.launch {
-            sessionDeviceId
-                .flatMapLatest { device ->
+            combine(sessionDeviceId, discoveryPlatform, ::Pair)
+                .flatMapLatest { (device, platform) ->
                     if (device == null) {
                         // Clears the stage when a session ends, without a second signal path.
                         flowOf(null)
                     } else {
-                        // Same literal, same reason as [observeDiscoveryWhileIdle].
-                        startMirroring(PlatformModel.Android, device)
+                        // Keyed on the platform too, like [observeDiscoveryWhileIdle]: a
+                        // switch mid-session already clears the device, and keying rather
+                        // than reading a literal is what makes that a tear-down instead of a
+                        // capture loop left talking to the wrong tool.
+                        startMirroring(platform, device)
                             // The captured bytes ride along with the bitmap they decoded to:
                             // frame.png must be the adb capture itself, never a re-encode, and
                             // only one value on one flow makes the freeze's read atomic.
@@ -457,8 +474,11 @@ public class MirrorViewModel(
 
     private fun observeStats() {
         viewModelScope.launch {
-            // Same literal, same reason as [observeDiscoveryWhileIdle].
-            observeMirrorStats(PlatformModel.Android)
+            // Keyed on the platform ALONE, deliberately: stats belong to whichever transport
+            // could report, and gating them on a session as well would stop the status bar
+            // updating while idle - a behaviour change this task has no reason to make.
+            discoveryPlatform
+                .flatMapLatest { platform -> observeMirrorStats(platform) }
                 .conflate()
                 .collect { stats ->
                     intent { reduce { state.copy(stats = stats) } }
@@ -951,15 +971,36 @@ public class MirrorViewModel(
         sessionDeviceId.value = null
     }
 
+    /**
+     * Switches the platform discovery polls and mirroring targets.
+     *
+     * The session stops rather than leaving a frozen frame on the stage from a device the
+     * user just navigated away from, and [discoveryPlatform] re-keys the three collectors so
+     * the OTHER platform's poll loop is cancelled instead of left running under a UI that no
+     * longer shows it.
+     *
+     * The reduction clears `discovery` and `rows` IN THE SAME STEP as the platform, and that
+     * is not tidiness: leaving them would show the Android bench under an iOS toolbar until
+     * the first simctl poll lands, and a stale row is clickable. `frozen = null` takes the
+     * frame's `promptOverride` with it, which is `bugs.json#PP-TD-2`'s failure mode on a new
+     * axis — a prompt typed against one platform's device riding into the next send.
+     */
     private fun selectPlatform(platform: PlatformModel) = intent {
-        // iOS is detected but not mirrorable this release, so switching platform must stop the
-        // running session rather than leave a frozen frame on the stage.
         sessionDeviceId.value = null
+        discoveryPlatform.value = platform
         releaseFrozenFrame()
         releaseHierarchy()
         reduce {
-            state.copy(platform = platform, session = MirrorSession.Idle, frozen = null)
-                .withoutMeasurements()
+            state.copy(
+                platform = platform,
+                session = MirrorSession.Idle,
+                frozen = null,
+                discovery = DiscoveryModel.Detecting,
+                rows = emptyList(),
+                avds = emptyList(),
+                selectedAvd = null,
+                highlightedIndex = 0,
+            ).withoutMeasurements()
         }
     }
 
@@ -1003,7 +1044,7 @@ public class MirrorViewModel(
     private fun commit() = intent {
         val row = state.highlightedRow?.takeIf { it.selectable } ?: return@intent
         when (row.kind) {
-            MirrorRowKind.Boot -> boot(row.avdName ?: row.id)
+            MirrorRowKind.Boot -> boot(bootTargetOf(row))
             MirrorRowKind.Detail, MirrorRowKind.Running -> {
                 reduce {
                     state.copy(
@@ -1020,7 +1061,7 @@ public class MirrorViewModel(
 
     private fun bootRow(id: String) = intent {
         val row = state.rows.firstOrNull { it.id == id } ?: return@intent
-        boot(row.avdName ?: row.id)
+        boot(bootTargetOf(row))
     }
 
     private fun selectAvd(avdName: String) = intent {
@@ -1029,7 +1070,11 @@ public class MirrorViewModel(
 
     private fun bootSelectedAvd() = intent {
         val avd = state.selectedAvd ?: state.avds.firstOrNull() ?: return@intent
-        boot(avd)
+        // Resolved back to its ROW first: on iOS the shortcut list carries simulator names,
+        // and a name is not a key - two `iPhone 15 Pro` can sit under one runtime, so the
+        // name would boot whichever the tool happened to match.
+        val row = state.rows.firstOrNull { it.avdName == avd }
+        boot(if (row == null) avd else bootTargetOf(row))
     }
 
     private fun stopSession() = intent {
@@ -1606,6 +1651,20 @@ public class MirrorViewModel(
         val lost = state.session as? MirrorSession.Lost ?: return@intent
         reduce { state.copy(session = MirrorSession.Streaming(lost.deviceId)) }
         sessionDeviceId.value = lost.deviceId
+    }
+
+    /**
+     * What `bootEmulator` has to be handed for this row on this platform.
+     *
+     * The two platforms disagree on what identifies a bootable image: `emulator -avd` takes
+     * an AVD NAME, `simctl boot` takes a UDID. The row carries both - `avdName` is the
+     * simulator's display name on iOS - so picking the wrong one is silent, and on iOS it is
+     * also wrong: the captured `simctl list` from this host has two `iPhone 15 Pro` under a
+     * single runtime, so a name does not address one of them.
+     */
+    private fun Syntax<MirrorUiState, MirrorSideEffect>.bootTargetOf(row: MirrorRow): String = when (state.platform) {
+        PlatformModel.Ios -> row.id
+        PlatformModel.Android -> row.avdName ?: row.id
     }
 
     /**

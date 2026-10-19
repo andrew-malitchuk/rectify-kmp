@@ -2,7 +2,7 @@
 
 ## Module Purpose
 
-The implementation behind `data-device-api`'s four datasource interfaces. **This module contains
+The implementation behind `data-device-api`'s five datasource interfaces. **This module contains
 the only `ProcessBuilder` in the repository.** Nothing else in Rectify spawns an external process.
 
 ## The One Rule
@@ -33,15 +33,29 @@ data.device.impl/
 │   └── unsupported/UnsupportedDeviceSources.kt  — commonMain; the Android/iOS answer
 ├── di/DataDeviceImplModule.kt
 └── source/
-    ├── DeviceSourcesProvider.kt       — internal expect fun Module.provideDeviceSources()
-    ├── datasource/{AdbHostSource,EmulatorSource,DeviceCommandExecutor}Impl.kt
+    ├── DeviceSourcesProvider.kt       — internal expect fun Module.provideDeviceSources(),
+    │                                    plus provideUnsupportedDeviceSources(): the ONE body
+    │                                    both mobile actuals register
+    ├── datasource/AdbHostSourceImpl.kt, EmulatorSourceImpl.kt, IosHostSourceImpl.kt,
+    │              AdbDeviceCommandExecutor.kt, IosDeviceCommandExecutor.kt
     └── transport/ScreencapMirrorTransport.kt
 ```
 
-Platform actuals: `desktopMain` wires the real sources; `androidMain` and `iosMain` both register
-`UnsupportedDeviceSources`, which report `found = false` and throw `DeviceCommandException` on any
-attempt to run something. That is how NFR-10 (macOS-only v1) holds while every target still links.
-The `expect`/`actual` Koin provider mirrors `data-preference-impl`'s `provideSettings()` exactly.
+Platform actuals: `desktopMain` wires the real sources; `androidMain` and `iosMain` both call
+`provideUnsupportedDeviceSources()`, which registers `UnsupportedAdbHostSource`,
+`UnsupportedEmulatorSource`, `UnsupportedIosHostSource`, `UnsupportedDeviceCommandExecutor` and
+`UnsupportedMirrorTransport` — all reporting `found = false` and throwing
+`DeviceCommandException` on any attempt to run something. That is how NFR-10 (macOS-only v1)
+holds while every target still links. The `expect`/`actual` Koin provider mirrors
+`data-preference-impl`'s `provideSettings()` exactly.
+
+**The executor and the transport are ALWAYS qualified**, `named("android")` / `named("ios")`
+(the constants live in `data-device-api`'s `DeviceSourceQualifiers.kt` so the registrations and
+`DeviceRepositoryImpl`'s wiring cannot spell them differently). There is no unqualified binding
+of either to fall back on, and the two desktop transports are the SAME `ScreencapMirrorTransport`
+class twice, differing only in which executor they were handed. A forgotten qualifier is a crash
+at app launch that compiling cannot catch — `DeviceSourcesModuleTest` resolves all three graphs
+and asserts no unqualified resolution succeeds, which is the only machine guard there is.
 
 ## ProcessRunner — the non-obvious parts
 
@@ -93,7 +107,7 @@ load-bearing:
 
 ## Testing
 
-24 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
+31 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
 read, warning-line trim, non-PNG and truncated stdout costing one frame rather than the session,
 the overdue-slot arithmetic, the fps window, per-session stat reset, and a vanished device ending
 the loop. All hardware-free.
@@ -102,8 +116,14 @@ the loop. All hardware-free.
 any capture-rate or latency number. Those are code-review-only until someone attaches an
 authorised handset.
 
-The rest cover `AdbHostSourceImpl`'s daemon commands and `ToolResolver`'s user-path seam,
-including the three rejection cases above. All hardware-free.
+The rest cover `AdbHostSourceImpl`'s daemon commands, `ToolResolver`'s user-path seam
+(including the three rejection cases above), and the Koin graphs. All hardware-free.
+
+`IosHostSourceImpl` and `IosDeviceCommandExecutor` get no unit test of their own, deliberately:
+every method spawns, and a real spawn inside `runTest`'s virtual clock always times out (the
+same reason `ToolResolver` takes injected predicates). `SimctlRealToolchainTest` is the honest
+coverage — it runs the real `xcrun simctl list devices available` through `ProcessRunner` and
+SKIPS, rather than fails, when `xcrun` is absent.
 
 One of the daemon tests genuinely spawns a real child and pays both a ~3.2 s fork and a 3 s
 timeout, so it takes ~6.5 s. That is deliberate: a stubbed clock catches a wrong comparison but

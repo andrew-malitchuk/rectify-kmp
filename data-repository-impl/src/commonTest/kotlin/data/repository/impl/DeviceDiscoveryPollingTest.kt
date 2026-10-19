@@ -3,7 +3,6 @@ package data.repository.impl
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -446,10 +445,12 @@ class DeviceDiscoveryPollingTest {
         executor: DeviceCommandExecutor = FakeDeviceCommandExecutor(),
     ): DeviceRepositoryImpl = DeviceRepositoryImpl(
         adbHostSource = adb,
-        idbHostSource = FakeIdbHostSource(),
+        iosHostSource = FakeIosHostSource(),
         emulatorSource = emulators,
-        deviceCommandExecutor = executor,
-        mirrorTransport = FakeMirrorTransport,
+        androidExecutor = executor,
+        iosExecutor = executor,
+        androidTransport = FakeMirrorTransport,
+        iosTransport = FakeMirrorTransport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
         nowMs = { testScheduler.currentTime },
     )
@@ -548,20 +549,6 @@ private fun DiscoveryModel.summary(): String = when (this) {
     is DiscoveryModel.Found -> "Found(${physical.joinToString("|") { it.id }})"
     is DiscoveryModel.SimulatorNotBooted -> "SimulatorNotBooted(${simulators.size})"
     is DiscoveryModel.DeviceNotTrusted -> "DeviceNotTrusted(${deviceId})"
-}
-
-/** An `idb` probe that answers without touching a process. */
-internal class FakeIdbHostSource(
-    private val found: Boolean = false,
-) : IdbHostSource {
-
-    override suspend fun probe(): ToolProbe = ToolProbe(
-        kind = ToolKind.Idb,
-        found = found,
-        path = "/opt/homebrew/bin/idb".takeIf { found },
-        probedPaths = listOf("/opt/homebrew/bin/idb"),
-        installCommand = "brew tap facebook/fb && brew install idb-companion",
-    )
 }
 
 private class FakeEmulatorSource(avds: List<String>) : EmulatorSource {

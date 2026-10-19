@@ -13,7 +13,7 @@ testable with `kotlin.test` and **no phone attached** — which is most of what 
 Moving a parser into `data-device-impl` would drag the desktop implementation onto the test
 classpath and make those tests need hardware.
 
-61 tests in `commonTest` cover the parsers and the invariants below. They also run on
+86 tests in `commonTest` cover the parsers and the invariants below. They also run on
 `iosSimulatorArm64Test`.
 
 ## Package Layout
@@ -21,11 +21,15 @@ classpath and make those tests need hardware.
 ```
 data.device.api/
 └── source/
-    ├── model/        — DeviceId, AvdName, DeviceCommand, HostCommand, resources, MirrorFrame,
+    ├── model/        — DeviceId, AvdName, DeviceCommand, HostCommand, resources
+    │                   (DeviceResource, SimulatorResource, IosTargetResource), MirrorFrame,
     │                   TransportStats, ToolKind, ToolProbe
-    ├── datasource/   — DeviceCommandExecutor, AdbHostSource, EmulatorSource, MirrorTransport
+    ├── datasource/   — DeviceCommandExecutor, AdbHostSource, EmulatorSource, IosHostSource,
+    │                   MirrorTransport, DeviceSourceQualifiers (the `android` / `ios` Koin
+    │                   qualifier names, public so the registrations and their one consumer
+    │                   cannot spell them differently)
     ├── parse/        — AdbDevicesParser, WmOutputParser, AvdListParser, PngTrim, DeviceArgv,
-    │                   UiAutomatorDumpParser
+    │                   UiAutomatorDumpParser, SimctlDevicesParser, IdbTargetsParser
     ├── tool/         — ToolProbeCandidates
     ├── tuning/       — MirrorTuning
     └── error/        — DeviceCommandException
@@ -44,9 +48,15 @@ not because call sites are careful:
 | Mechanism | What it prevents |
 |---|---|
 | `DeviceId` / `AvdName` are `@JvmInline value class` with **private constructors** and a validating `of()` | Constructing an id from an arbitrary string |
-| `DeviceCommand` is a **closed** sealed interface (6 cases) | Expressing a command the module did not sanction |
-| `HostCommand` is a separate closed set (5 cases) | Device-less commands silently acquiring a `-s` flag |
-| `buildDeviceArgv` is the **single** `[tool, -s, id, …]` construction point | Argv assembled ad hoc somewhere else |
+| `DeviceCommand` is a **closed** sealed interface (7 cases, `SimulatorBoot` added for F-10) | Expressing a command the module did not sanction |
+| `HostCommand` is a separate closed set (10 cases, `XcrunVersion` / `ListSimulators` / `ListTargets` added for F-10) | Device-less commands silently acquiring a `-s` flag |
+| `buildDeviceArgv(tool, toolPath, device, command)` is the **single** argv construction point, and its invariant is checked against the SELECTOR SEGMENT only — `check(selector.count { it == device.value } == 1)` | Argv assembled ad hoc somewhere else, and an id smuggled in twice |
+
+The selector segment is per-tool and is why the check is scoped rather than whole-argv: adb
+prefixes `[toolPath, "-s", id]`, simctl places the udid positionally after its subcommand
+(`[xcrunPath, "simctl", <sub>, id]`), idb flags it (`[idbPath, <sub>, "--udid", id]`). The
+payload is appended after the selector and is checked only against the `connect`/`-H`/`-P`
+denylist. An Android-only command on an iOS tool throws rather than returning empty bytes.
 
 **Do not add a raw-argv or raw-String escape hatch.** It would void all four at once. If a new
 command is needed, add a case to the closed set.
@@ -63,6 +73,14 @@ command is needed, add a case to the closed set.
   XML: adb glues `UI hierchary dumped to: /dev/tty` (AOSP's own misspelling) onto `</hierarchy>`.
   It never throws — unreadable input yields an empty list, a node with unusable `bounds` is
   skipped — and it normalises inverted rects, which real dumps contain.
+- `parseSimctlDevices` reads `xcrun simctl list devices available`: `-- iOS 18.5 --` runtime
+  headers, rows whose udid is the SECOND-to-last parenthesised group (names contain
+  parentheses — `iPhone SE (3rd generation)`). Never throws; an `(unavailable, …)` row is
+  dropped. Parser DRIFT is caught one layer up, in `IosHostSourceImpl`, which raises output it
+  recognised nothing in rather than reporting a silent empty bench.
+- `parseIdbTargets` splits `idb list-targets` on `|`, keeps `target_type == device`, and
+  decides "trusted" behind one named token set so that assumption can be corrected in one
+  place. Never throws.
 - `ToolProbeCandidates` returns an **ordered** list — `$ANDROID_HOME`, `$ANDROID_SDK_ROOT`,
   `~/Library/Android/sdk`, `/opt/homebrew/bin`, `/usr/local/bin`, then PATH. PATH alone is not
   enough: a Finder-launched `.app` inherits a minimal PATH that excludes `/opt/homebrew/bin`, so

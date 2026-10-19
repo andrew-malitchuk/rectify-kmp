@@ -31,26 +31,28 @@ class DeviceToolDetectionTest {
 
     @Test
     fun `both platforms report a probed tool`() = runTest {
-        val repository = repository(idb = FakeIdbHostSource(found = true))
+        val repository = repository(ios = FakeIosHostSource(found = true))
 
         val tools = repository.detectTools()
 
         assertEquals(listOf(PlatformModel.Android, PlatformModel.Ios), tools.map { it.platform })
         assertTrue(tools.single { it.platform == PlatformModel.Ios }.isInstalled)
-        assertEquals("/opt/homebrew/bin/idb", tools.single { it.platform == PlatformModel.Ios }.path)
+        // `xcrun`, not `idb`: the dot reports the binary a session would actually use, and
+        // probeSimctl additionally proves the simctl SUBCOMMAND resolves behind the shim.
+        assertEquals("/usr/bin/xcrun", tools.single { it.platform == PlatformModel.Ios }.path)
     }
 
     @Test
-    fun `an absent idb is reported as missing with the paths that were tried`() = runTest {
-        val repository = repository(idb = FakeIdbHostSource(found = false))
+    fun `an absent xcrun is reported as missing with the paths that were tried`() = runTest {
+        val repository = repository(ios = FakeIosHostSource(found = false))
 
         val ios = repository.detectTools().single { it.platform == PlatformModel.Ios }
 
         // Not installed, but still a PROBE: the candidate paths prove a probe ran, which a
         // hardcoded constant could not produce.
         assertTrue(!ios.isInstalled)
-        assertEquals(listOf("/opt/homebrew/bin/idb"), ios.probedPaths)
-        assertEquals("brew tap facebook/fb && brew install idb-companion", ios.installCommand)
+        assertEquals(listOf("/usr/bin/xcrun"), ios.probedPaths)
+        assertEquals("xcode-select --install", ios.installCommand)
     }
 
     @Test
@@ -66,14 +68,16 @@ class DeviceToolDetectionTest {
     }
 
     private fun repository(
-        idb: FakeIdbHostSource = FakeIdbHostSource(),
+        ios: FakeIosHostSource = FakeIosHostSource(),
         transport: MirrorTransport = StatsTransport(TransportStats()),
     ) = DeviceRepositoryImpl(
         adbHostSource = StubAdbHostSource,
-        idbHostSource = idb,
+        iosHostSource = ios,
         emulatorSource = StubEmulatorSource,
-        deviceCommandExecutor = StubDeviceCommandExecutor,
-        mirrorTransport = transport,
+        androidExecutor = StubDeviceCommandExecutor,
+        iosExecutor = StubDeviceCommandExecutor,
+        androidTransport = transport,
+        iosTransport = transport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
     )
 }

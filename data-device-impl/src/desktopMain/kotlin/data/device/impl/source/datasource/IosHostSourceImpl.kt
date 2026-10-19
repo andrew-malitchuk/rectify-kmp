@@ -23,6 +23,15 @@ import data.device.impl.core.tool.ToolResolver
  */
 private const val SIMCTL_UTILITY_MISSING = "unable to find utility \"simctl\""
 
+/** Runtime section header, e.g. `-- iOS 18.5 --`; its absence is what flags parser drift. */
+private const val SECTION_MARKER = "--"
+
+/** Banner `simctl list devices` always prints, header rows or not. */
+private const val DEVICES_BANNER = "== Devices =="
+
+/** Enough of the unrecognised output to diagnose the drift from the error card. */
+private const val DRIFT_REASON_HEAD = 200
+
 /**
  * The deviceless iOS calls, run as child processes.
  *
@@ -64,14 +73,32 @@ internal class IosHostSourceImpl(
 
     override suspend fun probeIdb(): ToolProbe = tools.resolve(ToolKind.Idb)
 
-    /** A missing or failing `xcrun` lists nothing; reporting that is [probeSimctl]'s job. */
+    /**
+     * A missing `xcrun` lists nothing; reporting that is [probeSimctl]'s job.
+     *
+     * PARSER DRIFT is the one case this does NOT turn into an empty bench. `simctl`'s
+     * plain-text listing is not a stable contract, so the day a release reshapes it
+     * [parseSimctlDevices] returns zero rows from perfectly good output and the user would be
+     * told "no simulators" forever. Output the parser understood NONE of — no runtime header
+     * and nothing but the `== Devices ==` banner stripped away — is therefore raised as a
+     * [DeviceCommandException], which the repository's poll loop renders as
+     * `PollFailed(tool = "xcrun", …)` and retries on the next tick.
+     *
+     * The header test is what keeps it honest: a Mac with Xcode and no installed runtimes
+     * prints the banner alone and is a legitimately empty bench, not drift.
+     */
     override suspend fun listSimulators(): List<SimulatorResource> {
         val path = tools.resolve(ToolKind.Simctl).path ?: return emptyList()
-        return try {
-            parseSimctlDevices(simctlList(path))
-        } catch (failure: DeviceCommandException) {
-            emptyList()
+        val output = simctlList(path)
+        val simulators = parseSimctlDevices(output)
+        if (simulators.isEmpty() && output.looksUnparsed()) {
+            throw DeviceCommandException(
+                argv = buildHostArgv(path, HostCommand.ListSimulators),
+                exitCode = null,
+                stderrTail = output.trim().take(DRIFT_REASON_HEAD),
+            )
         }
+        return simulators
     }
 
     /**
@@ -107,6 +134,12 @@ internal class IosHostSourceImpl(
             !failure.stderrTail.contains(SIMCTL_UTILITY_MISSING)
         }
     }
+
+    /** Output holding no runtime header and nothing but the banner: the parser lost the format. */
+    private fun String.looksUnparsed(): Boolean = lineSequence()
+        .map(String::trim)
+        .filter { it.isNotEmpty() && it != DEVICES_BANNER }
+        .any { !it.startsWith(SECTION_MARKER) }
 
     /** The one `simctl list` spawn site, shared by the probe and the listing. */
     private suspend fun simctlList(path: String): String = ProcessRunner.run(
