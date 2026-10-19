@@ -46,3 +46,8 @@
 {"stage": "execution", "event": "end", "at": "2026-10-19T00:46:56Z", "spec": "verify-and-rediff-loop"}
 {"stage": "validation", "event": "start", "at": "2026-10-19T00:46:56Z", "spec": "verify-and-rediff-loop"}
 {"stage": "validation", "step": "audit", "agent": "sdd-build-validation-audit", "event": "end", "tokens": 157432, "at": "2026-10-19T00:57:49Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "step": "request", "agent": "sdd-build-validation-request", "event": "end", "tokens": 34580, "at": "2026-10-19T01:00:35Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "start", "at": "2026-10-19T01:00:35Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 70874, "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
+{"stage": "validation", "event": "end", "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
+{"stage": "review", "event": "start", "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
