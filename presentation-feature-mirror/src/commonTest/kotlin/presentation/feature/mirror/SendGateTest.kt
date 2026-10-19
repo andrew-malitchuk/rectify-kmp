@@ -7,6 +7,7 @@ import presentation.feature.mirror.source.mirror.FrozenFrame
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.SendPhase
 import presentation.feature.mirror.source.mirror.StagedAnnotation
+import presentation.feature.mirror.source.mirror.VerifyUiState
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -84,6 +85,31 @@ class SendGateTest {
     @Test
     fun trueAfterASuccessfulSendPriorToTheCounterReset() {
         val state = MirrorUiState(frozen = frozenWith(1), send = SendPhase.Sent)
+
+        assertTrue(canSend(state))
+    }
+
+    // -- review#COR-2: the verify stage owns the primary action ---------------------------------
+
+    @Test
+    fun falseWhileTheVerifyStageIsUpEvenOverAPerfectlySendableBatch() {
+        // Every other input says "send": a frozen frame, two staged annotations, Idle. The
+        // verify stage is still up, and it prints the same shortcut on its own Send follow-up
+        // action -- so without this clause the toolbar button and the shortcut would dispatch
+        // two different intents, and the ordinary send's Preparing/Publishing/Failed states
+        // would render invisibly behind a stage that outranks them.
+        val state = MirrorUiState(
+            frozen = frozenWith(2),
+            send = SendPhase.Idle,
+            verify = VerifyUiState(batchId = "B-1", deviceLabel = "Pixel 7a", sentAtMs = 0L),
+        )
+
+        assertFalse(canSend(state))
+    }
+
+    @Test
+    fun trueAgainOnceTheVerifyStageIsLeft() {
+        val state = MirrorUiState(frozen = frozenWith(2), send = SendPhase.Idle, verify = null)
 
         assertTrue(canSend(state))
     }

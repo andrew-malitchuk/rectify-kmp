@@ -219,13 +219,17 @@ public fun ApplicationScope.RectifyWindow() {
                             if (hasStaged) shellState.selectTab(ShellTab.Notes)
                         }
 
-                        // The shortcut and the button are the same predicate by construction: the
-                        // holder is null whenever the button is disabled, so ⌘↩ cannot start a send
-                        // the toolbar refuses to (A11Y-2 / TAC-3).
-                        // The verify stage prints the same ⌘↩ hint on its own primary action, so
-                        // the holder points at the follow-up while that stage owns the screen —
-                        // the same precedence MirrorUiState.stage gives Verify over Frozen. A
-                        // hint for a key that does nothing is the thing being avoided here.
+                        // One primary action at a time, never two (A11Y-2 / TAC-3). The two
+                        // branches below are mutually exclusive by construction and not by
+                        // luck: `canSend` is false for as long as a verify stage is up (see
+                        // core/send/SendGate), which is exactly when the follow-up branch can
+                        // fire. So ⌘↩ and the toolbar button always dispatch the SAME intent,
+                        // and ⌘↩ is dark whenever the button is.
+                        //
+                        // The verify stage prints the same ⌘↩ hint on its own primary action,
+                        // so the holder points at the follow-up while that stage owns the
+                        // screen — the same precedence MirrorUiState.stage gives Verify over
+                        // Frozen. A hint for a key that does nothing is what is avoided here.
                         val canSend = mirror.canSend
                         val followUpCount = mirror.verify?.stillOffRows?.size ?: 0
                         LaunchedEffect(canSend, followUpCount) {
@@ -503,7 +507,9 @@ private fun isMacOs(): Boolean =
  * nothing to select, so the event must pass through to whatever else wants it (SC-4).
  *
  * ⌘↩ joins it on the same terms (AC-17): consumed **only** when [sendAction] is non-null, which
- * `MirrorHost` keeps in lockstep with `canSend`. A disabled send therefore lets the event fall
+ * `MirrorHost` keeps in lockstep with whichever primary action is live — `ResolveAndSend` on a
+ * frozen frame, `SendFollowUp` while the verify stage owns the screen, and never both, because
+ * `canSend` is false for the whole of that stage. No live action therefore lets the event fall
  * through instead of swallowing a Return the rest of the window might want — the same SC-4
  * reasoning as the panel check below.
  *

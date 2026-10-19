@@ -1,6 +1,7 @@
 package presentation.feature.mirror.core.verify
 
 import presentation.feature.mirror.core.measure.SEPARATOR
+import presentation.feature.mirror.core.measure.TOUCH_TARGET_ADVISED_DP
 import presentation.feature.mirror.core.measure.deltaLabel
 import presentation.feature.mirror.core.measure.displayDelta
 import presentation.feature.mirror.core.measure.plainValueLabel
@@ -13,14 +14,6 @@ import presentation.feature.mirror.source.mirror.MeasureSide
 
 /** `→`, U+2192 with a space either side — the design's before/after link. Never `->`. */
 private const val ARROW = " → "
-
-/**
- * The touch-target size to aim at, in dp.
- *
- * The finding FIRES below 32 (`TOUCH_TARGET_MIN_DP`) while the advice is 48 — two deliberately
- * different numbers kept from the design, see `touchTargetFinding`, which prints the same 48.
- */
-private const val TOUCH_TARGET_ADVISED_DP = 48
 
 /**
  * `top Δ6dp → 0dp` — a misalignment that was measured on both frames.

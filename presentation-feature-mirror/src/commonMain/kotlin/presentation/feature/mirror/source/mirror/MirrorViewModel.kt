@@ -294,6 +294,25 @@ public class MirrorViewModel(
     private var verifyJob: Job? = null
 
     /**
+     * Which verification run owns the stage, bumped by every start and every cancel.
+     *
+     * [verifyJob]'s `cancel()` is NOT enough on its own and cannot be made to be. Orbit's
+     * `reduce` is `internalStateFlow.update {}` — a `suspend fun` with no suspension point in
+     * it, so it carries no cancellation check and a cancelled run's reduction still lands.
+     * Underneath it, the dump is a blocking `adb` process read that nothing can interrupt, so
+     * the cancelled run genuinely runs to completion.
+     *
+     * A run therefore carries the id it started on and re-checks it at every resume point, the
+     * same shape as the existing `sessionDeviceId` checks beside it. A stale run returns
+     * SILENTLY: unlike a device loss there is nothing to tell the user — the view it would
+     * report into is gone or belongs to someone else. This is what stops an abandoned run
+     * throwing the user back into Verify reading "the device went away", republishing its
+     * pixels after the exit that dropped them, or writing [BatchStatusModel.Verified] over the
+     * human's own "Mark all as verified".
+     */
+    private var verifyRunId: Int = 0
+
+    /**
      * The live frame the AFTER half of a run was measured against, retained for the follow-up.
      *
      * `internal`, exactly like [frozenHeld] and for the same reason: a [HeldFrame] must never
@@ -459,16 +478,19 @@ public class MirrorViewModel(
      * Re-captures the device and diffs it, annotation by annotation, against the batch that was
      * sent (FR-32 / AC-23 / AC-24 / SC-8).
      *
-     * Seven ordered steps, all of them inside the ONE coroutine `intent {}` returns and all of
-     * them cancellable through [verifyJob]:
+     * Seven ordered steps, all of them inside the ONE coroutine `intent {}` returns, cancelled
+     * through [verifyJob] and — because a cancel alone cannot stop them — retired through
+     * [verifyRunId]:
      *
-     * 1. **A live session is required.** `StartMirroringUseCase` is stream-only and there is no
+     * 1. **The BEFORE batch** comes from [getSentBatch]; absent, or with a `frame.png` that is
+     *    gone or no longer decodable, is [VerifyError.NotOnDisk]. It is read FIRST, ahead of
+     *    the session check, for one reason: it is the only place the device's real name lives,
+     *    and the very next step's copy prints that name.
+     * 2. **A live session is required.** `StartMirroringUseCase` is stream-only and there is no
      *    one-shot capture anywhere in this app, so the AFTER frame can only be the one already
      *    streaming. [currentHeld] is read ONCE, exactly as [stageAnnotation] reads it, so the
-     *    bitmap and the bytes behind it agree. Nothing streaming is [VerifyError.NoLiveSession]
-     *    — and the batch is never even read, because there would be nothing to compare it to.
-     * 2. **The BEFORE batch** comes from [getSentBatch]; absent, or with a `frame.png` that is
-     *    gone or no longer decodable, is [VerifyError.NotOnDisk].
+     *    bitmap and the bytes behind it agree. Nothing streaming is
+     *    [VerifyError.NoLiveSession].
      * 3. **One frame size, or none.** A stored frame that disagrees with the live one means a
      *    rotation, a resolution change or a different device, so every stored rect would land
      *    somewhere else: [VerifyError.SizeMismatch], raised BEFORE any per-annotation work.
@@ -496,6 +518,13 @@ public class MirrorViewModel(
      * Every abort carries a named [VerifyError] with an EMPTY row list and writes no status —
      * a run that could not run must never be readable as a set of verdicts.
      *
+     * **A cancel is checked for, not relied on.** [verifyRunId] is captured when the run starts
+     * and re-checked at every resume point, because `verifyJob?.cancel()` cannot actually stop
+     * this: Orbit's `reduce` has no suspension point and therefore no cancellation check, and
+     * `adb`'s dump is a blocking process read nothing can interrupt. A stale run returns
+     * silently at the first check it reaches — it reduces nothing, releases nothing and writes
+     * no status. See [verifyRunId].
+     *
      * **A device change does not CANCEL this run, and must not.** The `flatMapLatest`
      * teardown on [sessionDeviceId] tears down the capture loop and leaves [verifyJob] alone,
      * because a cancelled run reduces nothing at all: the stage would sit on
@@ -522,47 +551,78 @@ public class MirrorViewModel(
     private fun verifyBatch(batchId: String) {
         // Cancelled HERE rather than inside the new run: a second Verify must not be able to
         // interleave with the old one's reductions at all.
-        verifyJob?.cancel()
+        cancelVerifyRun()
         releaseVerify()
-        verifyJob = intent { runVerify(batchId) }
+        val runId = verifyRunId
+        verifyJob = intent { runVerify(batchId, runId) }
     }
 
-    private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.runVerify(batchId: String) {
+    /**
+     * Cancels whatever run is in flight and retires its id in the same breath.
+     *
+     * The two always go together — see [verifyRunId] for why `cancel()` alone cannot stop a
+     * run — so they are one call rather than two lines repeated at four sites.
+     */
+    private fun cancelVerifyRun() {
+        verifyJob?.cancel()
+        verifyJob = null
+        verifyRunId++
+    }
+
+    /** `true` once [runId]'s run has been cancelled or superseded — see [verifyRunId]. */
+    private fun isStale(runId: Int): Boolean = runId != verifyRunId
+
+    private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.runVerify(
+        batchId: String,
+        runId: Int,
+    ) {
         val deviceId = sessionDeviceId.value
         val after = currentHeld.value
         var view = VerifyUiState(
             batchId = batchId,
-            // Provisional: the batch's own label replaces it the moment the batch is read. The
-            // NoLiveSession copy needs A device name and aborts before there is a batch to ask.
+            // Provisional: the batch's own label replaces it below, and every abort from there
+            // on names the device the batch was actually sent from.
             deviceLabel = state.selectedDeviceName.orEmpty(),
             sentAtMs = state.history.firstOrNull { it.id == batchId }?.sentAtMs ?: 0L,
         )
         reduce { state.copy(verify = view) }
-        if (deviceId == null || after == null) return abortVerify(view, VerifyError.NoLiveSession)
 
+        // Read BEFORE the NoLiveSession abort, not after it. That abort's copy names the device
+        // ("Nothing is streaming from %s"), and in its own primary scenario -- the app opened on
+        // history with nothing selected -- `selectedDeviceName` is null, so deferring the read
+        // rendered the sentence with a hole in it. The batch is the only place the right name
+        // exists, and one read on an aborting path is cheaper than a wrong sentence.
         val batch = getSentBatch(batchId).getOrNull()
+        if (isStale(runId)) return
+        if (batch != null) view = view.copy(deviceLabel = batch.deviceLabel, sentAtMs = batch.sentAtMs)
+        if (deviceId == null || after == null) return abortVerify(runId, view, VerifyError.NoLiveSession)
+
         val beforeBytes = batch?.frameBytes
         if (batch == null || beforeBytes == null) {
-            return abortVerify(view, VerifyError.NotOnDisk)
+            return abortVerify(runId, view, VerifyError.NotOnDisk)
         }
-        view = view.copy(deviceLabel = batch.deviceLabel, sentAtMs = batch.sentAtMs)
-        val before = decodeFrame(beforeBytes) ?: return abortVerify(view, VerifyError.NotOnDisk)
-        if (sessionDeviceId.value != deviceId) return abortVerify(view, VerifyError.Disconnected)
+        val before = decodeFrame(beforeBytes) ?: return abortVerify(runId, view, VerifyError.NotOnDisk)
+        if (isStale(runId)) return
+        if (sessionDeviceId.value != deviceId) return abortVerify(runId, view, VerifyError.Disconnected)
 
         if (before.width != after.bitmap.width || before.height != after.bitmap.height) {
             log.w {
                 "Verify $batchId: stored frame ${before.width}x${before.height} does not match " +
                     "the live ${after.bitmap.width}x${after.bitmap.height}"
             }
-            return abortVerify(view, VerifyError.SizeMismatch)
+            return abortVerify(runId, view, VerifyError.SizeMismatch)
         }
         val frameSize = IntSize(width = after.bitmap.width, height = after.bitmap.height)
 
         view = view.copy(phase = VerifyPhase.Recapturing)
         reduce { state.copy(verify = view) }
         val snapshot = dumpHierarchy(deviceId).getOrNull()
+        // Stale FIRST: a run the user walked away from must not report that the device went
+        // away. On a real handset the blocking `adb` read is not interruptible at all, so this
+        // run reaches here with a perfectly good dump and no stage left to put it on.
+        if (isStale(runId)) return
         if (snapshot == null || sessionDeviceId.value != deviceId) {
-            return abortVerify(view, VerifyError.Disconnected)
+            return abortVerify(runId, view, VerifyError.Disconnected)
         }
 
         val nodes = projectMeasureNodes(snapshot, frameSize)
@@ -571,7 +631,7 @@ public class MirrorViewModel(
                 "Verify $batchId: hierarchy is ${snapshot.frameWidthPx}x${snapshot.frameHeightPx} " +
                     "but the frame is ${frameSize.width}x${frameSize.height} — nothing to measure"
             }
-            return abortVerify(view, VerifyError.HierarchyUnusable)
+            return abortVerify(runId, view, VerifyError.HierarchyUnusable)
         }
 
         // Projected against the SAME frame size as the AFTER side, not against its own: step 3
@@ -605,13 +665,16 @@ public class MirrorViewModel(
                 )
             }
         }
-        if (sessionDeviceId.value != deviceId) return abortVerify(view, VerifyError.Disconnected)
+        if (isStale(runId)) return
+        if (sessionDeviceId.value != deviceId) return abortVerify(runId, view, VerifyError.Disconnected)
 
         view = view.copy(phase = VerifyPhase.Ready, rows = rows)
         reduce { state.copy(verify = view) }
 
         // Guarded on emptiness, not merely on `all` — see step 7 in this function's KDoc.
-        if (rows.isNotEmpty() && rows.all { it.outcome == VerificationOutcome.Fixed }) {
+        // And on the run id, so a "Mark all as verified" or an exit that landed between the
+        // reduction above and here cannot be overwritten by the run it just retired.
+        if (!isStale(runId) && rows.isNotEmpty() && rows.all { it.outcome == VerificationOutcome.Fixed }) {
             // Logged and dropped, never surfaced (AF-3): the run genuinely succeeded and the
             // verdicts on screen are real — only the durable label did not stick. Same rule as
             // the F-8 history write: a failed status write can never fail the thing it labels.
@@ -637,9 +700,14 @@ public class MirrorViewModel(
      * not only on the way out through [exitVerify].
      */
     private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.abortVerify(
+        runId: Int,
         view: VerifyUiState,
         error: VerifyError,
     ) {
+        // The backstop for the per-step checks: an abort is a reduction AND a teardown of the
+        // five shared fields, so a stale one would both re-open the stage and strip the run
+        // that legitimately owns it.
+        if (isStale(runId)) return
         releaseVerify()
         reduce { state.copy(verify = view.copy(rows = emptyList(), error = error)) }
     }
@@ -752,8 +820,7 @@ public class MirrorViewModel(
     private fun sendFollowUp() {
         // Cancelled out here rather than inside the intent, exactly as [exitVerify] does it: an
         // in-flight run must not be able to reduce a verdict over the frame being staged.
-        verifyJob?.cancel()
-        verifyJob = null
+        cancelVerifyRun()
         intent {
             val view = state.verify ?: return@intent
             val held = verifyAfterHeld ?: return@intent
@@ -822,8 +889,7 @@ public class MirrorViewModel(
      * and this manual path reaches the same end state under the same rule.
      */
     private fun markAllVerified() {
-        verifyJob?.cancel()
-        verifyJob = null
+        cancelVerifyRun()
         intent {
             val view = state.verify ?: return@intent
             if (view.error != null || view.rows.isEmpty()) return@intent
@@ -859,8 +925,7 @@ public class MirrorViewModel(
      * the side panel is already on History — it is where the Verify button was pressed.
      */
     private fun exitVerify() {
-        verifyJob?.cancel()
-        verifyJob = null
+        cancelVerifyRun()
         releaseVerify()
         intent { reduce { state.copy(verify = null) } }
     }

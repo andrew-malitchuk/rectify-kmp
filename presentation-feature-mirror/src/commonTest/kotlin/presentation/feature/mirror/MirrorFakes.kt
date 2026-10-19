@@ -32,6 +32,7 @@ import domain.usecase.api.source.usecase.history.GetSentBatchUseCase
 import domain.usecase.api.source.usecase.history.ObserveHistoryUseCase
 import domain.usecase.api.source.usecase.history.RecordSentBatchUseCase
 import domain.usecase.api.source.usecase.history.UpdateBatchStatusUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -270,10 +271,34 @@ internal class FakeSetAdbPath : SetAdbPathUseCase {
 }
 
 /**
+ * Runs [block] and, when the CALLER is cancelled mid-wait, returns [onCancellation] instead of
+ * letting the cancellation unwind.
+ *
+ * Deliberately worse-behaved than a bare `await()`, because the real thing is. A use case parked
+ * here stands in for `adb`'s blocking process read — which no `cancel()` can interrupt, so the
+ * dump genuinely COMPLETES after the user walked away — and for `domain-usecase-impl`'s
+ * `resultLauncher`, which used to catch `Throwable`, `CancellationException` included, and hand
+ * it back as an ordinary `Result`. A fake that unwound cleanly on `await()` was therefore better
+ * behaved than production, and every "a cancelled run lands nothing" test here was passing on
+ * the fake's good manners rather than on anything the ViewModel does (`review#COR-1`).
+ *
+ * `resultLauncher` rethrows cancellation now, but this stays: the uninterruptible `adb` read is
+ * real either way, so a cancelled run still resumes and still has to be stopped by
+ * `MirrorViewModel`'s own run-generation check rather than by the coroutine machinery.
+ */
+private suspend fun <T> uninterruptibly(onCancellation: T, block: suspend () -> T): T = try {
+    block()
+} catch (cancellation: CancellationException) {
+    onCancellation
+}
+
+/**
  * Resolves immediately with [result] by default — the right shape for every test that does not
  * care about the in-flight window. Set [manual] to gate resolution behind [resolve] instead, so
  * a test can assert the `Dumping` state deterministically before completing the dump, rather
  * than racing a real suspension against `advanceUntilIdle()`.
+ *
+ * **Cancellation is swallowed on purpose** — see [uninterruptibly].
  */
 internal class FakeDumpHierarchy(
     private val result: Result<HierarchySnapshotModel> = Result.success(HierarchySnapshotModel.Empty),
@@ -288,7 +313,9 @@ internal class FakeDumpHierarchy(
         if (!manual) return result
         val deferred = CompletableDeferred<Result<HierarchySnapshotModel>>()
         gate = deferred
-        return deferred.await()
+        // The cancelled case hands back [result], not a failure: that is what an uninterruptible
+        // process read does — it finishes, and the abandoned run walks on with a good dump.
+        return uninterruptibly(onCancellation = result) { deferred.await() }
     }
 
     /** Completes the most recently started call that is still pending. */
@@ -390,7 +417,8 @@ internal class FakeGetSentBatch(
         if (manual) {
             val deferred = CompletableDeferred<Unit>()
             gate = deferred
-            deferred.await()
+            // Swallows cancellation, exactly like [FakeDumpHierarchy] — see [uninterruptibly].
+            uninterruptibly(onCancellation = Unit) { deferred.await() }
         }
         return batch?.let { Result.success(it) } ?: Result.failure(Failure.Logic.NotFound)
     }
@@ -401,8 +429,10 @@ internal class FakeGetSentBatch(
     }
 }
 
-/** Records every status write, so "exactly once" and "never" are both directly assertable. */
-/** Records every write; [failure] makes them all fail while still recording the attempt. */
+/**
+ * Records every write, so "exactly once" and "never" are both directly assertable;
+ * [failure] makes them all fail while still recording the attempt.
+ */
 internal class FakeUpdateBatchStatus(
     private val failure: Throwable? = null,
 ) : UpdateBatchStatusUseCase {

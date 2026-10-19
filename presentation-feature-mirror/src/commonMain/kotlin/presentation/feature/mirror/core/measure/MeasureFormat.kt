@@ -58,12 +58,12 @@ internal fun leftMisalignmentFinding(delta: Int, unit: MeasureUnit, neighbourId:
 /**
  * `height 20dp · min touch 48dp`.
  *
- * The advised minimum is 48 while the finding FIRES below 32 ([TOUCH_TARGET_MIN_DP]) — two
- * deliberately different numbers from the design, kept as they are: 32 is "suspicious enough to
- * mention", 48 is the platform guideline to aim at.
+ * The advised minimum is [TOUCH_TARGET_ADVISED_DP] while the finding FIRES below 32
+ * ([TOUCH_TARGET_MIN_DP]) — two deliberately different numbers from the design, kept as they
+ * are: 32 is "suspicious enough to mention", 48 is the platform guideline to aim at.
  */
 internal fun touchTargetFinding(height: Int, unit: MeasureUnit): String =
-    "height ${plainValueLabel(height, unit)}${SEPARATOR}min touch 48${unit.suffix}"
+    "height ${plainValueLabel(height, unit)}${SEPARATOR}min touch $TOUCH_TARGET_ADVISED_DP${unit.suffix}"
 
 /**
  * The one-line measure summary pasted into an annotation's note, e.g.

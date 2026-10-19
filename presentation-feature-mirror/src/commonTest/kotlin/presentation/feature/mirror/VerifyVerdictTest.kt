@@ -90,6 +90,28 @@ class VerifyVerdictTest {
     }
 
     @Test
+    fun aRegionThatCouldNotBeReadAtAllIsStillOffHoweverCleanTheHierarchyLooks() {
+        // review#COR-5. Zero is the "no region could be read" sentinel -- a degenerate or
+        // fully-off-frame stored rect -- not a small region. Waiving the pixel conjunct for it
+        // would hand out Fixed on the hierarchy half alone with provably zero pixel evidence,
+        // which inverts the change-evidence rule the whole verdict is built on.
+        assertEquals(
+            VerificationOutcome.StillOff,
+            verdictOf(matched = true, afterFinding = null, changedRatio = 0f, regionPx = 0),
+        )
+    }
+
+    @Test
+    fun oneSinglePixelIsStillBelowTheFloorAndStillWaivesThePixelConjunct() {
+        // The boundary on the other side of 0: a region of 1 was read, it is merely tiny, so
+        // the floor applies to it exactly as it does to [tinyRegion].
+        assertEquals(
+            VerificationOutcome.Fixed,
+            verdictOf(matched = true, afterFinding = null, changedRatio = 0f, regionPx = 1),
+        )
+    }
+
+    @Test
     fun anUnreadableRegionCannotProduceAFixedOnPixelsAloneWhenTheNodeIsUnmatched() {
         assertEquals(
             VerificationOutcome.StillOff,

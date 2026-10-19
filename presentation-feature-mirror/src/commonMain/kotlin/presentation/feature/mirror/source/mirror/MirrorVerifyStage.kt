@@ -141,7 +141,12 @@ internal fun MirrorVerifyStage(
                     deviceLabel = verify.deviceLabel,
                 )
 
-                frames == null -> VerifyProgress(
+                // On the PHASE, not on `frames`: the run publishes the pair at the START of
+                // VerifyPhase.Diffing, before a single row exists, so branching on the pair
+                // showed empty columns beside a panel reading "0 of 0 fixed" for the whole
+                // diff window. `frames == null` stays in the condition as the null check it
+                // is -- Ready without a pair cannot happen, and would still not draw.
+                verify.phase != VerifyPhase.Ready || frames == null -> VerifyProgress(
                     phase = verify.phase,
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -359,6 +364,9 @@ private fun VerificationPanel(verify: VerifyUiState, onIntent: (MirrorIntent) ->
                 onClick = { onIntent(MirrorIntent.MarkAllVerified) },
                 variant = AppButtonVariant.Ghost,
                 fillMaxWidth = true,
+                // There is nothing to overrule until there are rows; the reducer no-ops on a
+                // rowless view anyway, and offering a button that does nothing is worse.
+                enabled = verify.rows.isNotEmpty(),
             )
         }
     }

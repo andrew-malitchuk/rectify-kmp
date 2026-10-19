@@ -51,6 +51,15 @@ private const val FRAME_WIDTH = 1080
 private const val FRAME_HEIGHT = 2400
 private const val DENSITY_DPI = 420
 
+/**
+ * The device the BATCH was sent from — deliberately NOT [phone]'s own `displayName`.
+ *
+ * `NoLiveSession`'s copy names a device ("Nothing is streaming from %s") on the one path where
+ * nothing is selected, so an assertion against a label both sides happen to share could not
+ * tell "the batch's name" from "the live name", and would pass on the empty string too.
+ */
+private const val BATCH_DEVICE_LABEL = "Pixel 7a"
+
 /** Which frame a decode was asked for — the one seam serves the live stream AND the stored PNG. */
 private const val BEFORE_TAG: Byte = 1
 private const val AFTER_TAG: Byte = 2
@@ -148,7 +157,7 @@ private fun sentBatch(
 ): SentBatchModel = SentBatchModel(
     id = BATCH_ID,
     sentAtMs = 1_700_000_000_000L,
-    deviceLabel = "Pixel 8 Pro",
+    deviceLabel = BATCH_DEVICE_LABEL,
     prompt = "fix the clipping",
     frameBytes = frameBytes,
     annotations = annotations,
@@ -283,7 +292,7 @@ class MirrorViewModelVerifyTest {
     // -- TAC-1: no live session -----------------------------------------------------------------
 
     @Test
-    fun noLiveSessionAbortsBeforeTheBatchIsEvenRead() = runTest(mainDispatcher) {
+    fun noLiveSessionNamesTheDeviceTheBatchWasSentFrom() = runTest(mainDispatcher) {
         val batches = FakeGetSentBatch(sentBatch())
         val status = FakeUpdateBatchStatus()
         val viewModel = mirrorViewModel(
@@ -301,7 +310,15 @@ class MirrorViewModelVerifyTest {
         val verify = assertNotNull(viewModel.currentState.verify)
         assertEquals(VerifyError.NoLiveSession, verify.error)
         assertTrue(verify.rows.isEmpty(), "an aborted run must carry no verdicts")
-        assertTrue(batches.calls.isEmpty(), "there is nothing to compare a batch against")
+        // This is the abort's PRIMARY scenario -- the app opened on history with nothing
+        // selected -- so `selectedDeviceName` is null and the body ("Nothing is streaming
+        // from %s") would otherwise render with a hole in it. The batch is read first for this.
+        assertEquals(
+            BATCH_DEVICE_LABEL,
+            verify.deviceLabel,
+            "the error copy names a device, so it has to be the batch's own",
+        )
+        assertEquals(listOf(BATCH_ID), batches.calls, "and that name costs exactly one read")
         assertTrue(status.writes.isEmpty(), "an abort must never move the batch on")
     }
 
@@ -791,6 +808,50 @@ class MirrorViewModelVerifyTest {
         assertNull(viewModel.verifyFrames.value)
         assertNull(viewModel.verifyAfterHeld)
         assertTrue(status.writes.isEmpty())
+    }
+
+    /**
+     * `review#COR-1` — a cancel is not a stop, and this is the case that proves it.
+     *
+     * [FakeDumpHierarchy] hands back a GOOD snapshot after the cancel rather than unwinding,
+     * because `adb`'s process read cannot be interrupted and because `resultLauncher` used to
+     * swallow cancellation outright. The abandoned run therefore really does resume with
+     * everything it needs, and Orbit's `reduce` — a `suspend fun` with no suspension point in
+     * it, so no cancellation check — would happily land a `Diffing` view and two full-frame
+     * bitmaps on a stage the user has left. Only the run-generation check stops it.
+     */
+    @Test
+    fun aRunAbandonedMidDumpLandsNothingEvenThoughTheDumpItselfCompletes() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val dump = FakeDumpHierarchy(Result.success(snapshot()), manual = true)
+        val status = FakeUpdateBatchStatus()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = dump,
+            getSentBatch = FakeGetSentBatch(sentBatch()),
+            updateBatchStatus = status,
+            decodeFrame = verifyDecoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        assertEquals(
+            VerifyPhase.Recapturing,
+            viewModel.currentState.verify?.phase,
+            "the run has to be parked in the dump for this to test anything",
+        )
+
+        viewModel.handleIntent(MirrorIntent.ExitVerify)
+        settle()
+
+        assertNull(viewModel.currentState.verify, "a retired run may not re-open the stage")
+        assertEquals(MirrorStage.Mirror, viewModel.currentState.stage)
+        assertNull(viewModel.verifyFrames.value, "nor republish the pixels the exit dropped")
+        assertNull(viewModel.verifyAfterHeld)
+        assertNull(viewModel.verifyAfterHierarchy)
+        assertTrue(status.writes.isEmpty(), "nor move a batch the user walked away from")
     }
 
     // -- T-15: the gaps around the disconnect path ------------------------------------------------

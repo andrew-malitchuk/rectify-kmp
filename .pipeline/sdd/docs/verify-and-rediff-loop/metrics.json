@@ -1,6 +1,6 @@
 {
   "spec": "verify-and-rediff-loop",
-  "updatedAt": "2026-10-18T22:33:15Z",
+  "updatedAt": "2026-10-19T01:05:04Z",
   "sealed": false,
   "agents": {
     "sdd-build-discussion-aggregate": {
@@ -74,11 +74,67 @@
       "durationMs": 0,
       "invocations": 1,
       "failures": 0
+    },
+    "sdd-build-business-implement": {
+      "tokens": 900862,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 7,
+      "failures": 0
+    },
+    "sdd-build-frontend-implement": {
+      "tokens": 291455,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 2,
+      "failures": 0
+    },
+    "sdd-build-docs-implement": {
+      "tokens": 114602,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-test-audit": {
+      "tokens": 104707,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-audit": {
+      "tokens": 157432,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-request": {
+      "tokens": 34580,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
+    },
+    "sdd-build-validation-verdict": {
+      "tokens": 70874,
+      "retries": 0,
+      "failureRate": 0.0,
+      "durationMs": 0,
+      "invocations": 1,
+      "failures": 0
     }
   },
   "totals": {
-    "tokens": 1049892,
+    "tokens": 2724404,
     "durationMs": 0,
-    "invocations": 9
+    "invocations": 23
   }
 }

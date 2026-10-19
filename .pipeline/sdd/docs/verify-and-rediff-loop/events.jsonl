@@ -51,3 +51,4 @@
 {"stage": "validation", "step": "verdict", "agent": "sdd-build-validation-verdict", "event": "end", "tokens": 70874, "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
 {"stage": "validation", "event": "end", "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
 {"stage": "review", "event": "start", "at": "2026-10-19T01:05:04Z", "spec": "verify-and-rediff-loop"}
+{"stage": "review", "step": "panel", "agent": "sdd-build-correctness-review", "event": "end", "tokens": 186520, "at": "2026-10-19T01:15:05Z", "spec": "verify-and-rediff-loop"}

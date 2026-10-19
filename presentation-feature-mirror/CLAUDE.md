@@ -108,14 +108,19 @@ flowchart TD
     D --> F[Project BEFORE and AFTER hierarchies against the one shared IntSize]
     F -->|unusable| E4[VerifyError.HierarchyUnusable]
     F --> G[Per annotation: measure both sides + regionPixels + changedRatio]
-    G --> H[verdictOf: Fixed iff nodeMatched AND afterFinding == null AND<br/>regionPx < MIN_REGION_PIXELS OR changedRatio > REGION_CHANGE_RATIO]
+    G --> H[verdictOf: Fixed iff nodeMatched AND afterFinding == null AND<br/>regionPx in 1 until MIN_REGION_PIXELS OR changedRatio > REGION_CHANGE_RATIO.<br/>regionPx == 0 is the unreadable-region sentinel and never waives the pixel half]
     H -->|all rows Fixed| I[UpdateBatchStatusUseCase: Verified]
     H -->|any row Still off| J[Re-stage Still-off annotations: SendFollowUp]
     J --> K[F-7 resolveAndSend — AFTER HeldFrame installed as the frozen frame]
 ```
 
 Every abort path (`E1`-`E4`, plus a mid-run device change) produces a named `VerifyError` and an
-**empty** rows list — an abort can never be mistaken for a verdict. A zero-row run (no
+**empty** rows list — an abort can never be mistaken for a verdict. A run the user ABANDONED
+produces nothing at all, not even an error: `verifyJob.cancel()` cannot stop a run (Orbit's
+`reduce` is a `suspend fun` with no suspension point, and `adb`'s dump is an uninterruptible
+process read), so a run carries a `verifyRunId` captured at its start and returns silently at
+the first check after a cancel. `MirrorFakes`' use-case gates swallow cancellation on purpose
+so the suite tests that guard rather than the fakes' good manners. A zero-row run (no
 annotations at all) writes no status. `MarkAllVerified` does not exit the Verify stage; `ExitVerify`
 does, and both routes release the same five verify-scoped fields through one `releaseVerify()`.
 The follow-up send carries the run's AFTER hierarchy forward (CR-B) but not the BEFORE one — no

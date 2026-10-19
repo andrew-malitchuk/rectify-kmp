@@ -18,12 +18,21 @@ import presentation.feature.mirror.source.mirror.SendPhase
  * `features.json#error-handling-and-recovery`'s deferred AC-29 clause. The only in-flight guard
  * is [SendPhase.isInFlight], which blocks a second concurrent send.
  *
+ * **It DOES read the verify stage.** A frozen frame with annotations on it survives a Verify of
+ * some older batch, and the verify stage prints ⌘↩ on its own `Send follow-up` action — so
+ * without this clause the shortcut and the toolbar button became two different sends. ⌘↩ would
+ * re-stage the AFTER frame and silently destroy the annotations standing on the frozen one,
+ * while the button next to it ran the ordinary send whose `Preparing`/`Publishing`/`Failed`
+ * states then rendered BEHIND the verify stage, invisible. The verify stage owns the primary
+ * action for as long as it is up; `MirrorUiState.stage` already gives it that precedence and
+ * this is the same rule stated where the predicate lives.
+ *
  * @param state Reduced mirror state.
- * @return `true` only when a frame is pinned, at least one annotation is staged, and no send is
- *   already running.
+ * @return `true` only when a frame is pinned, at least one annotation is staged, no verify
+ *   stage is up, and no send is already running.
  */
 internal fun canSend(state: MirrorUiState): Boolean =
-    state.frozen != null && state.stagedCount > 0 && !state.send.isInFlight
+    state.frozen != null && state.stagedCount > 0 && state.verify == null && !state.send.isInFlight
 
 /**
  * Whether `MirrorIntent.ClearStaged` may be dispatched right now (T-10, TAC-2).
