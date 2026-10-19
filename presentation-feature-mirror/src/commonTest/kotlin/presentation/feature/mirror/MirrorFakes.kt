@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -103,15 +104,66 @@ internal class FakeObserveDiscovery(
     }
 }
 
-/** Records every boot request and can be told to fail. */
+/**
+ * Records every boot request and can be told to fail.
+ *
+ * [platforms] rides alongside [booted] because the two halves of AC-47 are a PAIR: `simctl boot`
+ * takes a udid and `emulator -avd` takes an AVD name, so "what was booted" is only half an
+ * assertion without "which toolchain was asked to boot it".
+ */
 internal class FakeBootEmulator : BootEmulatorUseCase {
 
     val booted: MutableList<String> = mutableListOf()
+    val platforms: MutableList<PlatformModel> = mutableListOf()
     var failure: Throwable? = null
 
     override suspend fun invoke(platform: PlatformModel, avdName: String): Optional {
         booted += avdName
+        platforms += platform
         return failure?.let { Result.failure(it) } ?: Result.success(Unit)
+    }
+}
+
+/**
+ * One hot discovery channel PER PLATFORM, so a platform switch is observable as a real
+ * subscribe/cancel rather than inferred.
+ *
+ * [FakeObserveDiscovery] cannot answer T-21's questions: it replays one script whatever
+ * platform it is handed, so neither "the adb loop is gone" nor "a late Android poll lands
+ * nowhere" is expressible against it.
+ *
+ * The channels are `MutableSharedFlow`s with no buffer and no replay, which is the whole
+ * trick: with a live collector [emit] suspends until that collector takes the value, and with
+ * none it drops it — exactly what happens to a repository poll whose `flatMapLatest` branch
+ * has been cancelled. [subscriptions] is the subscribe LOG, in order, so a test can tell "re-keyed
+ * onto iOS" from "never re-keyed" and from "re-subscribed twice".
+ */
+internal class FakePlatformDiscovery : ObserveDeviceDiscoveryUseCase {
+
+    private val channels: Map<PlatformModel, MutableSharedFlow<DiscoveryModel>> =
+        PlatformModel.entries.associateWith { MutableSharedFlow() }
+
+    /** Every subscription this fake has handed out, newest last. */
+    val subscriptions: MutableList<PlatformModel> = mutableListOf()
+
+    private val live: MutableMap<PlatformModel, Int> = mutableMapOf()
+
+    /** Live collectors on [platform] right now — `0` once `flatMapLatest` has cancelled it. */
+    fun collectorsOn(platform: PlatformModel): Int = live[platform] ?: 0
+
+    override fun invoke(platform: PlatformModel): Flow<DiscoveryModel> = channels.getValue(platform)
+        // `onSubscription`, not `onStart`: only the former guarantees the collector is
+        // registered before the block returns, so a test that emits right after
+        // `advanceUntilIdle()` cannot race the subscription and lose the value.
+        .onSubscription {
+            subscriptions += platform
+            live[platform] = collectorsOn(platform) + 1
+        }
+        .onCompletion { live[platform] = collectorsOn(platform) - 1 }
+
+    /** Delivers one poll result on [platform]'s channel; a no-op when nothing collects it. */
+    suspend fun emit(platform: PlatformModel, discovery: DiscoveryModel) {
+        channels.getValue(platform).emit(discovery)
     }
 }
 

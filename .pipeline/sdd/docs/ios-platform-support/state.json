@@ -94,9 +94,9 @@
       "updatedAt": "2026-10-19T04:02:08Z"
     },
     "T-10": {
-      "status": "partial",
+      "status": "done",
       "wave": 6,
-      "updatedAt": "2026-10-19T04:02:08Z"
+      "updatedAt": "2026-10-19T04:38:18Z"
     },
     "T-19": {
       "status": "done",
@@ -122,6 +122,31 @@
       "status": "done",
       "wave": 8,
       "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-14": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-16": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-24": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-17": {
+      "status": "done",
+      "wave": 10,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-20": {
+      "status": "done",
+      "wave": 10,
+      "updatedAt": "2026-10-19T04:38:18Z"
     }
   },
   "effort": "fast",
