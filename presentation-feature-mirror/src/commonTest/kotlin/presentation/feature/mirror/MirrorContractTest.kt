@@ -1,12 +1,14 @@
 package presentation.feature.mirror
 
 import androidx.compose.ui.unit.IntSize
+import domain.core.source.model.device.PlatformModel
 import presentation.feature.mirror.source.mirror.DeviceRect
 import presentation.feature.mirror.source.mirror.FrozenFrame
 import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MeasureReadout
 import presentation.feature.mirror.source.mirror.MeasureUnit
 import presentation.feature.mirror.source.mirror.MirrorSession
+import presentation.feature.mirror.source.mirror.MirrorStage
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.StagedAnnotation
 import kotlin.test.Test
@@ -43,6 +45,49 @@ class MirrorContractTest {
                 "streaming=${streaming.canResumeLive}",
                 "lost=${lost.canResumeLive}",
                 "noFrozenFrame=${streaming.copy(frozen = null).canResumeLive}",
+            ),
+        )
+    }
+
+    /**
+     * T-19 — `MirrorStage` is still a closed set a `when` can cover without an `else`.
+     *
+     * The `when` below is the real assertion: `IosDeferred` was deleted in F-10, and had any
+     * branch of it survived — or had a new member been added without a render branch — this
+     * file would not COMPILE. The equality underneath pins the five remaining members so the
+     * deleted one cannot quietly come back as a sixth.
+     */
+    @Test
+    fun everyMirrorStageIsCoveredByAnExhaustiveWhen() {
+        val labels = MirrorStage.entries.map { stage ->
+            when (stage) {
+                MirrorStage.Picker -> "picker"
+                MirrorStage.Mirror -> "mirror"
+                MirrorStage.NoSignal -> "noSignal"
+                MirrorStage.Frozen -> "frozen"
+                MirrorStage.Verify -> "verify"
+            }
+        }
+
+        assertEquals(listOf("picker", "mirror", "noSignal", "frozen", "verify"), labels)
+    }
+
+    /** T-19 — and the derivation reaches each of them; iOS no longer short-circuits to a stage. */
+    @Test
+    fun theStageDerivationHasNoIosBranchLeft() {
+        // The picker outranks every other stage and defaults to open, so it has to be closed
+        // for the session underneath to be the thing under test.
+        val streaming = MirrorUiState(
+            session = MirrorSession.Streaming(deviceId = "emulator-5554"),
+            isPickerOpen = false,
+        )
+
+        assertEquals(
+            expected = listOf(MirrorStage.Mirror, MirrorStage.Mirror),
+            actual = listOf(
+                streaming.copy(platform = PlatformModel.Android).stage,
+                // The one that used to be IosDeferred regardless of what the session was doing.
+                streaming.copy(platform = PlatformModel.Ios).stage,
             ),
         )
     }

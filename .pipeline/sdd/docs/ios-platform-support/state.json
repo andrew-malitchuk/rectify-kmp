@@ -52,6 +52,36 @@
       "status": "done",
       "wave": 3,
       "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-15": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-18": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
     }
   },
   "effort": "fast",

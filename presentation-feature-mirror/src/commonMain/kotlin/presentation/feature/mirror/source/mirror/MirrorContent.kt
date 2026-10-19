@@ -339,9 +339,10 @@ private fun MirrorUiState.platformCards(): List<PickerPlatform> {
             title = if (platform == PlatformModel.Android) "Android" else "iOS",
             detail = tool.toDetail(binary, notFound),
             toolState = if (tool?.isInstalled == true) PlatformToolState.Found else PlatformToolState.Missing,
-            // iOS is probed so the user can see it is installed, but nothing streams from it
-            // this release (FR-2).
-            enabled = platform == PlatformModel.Android,
+            // Both platforms are selectable as of F-10. Deliberately NOT gated on the probe
+            // either: picking a platform whose tool is missing is how the user reaches the
+            // ToolMissing card that tells them what to install, and disabling the card would
+            // hide the only answer to "why is this list empty".
         )
     }
 }

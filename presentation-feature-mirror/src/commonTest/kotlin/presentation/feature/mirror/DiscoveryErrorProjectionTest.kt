@@ -5,7 +5,10 @@ import domain.core.source.model.device.DeviceModel
 import domain.core.source.model.device.DeviceStateModel
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.EmulatorModel
+import domain.core.source.model.device.PlatformModel
 import presentation.feature.mirror.core.discovery.ADB_RESTART_COMMAND
+import presentation.feature.mirror.core.discovery.IDB_LIST_TARGETS_COMMAND
+import presentation.feature.mirror.core.discovery.SIMCTL_BOOT_COMMAND
 import presentation.feature.mirror.core.discovery.applyDiscovery
 import presentation.feature.mirror.core.discovery.dropBanner
 import presentation.core.ui.source.kit.atom.indicator.StatusIndicatorState
@@ -33,6 +36,10 @@ private const val PIXEL = "37281FDH2000AB"
 private const val GALAXY = "RF8M90ABCDE"
 private const val PENDING = "0A1B2C3D"
 private const val AVD = "Pixel_Fold_API_35"
+
+/** First `iPhone 15 Pro` under iOS 17.5 in this host's real capture; the second shares its name. */
+private const val SIM_UDID = "77C17238-5B51-4206-9A58-CA601AF51E7E"
+private const val HANDSET = "00008130-001A2B3C4D5E6F00"
 
 /** The mono separator every machine line in this design language uses. */
 private const val SEPARATOR = " · "
@@ -97,6 +104,49 @@ private fun twoPhonesAndAColdAvd(): DiscoveryModel.Found = DiscoveryModel.Found(
 
 private fun stateOf(discovery: DiscoveryModel): MirrorUiState =
     MirrorUiState().applyDiscovery(discovery).copy(isPickerOpen = false)
+
+/** The same state with iOS selected — what the four SHARED kinds look like on an iOS bench. */
+private fun iosStateOf(discovery: DiscoveryModel): MirrorUiState =
+    stateOf(discovery).copy(platform = PlatformModel.Ios)
+
+/**
+ * Two shut-down simulators, udids from the real capture.
+ *
+ * Both are `iPhone 15 Pro` under iOS 17.5 on purpose — that duplicate is in this host's own
+ * `simctl` output and it is why the card addresses a udid rather than a name.
+ */
+private fun simulatorNotBooted(): DiscoveryModel.SimulatorNotBooted = DiscoveryModel.SimulatorNotBooted(
+    simulators = listOf(
+        EmulatorModel(avdName = "iPhone 15 Pro", isRunning = false, runningDeviceId = SIM_UDID, runtime = "iOS 17.5"),
+        EmulatorModel(
+            avdName = "iPhone 15 Pro",
+            isRunning = false,
+            runningDeviceId = "4210645D-322E-43DB-B6FB-7E4F388D1DF5",
+            runtime = "iOS 17.5",
+        ),
+    ),
+    toolVersion = "26.3",
+    lastPollEpochMs = NOW - 800,
+)
+
+private fun deviceNotTrusted(simulatorsAvailable: Boolean = true): DiscoveryModel.DeviceNotTrusted =
+    DiscoveryModel.DeviceNotTrusted(
+        deviceId = HANDSET,
+        deviceName = "Andrew iPhone",
+        simulatorsAvailable = simulatorsAvailable,
+    )
+
+private fun toolMissingIos(): DiscoveryModel.ToolMissing = DiscoveryModel.ToolMissing(
+    tool = "xcrun",
+    probedPaths = listOf("/usr/bin/xcrun"),
+    installCommand = "xcode-select --install",
+    envHint = "\$DEVELOPER_DIR unset",
+)
+
+private fun pollFailedIos(): DiscoveryModel.PollFailed = DiscoveryModel.PollFailed(
+    tool = "xcrun",
+    reason = "simctl list timed out after 3.0 s",
+)
 
 /**
  * Names each check so ONE [assertEquals] reports every clause.
@@ -491,6 +541,170 @@ class DiscoveryErrorProjectionTest {
             actual = listOf(
                 "rowGroups=${card.rows.map { it.group }}",
                 "primaryIsPhysical=${card.rows.any { it.id == card.primaryDeviceId }}",
+            ),
+        )
+    }
+
+    /**
+     * T-19 (AC-31 / `err-sim`) — the simulator card boots BY UDID and opens the picker.
+     *
+     * The udid matters more than it looks: the captured `simctl` output from this host lists
+     * two `iPhone 15 Pro` under iOS 17.5 alone, so a card that booted by NAME would boot an
+     * ambiguous target. `primaryDeviceId` is the boot action's identity and the command block
+     * has to name the same value.
+     *
+     * MUTATION: project `simulators.first().avdName` into primaryDeviceId — both the primary
+     * and the command clause fail.
+     */
+    @Test
+    fun simulatorNotBootedProjectsABootByUdidCard() {
+        val card = assertNotNull(stateOf(simulatorNotBooted()).errorCard(NOW))
+
+        assertEquals(
+            expected = verdicts(
+                "kind" to MirrorErrorKind.SimulatorNotBooted,
+                "platform" to PlatformModel.Ios,
+                "primaryDeviceId" to SIM_UDID,
+                "command" to "$SIMCTL_BOOT_COMMAND $SIM_UDID",
+                "diagnostic" to listOf("xcrun 26.3", "last poll 0.8 s ago", "2 shut down"),
+            ),
+            actual = verdicts(
+                "kind" to card.kind,
+                "platform" to card.platform,
+                "primaryDeviceId" to card.primaryDeviceId,
+                "command" to card.command,
+                "diagnostic" to card.diagnostic.split(SEPARATOR),
+            ),
+        )
+    }
+
+    /**
+     * T-19 (AC-31 / `err-trust`) — the trust card retries the handset and offers a simulator
+     * only when one exists.
+     *
+     * `canBootEmulator` is reused verbatim as "is there something to fall back to", so the
+     * false case is what stops "Use simulator" being a dead button on a bench with no
+     * simulator installed.
+     *
+     * MUTATION: hardcode canBootEmulator = true — the noSimulator clause fails.
+     */
+    @Test
+    fun deviceNotTrustedProjectsARetryCardWhoseFallbackDependsOnASimulator() {
+        val card = assertNotNull(stateOf(deviceNotTrusted()).errorCard(NOW))
+        val alone = assertNotNull(
+            stateOf(deviceNotTrusted(simulatorsAvailable = false)).errorCard(NOW),
+        )
+
+        assertEquals(
+            expected = verdicts(
+                "kind" to MirrorErrorKind.DeviceNotTrusted,
+                "platform" to PlatformModel.Ios,
+                "primaryDeviceId" to HANDSET,
+                "command" to IDB_LIST_TARGETS_COMMAND,
+                "diagnostic" to listOf("Andrew iPhone", HANDSET),
+                "canBootEmulator" to true,
+                "noSimulator" to false,
+            ),
+            actual = verdicts(
+                "kind" to card.kind,
+                "platform" to card.platform,
+                "primaryDeviceId" to card.primaryDeviceId,
+                "command" to card.command,
+                "diagnostic" to card.diagnostic.split(SEPARATOR),
+                "canBootEmulator" to card.canBootEmulator,
+                "noSimulator" to alone.canBootEmulator,
+            ),
+        )
+    }
+
+    /**
+     * T-19 (AC-46) — the four SHARED kinds carry the platform through, and nothing they
+     * generate says `adb` on an iOS bench.
+     *
+     * The machine text is the half that can lie here: the card's copy is resolved from
+     * resources in the content layer, but `command` and `diagnostic` are built HERE, and an
+     * `adb kill-server` block under an iOS card is a line the user would paste and wonder at.
+     *
+     * MUTATION A: drop the `takeIf { platform == Android }` on NoDevice's command — the
+     * noAdbText clause fails.
+     * MUTATION B: make `discoveryTool()` return `adb` unconditionally — same clause fails.
+     */
+    @Test
+    fun theSharedKindsCarryIosToolTextAndNeverSayAdb() {
+        val ios = listOf(
+            iosStateOf(toolMissingIos()),
+            iosStateOf(noDeviceFound()),
+            iosStateOf(pollFailedIos()),
+            iosStateOf(twoSelectablePhones()).copy(isPickerOpen = false),
+        ).map { assertNotNull(it.errorCard(NOW)) }
+
+        assertEquals(
+            expected = verdicts(
+                "kinds" to listOf(
+                    MirrorErrorKind.ToolMissing,
+                    MirrorErrorKind.NoDevice,
+                    MirrorErrorKind.PollFailed,
+                    MirrorErrorKind.MultipleDevices,
+                ),
+                "platforms" to List(4) { PlatformModel.Ios },
+                "noAdbText" to emptyList<String>(),
+                // No daemon to restart on iOS, so the no-device card carries no command block.
+                "noDeviceCommand" to null,
+                "noDeviceDiagnosticTool" to "xcrun 35.0.1",
+                "multiDeviceCommand" to IDB_LIST_TARGETS_COMMAND,
+            ),
+            actual = verdicts(
+                "kinds" to ios.map { it.kind },
+                "platforms" to ios.map { it.platform },
+                "noAdbText" to ios.flatMap { listOfNotNull(it.command, it.diagnostic) }
+                    .filter { "adb" in it },
+                "noDeviceCommand" to ios[1].command,
+                "noDeviceDiagnosticTool" to ios[1].diagnostic.split(SEPARATOR).first(),
+                "multiDeviceCommand" to ios[3].diagnostic.split(SEPARATOR).first(),
+            ),
+        )
+    }
+
+    /**
+     * T-19 — the extended picker-yields guard, which is what keeps the two iOS cards' own
+     * secondary buttons alive.
+     *
+     * `errorCard()` is computed BEFORE the stage `when`, so a card that does not yield here
+     * re-covers the picker its own "Boot simulator" / "Choose another" / "Use simulator"
+     * secondary just opened: `OpenPicker` sets `isPickerOpen = true`, the card keeps the
+     * stage, and nothing visibly happens. Dead buttons, and the only place that is decidable
+     * is here.
+     *
+     * `DeviceNotTrusted` yields CONDITIONALLY: with no simulator to list, an empty picker
+     * panel would replace the one surface explaining why the handset is unusable.
+     *
+     * MUTATION A: drop `SimulatorNotBooted` from `yieldsToPicker()` — the simulator clause
+     * fails, which is the dead-"Choose another" regression.
+     * MUTATION B: make `DeviceNotTrusted` yield unconditionally — the noSimulator clause
+     * fails.
+     */
+    @Test
+    fun theTwoIosCardsYieldToThePickerTheirOwnSecondaryOpens() {
+        assertEquals(
+            expected = verdicts(
+                "simulatorWithPicker" to null,
+                "simulatorWithoutPicker" to MirrorErrorKind.SimulatorNotBooted,
+                "trustWithPickerAndASimulator" to null,
+                "trustWithPickerAndNoSimulator" to MirrorErrorKind.DeviceNotTrusted,
+                "trustWithoutPicker" to MirrorErrorKind.DeviceNotTrusted,
+            ),
+            actual = verdicts(
+                "simulatorWithPicker" to stateOf(simulatorNotBooted())
+                    .copy(isPickerOpen = true).errorCard(NOW)?.kind,
+                "simulatorWithoutPicker" to stateOf(simulatorNotBooted())
+                    .copy(isPickerOpen = false).errorCard(NOW)?.kind,
+                "trustWithPickerAndASimulator" to stateOf(deviceNotTrusted())
+                    .copy(isPickerOpen = true).errorCard(NOW)?.kind,
+                // Nothing for the picker to list, so the card keeps the stage.
+                "trustWithPickerAndNoSimulator" to stateOf(deviceNotTrusted(simulatorsAvailable = false))
+                    .copy(isPickerOpen = true).errorCard(NOW)?.kind,
+                "trustWithoutPicker" to stateOf(deviceNotTrusted())
+                    .copy(isPickerOpen = false).errorCard(NOW)?.kind,
             ),
         )
     }

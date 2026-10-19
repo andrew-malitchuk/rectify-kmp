@@ -53,6 +53,37 @@ class IdbTargetsParserTest {
         )
     }
 
+    /**
+     * AS-2's named token set, pinned member by member so it cannot be silently shrunk.
+     *
+     * Each token is asserted in a REAL state string rather than on its own, because that is
+     * how the parser meets it (`Pairing (unpaired)`), and case-insensitively, because `idb`
+     * capitalises its states and the set does not.
+     */
+    @Test
+    fun `every untrusted token classifies a physical target as untrusted`() {
+        val tokens = listOf("unauthorized", "untrusted", "unpaired", "not paired", "pairing", "locked")
+        val output = tokens.joinToString("\n") { token ->
+            "Andrew iPhone | 00008130-001A2B3C4D5E6F00 | ${token.uppercase()} | device | iOS 18.5 | arm64 | x"
+        }
+
+        assertEquals(
+            expected = tokens.map { "$it=false" },
+            actual = parseIdbTargets(output).mapIndexed { index, target -> "${tokens[index]}=${target.trusted}" },
+        )
+    }
+
+    /** `idb` lists simulators AND handsets; dropping half its answer would hide a real device. */
+    @Test
+    fun `both target types survive the parse`() {
+        val output = """
+            Andrew iPhone | 00008130-001A2B3C4D5E6F00 | Booted | device | iOS 18.5 | arm64 | x
+            iPhone 16 | 1122A235-8B04-4139-B652-88BDCF4727C4 | Shutdown | simulator | iOS 18.5 | None | x
+        """.trimIndent()
+
+        assertEquals(listOf("device", "simulator"), parseIdbTargets(output).map { it.targetType })
+    }
+
     @Test
     fun `a row without the required columns is skipped rather than thrown on`() {
         val output = """

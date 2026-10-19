@@ -54,7 +54,9 @@ private val RunningDotSize: Dp = 7.dp
  * @param title Platform name.
  * @param detail Detected tool line, e.g. `adb 35.0.1 · /opt/homebrew/bin`. Machine output.
  * @param toolState Whether the tool was found on `PATH`.
- * @param enabled Whether the platform can be chosen at all (iOS ships disabled this release).
+ * @param enabled Whether the platform can be chosen at all. Both ship enabled as of F-10;
+ *   the flag stays because a platform whose adapter is not wired is a real future state, and
+ *   a disabled card still shows its probe line.
  */
 @Immutable
 public data class PickerPlatform(

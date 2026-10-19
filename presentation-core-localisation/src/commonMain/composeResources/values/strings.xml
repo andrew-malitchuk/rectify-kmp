@@ -66,7 +66,7 @@
     <string name="mirror_section_source">SOURCE</string>
     <string name="mirror_source_summary">%1$d found · adb devices -l</string>
     <string name="mirror_group_physical">Physical device</string>
-    <string name="mirror_group_emulator">Emulator</string>
+    <string name="mirror_group_emulator">Virtual devices</string>
     <string name="mirror_row_boot">Boot</string>
     <string name="mirror_row_running">Running</string>
     <string name="mirror_row_shut_down">shut down</string>
@@ -141,6 +141,20 @@
     <string name="mirror_error_action_boot_simulator">Boot simulator</string>
     <string name="mirror_error_action_choose_another">Choose another</string>
     <string name="mirror_error_action_use_simulator">Use simulator</string>
+    <!-- The err-trust primary. The apostrophe and the em dash are LITERAL: Compose Resources
+         is not AAPT, so an escaped \' would render the backslash. -->
+    <string name="mirror_error_action_trusted_retry">I've tapped Trust — retry</string>
+
+    <!-- Mirror - the iOS wording of the SHARED cards. A missing xcrun and a missing adb are
+         the same card with different copy; suppressing these on iOS would hand the user a
+         blank stage for conditions an iOS bench genuinely reaches. No line here may name adb:
+         there is no daemon to restart and no platform-tools to install. -->
+    <string name="mirror_error_tool_missing_title_ios">Xcode command line tools aren't on your PATH</string>
+    <string name="mirror_error_tool_missing_body_ios">Rectify uses xcrun and simctl to find simulators. Install Xcode, then run xcode-select --install.</string>
+    <string name="mirror_error_no_device_title_ios">No iOS device or simulator detected</string>
+    <string name="mirror_error_no_device_body_ios">xcrun is running but sees nothing. Boot a simulator, or connect an iPhone and tap Trust on the prompt.</string>
+    <string name="mirror_error_poll_failed_title_ios">xcrun stopped responding</string>
+    <string name="mirror_error_poll_failed_body_ios">The device poll never came back, so nothing is known about what is attached. Retry, or read what the footer reports.</string>
 
     <!-- Mirror - Stream-drop banner (FR-24 / AC-29). The design's verbatim copy, which has one
          detail sentence and no singular variant: the count is always stated, zero included. -->

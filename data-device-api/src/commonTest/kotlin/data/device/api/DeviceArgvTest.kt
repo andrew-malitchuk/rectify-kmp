@@ -94,6 +94,26 @@ class DeviceArgvTest {
     }
 
     /**
+     * The closed-set denylist, swept over BOTH builders (NFR-5's other half).
+     *
+     * `connect` would point the toolchain at a host over TCP, and `-H` / `-P` would point it
+     * at a remote daemon. Neither is in [DeviceCommand] or [HostCommand], and this is the
+     * machine-checked proof that widening either set never smuggles one in.
+     */
+    @Test
+    fun `no argv can address a remote host`() {
+        val denied = setOf("connect", "disconnect", "tcpip", "-H", "-P")
+        val everyArgv = ToolKind.entries.flatMap { tool ->
+            everyDeviceCommand.mapNotNull { command ->
+                val target = if (tool == ToolKind.Adb || tool == ToolKind.Emulator) device else simulator
+                runCatching { buildDeviceArgv(tool, "/tool", target, command) }.getOrNull()
+            }
+        } + everyHostCommand.map { buildHostArgv(adb, it) }
+
+        assertEquals(emptyList(), everyArgv.flatten().filter { it in denied })
+    }
+
+    /**
      * NFR-5 is scoped to the SELECTOR SEGMENT, never to the whole argv.
      *
      * [DeviceCommand.GetProp] carries unvalidated free text, so a whole-argv count turns a
