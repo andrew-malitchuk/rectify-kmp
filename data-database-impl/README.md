@@ -15,7 +15,7 @@ per-rect children, cascade-deleted with the parent).
 DataDatabaseImplModule (Koin)
     └── DatabaseBuilder (expect/actual per platform)
         └── AppDatabase (Room, v1)
-            └── HistoryEntryDao   — transactional insert, observeAll(), updateStatus()
+            └── HistoryEntryDao   — transactional insert, observeAll(), findById(), updateStatus()
                 └── HistoryDataSourceImpl — bound to the public HistoryDataSource
 ```
 
