@@ -304,9 +304,21 @@ public class MirrorViewModel(
         private set
 
     /**
+     * The AFTER dump the run measured against, retained for the follow-up — or `null` when the
+     * run produced none it could measure with (an empty dump).
+     *
+     * A plain field and not reduced state, for the reason `presentation-feature-mirror/CLAUDE.md`
+     * deviation 2 gives for [frozenHierarchy] itself: a few hundred nodes, identity-compared,
+     * read only by arithmetic. It pairs with [verifyAfterHeld] — the same frame, so attaching it
+     * to the follow-up is the one case where the dump provably describes the frame being sent.
+     */
+    internal var verifyAfterHierarchy: HierarchySnapshotModel? = null
+        private set
+
+    /**
      * The batch a follow-up send is being published FOR, or `null` for a plain send.
      *
-     * Declared and cleared here, with the other three verify-scoped fields, because
+     * Declared and cleared here, with the other four verify-scoped fields, because
      * [exitVerify]'s whole job is that none of them survives an exit — a leftover id would make
      * the next, unrelated send write a status on a batch it has nothing to do with
      * (`bugs.json#PP-TD-2`). The send path that consumes it lands with the follow-up itself.
@@ -571,6 +583,9 @@ public class MirrorViewModel(
         view = view.copy(phase = VerifyPhase.Diffing, recapturedAtMs = nowMs())
         reduce { state.copy(verify = view) }
         verifyAfterHeld = after
+        // Retained only when it PROJECTS: an empty dump measures nothing, so a follow-up over
+        // it has to go out as Absent rather than claim a tree that snaps to no annotation.
+        verifyAfterHierarchy = snapshot.takeIf { nodes.isNotEmpty() }
         currentVerifyFrames.value = VerifyFrames(before = before, after = after.bitmap)
         // The pixel work is up to a full frame per annotation, so it stays off the reducer's
         // own context — the same hop decodePng and the send path already take (AS-30).
@@ -612,7 +627,8 @@ public class MirrorViewModel(
      * run published [verifyFrames] and retained [verifyAfterHeld] — a disconnect noticed at the
      * post-diff check is the common one — and leaving those behind would hand the stage two
      * full-size bitmaps for a run that has no rows, and leave a follow-up croppable from a
-     * frame nobody is looking at. The four verify-scoped fields must agree in BOTH directions,
+     * frame nobody is looking at, and a surviving [verifyAfterHierarchy] attaches a dead run's
+     * node tree to the next send. The five verify-scoped fields must agree in BOTH directions,
      * not only on the way out through [exitVerify].
      */
     private suspend fun Syntax<MirrorUiState, MirrorSideEffect>.abortVerify(
@@ -719,9 +735,11 @@ public class MirrorViewModel(
      *   it set would pin the user on a stale Verify view with the send UI unreachable behind
      *   it (the coupling is recorded on [MirrorUiState.stage] itself).
      *
-     * The hierarchy goes with it: the dump on hand belongs to an older frozen frame, never to
-     * this freshly captured one, so the follow-up is honestly sent frameless-of-hierarchy
-     * (`hierarchyStatus = Absent`) rather than with another frame's node tree attached.
+     * **The hierarchy goes with the frame too** — [verifyAfterHierarchy], not whatever the
+     * previous frozen frame left behind. It was dumped against the AFTER frame this stages, so
+     * it is the one node tree that provably describes what is being sent; a follow-up therefore
+     * carries the same payload an ordinary send does. A run whose dump measured nothing leaves
+     * it `null` and the follow-up is honestly sent with `hierarchyStatus = Absent`.
      *
      * [pendingFollowUpBatchId] is a plain field and not reduced state precisely so it survives
      * that teardown — see where it is declared, and [resolveAndSend], which consumes it.
@@ -734,6 +752,8 @@ public class MirrorViewModel(
         intent {
             val view = state.verify ?: return@intent
             val held = verifyAfterHeld ?: return@intent
+            // Read before [releaseVerify] clears it — it is one of the five fields that go.
+            val hierarchy = verifyAfterHierarchy
             val stillOff = view.stillOffRows
             // The button is hard-disabled at zero and [resolveAndSend] owns the in-flight
             // window; both are re-checked here so a stray dispatch cannot stage an empty batch
@@ -746,10 +766,11 @@ public class MirrorViewModel(
             // goes with it, through the same helper [exitVerify] uses -- the pending id is
             // re-armed below, deliberately AFTER this.
             releaseVerify()
-            // The dump on hand belongs to an older frozen frame, never to this freshly
-            // captured one, so the follow-up goes out honestly without a hierarchy rather
-            // than with another frame's node tree attached.
+            // Drops whatever the PREVIOUS frozen frame left behind (and any dump still running
+            // for it), then attaches the run's own AFTER dump — the one taken against this very
+            // frame. A run that produced nothing measurable leaves Empty, i.e. Absent.
             releaseHierarchy()
+            if (hierarchy != null) currentFrozenHierarchy.value = hierarchy
             val frozen = FrozenFrame(
                 deviceSize = IntSize(width = held.bitmap.width, height = held.bitmap.height),
                 annotations = followUpAnnotations(stillOff),
@@ -763,6 +784,13 @@ public class MirrorViewModel(
             reduce {
                 state.copy(frozen = frozen, verify = null, send = SendPhase.Idle)
                     .withoutMeasurements()
+                    // After [withoutMeasurements], which zeroes the status for the frame that
+                    // just went away; the retained dump is the new frame's, and `Ready` is what
+                    // makes `resolveAndSend` attach it (AS-29 / AF-4's one gate).
+                    .copy(
+                        hierarchyStatus =
+                            if (hierarchy != null) HierarchyStatus.Ready else HierarchyStatus.Absent,
+                    )
             }
             // Dispatched AFTER the reduce has landed, so the send reads the batch this just
             // staged rather than the state it replaced.
@@ -781,7 +809,7 @@ public class MirrorViewModel(
      * `m of m` and every row flips. Exiting in the same breath would throw that confirmation
      * away and make the override indistinguishable from a click that did nothing.
      * [MirrorIntent.ExitVerify] stays the one and only exit — it is the documented owner of
-     * the four-field teardown, and the "← Back to live" chip is on screen throughout.
+     * the five-field teardown, and the "← Back to live" chip is on screen throughout.
      *
      * A rowless view writes nothing: an error carries no verdicts by construction, and a run
      * that has not produced any rows yet has nothing to overrule — marking a batch verified on
@@ -809,10 +837,11 @@ public class MirrorViewModel(
     /**
      * Leaves the verify stage — the "← Back to live" chip, and the only exit (TAC-7).
      *
-     * All four verify-scoped fields go together, which is the whole point
+     * All five verify-scoped fields go together, which is the whole point
      * (`bugs.json#PP-TD-2`): a surviving [VerifyUiState] pins the user on a stale view with the
      * send UI hidden behind it, surviving pixels render the wrong pair into the next run, a
-     * surviving [verifyAfterHeld] crops a follow-up from a frame nobody is looking at, and a
+     * surviving [verifyAfterHeld] crops a follow-up from a frame nobody is looking at, a
+     * surviving [verifyAfterHierarchy] attaches a dead run's node tree to the next send, and a
      * surviving [pendingFollowUpBatchId] writes a status on the next, unrelated send.
      *
      * The job is cancelled BEFORE the clearing intent is dispatched, so an in-flight run cannot
@@ -831,6 +860,7 @@ public class MirrorViewModel(
     private fun releaseVerify() {
         currentVerifyFrames.value = null
         verifyAfterHeld = null
+        verifyAfterHierarchy = null
         pendingFollowUpBatchId = null
     }
 

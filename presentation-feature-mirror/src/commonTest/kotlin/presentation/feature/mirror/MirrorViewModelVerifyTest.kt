@@ -11,6 +11,7 @@ import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.SentAnnotationModel
 import domain.core.source.model.history.SentBatchModel
 import domain.core.source.monad.Failure
+import domain.usecase.api.source.usecase.device.DumpHierarchyUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -26,6 +27,7 @@ import org.orbitmvi.orbit.Orbit
 import presentation.core.ui.source.kit.molecule.row.VerificationOutcome
 import presentation.feature.mirror.core.verify.MIN_REGION_PIXELS
 import presentation.feature.mirror.source.mirror.DeviceRect
+import presentation.feature.mirror.source.mirror.HierarchyStatus
 import presentation.feature.mirror.source.mirror.MirrorIntent
 import presentation.feature.mirror.source.mirror.MirrorStage
 import presentation.feature.mirror.source.mirror.MirrorViewModel
@@ -36,6 +38,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -168,12 +171,31 @@ private fun snapshot(
     frameWidthPx: Int = FRAME_WIDTH,
     frameHeightPx: Int = FRAME_HEIGHT,
     densityDpi: Int = DENSITY_DPI,
+    rawDump: String = "",
 ): HierarchySnapshotModel = HierarchySnapshotModel(
     nodes = nodes,
     frameWidthPx = frameWidthPx,
     frameHeightPx = frameHeightPx,
     densityDpi = densityDpi,
+    rawDump = rawDump,
 )
+
+/** What the frozen frame's own dump said, before any verification run re-captured anything. */
+private const val STALE_DUMP = "<hierarchy stale=\"true\" />"
+
+/** What the AFTER dump of a verification run said — the only tree a follow-up may carry. */
+private const val AFTER_DUMP = "<hierarchy after=\"true\" />"
+
+/** Hands out a different snapshot per call, so a stale dump cannot pass for a fresh one. */
+private class ScriptedDumpHierarchy(
+    private val results: List<HierarchySnapshotModel>,
+) : DumpHierarchyUseCase {
+
+    private var calls = 0
+
+    override suspend fun invoke(deviceId: String): Result<HierarchySnapshotModel> =
+        Result.success(results[minOf(calls++, results.lastIndex)])
+}
 
 /** Device px that measure [dp] at [DENSITY_DPI] — never a literal px height in a case below. */
 private fun devicePx(dp: Int): Int = dp * DENSITY_DPI / 160
@@ -712,6 +734,7 @@ class MirrorViewModelVerifyTest {
         assertNull(viewModel.currentState.verify)
         assertNull(viewModel.verifyFrames.value)
         assertNull(viewModel.verifyAfterHeld)
+        assertNull(viewModel.verifyAfterHierarchy, "no later send may attach this run's tree")
         assertNull(viewModel.pendingFollowUpBatchId, "no later send may inherit this batch")
         assertEquals(MirrorStage.Mirror, viewModel.currentState.stage)
     }
@@ -855,6 +878,7 @@ class MirrorViewModelVerifyTest {
         assertTrue(verify.rows.isEmpty())
         assertNull(viewModel.verifyFrames.value, "two bitmaps for a rowless run is a leak")
         assertNull(viewModel.verifyAfterHeld, "nothing may be cropped from an aborted run")
+        assertNull(viewModel.verifyAfterHierarchy, "nor may an aborted run's tree be attached")
         assertNull(viewModel.pendingFollowUpBatchId)
         assertTrue(status.writes.isEmpty())
     }
@@ -1018,6 +1042,7 @@ class MirrorViewModelVerifyTest {
         )
         assertNull(viewModel.verifyFrames.value, "the run's pair goes with its view")
         assertNull(viewModel.verifyAfterHeld, "the frame moved to the frozen slot, not a copy")
+        assertNull(viewModel.verifyAfterHierarchy, "its dump moved with it, and is not a copy")
     }
 
     @Test
@@ -1065,6 +1090,105 @@ class MirrorViewModelVerifyTest {
             "the follow-up records its own Sent row, keyed by its own session",
         )
         assertNull(viewModel.pendingFollowUpBatchId, "nothing may outlive the send that used it")
+    }
+
+    @Test
+    fun aFollowUpCarriesTheRunsOwnAfterHierarchyAndNotTheOneItReplaced() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val handoff = FakeAnnotationHandoff()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            // The freeze dumps first and the run dumps second: two different trees, so an
+            // attachment can be told apart from a stale one, not merely from none at all.
+            dumpHierarchy = ScriptedDumpHierarchy(
+                listOf(snapshot(rawDump = STALE_DUMP), snapshot(rawDump = AFTER_DUMP)),
+            ),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            recordSentBatch = FakeRecordSentBatch(),
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+            encodeCrop = FakeCropEncoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.StageAnnotation(RECT))
+        settle()
+        assertEquals(
+            STALE_DUMP,
+            viewModel.frozenHierarchy.value.rawDump,
+            "setup check -- an older frame's dump is on hand when the run starts",
+        )
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settleUntil { handoff.published.isNotEmpty() }
+
+        val envelope = handoff.published.single()
+        assertTrue(envelope.hierarchyAvailable, "a follow-up is not a poorer payload than a send")
+        assertEquals(
+            AFTER_DUMP,
+            envelope.hierarchyXml,
+            "the tree dumped against the AFTER frame, never the one the freeze left behind",
+        )
+    }
+
+    @Test
+    fun aFollowUpAfterARunWhoseDumpWasEmptyStillSendsWithNoHierarchy() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        val handoff = FakeAnnotationHandoff()
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(HierarchySnapshotModel.Empty)),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            recordSentBatch = FakeRecordSentBatch(),
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+            encodeCrop = FakeCropEncoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settleUntil { handoff.published.isNotEmpty() }
+
+        val envelope = handoff.published.single()
+        assertEquals(3, envelope.annotations.size, "nothing matched, so every row is still off")
+        assertFalse(envelope.hierarchyAvailable, "an empty dump is Absent, not a wrong tree")
+        assertEquals("", envelope.hierarchyXml)
+    }
+
+    @Test
+    fun theRetainedAfterHierarchyIsReadyOnTheStagedFollowUp() = runTest(mainDispatcher) {
+        val mirroring = FakeStartMirroring()
+        // Parked in publish, so the staged frame and its status are still there to be read.
+        val handoff = FakeAnnotationHandoff(manual = true)
+        val viewModel = mirrorViewModel(
+            discovery = scriptedPhoneDiscovery(),
+            mirroring = mirroring,
+            dumpHierarchy = FakeDumpHierarchy(Result.success(snapshot(rawDump = AFTER_DUMP))),
+            getSentBatch = FakeGetSentBatch(mixedBatchOfThree()),
+            decodeFrame = verifyDecoder(),
+            handoff = handoff,
+            encodeCrop = FakeCropEncoder(),
+        )
+        startSession(viewModel, mirroring)
+
+        viewModel.handleIntent(MirrorIntent.VerifyBatch(BATCH_ID))
+        settle()
+        viewModel.handleIntent(MirrorIntent.SendFollowUp)
+        settle()
+
+        assertEquals(AFTER_DUMP, viewModel.frozenHierarchy.value.rawDump)
+        assertEquals(
+            HierarchyStatus.Ready,
+            viewModel.currentState.hierarchyStatus,
+            "the status the send gate reads has to agree with the tree on hand",
+        )
+        assertNull(viewModel.verifyAfterHierarchy, "the run let go of it when the stage did")
     }
 
     @Test
