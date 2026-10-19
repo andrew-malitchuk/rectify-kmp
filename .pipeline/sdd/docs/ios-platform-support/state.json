@@ -32,7 +32,28 @@
       "status": "done"
     }
   },
-  "tasks": {},
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 3,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    }
+  },
   "effort": "fast",
   "stageEffort": {
     "preparation": "fast",

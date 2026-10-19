@@ -143,6 +143,8 @@ internal class ToolResolver(
             // No HostCommand member exists for idb, and the closed set is not widened for a
             // version string: the probe still reports the binary as found, without a version.
             ToolKind.Idb -> return null
+            // `simctl` has no version of its own; the Xcode shim's is the one on offer.
+            ToolKind.Simctl -> HostCommand.XcrunVersion
         }
         return try {
             ProcessRunner.run(buildHostArgv(path, command), MirrorTuning.HostCommandTimeoutMs)
@@ -200,10 +202,11 @@ private fun ToolKind.installCommand(): String = when (this) {
     ToolKind.Adb -> "brew install --cask android-platform-tools"
     ToolKind.Emulator -> "brew install --cask android-commandlinetools"
     ToolKind.Idb -> "brew tap facebook/fb && brew install idb-companion"
+    ToolKind.Simctl -> "xcode-select --install"
 }
 
 /** Environment hint shown next to the install command. */
 private fun ToolKind.envHint(): String = when (this) {
     ToolKind.Adb, ToolKind.Emulator -> "Or set ANDROID_HOME to your Android SDK directory"
-    ToolKind.Idb -> ""
+    ToolKind.Idb, ToolKind.Simctl -> ""
 }

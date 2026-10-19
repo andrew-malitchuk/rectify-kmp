@@ -63,7 +63,7 @@ function signature.
 - `source/mirror/` — `MirrorContract`, `MirrorViewModel`, `MirrorHost`, `MirrorContent`,
   `MirrorVerifyStage` (the Verify stage's two-column BEFORE/AFTER layout, F-9).
   `MirrorContent` exposes `MirrorStageContent` (one branch per `MirrorStage` case — `Picker`,
-  `Mirror`, `NoSignal`, `IosDeferred`, `Frozen`, `Verify`) and `MirrorStatusLine` (the status
+  `Mirror`, `NoSignal`, `Frozen`, `Verify`) and `MirrorStatusLine` (the status
   bar's leading slot); both are stateless and read `stringResource` for every piece of copy,
   which is why the semantic row/stage types in the contract carry no labels.
 - `core/verify/` — the verify loop's pure core: `RegionDiff.changedRatio` (Chebyshev RGB over

@@ -23,15 +23,22 @@ import presentation.core.ui.source.kit.molecule.row.SourceListRow
 import presentation.core.ui.source.kit.organism.error.ErrorCard
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_boot_emulator
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_boot_simulator
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_choose_another
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_locate_adb
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_mirror_device
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_restart_adb
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_retry
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_action_use_simulator
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_device_not_trusted_body
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_device_not_trusted_title
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_multiple_body
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_multiple_title
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_no_device_body
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_no_device_title
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_poll_failed_body
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_simulator_not_booted_body
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_simulator_not_booted_title
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_poll_failed_title
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_tool_missing_body
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_error_tool_missing_title
@@ -56,11 +63,15 @@ private val ErrorCardWidth: Dp = 460.dp
  * column, the command block's radius-8 `codeBg` plate, the circular glyph) is the organism's
  * own and is deliberately not re-specified at this call site.
  *
- * The design draws five states; two of them (`err-sim`, `err-trust`) are iOS and deferred by
- * NFR-10, so only the Android four are wired. [MirrorErrorKind] keeps the full shape of the
- * problem space — see its KDoc — and [MirrorErrorKind.PollFailed] in particular is a kind of
- * its own with plan-authored copy, because "adb did not answer" and "adb answered, nothing
- * attached" are opposite diagnoses.
+ * All six states the design draws are wired, the two iOS ones (`err-sim`, `err-trust`)
+ * included — they were deferred under NFR-10 and are live as of F-10. [MirrorErrorKind] keeps
+ * the full shape of the problem space — see its KDoc — and [MirrorErrorKind.PollFailed] in
+ * particular is a kind of its own with plan-authored copy, because "the tool did not answer"
+ * and "the tool answered, nothing attached" are opposite diagnoses.
+ *
+ * The four SHARED kinds still render their adb-worded copy on both platforms; [card]'s
+ * `platform` is what a follow-up copy split reads, and routing iOS to no card at all instead
+ * would be a blank stage for four real conditions.
  *
  * **Deviation from the design, recorded:** the design nests the multi-device list *inside* the
  * card, between the body and the actions row. The shipped `ErrorCard` exposes no content slot
@@ -122,6 +133,40 @@ internal fun MirrorErrorStage(
                 // what the primary does.
                 primaryActionLabel = stringResource(Res.string.mirror_error_action_retry),
                 onPrimaryAction = { onIntent(MirrorIntent.RetryDiscovery) },
+                diagnostic = diagnostic,
+            )
+
+            // err-sim. Primary boots BY UDID: card.primaryDeviceId carries the simulator's
+            // udid, never its name, because two simulators can share a name. Secondary opens
+            // the picker, which errorCard() yields the stage to for this variant - without
+            // that yield this button would be dead.
+            MirrorErrorKind.SimulatorNotBooted -> ErrorCard(
+                title = stringResource(Res.string.mirror_error_simulator_not_booted_title),
+                body = stringResource(Res.string.mirror_error_simulator_not_booted_body),
+                kind = ErrorKind.Fixable,
+                command = card.command,
+                primaryActionLabel = stringResource(Res.string.mirror_error_action_boot_simulator)
+                    .takeIf { card.primaryDeviceId != null },
+                onPrimaryAction = { card.primaryDeviceId?.let { onIntent(MirrorIntent.BootRow(it)) } },
+                secondaryActionLabel = stringResource(Res.string.mirror_error_action_choose_another),
+                onSecondaryAction = { onIntent(MirrorIntent.OpenPicker) },
+                diagnostic = diagnostic,
+            )
+
+            // err-trust. RetryDiscovery, not RestartAdb: the user fixes this on the handset and
+            // the only thing this app can do is look again, which RetryDiscovery already cuts
+            // the poll interval short to do.
+            MirrorErrorKind.DeviceNotTrusted -> ErrorCard(
+                title = stringResource(Res.string.mirror_error_device_not_trusted_title),
+                body = stringResource(Res.string.mirror_error_device_not_trusted_body),
+                kind = ErrorKind.Fixable,
+                command = card.command,
+                primaryActionLabel = stringResource(Res.string.mirror_error_action_retry),
+                onPrimaryAction = { onIntent(MirrorIntent.RetryDiscovery) },
+                // Hidden when no simulator exists - the defining dead-button case.
+                secondaryActionLabel = stringResource(Res.string.mirror_error_action_use_simulator)
+                    .takeIf { card.canBootEmulator },
+                onSecondaryAction = { onIntent(MirrorIntent.OpenPicker) },
                 diagnostic = diagnostic,
             )
 

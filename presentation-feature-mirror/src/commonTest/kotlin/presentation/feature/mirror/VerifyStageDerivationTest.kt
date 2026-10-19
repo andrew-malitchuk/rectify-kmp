@@ -11,7 +11,6 @@ import presentation.feature.mirror.source.mirror.VerifyError
 import presentation.feature.mirror.source.mirror.VerifyPhase
 import presentation.feature.mirror.source.mirror.VerifyRow
 import presentation.feature.mirror.source.mirror.VerifyUiState
-import domain.core.source.model.device.PlatformModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -44,14 +43,17 @@ class VerifyStageDerivationTest {
 
     /**
      * The whole ordering in one classification: Verify beats Frozen and Streaming, and loses
-     * to the picker and to the iOS guard.
+     * to the picker.
      *
-     * One [assertEquals] over all four rather than four chained asserts — a chain
+     * One [assertEquals] over all three rather than three chained asserts — a chain
      * short-circuits, so an ordering mistake that kills one case reads as if it killed the
      * rest too.
+     *
+     * There is no iOS case here any more: the `platform == Ios -> IosDeferred` guard that used
+     * to outrank Verify is gone, and iOS now derives its stage like any other platform.
      */
     @Test
-    fun verifyOutranksFrozenAndStreamingButNotThePickerOrIos() {
+    fun verifyOutranksFrozenAndStreamingButNotThePicker() {
         val verifying = state().copy(verify = verify(), frozen = frozen())
 
         assertEquals(
@@ -59,13 +61,11 @@ class VerifyStageDerivationTest {
                 MirrorStage.Verify,
                 MirrorStage.Verify,
                 MirrorStage.Picker,
-                MirrorStage.IosDeferred,
             ),
             listOf(
                 verifying.stage,
                 verifying.copy(frozen = null).stage,
                 verifying.copy(isPickerOpen = true).stage,
-                verifying.copy(platform = PlatformModel.Ios).stage,
             ),
         )
     }

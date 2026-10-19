@@ -25,7 +25,7 @@ internal class DeviceCommandExecutorImpl(
     override suspend fun run(device: DeviceId, command: DeviceCommand): ByteArray {
         val path = tools.requirePath(ToolKind.Adb)
         return ProcessRunner.run(
-            argv = buildDeviceArgv(path, device, command),
+            argv = buildDeviceArgv(ToolKind.Adb, path, device, command),
             timeoutMs = command.timeoutMs(),
         )
     }

@@ -69,4 +69,40 @@ public sealed class DiscoveryModel : Model {
         val physical: List<DeviceModel>,
         val emulators: List<EmulatorModel>,
     ) : DiscoveryModel()
+
+    /**
+     * Simulators exist on this host but none of them is running (AC-31, `err-sim`).
+     *
+     * A SUCCESS value like every sibling, and deliberately NOT [NoDeviceFound]: the user has
+     * something to boot, and offering "boot one" instead of "plug something in" is the whole
+     * point of telling the two apart. Also not [Found] with cold rows, because a cold-only
+     * list has no session to start and the stage has to say so.
+     *
+     * @property simulators Every available simulator, all shut down.
+     * @property toolVersion Version of the tool that answered, e.g. `xcrun`'s.
+     * @property lastPollEpochMs Wall-clock time of the last completed poll.
+     */
+    public data class SimulatorNotBooted(
+        val simulators: List<EmulatorModel>,
+        val toolVersion: String,
+        val lastPollEpochMs: Long,
+    ) : DiscoveryModel()
+
+    /**
+     * A physical iOS device is attached but has not been trusted from the handset (`err-trust`).
+     *
+     * Only reached when that device is the ONLY candidate: a booted simulator alongside it
+     * wins and the untrusted handset shows as a disabled row instead, exactly how
+     * `parseAdbDevices` treats an `unauthorized` Android handset.
+     *
+     * @property deviceId Target udid, so the retry can address it.
+     * @property deviceName Name the tool reported, for the card's copy.
+     * @property simulatorsAvailable Whether a simulator could be used instead — the only thing
+     *   that decides whether "Use simulator" is a live button or a lie.
+     */
+    public data class DeviceNotTrusted(
+        val deviceId: String,
+        val deviceName: String,
+        val simulatorsAvailable: Boolean,
+    ) : DiscoveryModel()
 }

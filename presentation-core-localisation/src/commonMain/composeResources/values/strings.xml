@@ -99,7 +99,6 @@
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
     <string name="mirror_tool_not_found">not found</string>
-    <string name="mirror_ios_deferred">iOS mirroring arrives in a later release. idb is detected so you can see it is installed.</string>
     <string name="mirror_emulator_none">No AVDs installed</string>
 
     <!-- Mirror - Annotations on a frozen frame (comps 04/05) -->
@@ -132,6 +131,16 @@
     <string name="mirror_error_action_restart_adb">Restart adb</string>
     <string name="mirror_error_action_boot_emulator">Boot emulator instead</string>
     <string name="mirror_error_action_mirror_device">Mirror %1$s</string>
+    <!-- Mirror - the two iOS error cards the design drew as err-sim and err-trust. Wired by
+         F-10; the shared four above keep their adb wording until the platform-aware copy
+         split lands with the error-stage work. -->
+    <string name="mirror_error_simulator_not_booted_title">No simulator is running</string>
+    <string name="mirror_error_simulator_not_booted_body">Xcode knows about your simulators but none of them is booted. Boot one, or pick a different simulator.</string>
+    <string name="mirror_error_device_not_trusted_title">This iPhone hasn't been trusted</string>
+    <string name="mirror_error_device_not_trusted_body">Unlock the iPhone and tap Trust on the prompt, then retry. You can use a simulator instead.</string>
+    <string name="mirror_error_action_boot_simulator">Boot simulator</string>
+    <string name="mirror_error_action_choose_another">Choose another</string>
+    <string name="mirror_error_action_use_simulator">Use simulator</string>
 
     <!-- Mirror - Stream-drop banner (FR-24 / AC-29). The design's verbatim copy, which has one
          detail sentence and no singular variant: the count is always stated, zero included. -->

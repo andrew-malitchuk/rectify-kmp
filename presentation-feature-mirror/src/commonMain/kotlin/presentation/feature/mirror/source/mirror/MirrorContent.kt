@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
@@ -53,7 +49,6 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_act
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_emulator
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_physical
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_hint_keys
-import rectify_kmp.presentation_core_localisation.generated.resources.mirror_ios_deferred
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_no_signal_label
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_picker_subtitle
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_picker_title
@@ -82,9 +77,6 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_wai
 /** Binary names, shown verbatim beside each platform card. Machine output, never localised. */
 private const val ADB = "adb"
 private const val IDB = "idb"
-
-/** Reading width of the one-sentence iOS notice. */
-private val NoticeMaxWidth: Dp = 420.dp
 
 /**
  * Whatever belongs in the shell's stage slot right now.
@@ -127,14 +119,6 @@ public fun MirrorStageContent(
             MirrorErrorStage(card = card, onIntent = onIntent)
         } else when (state.stage) {
             MirrorStage.Picker -> MirrorPicker(state = state, onIntent = onIntent)
-
-            MirrorStage.IosDeferred -> Text(
-                text = stringResource(Res.string.mirror_ios_deferred),
-                style = Theme.typography.body,
-                color = Theme.color.ink2,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = NoticeMaxWidth).padding(Theme.spacing.spacingL),
-            )
 
             // A session that has not produced its first frame leaves the stage's own dot grid
             // showing: a one-frame flash of "no device" copy would contradict the status bar.

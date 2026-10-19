@@ -162,7 +162,6 @@ class MirrorViewModelSessionTest {
         assertEquals(PlatformModel.Ios, state.platform)
         assertEquals(MirrorSession.Idle, state.session)
         assertEquals(0, mirroring.activeCollectors)
-        assertEquals(MirrorStage.IosDeferred, state.stage)
     }
 
     @Test

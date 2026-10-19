@@ -546,6 +546,8 @@ private fun DiscoveryModel.summary(): String = when (this) {
     is DiscoveryModel.NoDeviceFound -> "NoDeviceFound(attempts=${attempts})"
     is DiscoveryModel.PollFailed -> "PollFailed(${tool} ${reason})"
     is DiscoveryModel.Found -> "Found(${physical.joinToString("|") { it.id }})"
+    is DiscoveryModel.SimulatorNotBooted -> "SimulatorNotBooted(${simulators.size})"
+    is DiscoveryModel.DeviceNotTrusted -> "DeviceNotTrusted(${deviceId})"
 }
 
 /** An `idb` probe that answers without touching a process. */

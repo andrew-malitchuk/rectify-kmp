@@ -51,6 +51,18 @@ internal fun MirrorUiState.applyDiscovery(discovery: DiscoveryModel): MirrorUiSt
             newRows = discovery.physical.map(DeviceModel::toRow) +
                 discovery.emulators.map(EmulatorModel::toRow),
         )
+
+        // Cold simulators are real, pickable rows: MirrorRowKind.Boot already means "cold,
+        // committing boots it", so the existing Emulator group carries them unchanged. The
+        // picker stays open — unlike NoDeviceFound there IS something to choose.
+        is DiscoveryModel.SimulatorNotBooted -> withRows(
+            discovery = discovery,
+            newRows = discovery.simulators.map(EmulatorModel::toRow),
+        )
+
+        // The untrusted handset is the only candidate, so there is nothing to list: the card
+        // owns the stage and the rows would be a list of one unusable row.
+        is DiscoveryModel.DeviceNotTrusted -> copy(discovery = discovery)
     }
 
 /**
@@ -103,4 +115,23 @@ private fun EmulatorModel.toRow(): MirrorRow = MirrorRow(
     // A cold AVD is selectable: committing it boots the image instead of starting a session.
     selectable = true,
     avdName = avdName,
+    detail = rowDetail(),
 )
+
+/**
+ * PP-TD-9's iOS half: a simulator row says which runtime it is.
+ *
+ * Android is untouched by construction — it leaves [EmulatorModel.runtime] null and keeps
+ * today's empty detail, so PP-TD-9's Android half stays open under its own gate.
+ *
+ * The udid head rides along because the runtime ALONE does not disambiguate: the captured
+ * `simctl list devices available` from this host lists two `iPhone 15 Pro` under the single
+ * iOS 17.5 runtime, so name + runtime still collides and only the udid does not.
+ */
+private fun EmulatorModel.rowDetail(): String = when (runtime) {
+    null -> ""
+    else -> listOfNotNull(runtime, runningDeviceId?.take(UDID_HEAD_LENGTH)).joinToString(" · ")
+}
+
+/** Enough udid to tell two same-named, same-runtime simulators apart without filling the row. */
+private const val UDID_HEAD_LENGTH = 8
