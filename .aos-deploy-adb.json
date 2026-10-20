@@ -1,9 +1,0 @@
-{
-  "device_hostname": "CHANGE_ME_DEVICE_HOSTNAME",
-  "application_id": "dev.rectify.io",
-  "main_activity": "dev.rectify.io.source.activity.MainActivity",
-  "variant": "Debug",
-  "adb_port": 32803,
-  "launch_after_install": true,
-  "logcat_seconds": 10
-}
