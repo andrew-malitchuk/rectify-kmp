@@ -40,6 +40,15 @@ internal object ThemePreferenceMapper {
 | Class | Implemented Contract | Data sources |
 |-------|---------------------|--------------|
 | `ConfigureRepositoryImpl` | `ConfigureRepository` | ThemePreferenceSource, OnboardingPreferenceSource, LanguagePreferenceSource, UnitSystemPreferenceSource |
+| `DeviceRepositoryImpl` | `DeviceRepository` | AdbHostSource, IosHostSource, EmulatorSource, a `named("android")`/`named("ios")` DeviceCommandExecutor PAIR, the same pair of MirrorTransport, AdbPathPreferenceSource |
+| `HistoryRepositoryImpl` | `HistoryRepository` | BatchStore, BatchFileReader |
+
+`DeviceRepositoryImpl` takes the executor and the transport as a PAIR each because every one
+of its platform-bearing methods picks per call, through an exhaustive `when (platform)` with
+no `else`: `observeDiscovery` dispatches to `pollAndroid()` / `pollIos()`, `bootEmulator`
+routes an AVD name to `emulator` and a udid to `simctl boot`, and `dumpHierarchy(Ios, …)`
+answers `HierarchySnapshotModel.Empty` WITHOUT reaching the executor. Its Koin registration is
+therefore a hand-written `single { … get(named(…)) }`, never `singleOf`.
 
 ## Adding a New Repository
 

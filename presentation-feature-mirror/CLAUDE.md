@@ -1,7 +1,8 @@
 # presentation-feature-mirror
 
-The Android device-discovery and mirroring surface: tool detection, the device picker, the
-waiting stage, the live frame, and the Verify / re-diff loop (F-9) that re-captures a sent
+The device-discovery and mirroring surface, Android **and** iOS (F-10 — simulators are
+mirrorable; an untrusted physical handset is reported, not driven): tool detection, the
+device picker, the waiting stage, the live frame, and the Verify / re-diff loop (F-9) that re-captures a sent
 batch's device and reports a per-annotation Fixed / Still off verdict. Orbit MVI, as
 `.claude/rules/orbit-mvi.md` prescribes — with two documented deviations.
 
@@ -63,8 +64,8 @@ function signature.
 - `source/mirror/` — `MirrorContract`, `MirrorViewModel`, `MirrorHost`, `MirrorContent`,
   `MirrorVerifyStage` (the Verify stage's two-column BEFORE/AFTER layout, F-9).
   `MirrorContent` exposes `MirrorStageContent` (one branch per `MirrorStage` case — `Picker`,
-  `Mirror`, `NoSignal`, `IosDeferred`, `Frozen`, `Verify`) and `MirrorStatusLine` (the status
-  bar's leading slot); both are stateless and read `stringResource` for every piece of copy,
+  `Mirror`, `NoSignal`, `Frozen`, `Verify`; there is no `IosDeferred` case, it was deleted
+  with F-10 and must not come back) and `MirrorStatusLine` (the status bar's leading slot); both are stateless and read `stringResource` for every piece of copy,
   which is why the semantic row/stage types in the contract carry no labels.
 - `core/verify/` — the verify loop's pure core: `RegionDiff.changedRatio` (Chebyshev RGB over
   `IntArray`), `VerifyThresholds` (`CHANNEL_NOISE_FLOOR`, `REGION_CHANGE_RATIO`,

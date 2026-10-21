@@ -1,0 +1,49 @@
+{
+  "spec": "ios-platform-support",
+  "stage": "plan",
+  "step": "evaluation",
+  "schemaVersion": 1,
+  "status": "done",
+  "producedBy": "orchestrator-fast-tier",
+  "provenance": {
+    "selfHash": "d2b35d45fc568ac1b8ce319641552cf21f2d924fb5d70218487cecf69ca44ba5"
+  },
+  "createdAt": "2026-10-19T02:25:36Z",
+  "updatedAt": "2026-10-19T02:25:36Z",
+  "data": {
+    "candidates": [
+      {
+        "id": "candidate-1",
+        "file": "candidates/candidate-1.json",
+        "score": 0,
+        "scores": {},
+        "rationale": "fast tier: N=1, no competitive judging ran"
+      }
+    ],
+    "selected": "candidate-1",
+    "corrections": [
+      {
+        "id": "C-1",
+        "area": "commit-split",
+        "text": "Verify PLAN-AS-1: qualifier registration genuinely cannot sit in the zero-iOS-code commit, and the resulting two-commit boundary is still reviewable as a word-diff of platform insertions."
+      },
+      {
+        "id": "C-2",
+        "area": "file-count",
+        "text": "Verify PLAN-AS-2: the pure refactor is 19 files, not the ~45 Preparation recorded. Recount against the real tree and say which count is right."
+      },
+      {
+        "id": "C-3",
+        "area": "ac-31",
+        "text": "Confirm AC-31 is recorded as SPLIT in every place it appears, with the device-not-trusted half waived rather than implied proven."
+      }
+    ],
+    "selectionRationale": "Single candidate at fast effort tier; judge machinery skipped per orchestrator contract."
+  },
+  "gate": {
+    "type": "auto",
+    "approvedBy": "orchestrator",
+    "approved": true,
+    "at": "2026-10-19T02:25:36Z"
+  }
+}

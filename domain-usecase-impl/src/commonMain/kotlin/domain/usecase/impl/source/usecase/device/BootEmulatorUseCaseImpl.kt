@@ -1,5 +1,6 @@
 package domain.usecase.impl.source.usecase.device
 
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.monad.Failure
 import domain.repository.api.source.repository.DeviceRepository
 import domain.usecase.api.source.monad.Optional
@@ -20,13 +21,14 @@ internal class BootEmulatorUseCaseImpl(
 ) : BootEmulatorUseCase {
 
     /**
+     * @param platform Which device family [avdName] names an image of.
      * @param avdName Name of the AVD to boot.
      * @return An [Optional] indicating success or failure.
      * @see BootEmulatorUseCase.invoke
      */
-    override suspend fun invoke(avdName: String): Optional = resultLauncher(
+    override suspend fun invoke(platform: PlatformModel, avdName: String): Optional = resultLauncher(
         errorMapper = Failure.Technical::Process,
     ) {
-        deviceRepository.bootEmulator(avdName)
+        deviceRepository.bootEmulator(platform, avdName)
     }
 }

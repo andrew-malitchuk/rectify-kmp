@@ -64,9 +64,10 @@
     <string name="mirror_picker_subtitle">Switch platform or device any time from the toolbar.</string>
     <string name="mirror_section_platform">PLATFORM</string>
     <string name="mirror_section_source">SOURCE</string>
-    <string name="mirror_source_summary">%1$d found · adb devices -l</string>
+    <!-- The listing command is an ARGUMENT, not copy: iOS has no adb to run. -->
+    <string name="mirror_source_summary">%1$d found · %2$s</string>
     <string name="mirror_group_physical">Physical device</string>
-    <string name="mirror_group_emulator">Emulator</string>
+    <string name="mirror_group_emulator">Virtual devices</string>
     <string name="mirror_row_boot">Boot</string>
     <string name="mirror_row_running">Running</string>
     <string name="mirror_row_shut_down">shut down</string>
@@ -96,10 +97,12 @@
     <string name="mirror_status_no_device_attached">adb devices → %1$d attached</string>
     <string name="mirror_status_awaiting_choice">%1$d devices attached — waiting for choice</string>
     <string name="mirror_status_poll_failed">adb not responding, retrying…</string>
+    <!-- The two iOS blocked states. Both pair with a Blocked dot, and neither may name adb. -->
+    <string name="mirror_status_simulator_not_booted">no simulator booted</string>
+    <string name="mirror_status_device_not_trusted">iPhone not trusted yet</string>
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
     <string name="mirror_tool_not_found">not found</string>
-    <string name="mirror_ios_deferred">iOS mirroring arrives in a later release. idb is detected so you can see it is installed.</string>
     <string name="mirror_emulator_none">No AVDs installed</string>
 
     <!-- Mirror - Annotations on a frozen frame (comps 04/05) -->
@@ -132,6 +135,30 @@
     <string name="mirror_error_action_restart_adb">Restart adb</string>
     <string name="mirror_error_action_boot_emulator">Boot emulator instead</string>
     <string name="mirror_error_action_mirror_device">Mirror %1$s</string>
+    <!-- Mirror - the two iOS error cards the design drew as err-sim and err-trust. Wired by
+         F-10. The shared four above keep their adb wording for Android only; their iOS
+         wording is the *_ios block below, which the projection selects by platform. -->
+    <string name="mirror_error_simulator_not_booted_title">No simulator is running</string>
+    <string name="mirror_error_simulator_not_booted_body">Xcode knows about your simulators but none of them is booted. Boot one, or pick a different simulator.</string>
+    <string name="mirror_error_device_not_trusted_title">This iPhone hasn't been trusted</string>
+    <string name="mirror_error_device_not_trusted_body">Unlock the iPhone and tap Trust on the prompt, then retry. You can use a simulator instead.</string>
+    <string name="mirror_error_action_boot_simulator">Boot simulator</string>
+    <string name="mirror_error_action_choose_another">Choose another</string>
+    <string name="mirror_error_action_use_simulator">Use simulator</string>
+    <!-- The err-trust primary. The apostrophe and the em dash are LITERAL: Compose Resources
+         is not AAPT, so an escaped \' would render the backslash. -->
+    <string name="mirror_error_action_trusted_retry">I've tapped Trust — retry</string>
+
+    <!-- Mirror - the iOS wording of the SHARED cards. A missing xcrun and a missing adb are
+         the same card with different copy; suppressing these on iOS would hand the user a
+         blank stage for conditions an iOS bench genuinely reaches. No line here may name adb:
+         there is no daemon to restart and no platform-tools to install. -->
+    <string name="mirror_error_tool_missing_title_ios">Xcode command line tools aren't on your PATH</string>
+    <string name="mirror_error_tool_missing_body_ios">Rectify uses xcrun and simctl to find simulators. Install Xcode, then run xcode-select --install.</string>
+    <string name="mirror_error_no_device_title_ios">No iOS device or simulator detected</string>
+    <string name="mirror_error_no_device_body_ios">xcrun is running but sees nothing. Boot a simulator, or connect an iPhone and tap Trust on the prompt.</string>
+    <string name="mirror_error_poll_failed_title_ios">xcrun stopped responding</string>
+    <string name="mirror_error_poll_failed_body_ios">The device poll never came back, so nothing is known about what is attached. Retry, or read what the footer reports.</string>
 
     <!-- Mirror - Stream-drop banner (FR-24 / AC-29). The design's verbatim copy, which has one
          detail sentence and no singular variant: the count is always stated, zero included. -->

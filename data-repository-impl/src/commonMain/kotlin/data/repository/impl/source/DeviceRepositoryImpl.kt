@@ -3,7 +3,7 @@ package data.repository.impl.source
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
+import data.device.api.source.datasource.IosHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -13,6 +13,7 @@ import data.device.api.source.model.DeviceId
 import data.device.api.source.model.DeviceResource
 import data.device.api.source.model.DeviceStateResource
 import data.device.api.source.model.ToolKind
+import data.device.api.source.parse.isPhysical
 import data.device.api.source.tuning.MirrorTuning
 import data.preference.api.source.datasource.AdbPathPreferenceSource
 import data.preference.api.source.model.AdbPathPreference
@@ -20,13 +21,16 @@ import data.repository.impl.core.mapper.DeviceResourceMapper
 import data.repository.impl.core.mapper.EmulatorResourceMapper
 import data.repository.impl.core.mapper.HierarchyDumpStdout
 import data.repository.impl.core.mapper.HierarchySnapshotMapper
+import data.repository.impl.core.mapper.IosTargetResourceMapper
 import data.repository.impl.core.mapper.MirrorFrameMapper
+import data.repository.impl.core.mapper.SimulatorResourceMapper
 import data.repository.impl.core.mapper.ToolProbeMapper
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.EmulatorModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
 import domain.core.source.model.device.MirrorStatsModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.device.ToolModel
 import domain.repository.api.source.repository.DeviceRepository
 import co.touchlab.kermit.Logger
@@ -46,31 +50,57 @@ import kotlin.time.Clock
  * Discovery and mirroring on top of the device datasources.
  *
  * @property adbHostSource Deviceless `adb` calls.
- * @property idbHostSource Deviceless `idb` calls — a probe and nothing else, which is the
- *   whole of iOS this release.
+ * @property iosHostSource Deviceless `xcrun simctl` and `idb` calls.
  * @property emulatorSource Deviceless `emulator` calls.
- * @property deviceCommandExecutor The device-scoped command path, used to ask a running
- *   emulator for its AVD name.
- * @property mirrorTransport Frame source for an active session.
+ * @property androidExecutor The Android device-scoped command path, used to ask a running
+ *   emulator for its AVD name and to capture a frame.
+ * @property iosExecutor The iOS device-scoped command path — simulator boot and capture.
+ * @property androidTransport Frame source for an active `adb` session.
+ * @property iosTransport Frame source for an active simulator session.
  * @property adbPathPreferenceSource Where a user-chosen `adb` path is persisted. Written here,
  *   read by `ToolResolver` at probe time — the resolver validates it, this does not.
  * @property nowMs Wall-clock reader. A parameter so the poll metadata is assertable under
  *   virtual time instead of needing a real two-second wait.
+ *
+ * The executor and the transport arrive as a PAIR each rather than one already-resolved
+ * instance: a repository call carries its own `platform`, so the choice is made PER CALL - by
+ * [transport]'s exhaustive `when` for a session, and by the `when (platform)` in
+ * [observeDiscovery] and [bootEmulator] for everything device-scoped. Neither has an `else`,
+ * so a third platform cannot silently inherit adb's.
  */
 private val log = Logger.withTag("DeviceRepository")
 
 internal class DeviceRepositoryImpl(
     private val adbHostSource: AdbHostSource,
-    private val idbHostSource: IdbHostSource,
+    private val iosHostSource: IosHostSource,
     private val emulatorSource: EmulatorSource,
-    private val deviceCommandExecutor: DeviceCommandExecutor,
-    private val mirrorTransport: MirrorTransport,
+    private val androidExecutor: DeviceCommandExecutor,
+    private val iosExecutor: DeviceCommandExecutor,
+    private val androidTransport: MirrorTransport,
+    private val iosTransport: MirrorTransport,
     private val adbPathPreferenceSource: AdbPathPreferenceSource,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : DeviceRepository {
 
-    /** Last version `adb` reported, for the status bar of an active session. */
-    private val adbVersion = MutableStateFlow("")
+    /** Last version the polling platform's tool reported, for an active session's status bar. */
+    private val toolVersion = MutableStateFlow("")
+
+    /**
+     * The frame source for this platform.
+     *
+     * No `else`: a third [PlatformModel] has to be given a transport of its own rather than
+     * silently streaming the Android one.
+     */
+    private fun transport(platform: PlatformModel): MirrorTransport = when (platform) {
+        PlatformModel.Android -> androidTransport
+        PlatformModel.Ios -> iosTransport
+    }
+
+    /** The binary whose name belongs on a failure this platform produced. */
+    private fun toolNameOf(platform: PlatformModel): String = when (platform) {
+        PlatformModel.Android -> ToolKind.Adb.binaryName
+        PlatformModel.Ios -> ToolKind.Simctl.binaryName
+    }
 
     /**
      * @see DeviceRepository.refreshDiscovery
@@ -112,16 +142,17 @@ internal class DeviceRepositoryImpl(
     /**
      * Probes both platforms (AC-1).
      *
-     * iOS is PROBED, not assumed: FR-2 defers iOS mirroring, but the toolbar dot reports a
-     * real answer about the `idb` binary rather than a hardcoded "not installed".
+     * The iOS answer comes from `xcrun simctl`, not `idb`: simulators are the mirrorable half,
+     * so the dot has to report the binary the session would actually use. `probeSimctl()` also
+     * verifies the SUBCOMMAND resolves, so a CLT-only Mac reads as missing rather than found.
      */
     override suspend fun detectTools(): List<ToolModel> {
         val adb = adbHostSource.probe()
-        adbVersion.value = adb.version.orEmpty()
-        return listOf(adb, idbHostSource.probe()).map(ToolProbeMapper.toModel::map)
+        toolVersion.value = adb.version.orEmpty()
+        return listOf(adb, iosHostSource.probeSimctl()).map(ToolProbeMapper.toModel::map)
     }
 
-    override fun observeDiscovery(): Flow<DiscoveryModel> = flow {
+    override fun observeDiscovery(platform: PlatformModel): Flow<DiscoveryModel> = flow {
         emit(DiscoveryModel.Detecting)
         // Collector-local, so two collectors cannot race on it. A serial's AVD name cannot
         // change while it stays attached, which is what makes caching it safe - and worth
@@ -137,13 +168,18 @@ internal class DeviceRepositoryImpl(
             // transiently all the time, most reliably on the cold start where the very
             // first `adb devices -l` has to boot the server inside HostCommandTimeoutMs.
             val emission = try {
-                poll(avdNames, emptyPolls).also { emptyPolls = it.emptyPolls }
+                when (platform) {
+                    PlatformModel.Android -> pollAndroid(avdNames, emptyPolls)
+                    PlatformModel.Ios -> pollIos(emptyPolls)
+                }.also { emptyPolls = it.emptyPolls }
             } catch (failure: DeviceCommandException) {
                 // emptyPolls is left exactly as it was: a poll that never answered neither
                 // confirms an empty bench nor clears a streak of them.
                 PollOutcome(
                     model = DiscoveryModel.PollFailed(
-                        tool = ToolKind.Adb.binaryName,
+                        // The POLLING platform's own binary. It was hardcoded to adb, which
+                        // reported an adb failure for an xcrun one the moment iOS could poll.
+                        tool = toolNameOf(platform),
                         reason = failure.stderrTail.ifBlank { failure.message.orEmpty() },
                     ),
                     emptyPolls = emptyPolls,
@@ -166,10 +202,10 @@ internal class DeviceRepositoryImpl(
     private data class PollOutcome(val model: DiscoveryModel, val emptyPolls: Int)
 
     /**
-     * One discovery round trip. Throws [DeviceCommandException] like any other data-layer
-     * call - the caller decides what a failed round trip means for the stream.
+     * One Android discovery round trip. Throws [DeviceCommandException] like any other
+     * data-layer call - the caller decides what a failed round trip means for the stream.
      */
-    private suspend fun poll(avdNames: MutableMap<String, AvdName>, emptyPolls: Int): PollOutcome {
+    private suspend fun pollAndroid(avdNames: MutableMap<String, AvdName>, emptyPolls: Int): PollOutcome {
         val probe = adbHostSource.probe()
         if (!probe.found) {
             // Not an error: a missing tool is a rendered state, so the counter does not
@@ -184,7 +220,7 @@ internal class DeviceRepositoryImpl(
                 emptyPolls = 0,
             )
         }
-        adbVersion.value = probe.version.orEmpty()
+        toolVersion.value = probe.version.orEmpty()
         val devices = listDevicesEscalating()
         avdNames.keys.retainAll(devices.mapTo(mutableSetOf()) { it.id.value })
         val usable = devices.count { it.state == DeviceStateResource.Device }
@@ -202,6 +238,88 @@ internal class DeviceRepositoryImpl(
                 physical = devices.filterNot(DeviceResource::isEmulator)
                     .map(DeviceResourceMapper.toModel::map),
                 emulators = emulators(devices, avdNames),
+            )
+        }
+        return PollOutcome(model, streak)
+    }
+
+    /**
+     * One iOS discovery round trip: `xcrun simctl` for the simulators, `idb` for the handsets.
+     *
+     * Two deliberate asymmetries with [pollAndroid]:
+     *
+     * - **`idb` failing is not a failed poll.** `listDevices()` is wrapped, so a missing
+     *   `idb_companion` degrades the PHYSICAL list to empty instead of hiding the answer
+     *   `simctl` already gave. The simulator half is the mirrorable one; losing it to a
+     *   handset bridge nobody installed would be the worse outcome.
+     * - **No empty-poll escalation before [DiscoveryModel.NoDeviceFound].** `simctl` answers
+     *   from a local plist in a measured 0.28 s and does not flap the way a cold adb daemon
+     *   does, so there is nothing to wait out. The streak is still counted, so `attempts`
+     *   reports the truth.
+     *
+     * `listSimulators()` throwing IS a failed poll and propagates — that is the parser-drift
+     * path, which [IosHostSource]'s implementation raises rather than reporting a silent
+     * empty bench, and the caller renders it as `PollFailed(tool = "xcrun")`.
+     */
+    private suspend fun pollIos(emptyPolls: Int): PollOutcome {
+        val probe = iosHostSource.probeSimctl()
+        if (!probe.found) {
+            return PollOutcome(
+                model = DiscoveryModel.ToolMissing(
+                    tool = ToolKind.Simctl.binaryName,
+                    probedPaths = probe.probedPaths,
+                    installCommand = probe.installCommand,
+                    envHint = probe.envHint,
+                ),
+                emptyPolls = 0,
+            )
+        }
+        toolVersion.value = probe.version.orEmpty()
+        val simulators = iosHostSource.listSimulators()
+        val handsets = try {
+            // PHYSICAL rows only. `idb list-targets` lists simulators too and `trusted` is
+            // true for every one of them, so an unfiltered list counted 54 shut-down
+            // simulators as 54 connected phones, listed each of them twice and made
+            // SimulatorNotBooted unreachable on any Mac where idb resolves.
+            iosHostSource.listDevices().filter { it.isPhysical }
+        } catch (failure: DeviceCommandException) {
+            log.d { "idb would not list targets, reporting simulators only: ${failure.message}" }
+            emptyList()
+        }
+        val usable = simulators.count(SimulatorResourceMapper::isBooted) + handsets.count { it.trusted }
+        val streak = if (usable == 0) emptyPolls + 1 else 0
+
+        val untrusted = handsets.filterNot { it.trusted }
+        val model = when {
+            usable > 0 -> DiscoveryModel.Found(
+                // Untrusted handsets ride along as unselectable rows, exactly as an
+                // `unauthorized` Android serial does - a device the user is holding has to be
+                // visible even while it cannot be driven.
+                physical = handsets.map(IosTargetResourceMapper.toModel::map),
+                emulators = simulators.map(SimulatorResourceMapper.toModel::map),
+            )
+
+            // Only when it is the ONLY candidate: a bootable simulator means the card would
+            // be covering a list the user could act on.
+            untrusted.size == 1 && simulators.isEmpty() -> untrusted.first().let { handset ->
+                DiscoveryModel.DeviceNotTrusted(
+                    deviceId = handset.udid,
+                    deviceName = handset.name,
+                    simulatorsAvailable = false,
+                )
+            }
+
+            simulators.isNotEmpty() -> DiscoveryModel.SimulatorNotBooted(
+                simulators = simulators.map(SimulatorResourceMapper.toModel::map),
+                toolVersion = probe.version.orEmpty(),
+                lastPollEpochMs = nowMs(),
+            )
+
+            else -> DiscoveryModel.NoDeviceFound(
+                toolVersion = probe.version.orEmpty(),
+                lastPollEpochMs = nowMs(),
+                attempts = streak,
+                attachedCount = untrusted.size,
             )
         }
         return PollOutcome(model, streak)
@@ -290,22 +408,38 @@ internal class DeviceRepositoryImpl(
         adbHostSource.startServer()
     }
 
-    override suspend fun bootEmulator(avdName: String) {
-        val avd = AvdName.of(avdName)
-            ?: throw DeviceCommandException(listOf(ToolKind.Emulator.binaryName), null, "invalid AVD name $avdName")
-        emulatorSource.boot(avd)
+    /**
+     * @see DeviceRepository.bootEmulator
+     *
+     * The iOS half does NOT go through [AvdName]: the identifier is a simulator udid, booting
+     * addresses exactly one of them, and that makes it a device-scoped
+     * [DeviceCommand.SimulatorBoot] rather than a deviceless `emulator` call.
+     */
+    override suspend fun bootEmulator(platform: PlatformModel, avdName: String) = when (platform) {
+        PlatformModel.Android -> {
+            val avd = AvdName.of(avdName)
+                ?: throw DeviceCommandException(listOf(ToolKind.Emulator.binaryName), null, "invalid AVD name $avdName")
+            emulatorSource.boot(avd)
+        }
+
+        PlatformModel.Ios -> {
+            val udid = DeviceId.of(avdName)
+                ?: throw DeviceCommandException(listOf(ToolKind.Simctl.binaryName), null, "invalid udid $avdName")
+            iosExecutor.run(udid, DeviceCommand.SimulatorBoot)
+            Unit
+        }
     }
 
-    override fun mirror(deviceId: String): Flow<MirrorFrameModel> {
+    override fun mirror(platform: PlatformModel, deviceId: String): Flow<MirrorFrameModel> {
         val device = DeviceId.of(deviceId)
             ?: return flow {
-                throw DeviceCommandException(listOf(ToolKind.Adb.binaryName), null, "invalid device id $deviceId")
+                throw DeviceCommandException(listOf(toolNameOf(platform)), null, "invalid device id $deviceId")
             }
-        return mirrorTransport.frames(device).map(MirrorFrameMapper.toModel::map)
+        return transport(platform).frames(device).map(MirrorFrameMapper.toModel::map)
     }
 
-    override fun observeMirrorStats(): Flow<MirrorStatsModel> =
-        combine(mirrorTransport.stats, adbVersion) { stats, version ->
+    override fun observeMirrorStats(platform: PlatformModel): Flow<MirrorStatsModel> =
+        combine(transport(platform).stats, toolVersion) { stats, version ->
             MirrorStatsModel(
                 toolVersion = version,
                 widthPx = stats.widthPx,
@@ -327,15 +461,22 @@ internal class DeviceRepositoryImpl(
      * [HierarchyDumpStdout] enforces at the type level. See the wave-4 addendum in
      * `execution/GATE-step2-go-no-go.md`.
      */
-    override suspend fun dumpHierarchy(deviceId: String): HierarchySnapshotModel {
+    override suspend fun dumpHierarchy(
+        platform: PlatformModel,
+        deviceId: String,
+    ): HierarchySnapshotModel {
+        // AC-50: there is no `uiautomator` on iOS and no simulator equivalent this release, so
+        // the executor is never REACHED - an empty snapshot is the honest answer and measure
+        // mode degrades to pixels rather than the whole freeze failing.
+        if (platform == PlatformModel.Ios) return HierarchySnapshotModel.Empty
         val device = DeviceId.of(deviceId)
             ?: throw DeviceCommandException(listOf(ToolKind.Adb.binaryName), null, "invalid device id $deviceId")
-        val dump = deviceCommandExecutor.run(device, DeviceCommand.UiAutomatorDump).decodeToString()
+        val dump = androidExecutor.run(device, DeviceCommand.UiAutomatorDump).decodeToString()
         // A dump that worked is not thrown away because `wm density` did not: an unknown
         // density degrades to the 0 sentinel, which makes the caller report px instead of a
         // dp figure derived from a guess. A failed DUMP still throws - that is the payload.
         val density = try {
-            deviceCommandExecutor.run(device, DeviceCommand.WmDensity).decodeToString()
+            androidExecutor.run(device, DeviceCommand.WmDensity).decodeToString()
         } catch (failure: DeviceCommandException) {
             log.d { "wm density failed, reporting an unknown density: ${failure.message}" }
             ""
@@ -396,7 +537,7 @@ internal class DeviceRepositoryImpl(
     private suspend fun avdNameOf(device: DeviceId, avdNames: MutableMap<String, AvdName>): AvdName? {
         avdNames[device.value]?.let { return it }
         val output = try {
-            deviceCommandExecutor.run(device, DeviceCommand.EmuAvdName).decodeToString()
+            androidExecutor.run(device, DeviceCommand.EmuAvdName).decodeToString()
         } catch (failure: DeviceCommandException) {
             return null
         }

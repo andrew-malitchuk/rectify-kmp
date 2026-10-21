@@ -8,7 +8,14 @@ package data.device.api.source.model
  */
 public sealed interface DeviceCommand {
 
-    /** Capture the screen as PNG on stdout. */
+    /**
+     * Capture the screen as an encoded PNG on stdout.
+     *
+     * Platform-neutral on purpose and REUSED by iOS rather than duplicated: every tool this
+     * app drives can write a PNG to stdout, so
+     * [data.device.api.source.parse.buildDeviceArgv] renders the per-tool spelling and
+     * nothing downstream of the executor has to know which one ran.
+     */
     public data object Screencap : DeviceCommand
 
     /** Read the display resolution. */
@@ -36,4 +43,12 @@ public sealed interface DeviceCommand {
      * [data.device.api.source.parse.parseUiAutomatorDump].
      */
     public data object UiAutomatorDump : DeviceCommand
+
+    /**
+     * Boot a shut-down simulator — widened for F-10 (FR-49).
+     *
+     * Addressed by udid like every other member here, because simulator names are not unique:
+     * the captured fixture has two `iPhone 15 Pro` under ONE runtime.
+     */
+    public data object SimulatorBoot : DeviceCommand
 }

@@ -7,6 +7,6 @@ public enum class PlatformModel : Model {
     /** Android devices and emulators, driven through `adb`. */
     Android,
 
-    /** iOS simulators, driven through `idb`. Not wired in this feature. */
+    /** iOS simulators and devices, driven through `xcrun simctl` and `idb`. */
     Ios,
 }

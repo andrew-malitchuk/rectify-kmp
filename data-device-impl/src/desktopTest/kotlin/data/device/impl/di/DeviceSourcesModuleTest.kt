@@ -1,42 +1,83 @@
 package data.device.impl.di
 
+import data.device.api.source.datasource.ANDROID_SOURCE
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
+import data.device.api.source.datasource.IOS_SOURCE
+import data.device.api.source.datasource.IosHostSource
 import data.device.api.source.datasource.MirrorTransport
+import data.device.impl.source.provideUnsupportedDeviceSources
 import data.preference.api.source.datasource.AdbPathPreferenceSource
 import data.preference.api.source.model.AdbPathPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import org.koin.core.Koin
+import org.koin.core.module.Module
+import org.koin.core.qualifier.named
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
- * The desktop graph resolves, including the `idb` probe behind the iOS status dot (AC-1).
+ * Every device graph resolves every registration it will be asked for at launch.
  *
- * Resolution only — constructing these spawns nothing; a missing registration is a RUNTIME
- * failure that compiling the module cannot catch.
+ * RESOLUTION only — constructing these spawns nothing. A missing registration is a RUNTIME
+ * failure that compiling the module cannot catch, and the failure is a crash on the very
+ * first frame, so this test is the only machine guard between a forgotten qualifier and a
+ * desktop app that will not start. It earned that description the hard way: a wave of this
+ * spec left `DeviceRepositoryImpl` asking for bindings nobody registered, and the whole suite
+ * stayed green because nothing resolved the graph.
+ *
+ * The MOBILE half is resolved through [provideUnsupportedDeviceSources], which is the entire
+ * body of both the `androidMain` and `iosMain` actuals. Those actuals are not compiled into
+ * `desktopTest`, so this is the only way to reach them from a test that runs — and it is a
+ * real guard rather than a copy of the registrations, because the production actuals call
+ * this same function and nothing else.
  */
 class DeviceSourcesModuleTest {
 
     @Test
     fun everyDeviceDatasourceResolvesOnDesktop() {
-        // The real source lives in data-preference-impl, which this module must not depend on;
-        // the contract is all `ToolResolver` needs, so the contract is all the test supplies.
-        val preferences = module {
-            single<AdbPathPreferenceSource> { UnsetAdbPath }
-        }
-        val koin = koinApplication { modules(preferences, dataDeviceImplModule) }.koin
-
-        assertNotNull(koin.get<AdbHostSource>())
-        assertNotNull(koin.get<IdbHostSource>())
-        assertNotNull(koin.get<EmulatorSource>())
-        assertNotNull(koin.get<DeviceCommandExecutor>())
-        assertNotNull(koin.get<MirrorTransport>())
+        assertEveryRegistrationResolves(koinFor(dataDeviceImplModule))
     }
+
+    @Test
+    fun everyDeviceDatasourceResolvesOnAndroidAndIos() {
+        assertEveryRegistrationResolves(koinFor(module { provideUnsupportedDeviceSources() }))
+    }
+
+    @Test
+    fun noUnqualifiedExecutorOrTransportResolvesOnAnyGraph() {
+        // The other half of the qualifier contract: there must be no unqualified binding to
+        // fall back on, or a caller that forgets the qualifier silently gets whichever
+        // platform was registered last instead of failing loudly.
+        for (graph in listOf(dataDeviceImplModule, module { provideUnsupportedDeviceSources() })) {
+            val koin = koinFor(graph)
+            assertNull(koin.getOrNull<DeviceCommandExecutor>())
+            assertNull(koin.getOrNull<MirrorTransport>())
+        }
+    }
+
+    private fun assertEveryRegistrationResolves(koin: Koin) {
+        assertNotNull(koin.get<AdbHostSource>())
+        assertNotNull(koin.get<IosHostSource>())
+        assertNotNull(koin.get<EmulatorSource>())
+        // One executor and one transport PER PLATFORM, so both qualifiers are asked for on
+        // every graph: omitting one is invisible on the platform that does not use it.
+        assertNotNull(koin.get<DeviceCommandExecutor>(named(ANDROID_SOURCE)))
+        assertNotNull(koin.get<DeviceCommandExecutor>(named(IOS_SOURCE)))
+        assertNotNull(koin.get<MirrorTransport>(named(ANDROID_SOURCE)))
+        assertNotNull(koin.get<MirrorTransport>(named(IOS_SOURCE)))
+    }
+
+    // The real source lives in data-preference-impl, which this module must not depend on;
+    // the contract is all `ToolResolver` needs, so the contract is all the test supplies.
+    private fun koinFor(sources: Module): Koin = koinApplication {
+        modules(module { single<AdbPathPreferenceSource> { UnsetAdbPath } }, sources)
+    }.koin
 }
 
 /** An `adb` path the user never chose - the default state of the preference. */

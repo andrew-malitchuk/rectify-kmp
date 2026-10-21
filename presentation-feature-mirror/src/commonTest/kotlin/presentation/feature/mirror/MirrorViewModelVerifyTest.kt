@@ -7,6 +7,7 @@ import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.HierarchyNodeModel
 import domain.core.source.model.device.HierarchySnapshotModel
 import domain.core.source.model.device.MirrorFrameModel
+import domain.core.source.model.device.PlatformModel
 import domain.core.source.model.history.BatchStatusModel
 import domain.core.source.model.history.SentAnnotationModel
 import domain.core.source.model.history.SentBatchModel
@@ -202,7 +203,10 @@ private class ScriptedDumpHierarchy(
 
     private var calls = 0
 
-    override suspend fun invoke(deviceId: String): Result<HierarchySnapshotModel> =
+    override suspend fun invoke(
+        platform: PlatformModel,
+        deviceId: String,
+    ): Result<HierarchySnapshotModel> =
         Result.success(results[minOf(calls++, results.lastIndex)])
 }
 

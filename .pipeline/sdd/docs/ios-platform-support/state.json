@@ -1,0 +1,187 @@
+{
+  "spec": "ios-platform-support",
+  "currentStage": "done",
+  "stages": {
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    },
+    "execution": {
+      "status": "done"
+    },
+    "validation": {
+      "status": "done"
+    },
+    "review": {
+      "status": "done"
+    }
+  },
+  "steps": {
+    "input": {
+      "status": "done"
+    },
+    "clarify": {
+      "status": "done"
+    },
+    "brainstorm": {
+      "status": "done"
+    },
+    "preparation": {
+      "status": "done"
+    },
+    "plan": {
+      "status": "done"
+    },
+    "backlog": {
+      "status": "done"
+    }
+  },
+  "tasks": {
+    "T-1": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-2": {
+      "status": "done",
+      "wave": 1,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-3": {
+      "status": "done",
+      "wave": 2,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-4": {
+      "status": "done",
+      "wave": 3,
+      "updatedAt": "2026-10-19T03:32:29Z"
+    },
+    "T-5": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-15": {
+      "status": "done",
+      "wave": 4,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-6": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-8": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-11": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-18": {
+      "status": "done",
+      "wave": 5,
+      "updatedAt": "2026-10-19T03:50:46Z"
+    },
+    "T-7": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-19T04:02:08Z"
+    },
+    "T-9": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-19T04:02:08Z"
+    },
+    "T-10": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-19": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-19T04:02:08Z"
+    },
+    "T-22": {
+      "status": "done",
+      "wave": 6,
+      "updatedAt": "2026-10-19T04:02:08Z"
+    },
+    "T-12": {
+      "status": "done",
+      "wave": 7,
+      "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-13": {
+      "status": "done",
+      "wave": 8,
+      "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-23": {
+      "status": "done",
+      "wave": 8,
+      "updatedAt": "2026-10-19T04:15:25Z"
+    },
+    "T-14": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-16": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-24": {
+      "status": "done",
+      "wave": 9,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-17": {
+      "status": "done",
+      "wave": 10,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-20": {
+      "status": "done",
+      "wave": 10,
+      "updatedAt": "2026-10-19T04:38:18Z"
+    },
+    "T-21": {
+      "status": "done",
+      "wave": 11,
+      "updatedAt": "2026-10-19T04:49:21Z"
+    },
+    "T-25": {
+      "status": "done",
+      "wave": 12,
+      "updatedAt": "2026-10-19T05:23:54Z"
+    },
+    "T-26": {
+      "status": "done",
+      "wave": 13,
+      "updatedAt": "2026-10-19T05:23:54Z"
+    }
+  },
+  "effort": "fast",
+  "stageEffort": {
+    "preparation": "fast",
+    "plan": "fast",
+    "backlog": "fast",
+    "execution": "fast",
+    "validation": "fast",
+    "review": "fast",
+    "reflection": "fast"
+  },
+  "verdict": "complete-with-waivers"
+}

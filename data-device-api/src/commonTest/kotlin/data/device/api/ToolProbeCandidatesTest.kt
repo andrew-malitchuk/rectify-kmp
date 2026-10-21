@@ -89,6 +89,27 @@ class ToolProbeCandidatesTest {
         )
     }
 
+    /**
+     * `xcrun` is a SYSTEM binary, so `/usr/bin` is probed ahead of the Homebrew prefixes and
+     * only for this tool — every assertion above proves the Android order is untouched.
+     */
+    @Test
+    fun `the xcode shim probes usr bin first`() {
+        assertEquals(
+            listOf("/usr/bin/xcrun", "/opt/homebrew/bin/xcrun", "/usr/local/bin/xcrun"),
+            probeCandidates(ToolKind.Simctl, mapOf("ANDROID_HOME" to "/opt/sdk"), home),
+        )
+    }
+
+    /** The PATH entry for an already-listed location must not duplicate it. */
+    @Test
+    fun `the xcode shim does not repeat usr bin from the path`() {
+        assertEquals(
+            listOf("/usr/bin/xcrun", "/opt/homebrew/bin/xcrun", "/usr/local/bin/xcrun"),
+            probeCandidates(ToolKind.Simctl, mapOf("PATH" to "/usr/bin"), homeDir = ""),
+        )
+    }
+
     @Test
     fun `a tool that does not ship in the sdk skips the sdk roots`() {
         assertEquals(

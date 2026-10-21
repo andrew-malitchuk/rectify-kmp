@@ -101,6 +101,39 @@ class ToolResolverTest {
         assertEquals(listOf(chosenAdb, fallbackAdb), listOf(whileSet, afterClearing))
     }
 
+    /**
+     * The third tool through the same seam, with no new test infrastructure: resolution is
+     * decided entirely by the injected `isExecutable` predicate, sandboxed to the temp root,
+     * so the real `/usr/bin/xcrun` on this machine cannot win and turn this into a host test.
+     *
+     * `readVersion` does spawn, and under `runTest`'s virtual clock it always times out and
+     * yields `null` — the same pre-existing behaviour every adb case here has. The version is
+     * deliberately not asserted; what is asserted is that Simctl resolves at all, which it
+     * could not before ToolKind.Simctl existed.
+     */
+    @Test
+    fun theXcodeShimResolvesThroughTheSameInjectedPredicate() = runTest {
+        val xcrun = executable("path-bin/xcrun")
+
+        val probe = resolver { null }.resolve(ToolKind.Simctl)
+
+        assertEquals(
+            listOf(xcrun, true, "xcode-select --install"),
+            listOf(probe.path, probe.found, probe.installCommand),
+        )
+    }
+
+    /** A machine without the Xcode command-line tools gets a value, never an exception. */
+    @Test
+    fun aMissingXcodeShimIsReportedAsAValue() = runTest {
+        val probe = resolver { null }.resolve(ToolKind.Simctl)
+
+        assertEquals(
+            listOf(false, null, true),
+            listOf(probe.found, probe.path, "/usr/bin/xcrun" in probe.probedPaths),
+        )
+    }
+
     @Test
     fun onlyAdbConsultsTheUserPath() = runTest {
         val emulatorOverride = executable("Downloads/platform-tools/emulator")

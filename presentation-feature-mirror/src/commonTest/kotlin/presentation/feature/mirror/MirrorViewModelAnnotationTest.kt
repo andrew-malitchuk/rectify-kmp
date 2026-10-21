@@ -284,7 +284,6 @@ class MirrorViewModelAnnotationTest {
 
         assertNull(viewModel.currentState.frozen)
         assertNull(viewModel.frozenFrame.value)
-        assertEquals(MirrorStage.IosDeferred, viewModel.currentState.stage)
     }
 
     /**

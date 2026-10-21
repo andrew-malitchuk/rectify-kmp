@@ -16,6 +16,7 @@ import data.device.api.source.model.ToolProbe
 import data.device.api.source.model.TransportStats
 import data.repository.impl.source.DeviceRepositoryImpl
 import domain.core.source.model.device.HierarchySnapshotModel
+import domain.core.source.model.device.PlatformModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,7 @@ class DeviceHierarchyDumpFallbackTest {
             )
         )
 
-        val snapshot = densityFailed.dumpHierarchy("R5CT10ABCDE")
+        val snapshot = densityFailed.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE")
 
         assertEquals(0, snapshot.densityDpi)
         assertEquals(2, snapshot.nodes.size)
@@ -65,7 +66,7 @@ class DeviceHierarchyDumpFallbackTest {
             )
         )
 
-        assertFailsWith<DeviceCommandException> { dumpFailed.dumpHierarchy("R5CT10ABCDE") }
+        assertFailsWith<DeviceCommandException> { dumpFailed.dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE") }
     }
 
     @Test
@@ -76,7 +77,7 @@ class DeviceHierarchyDumpFallbackTest {
             failing = null,
         )
 
-        val snapshot = repository(executor).dumpHierarchy("R5CT10ABCDE")
+        val snapshot = repository(executor).dumpHierarchy(PlatformModel.Android, "R5CT10ABCDE")
 
         // The density came from a separate command and is a real measurement - measure mode's
         // "View (no match)" fallback still needs it to label its numbers in dp.
@@ -91,10 +92,12 @@ class DeviceHierarchyDumpFallbackTest {
 
     private fun repository(executor: DeviceCommandExecutor): DeviceRepositoryImpl = DeviceRepositoryImpl(
         adbHostSource = FallbackNoOpAdbHostSource,
-        idbHostSource = FakeIdbHostSource(),
+        iosHostSource = FakeIosHostSource(),
         emulatorSource = FallbackNoOpEmulatorSource,
-        deviceCommandExecutor = executor,
-        mirrorTransport = FallbackNoOpMirrorTransport,
+        androidExecutor = executor,
+        iosExecutor = executor,
+        androidTransport = FallbackNoOpMirrorTransport,
+        iosTransport = FallbackNoOpMirrorTransport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
     )
 }

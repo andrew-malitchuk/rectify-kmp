@@ -3,7 +3,6 @@ package data.repository.impl
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -19,6 +18,7 @@ import data.device.api.source.model.TransportStats
 import data.device.api.source.tuning.MirrorTuning
 import data.repository.impl.source.DeviceRepositoryImpl
 import domain.core.source.model.device.DiscoveryModel
+import domain.core.source.model.device.PlatformModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -378,7 +378,7 @@ class DeviceDiscoveryPollingTest {
         val repository = repository(adb)
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
 
         // Detecting plus the first poll land at 0; the next would normally be at 2000.
@@ -416,7 +416,7 @@ class DeviceDiscoveryPollingTest {
 
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
         advanceTimeBy(1)
 
@@ -434,7 +434,7 @@ class DeviceDiscoveryPollingTest {
         val repository = repository(adb, emulators, executor)
         val received = mutableListOf<Pair<Long, DiscoveryModel>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.observeDiscovery().collect { received += testScheduler.currentTime to it }
+            repository.observeDiscovery(PlatformModel.Android).collect { received += testScheduler.currentTime to it }
         }
         return received
     }
@@ -445,10 +445,12 @@ class DeviceDiscoveryPollingTest {
         executor: DeviceCommandExecutor = FakeDeviceCommandExecutor(),
     ): DeviceRepositoryImpl = DeviceRepositoryImpl(
         adbHostSource = adb,
-        idbHostSource = FakeIdbHostSource(),
+        iosHostSource = FakeIosHostSource(),
         emulatorSource = emulators,
-        deviceCommandExecutor = executor,
-        mirrorTransport = FakeMirrorTransport,
+        androidExecutor = executor,
+        iosExecutor = executor,
+        androidTransport = FakeMirrorTransport,
+        iosTransport = FakeMirrorTransport,
         adbPathPreferenceSource = FakeAdbPathPreferenceSource(),
         nowMs = { testScheduler.currentTime },
     )
@@ -545,20 +547,8 @@ private fun DiscoveryModel.summary(): String = when (this) {
     is DiscoveryModel.NoDeviceFound -> "NoDeviceFound(attempts=${attempts})"
     is DiscoveryModel.PollFailed -> "PollFailed(${tool} ${reason})"
     is DiscoveryModel.Found -> "Found(${physical.joinToString("|") { it.id }})"
-}
-
-/** An `idb` probe that answers without touching a process. */
-internal class FakeIdbHostSource(
-    private val found: Boolean = false,
-) : IdbHostSource {
-
-    override suspend fun probe(): ToolProbe = ToolProbe(
-        kind = ToolKind.Idb,
-        found = found,
-        path = "/opt/homebrew/bin/idb".takeIf { found },
-        probedPaths = listOf("/opt/homebrew/bin/idb"),
-        installCommand = "brew tap facebook/fb && brew install idb-companion",
-    )
+    is DiscoveryModel.SimulatorNotBooted -> "SimulatorNotBooted(${simulators.size})"
+    is DiscoveryModel.DeviceNotTrusted -> "DeviceNotTrusted(${deviceId})"
 }
 
 private class FakeEmulatorSource(avds: List<String>) : EmulatorSource {

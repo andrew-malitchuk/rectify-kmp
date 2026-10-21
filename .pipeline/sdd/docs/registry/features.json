@@ -291,5 +291,26 @@
     "description": "Builds the annotation envelope (prompt, frozen frame PNG, hierarchy dump, per-annotation crops) and publishes it to a local file slot that the MCP server reads back. AnnotationEnvelope field order is wire-breaking. The slot is deliberately single-shot: publish prunes every sibling send directory except the newest, which is why F-8 must copy its own bytes at publish time.",
     "waived": "",
     "notes": "Registry entry added retroactively during F-9 - the spec merged without one."
+  },
+  {
+    "id": "ios-platform-support",
+    "name": "iOS Platform Support (F-10)",
+    "status": "partial",
+    "specRef": "ios-platform-support",
+    "modules": [
+      "data-device-api",
+      "data-device-impl",
+      "data-repository-impl",
+      "domain-core",
+      "domain-repository-api",
+      "domain-usecase-api",
+      "domain-usecase-impl",
+      "presentation-core-localisation",
+      "presentation-core-ui",
+      "presentation-feature-mirror"
+    ],
+    "description": "Extends the Android flow to iOS over idb + simctl: simulator and physical-device discovery, live mirroring via the UNCHANGED ScreencapMirrorTransport (the iOS executor serves DeviceCommand.Screencap), and the two iOS error cards. platform: PlatformModel is threaded through five DeviceRepository methods and DeviceCommandExecutor/MirrorTransport are Koin-qualified android/ios. MirrorStage.IosDeferred and IdbHostSource are deleted; the picker no longer gates iOS. Hierarchy capture is deliberately deferred to v1.1 - iOS degrades to an empty dump for free via the Android-gated attachedHierarchyXml.",
+    "waived": "AC-48/SC-25 demo click-through never performed - no UI-test harness exists in this repo and no GUI was driven; the CLI primitives the buttons dispatch were all measured live. The physical-iPhone idb path (SC-26, AC-31 device-not-trusted half, SC-28) is code-review-only: no physical untrusted iPhone in this environment, and idb screenshot remains UNMEASURED.",
+    "notes": "Measured on this host: iOS capture round-trip is a 300ms median, so the ceiling is ~3.3 fps, NOT the ~10 fps MirrorTuning.CaptureFloorMs assumes for Android - no iOS tuning constant was added because the adaptive loop handles it unmodified. idb list-targets costs 5.27s and uses the 15s daemon budget, not the 3s host budget."
   }
 ]

@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import domain.core.source.model.device.DiscoveryModel
 import domain.core.source.model.device.MirrorStatsModel
 import domain.core.source.model.device.PlatformModel
@@ -45,6 +41,7 @@ import presentation.feature.mirror.core.send.sendTrailing
 import presentation.feature.mirror.core.stats.formatStatusLine
 import kotlin.time.Clock
 import presentation.feature.mirror.core.discovery.errorCard
+import presentation.feature.mirror.core.discovery.listDevicesCommand
 import presentation.feature.mirror.core.discovery.indicatorDot
 import presentation.feature.mirror.core.discovery.dropBanner
 import rectify_kmp.presentation_core_localisation.generated.resources.Res
@@ -53,7 +50,6 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_act
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_emulator
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_group_physical
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_hint_keys
-import rectify_kmp.presentation_core_localisation.generated.resources.mirror_ios_deferred
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_no_signal_label
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_picker_subtitle
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_picker_title
@@ -64,6 +60,8 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_sec
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_section_source
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_source_summary
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_detecting
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_device_not_trusted
+import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_simulator_not_booted
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_dumping
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_latency_placeholder
 import rectify_kmp.presentation_core_localisation.generated.resources.mirror_status_no_device_attached
@@ -81,10 +79,15 @@ import rectify_kmp.presentation_core_localisation.generated.resources.mirror_wai
 
 /** Binary names, shown verbatim beside each platform card. Machine output, never localised. */
 private const val ADB = "adb"
-private const val IDB = "idb"
 
-/** Reading width of the one-sentence iOS notice. */
-private val NoticeMaxWidth: Dp = 420.dp
+/**
+ * `xcrun`, not `idb`: the iOS card and the iOS stat line both report what `detectTools()`
+ * actually resolved, which is `ToolProbe(kind = Simctl, path = "/usr/bin/xcrun")`. Naming idb
+ * put one toolchain's binary beside another's version (`adb 26.3`) and told a CLT-only Mac
+ * that `idb` was missing next to a card saying "Install Xcode". Same choice, same reason, as
+ * `DiscoveryErrorProjection`'s own XCRUN.
+ */
+private const val XCRUN = "xcrun"
 
 /**
  * Whatever belongs in the shell's stage slot right now.
@@ -127,14 +130,6 @@ public fun MirrorStageContent(
             MirrorErrorStage(card = card, onIntent = onIntent)
         } else when (state.stage) {
             MirrorStage.Picker -> MirrorPicker(state = state, onIntent = onIntent)
-
-            MirrorStage.IosDeferred -> Text(
-                text = stringResource(Res.string.mirror_ios_deferred),
-                style = Theme.typography.body,
-                color = Theme.color.ink2,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = NoticeMaxWidth).padding(Theme.spacing.spacingL),
-            )
 
             // A session that has not produced its first frame leaves the stage's own dot grid
             // showing: a one-frame flash of "no device" copy would contradict the status bar.
@@ -248,7 +243,9 @@ public fun MirrorStatusLine(state: MirrorUiState, modifier: Modifier = Modifier)
     val card = remember(state, nowMs) { state.errorCard(nowMs) }
     val line = formatStatusLine(
         stats = state.stats,
-        toolName = ADB,
+        // The version in `stats` is whatever the platform's probe reported - xcrun's on iOS,
+        // which is why the repository calls it `toolVersion` and not `adbVersion`.
+        toolName = state.platform.toolBinary(),
         pollingHint = stringResource(Res.string.mirror_status_polling_hint),
         latencyPlaceholder = stringResource(Res.string.mirror_status_latency_placeholder),
     )
@@ -287,6 +284,13 @@ private fun MirrorUiState.indicatorLabel(card: MirrorErrorCard?): String = when 
     // A failed poll is its own label: "waiting for device" would claim adb answered.
     discovery is DiscoveryModel.PollFailed -> stringResource(Res.string.mirror_status_poll_failed)
     discovery is DiscoveryModel.Detecting -> stringResource(Res.string.mirror_status_detecting)
+    // COR-5, paired with `indicatorDot`'s own two branches: the dot goes Blocked for these,
+    // and a BLOCKED dot labelled "Waiting for device…" is the contradiction the pairing rule
+    // exists to prevent. Neither line may name adb - there is none on this platform.
+    discovery is DiscoveryModel.SimulatorNotBooted ->
+        stringResource(Res.string.mirror_status_simulator_not_booted)
+    discovery is DiscoveryModel.DeviceNotTrusted ->
+        stringResource(Res.string.mirror_status_device_not_trusted)
     // The design pairs each error card with its own status line. Without these two the bar
     // kept saying "Waiting for device…" beside a card explaining that adb saw nothing, or
     // that three devices were attached and it needed a choice.
@@ -326,7 +330,13 @@ private fun MirrorPicker(state: MirrorUiState, onIntent: (MirrorIntent) -> Unit)
         subtitle = stringResource(Res.string.mirror_picker_subtitle),
         platformSectionLabel = stringResource(Res.string.mirror_section_platform),
         sourceSectionLabel = stringResource(Res.string.mirror_section_source),
-        sourceSummary = stringResource(Res.string.mirror_source_summary, state.rows.size),
+        // COR-4. The command is PASSED IN, not baked into the string: the iOS picker used to
+        // say "12 found · adb devices -l" on a host with no adb at all.
+        sourceSummary = stringResource(
+            Res.string.mirror_source_summary,
+            state.rows.size,
+            state.listDevicesCommand(),
+        ),
         physicalGroupLabel = stringResource(Res.string.mirror_group_physical),
         emulatorGroupLabel = stringResource(Res.string.mirror_group_emulator),
         keyHint = stringResource(Res.string.mirror_hint_keys),
@@ -348,19 +358,23 @@ private fun MirrorPicker(state: MirrorUiState, onIntent: (MirrorIntent) -> Unit)
 private fun MirrorUiState.platformCards(): List<PickerPlatform> {
     val notFound = stringResource(Res.string.mirror_tool_not_found)
     return PlatformModel.entries.map { platform ->
-        val binary = if (platform == PlatformModel.Android) ADB else IDB
+        val binary = platform.toolBinary()
         val tool = tools.firstOrNull { it.platform == platform }
         PickerPlatform(
             id = platform.name,
             title = if (platform == PlatformModel.Android) "Android" else "iOS",
             detail = tool.toDetail(binary, notFound),
             toolState = if (tool?.isInstalled == true) PlatformToolState.Found else PlatformToolState.Missing,
-            // iOS is probed so the user can see it is installed, but nothing streams from it
-            // this release (FR-2).
-            enabled = platform == PlatformModel.Android,
+            // Both platforms are selectable as of F-10. Deliberately NOT gated on the probe
+            // either: picking a platform whose tool is missing is how the user reaches the
+            // ToolMissing card that tells them what to install, and disabling the card would
+            // hide the only answer to "why is this list empty".
         )
     }
 }
+
+/** The binary whose name and version belong together on screen, per platform. */
+private fun PlatformModel.toolBinary(): String = if (this == PlatformModel.Android) ADB else XCRUN
 
 private fun ToolModel?.toDetail(binary: String, notFoundLabel: String): String = when {
     this == null || !isInstalled -> "$binary $notFoundLabel"

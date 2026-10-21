@@ -3,7 +3,7 @@ package data.device.impl.core.unsupported
 import data.device.api.source.datasource.AdbHostSource
 import data.device.api.source.datasource.DeviceCommandExecutor
 import data.device.api.source.datasource.EmulatorSource
-import data.device.api.source.datasource.IdbHostSource
+import data.device.api.source.datasource.IosHostSource
 import data.device.api.source.datasource.MirrorTransport
 import data.device.api.source.error.DeviceCommandException
 import data.device.api.source.model.AvdName
@@ -11,7 +11,9 @@ import data.device.api.source.model.AvdResource
 import data.device.api.source.model.DeviceCommand
 import data.device.api.source.model.DeviceId
 import data.device.api.source.model.DeviceResource
+import data.device.api.source.model.IosTargetResource
 import data.device.api.source.model.MirrorFrame
+import data.device.api.source.model.SimulatorResource
 import data.device.api.source.model.ToolKind
 import data.device.api.source.model.ToolProbe
 import data.device.api.source.model.TransportStats
@@ -50,10 +52,21 @@ internal object UnsupportedAdbHostSource : AdbHostSource {
     override suspend fun killServer(): Unit = throw unsupported(HostCommand.KillServer)
 }
 
-/** No-op [IdbHostSource] for targets that cannot spawn a process. */
-internal object UnsupportedIdbHostSource : IdbHostSource {
+/**
+ * No-op [IosHostSource] for targets that cannot spawn a process.
+ *
+ * Bound by the Android and iOS `provideDeviceSources()` actuals in place of the deleted
+ * `UnsupportedIdbHostSource`, whose probe-only surface `probeIdb()` subsumes.
+ */
+internal object UnsupportedIosHostSource : IosHostSource {
 
-    override suspend fun probe(): ToolProbe = absent(ToolKind.Idb)
+    override suspend fun probeSimctl(): ToolProbe = absent(ToolKind.Simctl)
+
+    override suspend fun probeIdb(): ToolProbe = absent(ToolKind.Idb)
+
+    override suspend fun listSimulators(): List<SimulatorResource> = emptyList()
+
+    override suspend fun listDevices(): List<IosTargetResource> = emptyList()
 }
 
 /** No-op [EmulatorSource] for targets that cannot spawn a process. */

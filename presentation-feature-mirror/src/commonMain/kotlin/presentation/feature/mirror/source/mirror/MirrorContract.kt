@@ -99,9 +99,6 @@ public enum class MirrorStage {
     /** The passive waiting stage (comp 02). */
     NoSignal,
 
-    /** iOS is detected but not mirrorable this release. */
-    IosDeferred,
-
     /**
      * A drag has pinned one frame; the capture loop keeps running behind it (FR-30).
      *
@@ -123,17 +120,20 @@ public enum class MirrorStage {
  * Which actionable error the card is reporting — the semantics only, like [MirrorRowKind]: the
  * headline, body and button labels are resolved in the content layer.
  *
- * The design file draws five card states, two of which ([`err-sim`, `err-trust`]) are iOS and
- * deferred (NFR-10), so only the Android four are modelled. [PollFailed] has no design state of
- * its own and is still a distinct case here: it is the only thing that separates "`adb` answered
- * and saw nothing" from "`adb` did not answer at all", and folding it into [NoDevice] is exactly
- * the misreport FR-32 forbids.
+ * All six of the design file's card states are modelled: the four shared ones below plus the
+ * two iOS states ([SimulatorNotBooted] = `err-sim`, [DeviceNotTrusted] = `err-trust`) that were
+ * drawn and deferred under NFR-10 and are wired by F-10. The first four are PLATFORM-SHARED,
+ * not Android-only — a missing `xcrun` and a missing `adb` are the same card with different
+ * copy, which is what [MirrorErrorCard.platform] resolves. [PollFailed] has no design state of
+ * its own and is still a distinct case here: it is the only thing that separates "the tool
+ * answered and saw nothing" from "the tool did not answer at all", and folding it into
+ * [NoDevice] is exactly the misreport FR-32 forbids.
  */
 public enum class MirrorErrorKind {
-    /** `adb` is not on the PATH at all (`err-adb`). */
+    /** The platform tool is not on the PATH at all (`err-adb`). */
     ToolMissing,
 
-    /** `adb` runs and sees no device (`err-nodevice`). */
+    /** The tool runs and sees no device (`err-nodevice`). */
     NoDevice,
 
     /** The discovery poll itself failed — no answer, as opposed to an empty answer. */
@@ -141,6 +141,12 @@ public enum class MirrorErrorKind {
 
     /** More than one usable device is attached and the user has to pick (`err-multi`). */
     MultipleDevices,
+
+    /** Simulators exist but none is running; the fix is to boot one (`err-sim`). */
+    SimulatorNotBooted,
+
+    /** A physical iOS device is attached but has not been trusted from it (`err-trust`). */
+    DeviceNotTrusted,
 }
 
 /**
@@ -162,6 +168,14 @@ public enum class MirrorErrorKind {
  *   target of the "Mirror <top device>" shortcut; `null` otherwise.
  * @property canBootEmulator Whether any AVD is known, so [MirrorErrorKind.NoDevice] can hide the
  *   "Boot emulator instead" secondary instead of offering a dead button.
+ * @property platform Which platform this card is reporting about.
+ *
+ *   The four shared kinds are reachable on BOTH platforms — `xcrun` can be missing exactly as
+ *   `adb` can — so the stateless card renderer needs to know which one it is looking at to
+ *   pick the copy and to suppress the adb-only actions. Defaulted to
+ *   [PlatformModel.Android] so every existing construction site and test stays source
+ *   compatible. Suppressing the shared kinds on iOS instead was the alternative and it is a
+ *   defect: it hands the user a blank stage for four real conditions.
  */
 public data class MirrorErrorCard(
     val kind: MirrorErrorKind,
@@ -170,6 +184,7 @@ public data class MirrorErrorCard(
     val rows: List<MirrorRow> = emptyList(),
     val primaryDeviceId: String? = null,
     val canBootEmulator: Boolean = false,
+    val platform: PlatformModel = PlatformModel.Android,
 )
 
 /**
@@ -355,7 +370,6 @@ public data class MirrorUiState(
     public val stage: MirrorStage
         get() = when {
             isPickerOpen -> MirrorStage.Picker
-            platform == PlatformModel.Ios -> MirrorStage.IosDeferred
             // Ahead of Frozen - see the KDoc, and SendFollowUp's teardown obligation.
             verify != null -> MirrorStage.Verify
             // Ahead of Streaming: the session is still running under a frozen frame, and the

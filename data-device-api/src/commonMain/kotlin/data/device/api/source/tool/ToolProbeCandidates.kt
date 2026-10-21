@@ -25,6 +25,10 @@ public fun probeCandidates(tool: ToolKind, env: Map<String, String>, homeDir: St
             homeDir.takeIf { it.isNotBlank() }?.let { "$it/Library/Android/sdk" },
         ).forEach { sdkRoot -> candidates += "${sdkRoot.trimEnd('/')}/$subdirectory/$binary" }
     }
+    // Xcode's shim is a system binary, not a Homebrew one: on a machine with Xcode installed
+    // `/usr/bin/xcrun` always exists, and it is the ONLY location that is always right. Gated
+    // on the tool rather than added for everything so the Android probe order is untouched.
+    if (tool == ToolKind.Simctl) candidates += "/usr/bin/$binary"
     candidates += "/opt/homebrew/bin/$binary"
     candidates += "/usr/local/bin/$binary"
     env["PATH"].orEmpty()

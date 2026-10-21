@@ -5,7 +5,7 @@ import data.device.api.source.model.DeviceCommand
 import data.device.api.source.model.DeviceId
 import data.device.api.source.tuning.MirrorTuning
 import data.device.impl.core.tool.ToolResolver
-import data.device.impl.source.datasource.DeviceCommandExecutorImpl
+import data.device.impl.source.datasource.AdbDeviceCommandExecutor
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
@@ -13,7 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * [DeviceCommandExecutorImpl.timeoutMs], against a shell script standing in for `adb`.
+ * [AdbDeviceCommandExecutor.timeoutMs], against a shell script standing in for `adb`.
  *
  * `UiAutomatorDump` moves a multi-megabyte XML tree, which is why it gets its own budget
  * ([MirrorTuning.DumpTimeoutMs], 10 s) rather than falling into `timeoutMs()`'s `else` branch
@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
  * read from the constants themselves, never a literal, so a branch wired to the wrong constant
  * fails this test even if someone renumbers the constants later.
  */
-class DeviceCommandExecutorImplTest {
+class AdbDeviceCommandExecutorTest {
 
     /**
      * One test, both sides of the boundary - mirrors
@@ -44,7 +44,7 @@ class DeviceCommandExecutorImplTest {
 
 /** Runs [DeviceCommand.UiAutomatorDump] against [adb] and reduces the result to one word. */
 private suspend fun outcomeOf(adb: File): String {
-    val executor = DeviceCommandExecutorImpl(
+    val executor = AdbDeviceCommandExecutor(
         ToolResolver(
             env = mapOf("ANDROID_HOME" to adb.parentFile.parentFile.absolutePath),
             homeDir = "",

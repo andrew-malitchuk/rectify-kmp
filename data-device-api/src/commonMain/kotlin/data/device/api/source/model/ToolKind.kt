@@ -19,4 +19,14 @@ public enum class ToolKind(
 
     /** iOS device bridge; installed through Homebrew only. */
     Idb("idb", null),
+
+    /**
+     * iOS simulator control, reached through Xcode's `xcrun` shim — widened for F-10 (FR-49).
+     *
+     * The binary is `xcrun`, not `simctl`: `simctl` is a SUBCOMMAND that
+     * [data.device.api.source.parse.buildDeviceArgv] inserts, and there is no standalone
+     * `simctl` on `PATH` to probe for. Ships with the Xcode command-line tools at
+     * `/usr/bin/xcrun`, so it has no SDK subdirectory.
+     */
+    Simctl("xcrun", null),
 }

@@ -22,7 +22,7 @@ internal object ToolProbeMapper : ModelResourceMapper<ToolModel, ToolProbe> {
             ToolModel(
                 platform = when (probe.kind) {
                     ToolKind.Adb, ToolKind.Emulator -> PlatformModel.Android
-                    ToolKind.Idb -> PlatformModel.Ios
+                    ToolKind.Idb, ToolKind.Simctl -> PlatformModel.Ios
                 },
                 isInstalled = probe.found,
                 version = probe.version,
