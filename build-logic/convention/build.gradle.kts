@@ -24,8 +24,6 @@ tasks.withType<KotlinCompile>().configureEach {
 
 // Declare dependencies required for the convention plugins
 dependencies {
-    implementation(libs.org.jetbrains.kotlin.multiplatform.gradle.plugin)
-    implementation(libs.gradle)
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.compose.gradle.plugin)
 }

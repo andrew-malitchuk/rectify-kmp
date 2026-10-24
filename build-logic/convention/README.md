@@ -1,6 +1,6 @@
 # build-logic/convention
 
-> Gradle convention plugins that standardise KMP module configuration across all project modules.
+> Gradle convention plugins that standardise JVM module configuration across all project modules.
 
 ## Responsibility
 
@@ -37,18 +37,18 @@ organised into semantic subpackages.
 
 | Plugin ID | Class | Purpose |
 |---|---|---|
-| `dev.rectify.io.convention.application` | `ApplicationConventionPlugin` | Shared KMP app module — Android + iOS + Desktop + Compose |
-| `dev.rectify.io.convention.feature` | `FeatureConventionPlugin` | UI feature modules — Android + iOS + Desktop + Compose |
-| `dev.rectify.io.convention.library` | `LibraryConventionPlugin` | Non-UI library modules — Android + iOS + Desktop, no Compose |
+| `dev.rectify.io.convention.application` | `ApplicationConventionPlugin` | Shared app module — Compose + Skiko renderer |
+| `dev.rectify.io.convention.feature` | `FeatureConventionPlugin` | UI feature modules — Desktop + Compose |
+| `dev.rectify.io.convention.library` | `LibraryConventionPlugin` | Non-UI library modules — Desktop, no Compose |
 | `dev.rectify.io.convention.di` | `DiConventionPlugin` | Koin DI dependency aggregator — apply on top of library or feature |
 
 ## Public API
 
 | Class | Plugin ID suffix | Key behaviour |
 |---|---|---|
-| `ApplicationConventionPlugin` | `application` | iOS framework `baseName` hardcoded to `application_compose`; only one app module exists |
-| `FeatureConventionPlugin` | `feature` | iOS `baseName` derived from `moduleName`; adds `androidResources` |
-| `LibraryConventionPlugin` | `library` | No Compose plugins; no `androidResources`; coroutines + lifecycle only |
+| `ApplicationConventionPlugin` | `application` | Adds `compose.desktop.currentOs` + `kotlinx-coroutines-swing`; only one app module exists |
+| `FeatureConventionPlugin` | `feature` | Compose plugins + Compose deps; `kotlin-test` on `test` |
+| `LibraryConventionPlugin` | `library` | No Compose plugins; coroutines + lifecycle only |
 | `DiConventionPlugin` | `di` | `koin-core` exposed as `api()`; must be applied alongside `library` or `feature` |
 
 ## Usage
@@ -81,21 +81,15 @@ plugins {
 Every plugin runs the following hooks in this fixed sequence (no-ops skipped silently):
 
 ```
-1. configurePlugin()               — apply Gradle plugin IDs
-2. configureAndroidPlatform()      — Android KMP library target
-3. configureIOsPlatform()          — iosArm64 / iosSimulatorArm64
-4. configureDesktopPlatform()      — jvm("desktop")
-5. configureCommonDependencies()   — commonMain source set
-6. configureAndroidDependencies()  — androidMain source set
-7. configureIOsDependencies()      — iosMain source set
-8. configureDesktopDependencies()  — desktopMain source set
+1. configurePlugin()        — apply Gradle plugin IDs
+2. configureJvm()           — jvmToolchain(21) + explicitApi()
+3. configureDependencies()  — main / test dependencies
 ```
 
-"Desktop" means a plain current-OS `jvm("desktop")` target via Compose Multiplatform — no
-macOS/Linux native target (`macosX64`, `linuxX64`, etc.) is registered anywhere in this
-project. The actual runnable desktop app lives in the separate, non-KMP `:desktop-application`
-module (plain `kotlin("jvm")`), the same way `:aos-application` is a separate module from the
-KMP library `:compose-application`.
+Every module is a plain `kotlin("jvm")` module: classic `src/main/kotlin` and
+`src/test/kotlin`, no Kotlin Multiplatform plugin, no platform targets. The runnable desktop
+app lives in the separate `:desktop-application` module, which is why `:compose-application`
+stays a library.
 
 ## Configuration Reference
 
@@ -103,32 +97,18 @@ KMP library `:compose-application`.
 |---|---|
 | Kotlin | 2.4.21 |
 | JVM target | 21 |
-| Android `minSdk` | 27 |
-| Android `targetSdk` / `compileSdk` | 37 |
-| iOS frameworks | Static, arm64 + simulatorArm64 |
-| Explicit API mode | Enforced in all KMP modules |
-| AGP DSL | `com.android.kotlin.multiplatform.library` (AGP 9.4) |
+| Target | JVM 21 (`kotlin("jvm")`) |
+| Explicit API mode | Enforced in every module |
 
 ## Known Behaviours and Pitfalls
 
 **`DiConventionPlugin` is not standalone.**
-It does not apply any plugins or register targets — it only adds dependencies to existing
-source sets. Applying it without `library` or `feature` will fail with
-`Extension of type 'KotlinMultiplatformExtension' does not exist`.
-
-**`androidRuntimeClasspath` instead of `debugImplementation`.**
-The `com.android.kotlin.multiplatform.library` AGP 9.0 plugin does not expose
-`debugImplementation`. Compose UI tooling must be declared on `androidRuntimeClasspath`.
+It applies no plugins — it only adds dependencies. Applying it without `library` or `feature`
+fails, because the `api`/`implementation` configurations it writes to do not exist yet.
 
 **`moduleName` returns `""` for the root project.**
 `Project.path` is `":"` for the root project; after stripping colons the result is an empty
-string. Convention plugins must never be applied to the root project — doing so produces an
-empty Android namespace and fails the build with an unhelpful error message.
-
-**Signing is configured per-module, not via a convention plugin.**
-Signing is configured inline in `aos-application/build.gradle.kts`.
-In AGP 9.0 with `com.android.kotlin.multiplatform.library`, `signingConfigs` is not
-available on `CommonExtension` — configure it directly in the app module's `android {}` block.
+string. Convention plugins must never be applied to the root project.
 
 ## Build
 

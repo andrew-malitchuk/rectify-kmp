@@ -6,21 +6,17 @@ import org.gradle.api.Project
 
 /**
  * Abstract base for all convention plugins — implements the Template Method pattern
- * over a fixed set of platform and dependency configuration hooks.
+ * over a fixed set of configuration hooks.
  *
- * Subclasses override only the hooks relevant to their module type; all other hooks
- * default to no-ops. The [apply] sequence is fixed and always runs in the same order:
- * plugin application → platform targets → dependencies.
+ * Every module in this project is a plain JVM module (`kotlin("jvm")`) targeting the
+ * desktop. Subclasses override only the hooks relevant to their module type; all other
+ * hooks default to no-ops. The [apply] sequence is fixed and always runs in the same
+ * order: plugin application → JVM toolchain → dependencies.
  *
  * Hook execution order in [apply]:
  * 1. [configurePlugin] — apply Gradle plugin IDs
- * 2. [configureAndroidPlatform] — Android KMP target
- * 3. [configureIOsPlatform] — iOS targets (x64, arm64, simulatorArm64)
- * 4. [configureDesktopPlatform] — `jvm("desktop")` target
- * 5. [configureCommonDependencies] — `commonMain` source set dependencies
- * 6. [configureAndroidDependencies] — `androidMain` source set dependencies
- * 7. [configureIOsDependencies] — `iosMain` source set dependencies
- * 8. [configureDesktopDependencies] — `desktopMain` source set dependencies
+ * 2. [configureJvm] — JVM toolchain and explicit API mode
+ * 3. [configureDependencies] — `main`/`test` dependencies
  */
 open class BaseConventionPlugin : Plugin<Project> {
 
@@ -36,85 +32,34 @@ open class BaseConventionPlugin : Plugin<Project> {
             logger.lifecycle("> Module name: $moduleName")
 
             // NOTE: Hook order is load-bearing. Plugin IDs must be applied before any
-            // extension (KotlinMultiplatformExtension, ComposeExtension, etc.) is accessed
-            // in the platform and dependency hooks below.
+            // extension (KotlinJvmProjectExtension, ComposeExtension) is accessed in the
+            // hooks below.
             configurePlugin()
-
-            configureAndroidPlatform()
-            configureIOsPlatform()
-            configureDesktopPlatform()
-
-            configureCommonDependencies()
-            configureAndroidDependencies()
-            configureIOsDependencies()
-            configureDesktopDependencies()
+            configureJvm()
+            configureDependencies()
         }
     }
 
     /**
      * Hook for applying Gradle plugin IDs via [Project.pluginManager].
      *
-     * Override to apply `kotlinMultiplatform`, `androidMultiplatformLibrary`,
-     * `composeMultiplatform`, or any other plugin required by the module type.
-     * Must complete before any extension block is accessed.
+     * Override to apply `kotlinJvm`, `composeMultiplatform`, or any other plugin required
+     * by the module type. Must complete before any extension block is accessed.
      */
     open fun Project.configurePlugin() = Unit
 
     /**
-     * Hook for configuring the Android KMP library target.
+     * Hook for the JVM toolchain and explicit API mode.
      *
-     * Override to set `namespace`, `compileSdk`, `minSdk`, `androidResources`,
-     * and compiler options via [com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget].
+     * Override to call `jvmToolchain(21)` and `explicitApi()`.
      */
-    open fun Project.configureAndroidPlatform() = Unit
+    open fun Project.configureJvm() = Unit
 
     /**
-     * Hook for registering iOS targets: `iosArm64`, `iosSimulatorArm64`.
+     * Hook for adding dependencies to the `main` and `test` source sets.
      *
-     * Override to configure framework name, linkage mode (`isStatic`), and
-     * any iOS-specific binary options.
+     * Override to declare the module type's shared libraries.
      */
-    open fun Project.configureIOsPlatform() = Unit
-
-    /**
-     * Hook for registering the `jvm("desktop")` target.
-     *
-     * Override to configure the desktop JVM target's compiler options (JVM toolchain,
-     * `jvmTarget`). The resulting source set is named `desktopMain`/`desktopTest`.
-     */
-    open fun Project.configureDesktopPlatform() = Unit
-
-    /**
-     * Hook for adding dependencies to the `commonMain` source set.
-     *
-     * Override to declare libraries shared across all platforms (coroutines,
-     * Compose runtime, lifecycle, etc.). Call `explicitApi()` here if the module
-     * enforces explicit visibility modifiers.
-     */
-    open fun Project.configureCommonDependencies() = Unit
-
-    /**
-     * Hook for adding dependencies to the `androidMain` source set.
-     *
-     * Override to declare Android-only libraries such as Koin Android,
-     * Compose UI tooling, or `androidRuntimeClasspath` entries.
-     */
-    open fun Project.configureAndroidDependencies() = Unit
-
-    /**
-     * Hook for adding dependencies to the `iosMain` source set.
-     *
-     * Override to declare iOS-only libraries. Left as no-op in most module types
-     * since KMP shared libraries rarely need iOS-exclusive dependencies.
-     */
-    open fun Project.configureIOsDependencies() = Unit
-
-    /**
-     * Hook for adding dependencies to the `desktopMain` source set.
-     *
-     * Override to declare desktop-only libraries, such as `compose.desktop.currentOs`
-     * for the module that hosts the application entry point.
-     */
-    open fun Project.configureDesktopDependencies() = Unit
+    open fun Project.configureDependencies() = Unit
 
 }
