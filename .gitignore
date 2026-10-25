@@ -15,35 +15,9 @@ local.properties
 # ── Kotlin ────────────────────────────────────────────────────────────────────
 .kotlin/
 
-# ── Android ───────────────────────────────────────────────────────────────────
-*.keystore
-*.jks
-google-services.json
-agconnect-services.json
-
-# ── iOS / Xcode ───────────────────────────────────────────────────────────────
-ios-application/Pods/
-ios-application/*.xcworkspace/
-ios-application/xcuserdata/
-ios-application/*.xcuserdatad/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-DerivedData/
-*.moved-aside
-*.xccheckout
-*.xcscmblueprint
-
 # ── Misc ──────────────────────────────────────────────────────────────────────
 *.log
 *.tmp
-configure.zip
-configure/
 
 # SDD pipeline
 .pipeline/**/raw/
