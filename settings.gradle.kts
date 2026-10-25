@@ -7,8 +7,6 @@ pluginManagement {
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")
-                includeGroupAndSubgroups("com.android")
-                includeGroupAndSubgroups("com.google")
             }
         }
         mavenCentral()
@@ -21,8 +19,6 @@ dependencyResolutionManagement {
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")
-                includeGroupAndSubgroups("com.android")
-                includeGroupAndSubgroups("com.google")
             }
         }
         mavenCentral()
@@ -30,9 +26,9 @@ dependencyResolutionManagement {
 }
 
 include(":compose-application")
-include(":aos-application")
 include(":desktop-application")
 include(":mcp-application")
+include(":docs-generator")
 
 // common
 include(":common-core")
@@ -56,15 +52,8 @@ include(":domain-usecase-impl")
 
 // presentation-core
 include(":presentation-core-localisation")
-include(":presentation-core-navigation-api")
-include(":presentation-core-navigation-impl")
 include(":presentation-core-styling")
 include(":presentation-core-ui")
 
 // presentation-feature
-include(":presentation-feature-about")
-include(":presentation-feature-home")
 include(":presentation-feature-mirror")
-include(":presentation-feature-onboarding")
-include(":presentation-feature-settings")
-include(":presentation-feature-splash")
