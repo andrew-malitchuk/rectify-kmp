@@ -19,8 +19,6 @@ None. This is a leaf module with no internal project dependencies.
 | `Failure.Technical` | Unexpected technical errors (wraps `Throwable`) |
 | `Failure.Logic` | Business logic errors |
 | `ThemeModel` | App theme enumeration (Light, Dark, System) |
-| `OnboardingModel` | Onboarding completion status |
-| `UnitSystemModel` | Measurement unit system (Metric, Imperial) |
 
 ## Usage
 

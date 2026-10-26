@@ -4,7 +4,7 @@
 
 Zero-dependency foundation for the entire domain layer. Defines the shared marker interface
 (`Model`), the sealed `Failure` hierarchy for typed error handling, and the core domain models
-(`ThemeModel`, `OnboardingModel`, `UnitSystemModel`) that are referenced across both domain and
+(`ThemeModel`, plus the `device`/`history` model groups) that are referenced across both domain and
 data modules.
 
 ## Package Layout Convention
@@ -18,8 +18,6 @@ domain.core/
         ├── base/
         │   └── Model.kt      — public marker interface
         ├── ThemeModel.kt
-        ├── OnboardingModel.kt
-        └── UnitSystemModel.kt
 ```
 
 **Rule:** anything `internal` goes in `core/`. This module has no internal components —
