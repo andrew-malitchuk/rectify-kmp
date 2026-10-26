@@ -1,6 +1,6 @@
 # common-core
 
-> Cross-layer utilities — type-mapping contract and coroutine execution helpers for all KMP modules.
+> Cross-layer utilities — type-mapping contract and coroutine execution helpers for all modules.
 
 ## Responsibility
 
