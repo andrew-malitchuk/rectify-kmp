@@ -26,9 +26,7 @@ Manages user-facing configuration: theme, onboarding status, application languag
 | Method | Description |
 |--------|-------------|
 | `getTheme()` / `setTheme()` / `observeTheme()` | Read/write/observe selected `ThemeModel` |
-| `getOnboarding()` / `setOnboarding()` / `observeOnboarding()` | Read/write/observe `OnboardingModel` |
 | `getApplicationLanguage()` / `setApplicationLanguage()` / `observeApplicationLanguage()` | Locale code management |
-| `getUnitSystem()` / `setUnitSystem()` / `observeUnitSystem()` | Read/write/observe `UnitSystemModel` |
 
 ## Dependency Inversion
 

@@ -16,7 +16,6 @@ Declares the repository abstractions that the domain layer consumes and the data
 
 | Interface | Description |
 |---|---|
-| `ConfigureRepository` | App configuration: theme, onboarding status, language preferences |
 
 ### ConfigureRepository — Key Methods
 
@@ -24,12 +23,8 @@ Declares the repository abstractions that the domain layer consumes and the data
 |---|---|
 | `observeTheme()` | Observe theme changes as `Flow` |
 | `getTheme()` / `setTheme()` | Read/write current theme |
-| `observeOnboarding()` | Observe onboarding status |
-| `getOnboarding()` / `setOnboarding()` | Read/write onboarding completion |
 | `observeApplicationLanguage()` | Observe language preference |
 | `getApplicationLanguage()` / `setApplicationLanguage()` | Read/write language |
-| `observeUnitSystem()` | Observe unit-system preference |
-| `getUnitSystem()` / `setUnitSystem()` | Read/write measurement unit system |
 
 ## Usage
 

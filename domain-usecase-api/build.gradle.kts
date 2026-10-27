@@ -3,11 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            implementation(projects.domainCore)
-            implementation(libs.kotlinx.serialization.json)
-        }
-    }
+dependencies {
+    implementation(projects.domainCore)
+    implementation(libs.kotlinx.serialization.json)
 }

@@ -21,8 +21,6 @@ Provides single-responsibility use case contracts. Each use case wraps one repos
 | `GetThemeUseCase` | Retrieve current theme |
 | `SetThemeUseCase` | Update theme preference |
 | `ObserveThemeUseCase` | Observe theme changes as Flow |
-| `GetOnboardingStatusUseCase` | Get onboarding completion status |
-| `SetOnboardingStatusUseCase` | Mark onboarding as complete |
 | `GetApplicationLanguageUseCase` | Get current language |
 | `SetApplicationLanguageUseCase` | Set application language |
 | `ObserveApplicationLanguageUseCase` | Observe language changes as Flow |
