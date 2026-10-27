@@ -21,14 +21,9 @@ Implements every use case interface from `domain-usecase-api` by delegating to t
 | `GetThemeUseCaseImpl` | Implements `GetThemeUseCase` |
 | `SetThemeUseCaseImpl` | Implements `SetThemeUseCase` |
 | `ObserveThemeUseCaseImpl` | Implements `ObserveThemeUseCase` |
-| `GetOnboardingStatusUseCaseImpl` | Implements `GetOnboardingStatusUseCase` |
-| `SetOnboardingStatusUseCaseImpl` | Implements `SetOnboardingStatusUseCase` |
 | `GetApplicationLanguageUseCaseImpl` | Implements `GetApplicationLanguageUseCase` |
 | `SetApplicationLanguageUseCaseImpl` | Implements `SetApplicationLanguageUseCase` |
 | `ObserveApplicationLanguageUseCaseImpl` | Implements `ObserveApplicationLanguageUseCase` |
-| `GetUnitSystemUseCaseImpl` | Implements `GetUnitSystemUseCase` |
-| `SetUnitSystemUseCaseImpl` | Implements `SetUnitSystemUseCase` |
-| `ObserveUnitSystemUseCaseImpl` | Implements `ObserveUnitSystemUseCase` |
 | `resultLauncher` | Internal suspend helper wrapping calls into `Result<T>` with `Failure` mapping |
 | `DomainUseCaseImplModule` | Koin module registering all use case singletons |
 
