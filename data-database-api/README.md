@@ -16,8 +16,6 @@ types — all persistence logic lives in `data-database-impl`.
 | `ObservableDataSource<T>` | `observeAll(): Flow<List<T>>` |
 | `AppendableDataSource<T>` | `insert(resource): Long` (no update) |
 | `UpsertableDataSource<T>` | `upsert(resource): Int` (insert-or-update) |
-| `DeletableDataSource` | `deleteById(id)` / `deleteAll()` |
-| `ClearableDataSource` | `clearAll()` |
 
 ## Package
 
@@ -38,8 +36,7 @@ interfaces it needs:
 interface ExampleDataSource :
     ReadableDataSource<ExampleModel>,
     ObservableDataSource<ExampleModel>,
-    UpsertableDataSource<ExampleModel>,
-    DeletableDataSource
+    UpsertableDataSource<ExampleModel>
 
 // build.gradle.kts
 implementation(projects.dataDatabaseApi)

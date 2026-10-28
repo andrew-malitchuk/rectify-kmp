@@ -1,6 +1,6 @@
 # data-database-impl
 
-Room database implementation for Rectify KMP — persists sent-batch history.
+Room database implementation for Rectify — persists sent-batch history.
 
 ## Overview
 
@@ -13,7 +13,7 @@ per-rect children, cascade-deleted with the parent).
 
 ```
 DataDatabaseImplModule (Koin)
-    └── DatabaseBuilder (expect/actual per platform)
+    └── DatabaseBuilder
         └── AppDatabase (Room, v1)
             └── HistoryEntryDao   — transactional insert, observeAll(), findById(), updateStatus()
                 └── HistoryDataSourceImpl — bound to the public HistoryDataSource
@@ -25,7 +25,7 @@ DataDatabaseImplModule (Koin)
 - **Tables:** `history_entry`, `history_annotation` (FK CASCADE on `history_entry.id`, indexed
   on `batchId`)
 - **Desktop path:** `~/.rectify/rectify.db`
-- Destructive migration is disabled; add a `Migration` in `Migrations.kt` when you change the
+- Destructive migration is disabled; add a `Migration` in `core/migration/Migrations.kt` when you change the
   schema further (version 1 shipped with no migration only because it relocated the desktop DB
   to a provably unwritten path in the same change — see `CLAUDE.md`).
 

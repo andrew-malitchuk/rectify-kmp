@@ -18,8 +18,6 @@ data.database.api/
             ├── ObservableDataSource.kt    — observeAll(): Flow<List<T>>
             ├── AppendableDataSource.kt    — insert(resource): Long
             ├── UpsertableDataSource.kt    — upsert(resource): Int
-            ├── DeletableDataSource.kt     — deleteById(id) / deleteAll()
-            └── ClearableDataSource.kt     — clearAll()
 ```
 
 **Rule:** anything `internal` goes in `core/`. This module currently has no internal
@@ -43,8 +41,7 @@ or a feature module) mixes in whichever of these base interfaces it needs:
 public interface ExampleDataSource :
     ReadableDataSource<ExampleModel>,
     ObservableDataSource<ExampleModel>,
-    UpsertableDataSource<ExampleModel>,
-    DeletableDataSource
+    UpsertableDataSource<ExampleModel>
 ```
 
 ## Adding a New Base Interface

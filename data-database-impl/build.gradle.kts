@@ -4,32 +4,18 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            api(projects.dataDatabaseApi)
-            implementation(projects.dataCore)
-            implementation(libs.room.runtime)
-            implementation(libs.sqlite.bundled)
-            implementation(libs.koin.core)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlinx.coroutines.test)
-        }
-        androidMain.dependencies {
-            implementation(libs.koin.android)
-        }
-    }
+dependencies {
+    api(projects.dataDatabaseApi)
+    implementation(projects.dataCore)
+    implementation(libs.room.runtime)
+    implementation(libs.sqlite.bundled)
+    implementation(libs.koin.core)
+
+    ksp(libs.room.compiler)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 room {
     schemaDirectory("$projectDir/schemas")
-}
-
-// Room KMP: KSP must be applied per-target
-dependencies {
-    add("kspAndroid", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
-    add("kspDesktop", libs.room.compiler)
 }

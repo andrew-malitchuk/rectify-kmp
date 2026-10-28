@@ -3,7 +3,7 @@
 ## Module Purpose
 
 Room database implementation. Provides the local persistence layer — KSP-generated Room DAOs
-for Android, iOS, and Desktop — backing Rectify's sent-batch history: two normalised tables
+for Desktop — backing Rectify's sent-batch history: two normalised tables
 (`history_entry`, `history_annotation`), a transactional insert, an ordered observe query, and
 a targeted status update, exposed through the public `HistoryDataSource`.
 
@@ -22,7 +22,6 @@ data.database.impl/
 │   ├── datasource/
 │   │   └── HistoryDataSourceImpl.kt      — internal HistoryDataSource, unpacks the DAO's relation
 │   └── migration/
-│       └── Migrations.kt                 — empty; add Migration objects here as the schema evolves
 ├── source/                               — public API surface (package-layout.md)
 │   ├── entity/
 │   │   ├── HistoryEntryEntity.kt         — public @Entity: public because it is the wire type
@@ -37,19 +36,14 @@ data.database.impl/
     └── DataDatabaseImplModule.kt
 ```
 
-Platform actuals for `DatabaseBuilder`:
-- `androidMain/core/DatabaseBuilder.android.kt` — uses `Context`, `getDatabasePath("rectify.db")`
-- `iosMain/core/DatabaseBuilder.ios.kt` — stores in the Documents directory
-- `desktopMain/core/DatabaseBuilder.desktop.kt` — stores at **`~/.rectify/rectify.db`**
-  (relocated from the former `~/rectify.db` in the same change that added the history tables —
-  see the version-1 note below), creating `~/.rectify/` on demand. Also sets
-  `.setQueryCoroutineContext(Dispatchers.IO)`.
-
-No macOS/Linux native source sets exist. If you add them, update this file.
+`core/DatabaseBuilder.kt` stores the database at **`~/.rectify/rectify.db`** (relocated from
+the former `~/rectify.db` in the same change that added the history tables — see the version-1
+note below), creating `~/.rectify/` on demand. Also sets
+`.setQueryCoroutineContext(Dispatchers.IO)`.
 
 ## Architecture
 
-Dependency chain: `DataDatabaseImplModule` → `DatabaseBuilder` (expect/actual) → `AppDatabase`
+Dependency chain: `DataDatabaseImplModule` → `DatabaseBuilder` → `AppDatabase`
 → `HistoryEntryDao` → `HistoryDataSourceImpl` (bound to the public `HistoryDataSource`).
 Entity ↔ domain-model mapping (`HistoryEntryMapper`) lives in `data-repository-impl`, not here —
 this module only ever produces/consumes its own `@Entity` types.
@@ -85,12 +79,12 @@ sequenceDiagram
     UseCase-->>Tab: MirrorUiState.history
 ```
 
-## Room KMP Constructor Pattern
+## No `@ConstructedBy` / `RoomDatabaseConstructor`
 
-`AppDatabaseConstructor` is an `expect object` implementing `RoomDatabaseConstructor<AppDatabase>`
-with an explicit `override fun initialize(): AppDatabase` member (no body). This explicit
-override is required — without it, Kotlin treats the `expect object` as needing to satisfy the
-interface itself rather than deferring to the per-platform `actual` that KSP generates.
+That pair is the Room *KMP* pattern, needed only when an `expect object` constructor has to be
+generated per target. This is a plain JVM project: Room resolves `AppDatabase_Impl` itself, and
+`AppDatabase` carries `@Database` alone. Don't reintroduce `AppDatabaseConstructor` — it does
+not compile without the Kotlin Multiplatform plugin.
 
 ## Room Database
 
@@ -102,7 +96,8 @@ This shipped at version 1 with **no `Migration`**, which is an exception, not th
 (see `.claude/rules/database.md`): the same change relocated the desktop DB file to
 `~/.rectify/rectify.db`, a path nothing had ever written to, which is what made skipping the
 migration provably safe. The next schema change that touches `history_entry` or
-`history_annotation` on the *current* path needs a real `Migration` in `Migrations.kt`.
+`history_annotation` on the *current* path needs a real `Migration` — create
+`core/migration/Migrations.kt` for it (the former empty placeholder was deleted as dead code).
 
 **F-9 (verify-and-rediff-loop) stayed at version 1 too, with no new column.** It reads
 `history_entry`/`history_annotation` through `findById` only — the per-annotation `densityDpi`
@@ -113,14 +108,13 @@ version-bump-plus-`Migration` rule above was never triggered.
 
 ## KSP Configuration
 
-Room code generation requires `ksp<target>` configurations for every target:
-`kspAndroid`, `kspIosArm64`, `kspIosSimulatorArm64`, `kspDesktop`. See `build.gradle.kts` for
-the full list.
+Room code generation is wired with the ordinary `ksp(libs.room.compiler)` configuration — no
+per-target `ksp<Target>` entries. See `build.gradle.kts`.
 
 ## Testing
 
-`commonTest` has a `kotlinx-coroutines-test` dependency (added for the Room round-trip spike
-that preceded the first real tables). `HistoryEntryDaoTest` (`desktopTest`, 7 cases) exercises
+`src/test` has a `kotlinx-coroutines-test` dependency (added for the Room round-trip spike
+that preceded the first real tables). `HistoryEntryDaoTest` (7 cases) exercises
 the real KSP-generated code and `BundledSQLiteDriver` against an in-memory/temp database:
 transactional parent+children insert, cascade delete, `observeAll()` ordering, and the
 targeted `updateStatus()` no-op-on-unknown-id case.
@@ -131,7 +125,7 @@ targeted `updateStatus()` no-op-on-unknown-id case.
    returns it, otherwise `core/entity/`.
 2. Add DAO method(s) to `HistoryEntryDao.kt` or a new internal `@Dao` under `core/dao/`.
 3. Update `AppDatabase.entities` and add the DAO accessor method.
-4. Bump `@Database(version = ...)` and add a `Migration` in `Migrations.kt` — the version-1,
+4. Bump `@Database(version = ...)` and add a `Migration` in `core/migration/Migrations.kt` — the version-1,
    no-migration shortcut above does not generalise; it relied on a provably unwritten file.
 
 ## Build
