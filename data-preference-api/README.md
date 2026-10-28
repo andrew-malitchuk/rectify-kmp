@@ -26,8 +26,6 @@ Declares the contracts for reading, writing, and observing app preferences. Each
 |---|---|---|
 | `LanguagePreferenceSource` | `LanguagePreference` | App language locale code |
 | `ThemePreferenceSource` | `ThemePreference` | App theme (light, dark, system) |
-| `OnboardingPreferenceSource` | `OnboardingPreference` | Onboarding completion flag |
-| `UnitSystemPreferenceSource` | `UnitSystemPreference` | Measurement unit system (metric, imperial) |
 
 ### Models
 
@@ -35,8 +33,6 @@ Declares the contracts for reading, writing, and observing app preferences. Each
 |---|---|---|
 | `LanguagePreference` | `languageCode: String` (default: `"en"`) | ISO 639-1 language code |
 | `ThemePreference` | `theme: String` (default: `"system"`) | Theme identifier |
-| `OnboardingPreference` | `isCompleted: Boolean` (default: `false`) | Onboarding status |
-| `UnitSystemPreference` | `unitSystem: String` (default: `"metric"`) | Unit system identifier |
 
 ## Usage
 

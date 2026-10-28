@@ -14,7 +14,7 @@ import java.util.prefs.Preferences
  * @see PreferencesSettings
  * @see data.preference.impl.source.provideSettings
  */
-internal actual fun Module.provideSettings() {
+internal fun Module.provideSettings() {
     single<Settings> {
         PreferencesSettings(Preferences.userRoot().node("dev.rectify.io"))
     }

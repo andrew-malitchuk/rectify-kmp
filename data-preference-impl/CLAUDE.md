@@ -2,35 +2,21 @@
 
 ## Module Purpose
 
-Platform-specific implementation of `data-preference-api`. Uses `multiplatform-settings` as
-the persistence backend (Android DataStore, iOS NSUserDefaults, Desktop java.util.prefs) and
-exposes reactive `Flow`-based datasources via Koin.
+Implementation of `data-preference-api`. Uses `multiplatform-settings` as the persistence
+backend (Desktop `java.util.prefs`) and exposes reactive `Flow`-based datasources via Koin.
 
 ## Package Layout Convention
 
 ```
 data.preference.impl/
-├── commonMain/
-│   ├── source/
-│   │   ├── SettingsProvider.kt            — internal expect function
-│   │   └── datasource/
-│   │       ├── ThemePreferenceSourceImpl.kt
-│   │       ├── LanguagePreferenceSourceImpl.kt
-│   │       ├── OnboardingPreferenceSourceImpl.kt
-│   │       └── UnitSystemPreferenceSourceImpl.kt
-│   └── di/
-│       └── DataPreferenceImplModule.kt
-├── androidMain/source/
-│   ├── SettingsProvider.android.kt    — DataStore-backed Settings
-│   └── DataStoreSettings.kt           — Settings adapter for DataStore
-├── iosMain/source/
-│   └── SettingsProvider.ios.kt        — NSUserDefaults-backed
-└── desktopMain/source/
-    └── SettingsProvider.desktop.kt    — java.util.prefs-backed
+├── source/
+│   ├── SettingsProvider.kt            — registers Settings (java.util.prefs-backed)
+│   └── datasource/
+│       ├── ThemePreferenceSourceImpl.kt
+│       ├── LanguagePreferenceSourceImpl.kt
+└── di/
+    └── DataPreferenceImplModule.kt
 ```
-
-Android, iOS, and Desktop (JVM) — no macOS/Linux native source sets exist. If you add them,
-update this file.
 
 ## Implementation Pattern
 
@@ -42,22 +28,15 @@ returns the state flow. `getData()` reads fresh from `Settings` for correctness 
 // Key naming convention
 const val KEY_THEME = "pref_theme"
 const val KEY_LANGUAGE = "pref_language"
-const val KEY_ONBOARDING = "pref_onboarding_completed"
-const val KEY_UNIT_SYSTEM = "pref_unit_system"
 ```
 
 **Never change existing keys** — changing a key silently loses stored data on existing installs.
 
-## Platform Differences
+## Backend
 
 | Platform | Backend |
 |----------|---------|
-| Android | `DataStore<Preferences>` via `DataStoreSettings` adapter |
-| iOS | `NSUserDefaults` via `multiplatform-settings` |
 | Desktop | `java.util.prefs.Preferences` via `PreferencesSettings` (node `dev.rectify.io`) |
-
-Android uses a named DataStore (`rectify_prefs`). iOS and Desktop use their platform default
-storage directly.
 
 ## Adding a New Preference
 

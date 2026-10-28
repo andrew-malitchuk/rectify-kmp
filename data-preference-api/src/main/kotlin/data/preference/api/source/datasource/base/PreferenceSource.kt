@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.Flow
  * Generic contract for reading, writing, and observing a single preference value.
  *
  * Implementations persist the value via a platform-specific storage mechanism
- * (DataStore on Android, NSUserDefaults on iOS, java.util.prefs on Desktop)
- * and expose a reactive [Flow] for change observation.
+ * (`java.util.prefs` on Desktop) and expose a reactive [Flow] for change observation.
  *
  * @param T The preference data type (e.g., [data.preference.api.source.model.ThemePreference]).
  * @see data.preference.impl.source.datasource.ThemePreferenceSourceImpl

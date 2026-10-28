@@ -1,10 +1,10 @@
 # data-preference-impl
 
-> Platform-specific preference storage implementations using multiplatform-settings and Android DataStore.
+> Preference storage implementations using multiplatform-settings.
 
 ## Responsibility
 
-Implements all preference source interfaces from `data-preference-api` with platform-appropriate storage backends. Each implementation uses `MutableStateFlow` for reactive observation. The module provides a Koin module that registers the platform-specific `Settings` instance and all preference source singletons.
+Implements all preference source interfaces from `data-preference-api`. Each implementation uses `MutableStateFlow` for reactive observation. The module provides a Koin module that registers the `Settings` instance and all preference source singletons.
 
 ## Dependencies
 
@@ -25,15 +25,12 @@ Implements all preference source interfaces from `data-preference-api` with plat
 |---|---|---|
 | `LanguagePreferenceSourceImpl` | `LanguagePreferenceSource` | `pref_language` |
 | `ThemePreferenceSourceImpl` | `ThemePreferenceSource` | `pref_theme` |
-| `OnboardingPreferenceSourceImpl` | `OnboardingPreferenceSource` | `pref_onboarding_completed` |
-| `UnitSystemPreferenceSourceImpl` | `UnitSystemPreferenceSource` | `pref_unit_system` |
 
-### Platform-Specific Settings Provider
+### Settings Provider
 
 | Platform | Backend |
 |---|---|
-| Android | AndroidX Preferences DataStore via custom `DataStoreSettings` bridge |
-| iOS | `NSUserDefaults` via `multiplatform-settings` |
+| Desktop | `java.util.prefs.Preferences` via `PreferencesSettings` (node `dev.rectify.io`) |
 
 ## Usage
 

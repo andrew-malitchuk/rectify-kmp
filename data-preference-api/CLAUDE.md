@@ -3,7 +3,7 @@
 ## Module Purpose
 
 Pure API contract module for application preferences. Defines the generic `PreferenceSource<T>`
-base interface and typed preference datasources (theme, language, onboarding, unit system).
+base interface and typed preference datasources (theme, language, side-panel width, adb path).
 No implementations, no Koin modules — all of that lives in `data-preference-impl`.
 
 ## Package Layout Convention
@@ -16,13 +16,9 @@ data.preference.api/
     │   │   └── PreferenceSource.kt        — generic suspend interface
     │   ├── ThemePreferenceSource.kt
     │   ├── LanguagePreferenceSource.kt
-    │   ├── OnboardingPreferenceSource.kt
-    │   └── UnitSystemPreferenceSource.kt
     └── model/
         ├── ThemePreference.kt
         ├── LanguagePreference.kt
-        ├── OnboardingPreference.kt
-        └── UnitSystemPreference.kt
 ```
 
 ## PreferenceSource Contract
@@ -43,8 +39,6 @@ Each concrete interface is a typed alias: `ThemePreferenceSource : PreferenceSou
 |-------|-----------|---------|
 | `ThemePreference` | `theme: String` | `"system"` |
 | `LanguagePreference` | `languageCode: String` | `"en"` |
-| `OnboardingPreference` | `isCompleted: Boolean` | `false` |
-| `UnitSystemPreference` | `unitSystem: String` | `"metric"` |
 
 All models implement `data.core.source.resource.Resource`.
 
