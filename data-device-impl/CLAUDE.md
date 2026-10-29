@@ -10,10 +10,10 @@ the only `ProcessBuilder` in the repository.** Nothing else in Rectify spawns an
 `ProcessBuilder` lives in exactly one file:
 
 ```
-desktopMain/kotlin/data/device/impl/core/process/ProcessRunner.kt
+src/main/kotlin/data/device/impl/core/process/ProcessRunner.kt
 ```
 
-It is `internal`, and it is `desktopMain` only. `commonMain` imports no `java.*` or `javax.*`.
+It is `internal`, and it is the only place that spawns a process.
 If you need to run something, route it through `ProcessRunner` — do not add a second spawn site.
 A quick audit:
 
@@ -27,27 +27,19 @@ grep -rln "ProcessBuilder" --include="*.kt" . | grep -v /build/   # must print e
 data.device.impl/
 ├── core/                              — internal only
 │   ├── process/ProcessRunner.kt       — THE ProcessBuilder site
-│   ├── tool/ToolResolver.kt           — probes the user's path FIRST, then the ordered
-│   │                                    candidate list; caches successes only, and bypasses
-│   │                                    the cache entirely while an override is set
-│   └── unsupported/UnsupportedDeviceSources.kt  — commonMain; the Android/iOS answer
+│   └── tool/ToolResolver.kt           — probes the user's path FIRST, then the ordered
+│                                        candidate list; caches successes only, and bypasses
+│                                        the cache entirely while an override is set
 ├── di/DataDeviceImplModule.kt
 └── source/
-    ├── DeviceSourcesProvider.kt       — internal expect fun Module.provideDeviceSources(),
-    │                                    plus provideUnsupportedDeviceSources(): the ONE body
-    │                                    both mobile actuals register
+    ├── DeviceSourcesProvider.kt       — internal fun Module.provideDeviceSources()
     ├── datasource/AdbHostSourceImpl.kt, EmulatorSourceImpl.kt, IosHostSourceImpl.kt,
     │              AdbDeviceCommandExecutor.kt, IosDeviceCommandExecutor.kt
     └── transport/ScreencapMirrorTransport.kt
 ```
 
-Platform actuals: `desktopMain` wires the real sources; `androidMain` and `iosMain` both call
-`provideUnsupportedDeviceSources()`, which registers `UnsupportedAdbHostSource`,
-`UnsupportedEmulatorSource`, `UnsupportedIosHostSource`, `UnsupportedDeviceCommandExecutor` and
-`UnsupportedMirrorTransport` — all reporting `found = false` and throwing
-`DeviceCommandException` on any attempt to run something. That is how NFR-10 (macOS-only v1)
-holds while every target still links. The `expect`/`actual` Koin provider mirrors
-`data-preference-impl`'s `provideSettings()` exactly.
+`Module.provideDeviceSources()` wires the real sources — a plain function, mirroring
+`data-preference-impl`'s `provideSettings()`.
 
 **The executor and the transport are ALWAYS qualified**, `named("android")` / `named("ios")`
 (the constants live in `data-device-api`'s `DeviceSourceQualifiers.kt` so the registrations and
@@ -109,7 +101,7 @@ load-bearing:
 
 ## Testing
 
-35 `desktopTest` tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
+35 tests. Ten drive the transport through a fake `DeviceCommandExecutor` — IHDR size
 read, warning-line trim, non-PNG and truncated stdout costing one frame rather than the session,
 the overdue-slot arithmetic, the fps window, per-session stat reset, and a vanished device ending
 the loop. All hardware-free.
@@ -143,6 +135,6 @@ fork was given the one budget that cannot. See
 `.pipeline/sdd/docs/error-handling-and-recovery/execution/NEAR-MISS-t4-budget.md`.
 
 ```shell
-./gradlew :data-device-impl:desktopTest
+./gradlew :data-device-impl:test
 ./gradlew :data-device-impl:build
 ```

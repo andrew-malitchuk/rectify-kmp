@@ -5,16 +5,15 @@
 Contracts, resources and **every pure parser** for Android/iOS device discovery and live
 mirroring. Holds no implementation and spawns no process — `data-device-impl` does that.
 
-## Why every parser lives here, in `commonMain`
+## Why every parser lives here, in the api module
 
 This is the module's load-bearing decision, not an accident of layout. The parsers are pure
-functions over strings and bytes, so putting them in `commonMain` makes the discovery logic
+functions over strings and bytes, so putting them here makes the discovery logic
 testable with `kotlin.test` and **no phone attached** — which is most of what this feature is.
 Moving a parser into `data-device-impl` would drag the desktop implementation onto the test
 classpath and make those tests need hardware.
 
-86 tests in `commonTest` cover the parsers and the invariants below. They also run on
-`iosSimulatorArm64Test`.
+86 tests in `src/test` cover the parsers and the invariants below.
 
 ## Package Layout
 
@@ -100,6 +99,5 @@ NFR-1 waiver in `.pipeline/sdd/docs/android-device-discovery-mirroring/`.
 ## Build
 
 ```shell
-./gradlew :data-device-api:desktopTest
-./gradlew :data-device-api:compileTestKotlinIosArm64   # backtick-name guard, see testing.md
+./gradlew :data-device-api:test
 ```
