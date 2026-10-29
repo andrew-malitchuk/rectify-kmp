@@ -27,16 +27,14 @@ Implements `ConfigureRepository` from the domain layer by orchestrating calls to
 
 | Class | Implements | Data Sources Used |
 |---|---|---|
-| `ConfigureRepositoryImpl` | `ConfigureRepository` | `ThemePreferenceSource`, `OnboardingPreferenceSource`, `LanguagePreferenceSource`, `UnitSystemPreferenceSource` |
+| `ConfigureRepositoryImpl` | `ConfigureRepository` | `ThemePreferenceSource`, `LanguagePreferenceSource`, `SidePanelWidthPreferenceSource` |
 
 ### Mappers
 
 | Object | Model | Resource |
 |---|---|---|
 | `ThemePreferenceMapper` | `ThemeModel` | `ThemePreference` |
-| `OnboardingPreferenceMapper` | `OnboardingModel` | `OnboardingPreference` |
 | `LanguagePreferenceMapper` | `String?` | `LanguagePreference` |
-| `UnitSystemPreferenceMapper` | `UnitSystemModel` | `UnitSystemPreference` |
 
 ## Usage
 

@@ -18,14 +18,14 @@ other use for a DI container and cares about spawn-time startup cost. The Koin b
 data.handoff.api/
 ├── core/
 │   └── slot/
-│       └── FileSlotAnnotationHandoff.kt   — internal, desktopMain only
+│       └── FileSlotAnnotationHandoff.kt   — internal
 └── source/
     ├── envelope/
     │   └── AnnotationEnvelope.kt          — AnnotationEnvelope, EnvelopeDevice,
     │                                         EnvelopeAnnotation, HandoffImage
     └── handoff/
-        ├── AnnotationHandoff.kt           — the one public interface, commonMain
-        └── FileSlotFactory.kt             — public fileSlotAnnotationHandoff(), desktopMain
+        ├── AnnotationHandoff.kt           — the one public interface
+        └── FileSlotFactory.kt             — public fileSlotAnnotationHandoff()
 ```
 
 `core/` exists only because `FileSlotAnnotationHandoff` is `internal` — the slot implementation
@@ -58,15 +58,11 @@ ever confuse the two roles. The KDoc on each member says which side calls it.
 
 ```shell
 ./gradlew :data-handoff-api:build
-./gradlew :data-handoff-api:desktopTest
+./gradlew :data-handoff-api:test
 ```
 
 ## Platform coverage
 
-`AnnotationHandoff` (the interface) is `commonMain`; `FileSlotAnnotationHandoff` and
-`fileSlotAnnotationHandoff()` are `desktopMain`-only — this module has no `androidMain` or
-`iosMain` source set at all. The Android/iOS implementation
-(`UnsupportedAnnotationHandoff`, a no-op that answers `latest() = null` and throws on
-`publish`/`resolve`) deliberately lives in `presentation-feature-mirror`, not here, so this
-module never needs a Koin-bearing `expect`/`actual` pair of its own — see that module's
-`core/unsupported/` and `CLAUDE.md`.
+Desktop (JVM) is the only platform. The Koin binding for `AnnotationHandoff` deliberately
+lives in `presentation-feature-mirror`, not here, so this module needs no Koin dependency of
+its own — see that module's `CLAUDE.md`.

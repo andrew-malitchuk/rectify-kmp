@@ -16,8 +16,6 @@ data.repository.impl/
 │       │   └── ModelResourceMapper.kt     — internal bidirectional mapper interface
 │       ├── ThemePreferenceMapper.kt
 │       ├── LanguagePreferenceMapper.kt
-│       ├── OnboardingPreferenceMapper.kt
-│       └── UnitSystemPreferenceMapper.kt
 ├── source/
 │   └── ConfigureRepositoryImpl.kt
 └── di/
@@ -39,7 +37,7 @@ internal object ThemePreferenceMapper {
 
 | Class | Implemented Contract | Data sources |
 |-------|---------------------|--------------|
-| `ConfigureRepositoryImpl` | `ConfigureRepository` | ThemePreferenceSource, OnboardingPreferenceSource, LanguagePreferenceSource, UnitSystemPreferenceSource |
+| `ConfigureRepositoryImpl` | `ConfigureRepository` | ThemePreferenceSource, LanguagePreferenceSource, SidePanelWidthPreferenceSource |
 | `DeviceRepositoryImpl` | `DeviceRepository` | AdbHostSource, IosHostSource, EmulatorSource, a `named("android")`/`named("ios")` DeviceCommandExecutor PAIR, the same pair of MirrorTransport, AdbPathPreferenceSource |
 | `HistoryRepositoryImpl` | `HistoryRepository` | BatchStore, BatchFileReader |
 
