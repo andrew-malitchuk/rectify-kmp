@@ -46,7 +46,7 @@ A `key(languageCode) { content() }` approach would change the locale by destroyi
 
 ## String Resources
 
-All shared strings live in `src/commonMain/composeResources/`:
+All shared strings live in `src/main/composeResources/`:
 
 | Directory | Language |
 |-----------|----------|
@@ -58,8 +58,11 @@ Every additional language file must contain identical keys. Missing keys fall ba
 
 1. Create `composeResources/values-<code>/strings.xml`.
 2. Copy all keys from `values/strings.xml` and translate values.
-3. Add the language to the `SettingsViewModel` language list in `presentation-feature-settings`.
-4. Update the supported-languages table in `README.md`.
+3. Update the supported-languages table in `README.md`.
+
+NOTE: there is no in-app language picker any more — the settings screen was deleted as dead
+code. `ObserveApplicationLanguageUseCase` still drives `AppLocaleProvider`, but nothing
+writes the preference.
 
 ## Build
 

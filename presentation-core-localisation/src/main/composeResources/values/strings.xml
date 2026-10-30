@@ -1,63 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Onboarding pager -->
-    <string name="onboarding_welcome_title">RECTIFY</string>
-    <string name="onboarding_welcome_body">A KOTLIN MULTIPLATFORM STARTER FOR ANDROID AND IOS.\n\nSWAP THIS COPY FOR YOUR OWN.</string>
-    <string name="onboarding_ready_title">READY</string>
-    <string name="onboarding_ready_body">ALL SYSTEMS NOMINAL.</string>
-    <string name="onboarding_action_next">NEXT</string>
-    <string name="onboarding_action_initialize">INITIALIZE</string>
 
     <!-- Splash -->
-    <string name="splash_title">RECTIFY</string>
 
     <!-- Settings -->
-    <string name="settings_title">SETTINGS</string>
-    <string name="settings_language">Language</string>
-    <string name="settings_language_en">English</string>
-    <string name="settings_theme">Theme</string>
-    <string name="settings_theme_light">Light</string>
-    <string name="settings_theme_dark">Dark</string>
     <!-- Settings - Appearance -->
-    <string name="settings_appearance">APPEARANCE</string>
-    <string name="settings_language_selector">LANGUAGE SELECTOR</string>
-    <string name="settings_theme_selector">THEME SELECTOR</string>
-    <string name="settings_theme_system">SYSTEM</string>
-    <string name="settings_theme_system_subtitle">FOLLOW APPEARANCE</string>
-    <string name="settings_theme_monolith">DARK</string>
-    <string name="settings_theme_monolith_subtitle">DARK THEME</string>
-    <string name="settings_theme_brutalist">LIGHT</string>
-    <string name="settings_theme_brutalist_subtitle">LIGHT THEME</string>
-    <string name="settings_unit_selector">UNIT SYSTEM</string>
-    <string name="settings_unit_metric">METRIC</string>
-    <string name="settings_unit_metric_subtitle">KM · °C</string>
-    <string name="settings_unit_imperial">IMPERIAL</string>
-    <string name="settings_unit_imperial_subtitle">MI · °F</string>
     <!-- Settings - Info -->
-    <string name="settings_core_version">CORE VERSION</string>
     <!-- Settings - Footer -->
-    <string name="settings_system_info">SYSTEM INFO</string>
     <!-- Settings - Erase all data -->
-    <string name="settings_erase_all_data">ERASE ALL DATA</string>
     <!-- Settings - Erase confirmation -->
-    <string name="settings_erase_confirm_title">ERASE ALL DATA</string>
-    <string name="settings_erase_confirm_body">THIS WILL RESET ALL PREFERENCES TO DEFAULTS. THIS ACTION CANNOT BE UNDONE.</string>
-    <string name="settings_erase_confirm_button">ERASE</string>
-    <string name="settings_erase_cancel_button">CANCEL</string>
 
     <!-- Error -->
-    <string name="error_title">Oops, something went wrong</string>
-    <string name="error_description">We're already working on a fix. Please try again later.</string>
 
     <!-- Home -->
-    <string name="home_action_styleguide">STYLEGUIDE</string>
 
     <!-- About -->
-    <string name="about_title">ABOUT</string>
-    <string name="about_description">WELCOME</string>
-    <string name="about_version_label">VERSION</string>
-    <string name="about_build_label">BUILD</string>
-    <string name="about_back">BACK</string>
 
     <!-- Mirror - Device picker (comps 01/03) -->
     <string name="mirror_picker_title">Choose what to mirror</string>
@@ -79,7 +37,9 @@
 
     <!-- Mirror - No signal / waiting (comp 02) -->
     <string name="mirror_no_signal_label">NO SIGNAL</string>
+    <string name="mirror_connecting_label">Starting the capture loop…</string>
     <string name="mirror_waiting_title">Waiting for an Android device</string>
+    <string name="mirror_waiting_no_avds">No AVDs installed</string>
     <!-- Explicit-CTA wording (survey Q1 option A). Never the comp-02 auto-start sentence:
          the picker ships a Start mirroring button, so nothing starts on its own. -->
     <string name="mirror_waiting_subtitle">Plug one in or boot an emulator, then press Start mirroring.</string>
@@ -87,10 +47,19 @@
     <string name="mirror_waiting_step_emulator">Or boot an emulator</string>
     <string name="mirror_waiting_footer">adb devices · polling every 2 s</string>
 
+    <!-- iOS half of the waiting stage. Same split as the mirror_error_*_ios block below:
+         the stage picks the set by the selected platform, because an iOS bench has no USB
+         debugging prompt, no AVDs and no adb to poll. -->
+    <string name="mirror_waiting_title_ios">Waiting for an iOS simulator</string>
+    <string name="mirror_waiting_subtitle_ios">Boot a simulator or connect an iPhone, then press Start mirroring.</string>
+    <string name="mirror_waiting_step_usb_ios">Connect an iPhone and tap Trust on the prompt.</string>
+    <string name="mirror_waiting_step_emulator_ios">Or boot a simulator</string>
+    <string name="mirror_waiting_footer_ios">xcrun simctl · polling every 2 s</string>
+    <string name="mirror_waiting_no_simulators">No simulators found</string>
+
     <!-- Mirror - Status line and tool detection -->
     <string name="mirror_status_detecting">Detecting tools…</string>
     <string name="mirror_status_waiting">Waiting for device…</string>
-    <string name="mirror_status_ready">ready</string>
     <string name="mirror_status_tool_missing">adb not found</string>
     <!-- Mirror - status line per discovery error state, from the design's own STATUS table.
     Machine output, so these read as diagnostics rather than prose. -->
@@ -103,7 +72,6 @@
     <string name="mirror_status_latency_placeholder">latency —</string>
     <string name="mirror_status_polling_hint">polling</string>
     <string name="mirror_tool_not_found">not found</string>
-    <string name="mirror_emulator_none">No AVDs installed</string>
 
     <!-- Mirror - Annotations on a frozen frame (comps 04/05) -->
     <string name="mirror_annotation_placeholder">What's wrong here?</string>
