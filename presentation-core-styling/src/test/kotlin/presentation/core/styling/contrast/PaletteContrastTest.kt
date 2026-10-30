@@ -127,8 +127,8 @@ class PaletteContrastTest {
      * to be unmeasured. A test whose name over-promises is the same defect class this project
      * keeps finding: it cannot fail for the reason it says it can.
      *
-     * Token names come from the data class's own `toString()` rather than reflection, which
-     * `commonTest` does not have on every target. `Color`'s `toString()` is positional, so the
+     * Token names come from the data class's own `toString()` rather than reflection.
+     * `Color`'s `toString()` is positional, so the
      * `name=` pattern matches only [ThemeColor]'s own properties and never a nested value.
      */
     @Test
