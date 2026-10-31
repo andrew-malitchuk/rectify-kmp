@@ -21,7 +21,6 @@ presentation/core/ui/
       atom/                 ← indivisible building blocks
       molecule/             ← compound components built from atoms
       organism/             ← self-contained sections (sheets, sequences, pull-to-refresh)
-    showcase/               ← StyleguideScreen for visual QA
 ```
 
 The kit follows a strict **atom → molecule → organism** layering rule. Feature modules import from any layer they need.

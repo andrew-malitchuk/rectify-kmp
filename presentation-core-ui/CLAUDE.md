@@ -68,7 +68,6 @@ presentation/core/ui/
         stage/            ← NoSignalStage
         shell/            ← RectifyWindowShell, ShellToolbar, ShellStatusBar, StageSurface,
                             SidePanelFrame + ShellState / ShellTab / ShellWindowDefaults / clampPanelWidth
-    showcase/             ← StyleguideScreen (visual QA; all tokens + components)
 ```
 
 > **Rule:** atoms have no imports from molecules/organisms. Molecules may import atoms only. Organisms may import molecules and atoms. Feature modules import from any layer.
@@ -177,11 +176,8 @@ presentation/core/ui/
 | `CommentPopover` | Always-dark comment popover |
 | `MeasureCard` | Measured-dimension card |
 
-### `source/showcase/`
-
 | File | Purpose |
 |------|---------|
-| `StyleguideScreen` | Scrollable visual QA: all tokens + every design-system component |
 
 ## Module Dependencies
 
