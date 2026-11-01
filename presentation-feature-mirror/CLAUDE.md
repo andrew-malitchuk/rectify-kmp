@@ -16,7 +16,7 @@ stage. The entry point is therefore `MirrorHost`, which owns no layout and hands
 signature" below for the full five-argument shape.
 
 `.claude/rules/navigation.md`'s five-step checklist is deliberately **not** applied: no
-`Destination` case, no `navSavedStateConfiguration` entry, no `NavigationHost` branch. This
+`Destination` case and no navigation host — the app has none. This
 paragraph exists so a reviewer does not flag the omission as an oversight.
 
 ## Deviation 2: pixels never enter the reduced state
@@ -45,11 +45,10 @@ labels (no pixels), same shape as every other reduced row type in this contract.
 path that names `ImageBitmap`**, and only as its extension receiver. Every other verify function
 (`changedRatio` in `RegionDiff.kt`, `verdictOf` in `VerifyVerdict.kt`, `beforeAfterLabel` in
 `BeforeAfterFormat.kt`) takes `IntArray`s and primitives, which is what keeps the pixel-diff
-arithmetic unit-testable with no graphics backend (this module's `desktopTest` has no Skiko —
-see `MirrorFakes.kt`'s own note on why `ImageBitmap(w, h)` cannot be constructed there). Reusing
-`ImageBitmap.readPixels` directly, rather than inventing a `PixelDiffer` seam, was a deliberate
-choice: a seam here would be an interface with one real implementation, and it would push the
-arithmetic into `desktopMain` — which still has no Skiko, so it would destroy testability for
+arithmetic unit-testable with no graphics backend at all — the fakes in `MirrorFakes.kt`
+implement `ImageBitmap` as a plain interface rather than allocating a Skiko-backed surface per
+test. Reusing `ImageBitmap.readPixels` directly, rather than inventing a `PixelDiffer` seam,
+was a deliberate choice: a seam here would be an interface with one real implementation, for
 nothing. `regionPixels()` is correspondingly the one verify function left **deliberately
 untested**: there is no arithmetic in it for a test to check beyond what Compose's own
 `readPixels` already guarantees.
@@ -133,9 +132,8 @@ actually runs; the other modules only ever see one step each (the read, the send
 
 ## Testing
 
-`commonTest` compiles for **every** target: a backtick test name containing a comma, an
-apostrophe or a colon passes on the JVM and fails `compileTestKotlinIosArm64` with
-`Name contains illegal characters`. Plain-word camelCase names only.
+One JVM target, one `src/test` source set. Plain-word camelCase test names are the house
+style here.
 
 Two environment facts the ViewModel tests depend on, both in `MirrorFakes.kt`:
 
