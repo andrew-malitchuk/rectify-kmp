@@ -2,15 +2,14 @@
 
 ## Module Purpose
 
-Plain-JVM (not KMP) desktop application module. Contains the single required entry point
+The runnable desktop application module. Contains the single required entry point
 (`main()`) and nothing else. No business logic, no ViewModels, no repositories — all of that
-lives in KMP-shared modules, same as `aos-application`'s role for Android.
+lives in the shared modules.
 
 This module deliberately does **not** use the project's convention plugins
-(`dev.rectify.io.convention.*`) — those are built around `KotlinMultiplatformExtension`, and
-this module isn't a KMP module. It applies `kotlin("jvm")` + `composeMultiplatform` +
-`composeCompiler` directly, mirroring how `aos-application` applies `com.android.application` +
-`composeMultiplatform` + `composeCompiler` directly instead of a convention plugin.
+(`dev.rectify.io.convention.*`) — those wire a library's shared dependency set, and this
+module is a binary with its own packaging config. It applies `kotlin("jvm")` +
+`composeMultiplatform` + `composeCompiler` directly. `:mcp-application` does the same.
 
 ## What Belongs in This Module
 
@@ -33,11 +32,10 @@ If you are tempted to add a ViewModel or a repository, put it in the appropriate
 
 ## Why `main()` Calls `initKoin()` Directly
 
-Android has `RectifyApplication.onCreate()` and iOS has Swift's `doInitKoin()` call site to
-bootstrap Koin before any UI renders. Desktop has neither — there is no lifecycle callback that
-runs before `main()`. `main()` is therefore the only place Koin can be started; don't move
-`initKoin()` into `runDesktopApp()` (`compose-application`) — that would start Koin on every
-platform's shared code path, duplicating what Android/iOS already do themselves.
+There is no lifecycle callback that runs before `main()` on desktop, so `main()` is the only
+place Koin can be started. Don't move `initKoin()` into `runDesktopApp()`
+(`compose-application`) — bootstrapping DI is the entry point's job, and `runDesktopApp()` is
+shared code that a test or a second host could call without wanting a second `startKoin`.
 
 ## Build / Run Commands
 

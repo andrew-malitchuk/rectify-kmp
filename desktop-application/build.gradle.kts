@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
@@ -16,5 +18,23 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "dev.rectify.io.source.entry.MainKt"
+
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "Rectify"
+            packageVersion = "1.0.0"
+
+            // One source SVG, three platform formats — see `icons/` and
+            // `.claude/rules/icon-branding-placeholder.md` for how to regenerate them.
+            //
+            // `macOS.iconFile` also drives the DOCK icon of `./gradlew run`: the Compose
+            // plugin passes it as `-Xdock:icon` itself. Adding our own `jvmArgs` entry for
+            // that is not just redundant, it LOSES — a second -Xdock:icon wins over the
+            // first, so a hand-rolled one replaces this multi-resolution .icns with
+            // whatever single raster it names.
+            macOS { iconFile.set(rootProject.file("icons/rectify.icns")) }
+            windows { iconFile.set(rootProject.file("icons/rectify.ico")) }
+            linux { iconFile.set(rootProject.file("icons/rectify.png")) }
+        }
     }
 }

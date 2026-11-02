@@ -3,7 +3,7 @@
 ## Module Purpose
 
 The MCP (Model Context Protocol) server Claude Code spawns over stdio to read back the most
-recent annotation batch Rectify published. Plain-JVM (not KMP), a second OS process entirely
+recent annotation batch Rectify published. A second OS process entirely
 separate from `:desktop-application` — it is started and killed by Claude Code, not by the
 user. One tool: `get_latest_annotation`. No business logic beyond JSON-RPC framing and rendering
 an `AnnotationEnvelope` into the tool's result document — reading the slot itself is
@@ -12,7 +12,8 @@ an `AnnotationEnvelope` into the tool's result document — reading the slot its
 ## Bespoke Gradle — NFR-15 declared deviation
 
 No convention plugin in `build-logic/convention` models a plain-JVM module — `application`,
-`feature`, `library` and `di` are all built around `KotlinMultiplatformExtension`.
+`feature`, `library` and `di` all wire a library's shared dependency set, which this binary
+does not want.
 `:desktop-application` set and documented this precedent first (plain `kotlin("jvm")` +
 `composeMultiplatform` + `composeCompiler`, no convention plugin); `:mcp-application` extends it
 by one, applying `kotlin("jvm")` + `kotlin.serialization` + the stock `application` plugin
