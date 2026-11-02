@@ -30,6 +30,8 @@ With a platform selected and something attached, the stage shows **Choose what t
 Navigate with <kbd>↑</kbd> <kbd>↓</kbd> and commit with <kbd>↵</kbd>, or click. The **Start
 mirroring** button does the same thing as <kbd>↵</kbd>.
 
+![The device picker listing a physical Pixel and a shut-down emulator](../../assets/screenshots/device-picker.png)
+
 <kbd>Esc</kbd> closes the picker — but only once you have something to go back to. Before your
 first selection there is nothing behind it, so <kbd>Esc</kbd> deliberately does nothing rather
 than stranding you on an empty stage.
@@ -68,7 +70,5 @@ A device that disappears mid-session does not throw away your work. A banner app
 now-stale frame explaining what happened, your staged annotations stay pinned to the frozen
 frame, and **Resolve & Send** keeps working — the batch is already captured, and sending it does
 not need the device back.
-
-![The device picker listing a physical Pixel and a shut-down emulator](../../assets/screenshots/device-picker.png)
 
 **Reconnect** in the banner restarts the stream.

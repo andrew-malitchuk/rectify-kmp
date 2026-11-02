@@ -30,6 +30,8 @@ The crops exist because an agent reading a 1080×2400 frame has to find your reg
 The hierarchy exists because *the price label is misaligned* is a different instruction from
 *the view with id `item_price` is misaligned*.
 
+![The Payload tab showing the generated prompt, the crop and the view hierarchy](../../assets/screenshots/payload.png)
+
 ## How the handoff actually works
 
 Rectify serves the Model Context Protocol itself, on the loopback interface. There is no second
@@ -72,8 +74,6 @@ A useful habit is to let the prompt do the describing and add only what the boxe
 > Fix the annotations from the latest Rectify batch. The spacing one is the priority.
 
 ## Follow-ups
-
-![The Payload tab showing the generated prompt, the crop and the view hierarchy](../../assets/screenshots/payload.png)
 
 After a [Verify](../verify/) run finds something still off, the same button becomes **Send
 follow-up** and re-stages just the annotations that failed — not the whole batch.

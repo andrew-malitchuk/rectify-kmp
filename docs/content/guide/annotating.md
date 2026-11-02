@@ -17,6 +17,8 @@ frozen frame, which is why **Resume live** costs nothing — there is no reconne
 Each annotation gets a popover with a numbered badge matching its box, an autofocused comment
 field, a size and position line, and a delete control.
 
+![A frozen frame with one numbered annotation and its comment](../../assets/screenshots/annotate.png)
+
 - <kbd>↵</kbd> saves the comment.
 - <kbd>Esc</kbd> dismisses the popover, keeping the annotation.
 - The delete control removes the annotation entirely.
@@ -71,8 +73,6 @@ Reading the Payload tab before sending is the cheapest way to notice that a box 
 wrong view.
 
 ## Resuming
-
-![A frozen frame with one numbered annotation and its comment](../../assets/screenshots/annotate.png)
 
 **Resume live** unfreezes and goes back to the stream. A successful send does it automatically
 and resets the staged counter to zero — see [Sending to Claude Code](../sending/).
