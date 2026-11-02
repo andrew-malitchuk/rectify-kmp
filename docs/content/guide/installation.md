@@ -60,12 +60,14 @@ Rectify serves the Model Context Protocol itself, on the loopback interface, for
 app is open. There is nothing to install and nothing to spawn — no second binary, no JDK of its
 own, no absolute path to get wrong.
 
-Click **`MCP :7391`** in Rectify's status bar. That copies the registration line for the port
-this instance actually bound:
+Click **`MCP :7391`** in Rectify's status bar. A card opens with the registration line for the
+port this instance actually bound, and a **Copy** button:
 
 ```shell
 claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
 ```
+
+Run it once in the project you want Claude Code to work in.
 
 Or write it into a config file yourself — copy the example at the repository root:
 

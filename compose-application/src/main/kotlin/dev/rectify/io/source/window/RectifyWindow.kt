@@ -1,13 +1,19 @@
 package dev.rectify.io.source.window
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,22 +25,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
-import org.jetbrains.compose.ui.tooling.preview.Preview
 import co.touchlab.kermit.Logger
+import dev.rectify.io.core.chooser.chooseAdbPath
+import dev.rectify.io.core.clipboard.copyToClipboard
 import domain.core.source.model.ThemeModel
 import domain.core.source.model.device.PlatformModel
 import domain.usecase.api.source.usecase.configuration.GetSidePanelWidthUseCase
@@ -42,8 +56,11 @@ import domain.usecase.api.source.usecase.configuration.ObserveApplicationLanguag
 import domain.usecase.api.source.usecase.configuration.ObserveThemeUseCase
 import domain.usecase.api.source.usecase.configuration.SetSidePanelWidthUseCase
 import domain.usecase.api.source.usecase.configuration.SetThemeUseCase
-import kotlinx.coroutines.launch
+import java.awt.Dimension
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.koinInject
 import presentation.core.localisation.source.provider.AppLocaleProvider
 import presentation.core.styling.core.Theme
@@ -52,6 +69,7 @@ import presentation.core.styling.source.theme.AppTheme
 import presentation.core.ui.source.kit.atom.badge.CounterBadge
 import presentation.core.ui.source.kit.atom.badge.CounterBadgeState
 import presentation.core.ui.source.kit.atom.button.AppButton
+import presentation.core.ui.source.kit.atom.button.AppButtonSize
 import presentation.core.ui.source.kit.atom.button.AppButtonVariant
 import presentation.core.ui.source.kit.atom.button.ButtonSizeType
 import presentation.core.ui.source.kit.atom.button.IconButton
@@ -71,21 +89,17 @@ import presentation.core.ui.source.kit.organism.shell.ShellToolbar
 import presentation.core.ui.source.kit.organism.shell.ShellWindowDefaults
 import presentation.core.ui.source.kit.organism.shell.rememberShellState
 import presentation.core.ui.source.kit.organism.shell.shortcutToTab
-import dev.rectify.io.core.chooser.chooseAdbPath
-import dev.rectify.io.core.clipboard.copyToClipboard
-import presentation.feature.mirror.source.mirror.MirrorSideEffect
+import presentation.feature.mirror.source.mirror.MirrorHistoryTab
 import presentation.feature.mirror.source.mirror.MirrorHost
 import presentation.feature.mirror.source.mirror.MirrorIntent
-import presentation.feature.mirror.source.mirror.MirrorHistoryTab
 import presentation.feature.mirror.source.mirror.MirrorNotesTab
 import presentation.feature.mirror.source.mirror.MirrorPayloadTab
 import presentation.feature.mirror.source.mirror.MirrorSession
+import presentation.feature.mirror.source.mirror.MirrorSideEffect
 import presentation.feature.mirror.source.mirror.MirrorStageContent
 import presentation.feature.mirror.source.mirror.MirrorStatusLine
 import presentation.feature.mirror.source.mirror.MirrorUiState
 import presentation.feature.mirror.source.mirror.VerifyFrames
-import java.awt.Dimension
-import kotlin.math.roundToInt
 
 private val log = Logger.withTag("RectifyWindow")
 
@@ -623,34 +637,120 @@ private const val MCP_READY_PREFIX: String = "MCP :"
 /** Status-bar copy when the endpoint could not bind — see `openMcpEndpoint` in DesktopEntry. */
 private const val MCP_OFFLINE_LABEL: String = "MCP off"
 
+private const val MCP_CARD_TITLE: String = "Connect Claude Code"
+
+private const val MCP_CARD_HINT: String =
+    "Run this once in the project you want Claude Code to work in."
+
+private const val MCP_COPY_LABEL: String = "Copy"
+
+private const val MCP_COPIED_LABEL: String = "Copied"
+
+/** Gap between the status-bar chip and the card that opens above it. */
+private const val MCP_CARD_GAP_PX: Int = 8
+
+/** How wide the card is allowed to get before the command wraps. */
+private val McpCardMaxWidth: Dp = 420.dp
+
 /**
  * The MCP endpoint indicator in the status bar's trailing slot.
  *
- * Clicking it copies the `claude mcp add` one-liner, which is the entire installation procedure
- * now that the server runs in-process: there is no second binary to fetch, unpack or point at.
- * The command carries the port this instance actually bound, so a second Rectify that landed on
- * a different port still hands out a correct line.
+ * Clicking it opens the registration command, visible and copyable — the whole installation
+ * procedure now that the endpoint runs in-process. Showing the line rather than silently
+ * copying it matters: the user can read what they are about to paste into their shell, and the
+ * port in it is the one THIS instance bound, which is not always 7391.
  *
- * With no endpoint it reads `MCP off` and does nothing — the one state the old out-of-process
+ * With no endpoint it reads `MCP off` and opens nothing — the one state the old out-of-process
  * server could not report at all, because nothing in the UI knew whether it was running.
  */
 @Composable
 private fun McpStatus(url: String?, registerCommand: String?) {
+    var expanded by remember { mutableStateOf(false) }
     val label = url?.let { MCP_READY_PREFIX + it.substringAfterLast(':').substringBefore('/') }
         ?: MCP_OFFLINE_LABEL
-    Text(
-        text = label,
-        style = Theme.typography.monoMeta,
-        color = if (url == null) Theme.color.ink3 else Theme.color.ink2,
-        maxLines = 1,
+
+    Box {
+        Text(
+            text = label,
+            style = Theme.typography.monoMeta,
+            color = if (url == null) Theme.color.ink3 else Theme.color.ink2,
+            maxLines = 1,
+            modifier = Modifier
+                .then(
+                    if (registerCommand == null) {
+                        Modifier
+                    } else {
+                        Modifier.clickable { expanded = !expanded }
+                    },
+                )
+                .padding(horizontal = Theme.spacing.spacingXS),
+        )
+        if (expanded && registerCommand != null) {
+            Popup(
+                popupPositionProvider = AboveAnchorPositionProvider(gap = MCP_CARD_GAP_PX),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                McpConnectCard(command = registerCommand)
+            }
+        }
+    }
+}
+
+/** The card itself: what to run, and one button that puts it on the clipboard. */
+@Composable
+private fun McpConnectCard(command: String) {
+    // Resets whenever a different command is shown, so a moved port cannot leave a stale
+    // "Copied" sitting under a line the user has not actually copied.
+    var copied by remember(command) { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
-            .then(
-                if (registerCommand == null) {
-                    Modifier
-                } else {
-                    Modifier.clickable { copyToClipboard(registerCommand) }
-                },
-            )
-            .padding(horizontal = Theme.spacing.spacingXS),
+            .widthIn(max = McpCardMaxWidth)
+            .background(Theme.color.surface, RoundedCornerShape(Theme.radius.md))
+            .border(Theme.stroke.thin, Theme.color.line, RoundedCornerShape(Theme.radius.md))
+            .padding(Theme.spacing.spacingL),
+        verticalArrangement = Arrangement.spacedBy(Theme.spacing.spacingS),
+    ) {
+        Text(text = MCP_CARD_TITLE, style = Theme.typography.bodyStrong, color = Theme.color.ink)
+        Text(text = MCP_CARD_HINT, style = Theme.typography.secondary, color = Theme.color.ink2)
+        Text(
+            text = command,
+            style = Theme.typography.monoData,
+            color = Theme.color.ink,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Theme.color.codeBg, RoundedCornerShape(Theme.radius.sm))
+                .padding(Theme.spacing.spacingS),
+        )
+        AppButton(
+            text = if (copied) MCP_COPIED_LABEL else MCP_COPY_LABEL,
+            onClick = {
+                copyToClipboard(command)
+                copied = true
+            },
+            variant = AppButtonVariant.Secondary,
+            size = AppButtonSize.Toolbar,
+        )
+    }
+}
+
+/**
+ * Places a popup directly ABOVE its anchor, right edges aligned.
+ *
+ * The anchor here is a chip in the status bar, which sits at the very bottom of the window —
+ * the default below-the-anchor placement would put the card off-screen. Measuring the card to
+ * compute a negative offset would work too, but it flickers on the first frame; a position
+ * provider is given the measured size up front, which is the whole reason it exists.
+ */
+private class AboveAnchorPositionProvider(private val gap: Int) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset = IntOffset(
+        x = (anchorBounds.right - popupContentSize.width).coerceIn(0, maxOf(0, windowSize.width - popupContentSize.width)),
+        y = (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
 }

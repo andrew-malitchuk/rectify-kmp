@@ -52,6 +52,17 @@ system JDK.
 - **Binding is loopback-only.** Never change `InetAddress.getLoopbackAddress()` to a wildcard
   bind to "make it reachable" — that publishes the user's screenshots to the network.
 
+## The status-bar card
+
+`McpStatus`/`McpConnectCard` in `:compose-application`'s `RectifyWindow.kt` render the chip and
+the card it opens. The card SHOWS the `claude mcp add` line and copies it on a button, rather
+than copying silently on click: the user can read what they are about to paste into a shell, and
+the port in it is the one this instance bound, which is not always 7391.
+
+`AboveAnchorPositionProvider` places the card above the chip. The anchor sits at the very bottom
+of the window, so the default below-the-anchor placement would put it off-screen; a position
+provider gets the measured popup size up front, which a negative-offset hack does not.
+
 ## Lifecycle
 
 `:compose-application`'s `runDesktopApp()` owns it: start before `application { }`, stop in the

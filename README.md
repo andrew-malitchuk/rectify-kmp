@@ -44,7 +44,8 @@ cd rectify-kmp
 ```
 
 Then point Claude Code at the MCP endpoint the app serves on loopback. Click `MCP :7391` in
-Rectify's status bar to copy the exact line (the port moves if 7391 was taken):
+Rectify's status bar — a card shows the exact line with a Copy button (the port moves if 7391
+was taken):
 
 ```shell
 claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
