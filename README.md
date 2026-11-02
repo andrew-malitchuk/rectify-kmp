@@ -29,6 +29,10 @@ Every other tool in this space does one leg of it. Rectify's claim is the round 
 
 ## Quick start
 
+Grab `Rectify-*.dmg` and `rectify-mcp-*.zip` from the
+[latest release](https://github.com/andrew-malitchuk/rectify-kmp/releases/latest) — Apple
+Silicon, unsigned, so right-click → **Open** on first launch. To build it yourself instead:
+
 Requires **macOS** and **JDK 21+**. `adb` on your `PATH` for Android devices, Xcode command line
 tools for iOS simulators — Rectify launches without either and reports what is missing as a
 recoverable error card.

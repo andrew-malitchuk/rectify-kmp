@@ -7,6 +7,7 @@ actually act on — the frame, per-annotation crops, the view hierarchy and a ge
 Then re-capture the device and let Rectify prove, per annotation, that the fix landed.
 
 <a class="cta" href="guide/installation/">Get started</a>
+<a class="cta" href="https://github.com/andrew-malitchuk/rectify-kmp/releases/latest">Download for macOS</a>
 
 </div>
 

@@ -1,9 +1,35 @@
 # Installation
 
-Rectify is not published as a binary yet. You build it from source, which takes one Gradle
-command, and you wire its MCP server into Claude Code, which takes one JSON entry.
+## Quick install
 
-## Requirements
+The fastest path — no build tools required.
+
+1. Download `Rectify-*.dmg` from the
+   [latest GitHub Release](https://github.com/andrew-malitchuk/rectify-kmp/releases/latest).
+2. Open the DMG and drag **Rectify** into `/Applications`.
+3. The build is unsigned and unnotarised, so Gatekeeper refuses it on first launch.
+   Right-click the app and choose **Open**, or clear the quarantine flag:
+
+   ```shell
+   xattr -dr com.apple.quarantine /Applications/Rectify.app
+   ```
+
+4. Download `rectify-mcp-*.zip` from the same release, unpack it, and
+   [wire it into Claude Code](#wire-up-the-mcp-server) — the app alone cannot hand anything
+   over.
+
+> **Apple Silicon only.** Compose Desktop packages for the OS and architecture it is built
+> on, and the release is built on arm64. On an Intel Mac, build from source.
+
+> **The About box says 1.0.0.** jpackage refuses a macOS bundle version whose first component
+> is zero, so the bundle carries `1.0.0` while the release is `0.1.0`. The tag and the
+> changelog are the source of truth.
+
+---
+
+## Build from source
+
+### Requirements
 
 | | |
 |---|---|
@@ -19,7 +45,7 @@ as a recoverable error card rather than refusing to start.
 > the Compose plugin blocks it because such builds produce broken bundles. Use a distribution
 > such as Amazon Corretto if you want an installer. Running from Gradle is unaffected.
 
-## Run it
+### Run it
 
 ```shell
 git clone https://github.com/andrew-malitchuk/rectify-kmp.git
