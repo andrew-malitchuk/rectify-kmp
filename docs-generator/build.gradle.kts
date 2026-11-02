@@ -1,5 +1,5 @@
 // A build-time tool, not part of the app: it reads `docs/` and writes a static site. No
-// convention plugin for the same reason `:mcp-application` skips them — those wire a library's
+// convention plugin for the same reason `:data-mcp-impl` skips them — those wire a library's
 // shared Compose/Koin/lifecycle dependency set, and none of it belongs in a Markdown renderer.
 plugins {
     alias(libs.plugins.kotlinJvm)

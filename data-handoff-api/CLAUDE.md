@@ -2,13 +2,13 @@
 
 ## Module Purpose
 
-The cross-process handoff between Rectify (desktop UI, writer) and `:mcp-application` (the MCP
+The handoff between Rectify's UI (writer) and `:data-mcp-impl` (the MCP
 server Claude Code spawns, reader). Defines the wire envelope (`AnnotationEnvelope` and friends)
 and the `AnnotationHandoff` contract, and ships the one real implementation,
 `FileSlotAnnotationHandoff` — a single atomic file drop under `~/.rectify/handoff`.
 
 Deliberately Koin-free: no `di` convention plugin is applied. Applying it would expose
-`koin-core` as `api()`, landing Koin on `:mcp-application`'s classpath for a server that has no
+`koin-core` as `api()`, landing Koin on `:data-mcp-impl`'s classpath for an endpoint that has no
 other use for a DI container and cares about spawn-time startup cost. The Koin binding for
 `AnnotationHandoff` lives in `presentation-feature-mirror`, which already has Koin wired.
 

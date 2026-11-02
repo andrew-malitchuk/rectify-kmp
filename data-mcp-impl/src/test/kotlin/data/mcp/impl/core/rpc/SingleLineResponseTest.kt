@@ -1,4 +1,4 @@
-package dev.rectify.io.mcp.core.rpc
+package data.mcp.impl.core.rpc
 
 import kotlin.test.Test
 import kotlin.test.assertFalse

@@ -1,4 +1,4 @@
-package dev.rectify.io.mcp.core.rpc
+package data.mcp.impl.core.rpc
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

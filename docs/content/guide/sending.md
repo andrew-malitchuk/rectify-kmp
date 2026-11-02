@@ -32,25 +32,34 @@ The hierarchy exists because *the price label is misaligned* is a different inst
 
 ## How the handoff actually works
 
-Rectify does not talk to Claude Code. The two never share a process, a socket or a lifetime.
+Rectify serves the Model Context Protocol itself, on the loopback interface. There is no second
+process to install and nothing for you to launch.
 
 ```
-Rectify  ──writes──▶  ~/.rectify/handoff  ◀──reads──  rectify-mcp  ──stdio──▶  Claude Code
+Rectify ──writes──▶ ~/.rectify/handoff ──┐
+                                         ├─ MCP endpoint ──HTTP──▶ Claude Code
+                        (same process) ──┘   127.0.0.1:7391/mcp
 ```
 
 1. **Rectify publishes.** The batch is written to a slot at `~/.rectify/handoff`, plus its bulk
    bytes under `~/.rectify/history/`.
-2. **Claude Code spawns the server.** `rectify-mcp` is a separate, deliberately tiny JVM
-   process. Claude Code starts and stops it; you never run it yourself.
-3. **The server reads the slot** and answers one tool, `get_latest_annotation`, over JSON-RPC.
+2. **The endpoint reads that slot** and answers one tool, `get_latest_annotation`, over JSON-RPC
+   on `http://127.0.0.1:7391/mcp`.
+3. **Claude Code connects as a client.** It does not spawn anything; it opens an HTTP request
+   when it needs the payload.
 
-The indirection is the point. Rectify can be closed, restarted or crash, and the last batch is
-still there to be read. Claude Code can be started after the fact and still get the payload.
-Neither has to be running when the other is.
+The slot still sits between the two halves even though they now share a process. It is what
+makes a batch survive a restart, and what keeps the UI's send path independent of whether any
+agent is listening.
 
-It also explains the MCP server's unusually small dependency list — no Compose, no Koin, no
-graphics stack. Claude Code pays its JVM startup cost on every tool call, so the classpath is
-pinned to the handoff contract and a JSON parser.
+**The app has to be open.** That is the one real cost of serving the protocol in-process, and it
+replaced a worse one: before, you had to build a second binary, keep a JDK around for it, and
+hand Claude Code an absolute path to it. The status bar now reads `MCP :7391` whenever the
+endpoint is up, which is also the first thing to look at when the agent gets nothing.
+
+**The endpoint binds to loopback only, and refuses cross-origin requests.** Anything else would
+publish screenshots of whatever you are debugging to every page in your browser and every device
+on your network.
 
 ## Using it from Claude Code
 

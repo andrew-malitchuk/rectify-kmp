@@ -27,7 +27,6 @@ dependencyResolutionManagement {
 
 include(":compose-application")
 include(":desktop-application")
-include(":mcp-application")
 include(":docs-generator")
 
 // common
@@ -36,6 +35,7 @@ include(":common-core")
 // data
 include(":data-core")
 include(":data-handoff-api")
+include(":data-mcp-impl")
 include(":data-device-api")
 include(":data-device-impl")
 include(":data-preference-api")

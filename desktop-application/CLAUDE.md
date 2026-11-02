@@ -9,7 +9,8 @@ lives in the shared modules.
 This module deliberately does **not** use the project's convention plugins
 (`dev.rectify.io.convention.*`) — those wire a library's shared dependency set, and this
 module is a binary with its own packaging config. It applies `kotlin("jvm")` +
-`composeMultiplatform` + `composeCompiler` directly. `:mcp-application` does the same.
+`composeMultiplatform` + `composeCompiler` directly. `:data-mcp-impl` does the same, for the
+same reason: the convention plugins all wire a dependency set it has no use for.
 
 ## What Belongs in This Module
 

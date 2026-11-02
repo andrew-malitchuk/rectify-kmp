@@ -29,7 +29,7 @@ Every other tool in this space does one leg of it. Rectify's claim is the round 
 
 ## Quick start
 
-Grab `Rectify-*.dmg` and `rectify-mcp-*.zip` from the
+Grab `Rectify-*.dmg` from the
 [latest release](https://github.com/andrew-malitchuk/rectify-kmp/releases/latest) — Apple
 Silicon, unsigned, so right-click → **Open** on first launch. To build it yourself instead:
 
@@ -43,18 +43,13 @@ cd rectify-kmp
 ./gradlew :desktop-application:run
 ```
 
-Then wire the handoff into Claude Code. Rectify writes each sent batch to a slot on disk; a small
-server process reads it back out over stdio, and Claude Code spawns that process itself:
+Then point Claude Code at the MCP endpoint the app serves on loopback. Click `MCP :7391` in
+Rectify's status bar to copy the exact line (the port moves if 7391 was taken):
 
 ```shell
-unzip rectify-mcp-0.1.0.zip -d ~/.rectify            # or ./gradlew :mcp-application:installDist
-claude mcp add rectify ~/.rectify/rectify-mcp/bin/rectify-mcp
+claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
 ```
 
-The server is a plain JVM process and needs a **JDK 21+** on the machine — the runtime inside
-`Rectify.app` is a stripped jlink image with no `java` to borrow.
-
-Restart Claude Code and it lists a `rectify` server exposing one tool, `get_latest_annotation`.
 Full walkthrough: [Installation](docs/content/guide/installation.md).
 
 ## Documentation
@@ -89,7 +84,6 @@ rectify-kmp/
 ├── build-logic/convention/          ← Gradle convention plugins
 ├── compose-application/             ← App composition + the Rectify window
 ├── desktop-application/             ← Plain-JVM module hosting main()
-├── mcp-application/                 ← MCP server binary Claude Code spawns over stdio
 ├── docs-generator/                  ← Renders docs/ into the GitHub Pages site
 │
 ├── presentation-feature-mirror/     ← Device discovery, mirroring, annotate & send
@@ -105,7 +99,8 @@ rectify-kmp/
 ├── data-core/                       ← Shared data-layer utilities
 ├── data-device-api/                 ← Device discovery / mirroring contracts and parsers
 ├── data-device-impl/                ← adb / emulator / xcrun / idb process drivers
-├── data-handoff-api/                ← Cross-process handoff contract shared with the MCP server
+├── data-handoff-api/                ← Handoff contract: the UI writes it, the MCP endpoint reads it
+├── data-mcp-impl/                   ← The MCP endpoint the app serves on 127.0.0.1
 ├── data-preference-api/             ← Preference source interfaces
 ├── data-preference-impl/            ← Preference implementations (java.util.prefs)
 ├── data-database-api/               ← Local database contracts

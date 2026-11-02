@@ -1,4 +1,4 @@
-package dev.rectify.io.mcp.core.rpc
+package data.mcp.impl.core.rpc
 
 import data.handoff.api.source.envelope.AnnotationEnvelope
 import data.handoff.api.source.handoff.AnnotationHandoff
@@ -34,8 +34,14 @@ internal const val GET_LATEST_ANNOTATION_TOOL: String = "get_latest_annotation"
 /** Shown to the agent when the slot has never been written. */
 private const val EMPTY_SLOT_TEXT: String = "No annotation has been sent yet."
 
-/** How the user re-installs this server after an envelope-format bump (TAC-7). */
-private const val REBUILD_COMMAND: String = "./gradlew :mcp-application:installDist"
+/**
+ * What the user does about an envelope the endpoint cannot read (TAC-7).
+ *
+ * The endpoint ships inside the app now, so writer and reader are upgraded by the same act —
+ * which means this can only fire when a NEWER Rectify wrote the slot and an older one is
+ * reading it. Updating the app is the whole remedy; there is no separate server to rebuild.
+ */
+private const val REBUILD_COMMAND: String = "update Rectify to the version that wrote it"
 
 /** The wire: one compact line per response, never pretty — see [McpDispatcher.handle]. */
 private val wire: Json = Json
@@ -141,7 +147,7 @@ internal class McpDispatcher(
 
             envelope.version > SUPPORTED_ENVELOPE_VERSION -> toolResult(
                 "Envelope format version ${envelope.version} is newer than this server supports " +
-                    "($SUPPORTED_ENVELOPE_VERSION). Rebuild :mcp-application ($REBUILD_COMMAND).",
+                    "($SUPPORTED_ENVELOPE_VERSION) — $REBUILD_COMMAND.",
                 isError = true,
             )
 

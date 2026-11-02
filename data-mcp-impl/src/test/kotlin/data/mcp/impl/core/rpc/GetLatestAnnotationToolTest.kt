@@ -1,4 +1,4 @@
-package dev.rectify.io.mcp.core.rpc
+package data.mcp.impl.core.rpc
 
 import data.handoff.api.source.envelope.HandoffImage
 import data.handoff.api.source.handoff.fileSlotAnnotationHandoff
@@ -113,7 +113,7 @@ class GetLatestAnnotationToolTest {
             "expected the server's supported version $SUPPORTED_ENVELOPE_VERSION in: $text",
         )
         assertTrue(
-            text.contains("./gradlew :mcp-application:installDist"),
+            text.contains("update Rectify to the version that wrote it"),
             "expected the rebuild command in: $text",
         )
     }
@@ -153,7 +153,7 @@ class GetLatestAnnotationToolTest {
 
     @Test
     fun aSecondCallWithNoPublishInBetweenYieldsAByteIdenticalResult() {
-        val tempRoot = Files.createTempDirectory("mcp-application-integration-test")
+        val tempRoot = Files.createTempDirectory("data-mcp-impl-integration-test")
         try {
             val handoff = fileSlotAnnotationHandoff(tempRoot)
             val envelope = sampleEnvelope()

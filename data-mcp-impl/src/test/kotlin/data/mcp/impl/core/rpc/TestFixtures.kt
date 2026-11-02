@@ -1,4 +1,4 @@
-package dev.rectify.io.mcp.core.rpc
+package data.mcp.impl.core.rpc
 
 import data.handoff.api.source.envelope.AnnotationEnvelope
 import data.handoff.api.source.envelope.EnvelopeAnnotation
@@ -12,11 +12,12 @@ import kotlin.coroutines.startCoroutine
 
 /**
  * A stdlib-only bridge from a suspend block to a plain blocking call, for `kotlin.test` functions
- * (which JUnit requires to be non-`suspend`). Deliberately NOT `kotlinx.coroutines.runBlocking`:
- * this module's own compile classpath is pinned to `:data-handoff-api` + `kotlinx-serialization
- * -json` (see `Main.kt`'s KDoc) — `kotlinx-coroutines-core` is a transitive RUNTIME dependency via
- * `:data-handoff-api`'s `implementation`, never a compile-time one here, so `runBlocking` would
- * not resolve. [kotlin.coroutines.startCoroutine] is part of kotlin-stdlib.
+ * (which JUnit requires to be non-`suspend`).
+ *
+ * `kotlinx.coroutines.runBlocking` would resolve here now — the HTTP handler needs coroutines on
+ * the compile classpath, so the module declares them. This stays as it is anyway: it is
+ * dependency-free, it already works, and churning a green fixture to use a dependency it does
+ * not need buys nothing. [kotlin.coroutines.startCoroutine] is part of kotlin-stdlib.
  */
 internal fun <T> runSuspendBlocking(block: suspend () -> T): T {
     val latch = CountDownLatch(1)

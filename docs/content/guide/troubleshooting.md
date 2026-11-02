@@ -63,10 +63,12 @@ A floating banner over the stale frame, not an error card — your annotations a
 Work through these in order:
 
 1. **Did a batch actually send?** Check the History tab. No row means no payload.
-2. **Was the launcher built?** `./gradlew :mcp-application:installDist` must have run at least
-   once. There is no packaged distribution.
-3. **Is the path right?** The command in `.mcp.json` is relative to wherever Claude Code was
-   started, not to the Rectify checkout. Make it absolute if the two differ.
+2. **Is Rectify running?** The endpoint is served by the app itself, so a closed Rectify is an
+   unreachable endpoint. The status bar reads `MCP :7391` while it is up, and `MCP off` if the
+   port could not be bound.
+3. **Is the port right?** If something else already held 7391, Rectify took the next free port
+   and the status bar shows the real one — click it to copy a correct `claude mcp add` line and
+   re-register.
 4. **Same user account?** The slot is at `~/.rectify/handoff` and is owner-only. Rectify and
    Claude Code must run as the same user.
 

@@ -35,7 +35,7 @@ configuration, and several modules use `api(projects.x)`.
 `compose.desktop.currentOs` — the Skiko renderer — is only on the `application` plugin. Only the
 module that actually opens a window needs it.
 
-Three modules skip convention plugins entirely: `desktop-application`, `mcp-application` and
+Three modules skip convention plugins entirely: `desktop-application`, `data-mcp-impl` and
 `docs-generator`. Each is a binary with its own deliberately minimal classpath, not a library in
 the app's dependency graph. This is documented rather than accidental — do not "fix" it by
 inventing a fifth plugin for a module count of one.
@@ -46,7 +46,6 @@ inventing a fifth plugin for a module count of one.
 ./gradlew :desktop-application:run        # run the app
 ./gradlew build                           # compile everything and run every test
 ./gradlew :presentation-core-ui:test      # one module
-./gradlew :mcp-application:installDist    # build the MCP launcher
 ./gradlew generateDocs                    # render this site into docs-generator/build/docs-site
 ```
 

@@ -20,7 +20,7 @@ no Android, iOS, macOS or Linux target anywhere. Sources live in the classic lay
   library; the plain-JVM `:desktop-application` (applies `kotlin("jvm")` +
   `composeMultiplatform` + `composeCompiler` directly, no convention plugin) hosts `main()`,
   which calls `initKoin()` then `dev.rectify.io.source.window.runDesktopApp()`.
-  `:mcp-application` follows the same precedent for the MCP server binary.
+  There is no second runnable module: the MCP endpoint is served by the app itself.
 - Compose Multiplatform runs perfectly well on a JVM-only project — it is used here for the
   renderer and the component library, not for multiplatform reach.
 

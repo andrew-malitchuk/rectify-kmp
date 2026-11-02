@@ -21,8 +21,15 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+
+            // jpackage builds the bundled runtime from the modules it can SEE on the
+            // classpath, and the MCP endpoint reaches for `com.sun.net.httpserver` by
+            // reflection-free import only at runtime. Without this the packaged app opens its
+            // window and then cannot serve the protocol at all — a failure that never shows up
+            // in `./gradlew run`, which uses the full system JDK.
+            modules("jdk.httpserver")
             packageName = "Rectify"
-            packageVersion = "0.1.0"
+            packageVersion = "0.2.0"
 
             // One source SVG, three platform formats — see `icons/` and
             // `.claude/rules/icon-branding-placeholder.md` for how to regenerate them.

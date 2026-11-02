@@ -35,10 +35,10 @@ Topic-specific conventions (network, database, domain layer, mappers, Koin DI, O
 
 - **compose-application** — Shared module containing the app composition and the Rectify window
 - **desktop-application** — Plain-JVM module hosting the desktop `main()` entry point
-- **mcp-application** — Plain-JVM module hosting the MCP (Model Context Protocol) server Claude Code spawns over stdio; reads back the latest annotation batch Rectify published (see `mcp-application/CLAUDE.md`)
 - **docs-generator** — Build-time tool that renders `docs/` into the static GitHub Pages site (`./gradlew generateDocs`); see `docs/README.md`
 - **build-logic/convention** — Gradle convention plugins for standardized module configuration
-- **data-handoff-api** — Koin-free library module defining the cross-process handoff contract (`AnnotationHandoff`) and wire envelope shared between the desktop app and `:mcp-application` (see `data-handoff-api/CLAUDE.md`)
+- **data-handoff-api** — Koin-free library module defining the handoff contract (`AnnotationHandoff`) and wire envelope the app writes and the MCP endpoint reads (see `data-handoff-api/CLAUDE.md`)
+- **data-mcp-impl** — The MCP (Model Context Protocol) endpoint, served by the app itself over loopback HTTP at `http://127.0.0.1:7391/mcp` (see `data-mcp-impl/CLAUDE.md`)
 
 ### Convention Plugins (build-logic)
 

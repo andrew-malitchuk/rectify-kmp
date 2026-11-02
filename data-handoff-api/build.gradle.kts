@@ -8,5 +8,5 @@ dependencies {
 }
 
 // Deliberately NOT applying the di convention plugin: it exposes koin-core as api(), which
-// would land Koin on :mcp-application's classpath for no benefit. The Koin binding lives in
+// would land Koin on :data-mcp-impl's classpath for no benefit. The Koin binding lives in
 // presentation-feature-mirror.

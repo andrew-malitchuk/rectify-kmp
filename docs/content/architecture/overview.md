@@ -26,7 +26,7 @@ generate under `rectify_kmp.*`. That is a name, not a target.
 |---|---|
 | `desktop-application` | The runnable one. `main()` calls `initKoin()` then `runDesktopApp()`. Nothing else. |
 | `compose-application` | The app composition: the Rectify window, the Koin graph assembly. A library — it has no `main()`. |
-| `mcp-application` | A second, separate process. The MCP server Claude Code spawns over stdio. |
+| `data-mcp-impl` | The MCP endpoint the app serves over loopback HTTP. Same process as the window. |
 | `docs-generator` | A build-time tool that renders this site out of `docs/`. |
 
 The runnable module is separate from the UI module on purpose: `compose-application` stays a
@@ -45,7 +45,7 @@ nothing but the entry point and the packaging config.
 | `data-preference-api` / `-impl` | Typed preference sources over `multiplatform-settings`. |
 | `data-database-api` / `-impl` | Composable datasource base interfaces, and the Room implementation behind them. |
 | `data-repository-impl` | Repository implementations and the mappers that convert resources to domain models. |
-| `data-handoff-api` | The cross-process handoff contract, shared with `mcp-application`. Koin-free by design. |
+| `data-handoff-api` | The handoff contract the UI writes and `data-mcp-impl` reads. Koin-free by design. |
 
 Parsers live in the **api** module, not the impl, deliberately. They are pure functions over
 strings and bytes, so keeping them there means they are testable with no hardware attached —

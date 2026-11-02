@@ -17,6 +17,8 @@ dependencies {
     implementation(libs.kermit)
 
     implementation(projects.domainCore)
+    implementation(projects.dataHandoffApi)
+    implementation(projects.dataMcpImpl)
     implementation(projects.dataPreferenceImpl)
     implementation(projects.dataDatabaseImpl)
     implementation(projects.dataDeviceImpl)

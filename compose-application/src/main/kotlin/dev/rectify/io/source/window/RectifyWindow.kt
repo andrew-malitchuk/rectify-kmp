@@ -3,6 +3,7 @@ package dev.rectify.io.source.window
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -129,7 +130,10 @@ private const val OPEN_SESSION_LABEL = "Open session"
  * composition can be rendered without Koin, an AWT window or a running preference store.
  */
 @Composable
-public fun ApplicationScope.RectifyWindow() {
+public fun ApplicationScope.RectifyWindow(
+    mcpUrl: String? = null,
+    mcpRegisterCommand: String? = null,
+) {
     val observeLanguage = koinInject<ObserveApplicationLanguageUseCase>()
     val languageCode by observeLanguage()
         .map { it.getOrNull() ?: "en" }
@@ -254,6 +258,8 @@ public fun ApplicationScope.RectifyWindow() {
                             mirror = mirror,
                             frame = frame,
                             verifyFrames = verifyFrames,
+                            mcpUrl = mcpUrl,
+                            mcpRegisterCommand = mcpRegisterCommand,
                             onIntent = onMirrorIntent,
                             sidePanel = { tab ->
                                 // Exhaustive by design (no `else`): the tab strip is what
@@ -381,6 +387,8 @@ internal fun RectifyShellContent(
     mirror: MirrorUiState = MirrorUiState(),
     frame: ImageBitmap? = null,
     verifyFrames: VerifyFrames? = null,
+    mcpUrl: String? = null,
+    mcpRegisterCommand: String? = null,
     onIntent: (MirrorIntent) -> Unit = {},
 ) {
     RectifyWindowShell(
@@ -448,6 +456,8 @@ internal fun RectifyShellContent(
             ShellStatusBar(
                 leading = { MirrorStatusLine(state = mirror) },
                 trailing = {
+                    McpStatus(url = mcpUrl, registerCommand = mcpRegisterCommand)
+                    Spacer(modifier = Modifier.width(Theme.spacing.spacingS))
                     Text(
                         text = VERSION_LABEL,
                         style = Theme.typography.monoMeta,
@@ -605,4 +615,42 @@ private fun SendCompleteToastPreview() {
 @Composable
 private fun SendCompleteToastDarkPreview() {
     AppTheme(mode = ThemeMode.Dark) { SendCompleteToastPreviewContent() }
+}
+
+/** Status-bar copy for a reachable endpoint; the port is what the user actually needs to see. */
+private const val MCP_READY_PREFIX: String = "MCP :"
+
+/** Status-bar copy when the endpoint could not bind — see `openMcpEndpoint` in DesktopEntry. */
+private const val MCP_OFFLINE_LABEL: String = "MCP off"
+
+/**
+ * The MCP endpoint indicator in the status bar's trailing slot.
+ *
+ * Clicking it copies the `claude mcp add` one-liner, which is the entire installation procedure
+ * now that the server runs in-process: there is no second binary to fetch, unpack or point at.
+ * The command carries the port this instance actually bound, so a second Rectify that landed on
+ * a different port still hands out a correct line.
+ *
+ * With no endpoint it reads `MCP off` and does nothing — the one state the old out-of-process
+ * server could not report at all, because nothing in the UI knew whether it was running.
+ */
+@Composable
+private fun McpStatus(url: String?, registerCommand: String?) {
+    val label = url?.let { MCP_READY_PREFIX + it.substringAfterLast(':').substringBefore('/') }
+        ?: MCP_OFFLINE_LABEL
+    Text(
+        text = label,
+        style = Theme.typography.monoMeta,
+        color = if (url == null) Theme.color.ink3 else Theme.color.ink2,
+        maxLines = 1,
+        modifier = Modifier
+            .then(
+                if (registerCommand == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable { copyToClipboard(registerCommand) }
+                },
+            )
+            .padding(horizontal = Theme.spacing.spacingXS),
+    )
 }

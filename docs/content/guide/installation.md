@@ -14,9 +14,8 @@ The fastest path — no build tools required.
    xattr -dr com.apple.quarantine /Applications/Rectify.app
    ```
 
-4. Download `rectify-mcp-*.zip` from the same release and
-   [wire it into Claude Code](#wire-up-the-mcp-server) — the app alone cannot hand anything
-   over, and the server needs a JDK 21+ of its own.
+4. Open Rectify and [point Claude Code at it](#wire-up-the-mcp-server) — one command, which
+   the app itself puts on your clipboard.
 
 > **Apple Silicon only.** Compose Desktop packages for the OS and architecture it is built
 > on, and the release is built on arm64. On an Intel Mac, build from source.
@@ -57,43 +56,18 @@ The window opens at 1240×820 and starts polling for devices immediately.
 
 ## Wire up the MCP server
 
-Rectify writes each sent batch to a handoff slot on disk. A separate, very small server process
-reads that slot back out and answers Claude Code over stdio. Claude Code starts and stops that
-process itself — you never run it by hand.
+Rectify serves the Model Context Protocol itself, on the loopback interface, for as long as the
+app is open. There is nothing to install and nothing to spawn — no second binary, no JDK of its
+own, no absolute path to get wrong.
 
-**It needs a JDK 21 or newer on the machine.** The runtime jpackage bundles inside
-`Rectify.app` is a stripped jlink image with no `bin/` directory, so there is no `java`
-executable in it to borrow — the server cannot reuse the app's runtime. Any JDK 21+ on your
-`PATH` (or a `JAVA_HOME` pointing at one) will do; the server is built for class file 65 and
-runs on anything newer.
-
-### From the release
+Click **`MCP :7391`** in Rectify's status bar. That copies the registration line for the port
+this instance actually bound:
 
 ```shell
-unzip ~/Downloads/rectify-mcp-*.zip -d ~/.rectify
+claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
 ```
 
-That gives you `~/.rectify/rectify-mcp/bin/rectify-mcp`. Putting it under `~/.rectify/` is a
-convention, not a requirement — the server reads the handoff slot by absolute path and does not
-care where it lives itself.
-
-### From source
-
-```shell
-./gradlew :mcp-application:installDist
-```
-
-That produces `mcp-application/build/install/rectify-mcp/bin/rectify-mcp`.
-
-### Register it with Claude Code
-
-Either let the CLI write the entry:
-
-```shell
-claude mcp add rectify ~/.rectify/rectify-mcp/bin/rectify-mcp
-```
-
-or copy the example config at the repository root and edit the path:
+Or write it into a config file yourself — copy the example at the repository root:
 
 ```shell
 cp .mcp.json.example .mcp.json
@@ -103,19 +77,36 @@ cp .mcp.json.example .mcp.json
 {
   "mcpServers": {
     "rectify": {
-      "command": "/Users/you/.rectify/rectify-mcp/bin/rectify-mcp",
-      "args": []
+      "type": "http",
+      "url": "http://127.0.0.1:7391/mcp"
     }
   }
 }
 ```
 
-**Use an absolute path.** A relative one resolves against wherever Claude Code was started,
-which is normally *your* project, not the Rectify checkout — the example ships with a relative
-path only because it is meant to be used from inside this repository.
-
 Restart Claude Code and it will list a `rectify` server exposing one tool,
 `get_latest_annotation`.
+
+### What the status bar tells you
+
+| Reads | Means |
+|---|---|
+| `MCP :7391` | The endpoint is up on the default port. Click to copy the registration line. |
+| `MCP :7392` (or higher) | 7391 was taken, so Rectify moved. Re-register with the copied line. |
+| `MCP off` | No port in the scan range could be bound. Everything except the handoff still works. |
+
+### Two things the endpoint deliberately refuses
+
+- **Requests from anywhere but this machine.** It binds the loopback address only, never the
+  wildcard — an MCP endpoint on `0.0.0.0` would offer your latest screenshots to everyone on the
+  network.
+- **Cross-origin requests.** Any page in your browser can POST to `127.0.0.1`. Browsers always
+  send an `Origin` header on such a request, and a non-local one is refused, so a website you
+  happen to have open cannot read what you were debugging.
+
+**The app has to be running.** This is the trade against the old out-of-process server, which
+could answer while Rectify was closed. In practice the app is open anyway — you just annotated
+in it, and you will return to it for Verify.
 
 ## Verify the wiring
 
