@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.FrameWindowScope
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -97,6 +98,9 @@ private const val VERSION_LABEL = "Rectify 0.4"
  * Platform sources offered by the toolbar switch, in `PlatformModel` order — the index the
  * switch reports is mapped straight onto that enum.
  */
+/** Classpath name of the window icon; `icons/` is wired in as a resource root. */
+private const val WINDOW_ICON = "rectify.png"
+
 private val PLATFORM_SOURCES = listOf("Android", "iOS")
 
 /** Chip label before anything has been selected. */
@@ -117,9 +121,9 @@ private const val OPEN_SESSION_LABEL = "Open session"
 /**
  * The Rectify desktop window: geometry, macOS chrome, shortcut dispatch and preference wiring.
  *
- * This is the desktop root — it replaces `App()`/`NavigationHost` on this platform, which is
- * why it repeats the theme observation rather than reusing it: `App()` is still the
- * Android/iOS root and stays untouched.
+ * This is the application root — it replaces `App()`/`NavigationHost`, which is why it
+ * repeats the theme observation rather than reusing it: `App()` is still the
+ * navigation-host root and stays untouched.
  *
  * Everything visual comes from [RectifyShellContent]; everything stateful lives here, so the
  * composition can be rendered without Koin, an AWT window or a running preference store.
@@ -165,6 +169,11 @@ public fun ApplicationScope.RectifyWindow() {
         onCloseRequest = ::exitApplication,
         state = rememberWindowState(size = ShellWindowDefaults.InitialSize),
         title = WINDOW_TITLE,
+        // Windows and Linux draw this in the title bar and the task switcher. macOS draws no
+        // window icon at all, so there it is inert — the dock icon comes from the app bundle
+        // (`nativeDistributions`) or from `-Xdock:icon` on a Gradle run. Set here anyway so
+        // the three platforms do not need three different answers.
+        icon = painterResource(WINDOW_ICON),
         onPreviewKeyEvent = { event ->
             handleShellShortcut(
                 event = event,
@@ -294,12 +303,17 @@ public fun ApplicationScope.RectifyWindow() {
                             },
                         )
                     }
-                    // Last child, top-centre: the stacked snackbar slides in from above
+                    // Last child, bottom-centre: the stacked snackbar slides up into view
                     // (`Constant.Y_TARGET_ENTER`), and it must not take hit-testing away from
                     // the stage, so it sits over everything rather than inside the shell.
+                    // The bottom inset clears `ShellStatusBar`, which the shell draws at the
+                    // very bottom of this same Box — without it the toast lands on top of the
+                    // machine-state line.
                     StackedSnackbarHost(
                         hostState = snackbarHostState,
-                        modifier = Modifier.align(Alignment.TopCenter),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = ShellWindowDefaults.StatusBarHeight),
                     )
                 }
             }
@@ -390,7 +404,11 @@ internal fun RectifyShellContent(
                         detail = mirror.chipDetail(),
                     )
                 },
-                stagedCounter = {
+                // All three trailing slots stand down with no device selected: staged,
+                // Clear and Resolve & Send are all operations on a frame that cannot exist
+                // yet, so rendering them greyed out advertises actions with no path to being
+                // takeable.
+                stagedCounter = if (!mirror.hasDeviceTarget) null else { ->
                     CounterBadge(
                         count = mirror.stagedCount,
                         state = if (mirror.stagedCount == 0) {
@@ -401,7 +419,7 @@ internal fun RectifyShellContent(
                         label = "staged",
                     )
                 },
-                clearAction = {
+                clearAction = if (!mirror.hasDeviceTarget) null else { ->
                     AppButton(
                         text = CLEAR_LABEL,
                         // Empties the staged list; the frame stays pinned until Resume live
@@ -414,7 +432,7 @@ internal fun RectifyShellContent(
                         enabled = mirror.canClear,
                     )
                 },
-                primaryAction = {
+                primaryAction = if (!mirror.hasDeviceTarget) null else { ->
                     AppButton(
                         text = SEND_LABEL,
                         onClick = { onIntent(MirrorIntent.ResolveAndSend) },
@@ -443,7 +461,9 @@ internal fun RectifyShellContent(
         },
         modifier = modifier,
         state = state,
-        sidePanel = sidePanel,
+        // `RectifyWindowShell` drops the resize handle with the panel, so this is the whole
+        // of "no annotation surfaces until there is something to annotate".
+        sidePanel = sidePanel.takeIf { mirror.hasDeviceTarget },
         // The tab counts and the toolbar badge read the same number by construction.
         // AC-34's omit-at-zero rule lives in `core/history`'s historyBadgeCount, which is
         // testable; this module has no test wiring, so it only put-or-omits what it is given.

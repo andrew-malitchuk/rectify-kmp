@@ -22,7 +22,7 @@ import java.io.File
  * list instead of being rejected with a dialog of its own.
  *
  * Confined to [Dispatchers.Swing], i.e. the EDT, because `FileDialog` is a blocking native
- * modal and AWT requires it there. `coroutines-swing` is already a `desktopMain` dependency for
+ * modal and AWT requires it there. `coroutines-swing` is already a dependency of this module for
  * exactly this. Running it on whatever dispatcher Orbit happened to invoke the side-effect
  * handler on was the shipped behaviour until this was caught in review — it worked by luck,
  * since Compose Desktop usually lands there anyway, and would have broken the first time it

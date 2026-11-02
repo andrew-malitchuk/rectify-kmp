@@ -1,15 +1,14 @@
 # compose-application
 
-> Shared KMP application shell — root composable, Koin initialization, and platform entry points.
+> Shared application shell — root composable, Koin initialization, and the desktop window.
 
 ## Responsibility
 
-Wires all KMP modules together into a running application. Hosts the root `App()` composable
-(locale, theme, navigation), bootstraps the full Koin dependency graph via `initKoin()`, and
-provides platform-specific entry points for Android, iOS, and Desktop.
+Wires all modules together into a running application. Hosts the root `App()` composable
+(locale and theme), bootstraps the full Koin dependency graph via `initKoin()`, and
+provides the desktop entry point.
 
-This module is an AGP KMP **library** — it has no `android:name` Application class.
-The Android entry point (`RectifyApplication`, `MainActivity`) lives in `:aos-application`.
+This module is a **library** — the runnable `main()` lives in `:desktop-application`.
 
 ## Dependencies
 
@@ -20,7 +19,6 @@ The Android entry point (`RectifyApplication`, `MainActivity`) lives in `:aos-ap
 | `data-repository-impl` | Repository implementations |
 | `domain-usecase-impl` | Use case implementations |
 | `presentation-core-localisation` | `AppLocaleProvider` |
-| `presentation-core-navigation-api/impl` | `NavigationHost`, navigation contracts |
 | `presentation-core-styling` | `AppTheme`, `ThemeMode` |
 | `presentation-core-ui` | Shared UI kit |
 | All `presentation-feature-*` | Feature screens and their DI modules |
@@ -29,36 +27,10 @@ The Android entry point (`RectifyApplication`, `MainActivity`) lives in `:aos-ap
 
 | Declaration | Platform | Description |
 |---|---|---|
-| `App()` | commonMain | Root composable — injects use cases, observes locale/theme, hosts navigation |
-| `initKoin(config)` | commonMain | Initializes Koin with all module registrations; accepts optional platform config |
-| `doInitKoin()` | commonMain | No-arg wrapper for `initKoin()` — used by iOS Swift entry point |
-| `MainViewController()` | iosMain | Returns `UIViewController` wrapping `App()` for SwiftUI integration |
-| `runDesktopApp()` | desktopMain | Opens a `Window` running `App()` via Compose Desktop's `application {}` |
+| `initKoin(config)` | main | Initializes Koin with all module registrations; accepts optional extra config |
+| `runDesktopApp()` | main | Opens the Rectify `Window` via Compose Desktop's `application {}` |
 
 ## Usage
-
-### Android (called from `aos-application`)
-
-```kotlin
-// RectifyApplication.kt
-initKoin {
-    androidLogger()
-    androidContext(this@RectifyApplication)
-}
-
-// MainActivity.kt
-setContent { App() }
-```
-
-### iOS (called from Swift)
-
-```swift
-// iOSApp.swift
-KoinHelperKt.doInitKoin()
-
-// ContentView.swift
-MainViewControllerKt.MainViewController()
-```
 
 ### Desktop (called from `desktop-application`)
 
@@ -73,7 +45,6 @@ fun main() {
 ## Demo Mode
 
 `App()` contains a `private const val DEMO_MODE = false`. Set it to `true` to replace the
-navigation host with the design system preview (`StyleguideScreen`).
 
 **Never commit `DEMO_MODE = true`** — it disables the entire application flow.
 
