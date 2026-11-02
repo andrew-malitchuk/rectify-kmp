@@ -35,6 +35,16 @@ configuration, and several modules use `api(projects.x)`.
 `compose.desktop.currentOs` — the Skiko renderer — is only on the `application` plugin. Only the
 module that actually opens a window needs it.
 
+## Where the version lives
+
+`versionName` in `gradle/libs.versions.toml`, and nowhere else. `:desktop-application` reads it
+for `packageVersion`, `:compose-application` generates `RECTIFY_VERSION` from it into
+`build/generated/version/`, and the MCP endpoint is handed the app's version at startup instead
+of carrying its own. Before this, the status bar and the endpoint both claimed `0.4` against a
+0.2.0 release — two hardcoded literals nobody remembered to bump.
+
+## Convention plugins
+
 Three modules skip convention plugins entirely: `desktop-application`, `data-mcp-impl` and
 `docs-generator`. Each is a binary with its own deliberately minimal classpath, not a library in
 the app's dependency graph. This is documented rather than accidental — do not "fix" it by

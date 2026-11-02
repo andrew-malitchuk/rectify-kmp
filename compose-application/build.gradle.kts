@@ -30,3 +30,27 @@ dependencies {
     implementation(projects.presentationFeatureMirror)
 }
 
+
+// The one place the product version becomes Kotlin. Generated rather than hand-written so the
+// status bar and the version the MCP endpoint reports can never drift from what was packaged —
+// they were "Rectify 0.4" against a 0.2.0 release until this existed.
+val generateVersion = tasks.register("generateRectifyVersion") {
+    val version = libs.versions.versionName.get()
+    val outputDir = layout.buildDirectory.dir("generated/version")
+    inputs.property("version", version)
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("dev/rectify/io/core/version/RectifyVersion.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package dev.rectify.io.core.version
+
+            /** Generated from `versionName` in the version catalogue. Do not edit. */
+            internal const val RECTIFY_VERSION: String = "$version"
+
+            """.trimIndent(),
+        )
+    }
+}
+sourceSets["main"].kotlin.srcDir(generateVersion)

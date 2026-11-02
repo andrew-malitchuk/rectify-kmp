@@ -59,11 +59,13 @@ public class McpEndpoint internal constructor(private val server: HttpServer) {
  * endpoint on `0.0.0.0` would hand everyone on the café wifi the user's latest screenshots.
  *
  * @param handoff the slot to read annotation batches out of.
+ * @param serverVersion the APP's version, reported to the agent as `serverInfo.version`.
  * @param preferredPort the first port to try; see [PORT_SCAN_RANGE] for what happens if it is taken.
  * @throws java.io.IOException if every port in the scan range is taken.
  */
 public fun startMcpEndpoint(
     handoff: AnnotationHandoff,
+    serverVersion: String,
     preferredPort: Int = DEFAULT_MCP_PORT,
 ): McpEndpoint {
     val loopback = InetAddress.getLoopbackAddress()
@@ -75,7 +77,7 @@ public fun startMcpEndpoint(
             lastFailure = alreadyBound
             continue
         }
-        server.createContext(MCP_PATH, McpHttpHandler(McpDispatcher(handoff)))
+        server.createContext(MCP_PATH, McpHttpHandler(McpDispatcher(handoff, serverVersion)))
         server.executor = Executors.newFixedThreadPool(WORKER_THREADS)
         server.start()
         return McpEndpoint(server)

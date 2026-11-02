@@ -29,7 +29,7 @@ compose.desktop {
             // in `./gradlew run`, which uses the full system JDK.
             modules("jdk.httpserver")
             packageName = "Rectify"
-            packageVersion = "0.2.0"
+            packageVersion = libs.versions.versionName.get()
 
             // One source SVG, three platform formats — see `icons/` and
             // `.claude/rules/icon-branding-placeholder.md` for how to regenerate them.
@@ -42,7 +42,7 @@ compose.desktop {
             macOS {
                 iconFile.set(rootProject.file("icons/rectify.icns"))
                 // jpackage refuses a macOS app-version whose first component is 0, so the
-                // bundle carries 1.0.0 while the release itself is 0.1.0. This is Apple's
+                // bundle carries 1.0.0 while the release itself is 0.x. This is Apple's
                 // CFBundleShortVersionString — an ordering field for the OS, not the product
                 // version. The git tag and CHANGELOG.md are the source of truth.
                 packageVersion = "1.0.0"

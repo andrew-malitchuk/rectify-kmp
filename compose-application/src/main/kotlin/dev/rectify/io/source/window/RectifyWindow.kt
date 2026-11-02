@@ -49,6 +49,7 @@ import androidx.compose.ui.window.rememberWindowState
 import co.touchlab.kermit.Logger
 import dev.rectify.io.core.chooser.chooseAdbPath
 import dev.rectify.io.core.clipboard.copyToClipboard
+import dev.rectify.io.core.version.RECTIFY_VERSION
 import domain.core.source.model.ThemeModel
 import domain.core.source.model.device.PlatformModel
 import domain.usecase.api.source.usecase.configuration.GetSidePanelWidthUseCase
@@ -106,8 +107,8 @@ private val log = Logger.withTag("RectifyWindow")
 /** Window title — hidden by the macOS full-size-content chrome, still used by the window menu. */
 private const val WINDOW_TITLE = "Rectify"
 
-/** Build marker rendered in the status bar's trailing slot. */
-private const val VERSION_LABEL = "Rectify 0.4"
+/** Build marker rendered in the status bar's trailing slot, from the generated version. */
+private val VERSION_LABEL = "Rectify $RECTIFY_VERSION"
 
 /**
  * Platform sources offered by the toolbar switch, in `PlatformModel` order — the index the

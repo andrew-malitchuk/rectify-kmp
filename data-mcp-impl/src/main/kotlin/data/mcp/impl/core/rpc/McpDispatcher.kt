@@ -28,6 +28,15 @@ internal const val MCP_PROTOCOL_VERSION: String = "2024-11-05"
  */
 internal const val SUPPORTED_ENVELOPE_VERSION: Int = 1
 
+/**
+ * What `serverInfo.version` says when nobody passed a version in.
+ *
+ * The endpoint does not own a version of its own — it reports the APP's, injected at startup
+ * from the generated `RECTIFY_VERSION`. A hardcoded one here is how the server came to tell
+ * Claude Code it was "0.4" while the app shipped as 0.2.0.
+ */
+internal const val UNKNOWN_SERVER_VERSION: String = "unknown"
+
 /** The one tool this server exposes (TAC-3). */
 internal const val GET_LATEST_ANNOTATION_TOOL: String = "get_latest_annotation"
 
@@ -69,6 +78,7 @@ private val document: Json = Json { prettyPrint = true }
  */
 internal class McpDispatcher(
     private val handoff: AnnotationHandoff,
+    private val serverVersion: String = UNKNOWN_SERVER_VERSION,
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) {
 
@@ -113,7 +123,7 @@ internal class McpDispatcher(
                 putJsonObject("capabilities") { putJsonObject("tools") {} }
                 putJsonObject("serverInfo") {
                     put("name", "rectify")
-                    put("version", "0.4")
+                    put("version", serverVersion)
                 }
             }
 

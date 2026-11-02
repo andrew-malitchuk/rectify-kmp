@@ -5,6 +5,7 @@ import co.touchlab.kermit.Logger
 import data.handoff.api.source.handoff.AnnotationHandoff
 import data.mcp.impl.source.server.McpEndpoint
 import data.mcp.impl.source.server.startMcpEndpoint
+import dev.rectify.io.core.version.RECTIFY_VERSION
 import org.koin.mp.KoinPlatform
 
 private val log = Logger.withTag("DesktopEntry")
@@ -46,7 +47,10 @@ public fun runDesktopApp() {
  * failure by far.
  */
 private fun openMcpEndpoint(): McpEndpoint? = runCatching {
-    startMcpEndpoint(KoinPlatform.getKoin().get<AnnotationHandoff>())
+    startMcpEndpoint(
+        handoff = KoinPlatform.getKoin().get<AnnotationHandoff>(),
+        serverVersion = RECTIFY_VERSION,
+    )
 }.onFailure {
     log.w(it) { "MCP endpoint could not start — Claude Code will not be able to reach Rectify." }
 }.getOrNull()

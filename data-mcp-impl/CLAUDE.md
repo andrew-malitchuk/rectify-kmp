@@ -52,6 +52,13 @@ system JDK.
 - **Binding is loopback-only.** Never change `InetAddress.getLoopbackAddress()` to a wildcard
   bind to "make it reachable" — that publishes the user's screenshots to the network.
 
+## The endpoint does not own a version
+
+`serverInfo.version` is the APP's version, passed into `startMcpEndpoint(serverVersion = …)`
+from the generated `RECTIFY_VERSION`. The default, `UNKNOWN_SERVER_VERSION`, exists for tests
+only. Do not hardcode a version here again — a literal in this file is how the server came to
+tell Claude Code it was `0.4` while the app shipped as `0.2.0`.
+
 ## The status-bar card
 
 `McpStatus`/`McpConnectCard` in `:compose-application`'s `RectifyWindow.kt` render the chip and

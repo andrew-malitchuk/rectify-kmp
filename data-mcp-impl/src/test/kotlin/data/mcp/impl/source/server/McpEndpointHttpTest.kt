@@ -24,7 +24,7 @@ class McpEndpointHttpTest {
 
     @BeforeTest
     fun start() {
-        endpoint = startMcpEndpoint(FakeAnnotationHandoff { null }, preferredPort = 17391)
+        endpoint = startMcpEndpoint(FakeAnnotationHandoff { null }, serverVersion = "test", preferredPort = 17391)
     }
 
     @AfterTest
@@ -38,6 +38,7 @@ class McpEndpointHttpTest {
         assertEquals(200, status)
         assertTrue(body.contains("\"protocolVersion\""), "initialize must echo a protocol version: $body")
         assertTrue(body.contains("\"rectify\""), "initialize must name the server: $body")
+        assertTrue(body.contains("\"test\""), "initialize must report the version it was given: $body")
     }
 
     @Test

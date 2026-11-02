@@ -31,6 +31,14 @@ a config file.
 - **The standalone `rectify-mcp` server and its release artifact.** There is nothing to install
   alongside the app any more, and no separate JDK 21 requirement for the handoff to work.
 
+## Fixed
+
+- **The version the app showed was not the version it was.** The status bar read `Rectify 0.4`
+  and the MCP endpoint reported `serverInfo.version` of `0.4`, both hardcoded, against a 0.2.0
+  release. `versionName` in the version catalogue is now the single source: `:desktop-application`
+  packages with it, `:compose-application` generates `RECTIFY_VERSION` from it, and the endpoint
+  is handed the app's version rather than owning one. The release process bumps one line.
+
 ## Security
 
 - The endpoint binds the loopback address only, never the wildcard, and refuses any request
