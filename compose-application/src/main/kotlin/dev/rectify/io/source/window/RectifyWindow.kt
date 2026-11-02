@@ -650,7 +650,7 @@ private const val MCP_COPIED_LABEL: String = "Copied"
 private const val MCP_CARD_GAP_PX: Int = 8
 
 /** How wide the card is allowed to get before the command wraps. */
-private val McpCardMaxWidth: Dp = 420.dp
+private val McpCardMaxWidth: Dp = 560.dp
 
 /**
  * The MCP endpoint indicator in the status bar's trailing slot.
