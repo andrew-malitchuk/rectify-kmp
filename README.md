@@ -15,6 +15,8 @@ the app and eyeballing the same spot from memory.
 Rectify keeps that context attached to the report, and keeps the original frame around so the
 check is a diff rather than a recollection.
 
+![Rectify mirroring a connected Pixel, with the annotation panel open](docs/assets/screenshots/mirror.png)
+
 ## The loop
 
 Every other tool in this space does one leg of it. Rectify's claim is the round trip.

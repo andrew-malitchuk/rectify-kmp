@@ -73,5 +73,7 @@ A useful habit is to let the prompt do the describing and add only what the boxe
 
 ## Follow-ups
 
+![The Payload tab showing the generated prompt, the crop and the view hierarchy](../../assets/screenshots/payload.png)
+
 After a [Verify](../verify/) run finds something still off, the same button becomes **Send
 follow-up** and re-stages just the annotations that failed — not the whole batch.

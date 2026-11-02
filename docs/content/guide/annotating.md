@@ -72,5 +72,7 @@ wrong view.
 
 ## Resuming
 
+![A frozen frame with one numbered annotation and its comment](../../assets/screenshots/annotate.png)
+
 **Resume live** unfreezes and goes back to the stream. A successful send does it automatically
 and resets the staged counter to zero — see [Sending to Claude Code](../sending/).

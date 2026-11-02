@@ -69,4 +69,6 @@ now-stale frame explaining what happened, your staged annotations stay pinned to
 frame, and **Resolve & Send** keeps working — the batch is already captured, and sending it does
 not need the device back.
 
+![The device picker listing a physical Pixel and a shut-down emulator](../../assets/screenshots/device-picker.png)
+
 **Reconnect** in the banner restarts the stream.

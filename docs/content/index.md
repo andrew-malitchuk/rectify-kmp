@@ -13,6 +13,8 @@ Then re-capture the device and let Rectify prove, per annotation, that the fix l
 
 ## The loop
 
+![Rectify mirroring a connected Pixel, with the annotation panel open](assets/screenshots/mirror.png)
+
 Every other tool in this space does one leg of it. Rectify's whole claim is the round trip.
 
 <div class="cards">
