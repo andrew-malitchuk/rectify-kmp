@@ -47,9 +47,12 @@ Then wire the handoff into Claude Code. Rectify writes each sent batch to a slot
 server process reads it back out over stdio, and Claude Code spawns that process itself:
 
 ```shell
-./gradlew :mcp-application:installDist   # the binary must exist before Claude Code can spawn it
-cp .mcp.json.example .mcp.json           # make the path absolute if you run Claude Code elsewhere
+unzip rectify-mcp-0.1.0.zip -d ~/.rectify            # or ./gradlew :mcp-application:installDist
+claude mcp add rectify ~/.rectify/rectify-mcp/bin/rectify-mcp
 ```
+
+The server is a plain JVM process and needs a **JDK 21+** on the machine — the runtime inside
+`Rectify.app` is a stripped jlink image with no `java` to borrow.
 
 Restart Claude Code and it lists a `rectify` server exposing one tool, `get_latest_annotation`.
 Full walkthrough: [Installation](docs/content/guide/installation.md).

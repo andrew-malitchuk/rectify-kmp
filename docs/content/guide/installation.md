@@ -14,9 +14,9 @@ The fastest path — no build tools required.
    xattr -dr com.apple.quarantine /Applications/Rectify.app
    ```
 
-4. Download `rectify-mcp-*.zip` from the same release, unpack it, and
+4. Download `rectify-mcp-*.zip` from the same release and
    [wire it into Claude Code](#wire-up-the-mcp-server) — the app alone cannot hand anything
-   over.
+   over, and the server needs a JDK 21+ of its own.
 
 > **Apple Silicon only.** Compose Desktop packages for the OS and architecture it is built
 > on, and the release is built on arm64. On an Intel Mac, build from source.
@@ -61,8 +61,23 @@ Rectify writes each sent batch to a handoff slot on disk. A separate, very small
 reads that slot back out and answers Claude Code over stdio. Claude Code starts and stops that
 process itself — you never run it by hand.
 
-**Build the launcher first.** There is no packaged distribution, so the binary has to exist
-before Claude Code can spawn it:
+**It needs a JDK 21 or newer on the machine.** The runtime jpackage bundles inside
+`Rectify.app` is a stripped jlink image with no `bin/` directory, so there is no `java`
+executable in it to borrow — the server cannot reuse the app's runtime. Any JDK 21+ on your
+`PATH` (or a `JAVA_HOME` pointing at one) will do; the server is built for class file 65 and
+runs on anything newer.
+
+### From the release
+
+```shell
+unzip ~/Downloads/rectify-mcp-*.zip -d ~/.rectify
+```
+
+That gives you `~/.rectify/rectify-mcp/bin/rectify-mcp`. Putting it under `~/.rectify/` is a
+convention, not a requirement — the server reads the handoff slot by absolute path and does not
+care where it lives itself.
+
+### From source
 
 ```shell
 ./gradlew :mcp-application:installDist
@@ -70,7 +85,15 @@ before Claude Code can spawn it:
 
 That produces `mcp-application/build/install/rectify-mcp/bin/rectify-mcp`.
 
-**Then register it.** Copy the example config at the repository root:
+### Register it with Claude Code
+
+Either let the CLI write the entry:
+
+```shell
+claude mcp add rectify ~/.rectify/rectify-mcp/bin/rectify-mcp
+```
+
+or copy the example config at the repository root and edit the path:
 
 ```shell
 cp .mcp.json.example .mcp.json
@@ -80,16 +103,16 @@ cp .mcp.json.example .mcp.json
 {
   "mcpServers": {
     "rectify": {
-      "command": "./mcp-application/build/install/rectify-mcp/bin/rectify-mcp",
+      "command": "/Users/you/.rectify/rectify-mcp/bin/rectify-mcp",
       "args": []
     }
   }
 }
 ```
 
-The path is relative to wherever Claude Code is started. If you run Claude Code from a different
-directory than the Rectify checkout — which is the normal case, since you are working on *your*
-project, not on Rectify — make it absolute.
+**Use an absolute path.** A relative one resolves against wherever Claude Code was started,
+which is normally *your* project, not the Rectify checkout — the example ships with a relative
+path only because it is meant to be used from inside this repository.
 
 Restart Claude Code and it will list a `rectify` server exposing one tool,
 `get_latest_annotation`.
