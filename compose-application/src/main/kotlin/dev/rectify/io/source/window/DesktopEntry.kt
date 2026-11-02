@@ -15,8 +15,8 @@ private val log = Logger.withTag("DesktopEntry")
  *
  * Called from the `:desktop-application` module's `main()` entry point.
  *
- * Renders [RectifyWindow] rather than `App()`: the Rectify shell *is* the application root,
- * so there is no navigation host here. `App()` stays the navigation-host root, untouched.
+ * Renders [RectifyWindow] directly: the Rectify shell *is* the application root. There is no
+ * navigation host and no `App()` composable — both went with the navigation modules.
  *
  * Also owns the MCP endpoint's lifetime. `application` blocks until the last window closes, so
  * the endpoint starts before the first frame and stops after the last one — the agent can reach

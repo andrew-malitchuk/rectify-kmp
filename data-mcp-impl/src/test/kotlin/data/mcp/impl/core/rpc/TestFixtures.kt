@@ -73,12 +73,9 @@ internal class FakeAnnotationHandoff(
     private val envelopeProvider: () -> AnnotationEnvelope?,
 ) : AnnotationHandoff {
 
-    var publishCount: Int = 0
-        private set
-
-    override suspend fun publish(envelope: AnnotationEnvelope, images: List<HandoffImage>) {
-        publishCount++
-    }
+    // Publishing is not this double's job: nothing on the read path calls it, and the counter
+    // that used to live here was written and never read.
+    override suspend fun publish(envelope: AnnotationEnvelope, images: List<HandoffImage>) = Unit
 
     override suspend fun latest(): AnnotationEnvelope? = envelopeProvider()
 

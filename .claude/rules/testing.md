@@ -14,8 +14,8 @@ only it fakes a settings backend and only it tests suspending sources. The rule 
 that is why anything needing a unit test (e.g. window constants) lives in `presentation-core-ui`
 rather than in `:compose-application`.
 
-The `junit` catalog entry is still declared-but-unused and is a candidate for deletion
-(see `version-catalog-hygiene.md`); `kotlin-test` reuses the existing `kotlin` version ref and
+The `junit` catalog entry this rule once flagged as declared-but-unused is gone — the JVM
+migration removed it. `kotlin-test` reuses the existing `kotlin` version ref and
 resolves its JVM variant automatically, so plain `kotlin.test` assertions in `src/test` are all
 that is needed.
 

@@ -171,8 +171,6 @@ public fun AutoSizeText(
     )
 }
 
-internal const val SIZE_DECREASER = 0.9f
-
 /**
  * Stages of the binary-search-like font-size reduction algorithm used by [AutoSizeText].
  *
