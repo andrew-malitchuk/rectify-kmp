@@ -15,7 +15,9 @@ the app and eyeballing the same spot from memory.
 Rectify keeps that context attached to the report, and keeps the original frame around so the
 check is a diff rather than a recollection.
 
-![Rectify mirroring a connected Pixel, with the annotation panel open](docs/assets/screenshots/mirror.png)
+![Dragging a box on a mirrored Pixel, writing a comment, and sending the batch to Claude Code](docs/assets/screenshots/demo.gif)
+
+<sub>Drag → the frame freezes → comment → <kbd>⌘↵</kbd>. The agent gets the crop, the hierarchy and a prompt that names the view.</sub>
 
 ## The loop
 
@@ -28,6 +30,81 @@ Every other tool in this space does one leg of it. Rectify's claim is the round 
 | **Measure** | Hold <kbd>⌥</kbd> and the box snaps to the matched hierarchy node, reporting dp gaps to its neighbours. |
 | **Send** | One action packages frame, crops, hierarchy XML and a generated prompt, and publishes them for the local MCP server to serve. |
 | **Verify** | Re-capture the device and diff each annotated region against the frozen original. Matches resolve; mismatches offer a one-click re-send. |
+
+## Example: one round trip
+
+Say the **Memory** row in Developer options has the wrong padding. The whole exchange is four
+steps.
+
+**1. Box it.** Drag over the row. The frame freezes at those exact pixels, the box becomes
+annotation **1**, and a popover asks what is wrong. Type `check it` and press <kbd>↵</kbd>.
+
+Hold <kbd>⌥</kbd> while dragging instead, and the box snaps to the matched hierarchy node and
+reports its dp gaps to the neighbours — useful when the complaint *is* the spacing.
+
+**2. Send it.** <kbd>⌘↵</kbd>. The status line walks `Streaming → Frozen → Dumping hierarchy →
+Sent`, and the Payload tab shows exactly what left:
+
+```
+Fix 1 UI issue.
+1 · 1080×2400
+
+#1 android.widget.LinearLayout[6] · 1012×215
+   "check it"
+
+Attached: frame.png, 1 crop, inline view hierarchy XML (no file)
+```
+
+**3. Ask the agent.** In Claude Code, in your own project:
+
+```
+Read my latest Rectify annotation and fix it.
+```
+
+It calls `get_latest_annotation` and gets back the batch — prompt, hierarchy, and `file://`
+references to the full frame and to each per-annotation crop:
+
+```json
+{
+  "sessionId": "…",
+  "ageSeconds": 12,
+  "device": { "label": "Pixel_8", "widthPx": 1080, "heightPx": 2400 },
+  "annotationCount": 1,
+  "prompt": "Fix 1 UI issue. …",
+  "hierarchy": { "available": true, "xml": "<hierarchy …>" },
+  "frame": { "ref": "file:///…/frame.png", "widthPx": 1080, "heightPx": 2400 },
+  "annotations": [
+    {
+      "index": 1,
+      "rect": { "left": 34, "top": 605, "right": 1046, "bottom": 820 },
+      "comment": "check it",
+      "cropRef": "file:///…/crop-1.png"
+    }
+  ]
+}
+```
+
+The crop matters more than it looks: an agent handed a 1080×2400 screenshot has to *find* your
+region before it can reason about it. The hierarchy matters for the same reason — *the price
+label is misaligned* and *the view with id `item_price` is misaligned* are different
+instructions, and only one of them survives a round trip through prose.
+
+**4. Prove it.** After the agent edits and rebuilds, hit **Verify**. Rectify re-captures the
+device and diffs each annotated region against the frozen original. Matches resolve themselves;
+anything that did not move offers a one-click re-send — same boxes, same comments, no
+re-annotating.
+
+### Things worth knowing
+
+- **Batch before you send.** Drag several boxes first; one <kbd>⌘↵</kbd> ships them all as one
+  numbered list, which reads far better to an agent than four separate asks.
+- **Edit the prompt.** The Payload tab's **Edit** lets you say what the boxes cannot — *"this
+  only happens in dark mode"* — without leaving the app.
+- **The History tab keeps every batch** with its frames and crops, so you can re-send an old
+  one or diff against it later.
+- **No device, no problem, up to a point.** Rectify starts without `adb` or Xcode tools and
+  tells you what is missing; it just cannot mirror until one of them is there.
+
 
 ## Quick start
 

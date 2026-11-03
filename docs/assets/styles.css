@@ -406,7 +406,8 @@ h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity: 1; }
 }
 .prose tbody tr:hover { background: var(--hover); }
 
-.prose img { max-width: 100%; height: auto; border-radius: var(--r-sm); border: 1px solid var(--line); }
+.prose img,
+.prose video { max-width: 100%; height: auto; border-radius: var(--r-sm); border: 1px solid var(--line); }
 
 /* ---------- landing ---------- */
 

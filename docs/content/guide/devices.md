@@ -53,6 +53,8 @@ it talks about simulators and `xcrun simctl` instead.
 Once the stream starts the stage shows the live frame, and the status bar reports what is
 actually happening:
 
+![A live mirror of a connected Pixel, with the annotation panel on the right](../../assets/screenshots/mirror.png)
+
 ```
 ● LIVE   adb Android Debug Bridge version 1.0.41 · 1080x2400 · 0.3 fps · polling · latency —
 ```
