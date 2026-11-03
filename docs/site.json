@@ -1,0 +1,53 @@
+{
+  "title": "Rectify",
+  "tagline": "Mirror a device, box the bug, hand it to Claude Code — then prove it was fixed.",
+  "repository": "https://github.com/andrew-malitchuk/rectify-kmp",
+  "baseUrl": "",
+  "sections": [
+    {
+      "title": "Overview",
+      "pages": [
+        { "title": "What Rectify is", "file": "index.md", "slug": "index",
+          "description": "A desktop tool that turns a live device mirror into an annotation surface for Claude Code." }
+      ]
+    },
+    {
+      "title": "Guide",
+      "pages": [
+        { "title": "Installation", "file": "guide/installation.md", "slug": "guide/installation",
+          "description": "Requirements, building from source, and wiring the MCP server into Claude Code." },
+        { "title": "Connecting a device", "file": "guide/devices.md", "slug": "guide/devices",
+          "description": "Device discovery over adb and simctl/idb, the picker, and starting a mirror." },
+        { "title": "Annotating a frame", "file": "guide/annotating.md", "slug": "guide/annotating",
+          "description": "Drag to freeze a frame, write a comment, and stage a batch of annotations." },
+        { "title": "Measure mode", "file": "guide/measure.md", "slug": "guide/measure",
+          "description": "Hold Option to snap to a hierarchy node and capture dp gaps." },
+        { "title": "Sending to Claude Code", "file": "guide/sending.md", "slug": "guide/sending",
+          "description": "What Resolve and Send packages, and how the MCP handoff works." },
+        { "title": "Verify and history", "file": "guide/verify.md", "slug": "guide/verify",
+          "description": "Re-capture the device and diff each annotation to confirm the fix landed." },
+        { "title": "Troubleshooting", "file": "guide/troubleshooting.md", "slug": "guide/troubleshooting",
+          "description": "Error cards, recovery actions and the diagnostics the status bar reports." }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "pages": [
+        { "title": "Module map", "file": "architecture/overview.md", "slug": "architecture/overview",
+          "description": "Every module, the layer it belongs to, and the direction dependencies run." },
+        { "title": "State management", "file": "architecture/state.md", "slug": "architecture/state",
+          "description": "The Orbit MVI shape every feature screen follows." },
+        { "title": "Dependency injection", "file": "architecture/di.md", "slug": "architecture/di",
+          "description": "How the Koin graph is assembled and why module order matters." },
+        { "title": "Data and persistence", "file": "architecture/data.md", "slug": "architecture/data",
+          "description": "Preferences, the Room history database, and the cross-process handoff slot." },
+        { "title": "Device transport", "file": "architecture/devices.md", "slug": "architecture/devices",
+          "description": "Process spawning, tool resolution, parsers, and the capture loop." },
+        { "title": "Design system", "file": "architecture/design-system.md", "slug": "architecture/design-system",
+          "description": "Tokens, the atomic UI kit, and the rules that keep them honest." },
+        { "title": "Build and testing", "file": "architecture/build.md", "slug": "architecture/build",
+          "description": "Convention plugins, the JVM-only target, and what the test suite covers." }
+      ]
+    }
+  ]
+}
