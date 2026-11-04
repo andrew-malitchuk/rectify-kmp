@@ -22,7 +22,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Rectify"
-            packageVersion = "1.0.0"
+            packageVersion = "0.1.0"
 
             // One source SVG, three platform formats — see `icons/` and
             // `.claude/rules/icon-branding-placeholder.md` for how to regenerate them.
@@ -32,7 +32,14 @@ compose.desktop {
             // that is not just redundant, it LOSES — a second -Xdock:icon wins over the
             // first, so a hand-rolled one replaces this multi-resolution .icns with
             // whatever single raster it names.
-            macOS { iconFile.set(rootProject.file("icons/rectify.icns")) }
+            macOS {
+                iconFile.set(rootProject.file("icons/rectify.icns"))
+                // jpackage refuses a macOS app-version whose first component is 0, so the
+                // bundle carries 1.0.0 while the release itself is 0.1.0. This is Apple's
+                // CFBundleShortVersionString — an ordering field for the OS, not the product
+                // version. The git tag and CHANGELOG.md are the source of truth.
+                packageVersion = "1.0.0"
+            }
             windows { iconFile.set(rootProject.file("icons/rectify.ico")) }
             linux { iconFile.set(rootProject.file("icons/rectify.png")) }
         }
