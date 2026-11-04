@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/data">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data and persistence · Rectify</title>
+<meta name="description" content="Preferences, the Room history database, and the cross-process handoff slot.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/" class="active">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>Data and persistence</h1><p>Three separate stores, for three different jobs.</p><h2 id="preferences">Preferences<a class="anchor" href="#preferences" aria-label="Link to this section">#</a></h2><p><code>data-preference-api</code> defines one generic contract:</p><pre><code class="language-kotlin">public interface PreferenceSource&lt;T&gt; {
+    public suspend fun getData(): T
+    public suspend fun setData(data: T)
+    public fun observeData(): Flow&lt;T&gt;
+}
+</code></pre><p>One typed interface per preference (<code>ThemePreferenceSource : PreferenceSource&lt;ThemePreference&gt;</code>),
+one implementation in <code>data-preference-impl</code>. Each holds a <code>MutableStateFlow</code> seeded from the
+backing store on construction: <code>setData</code> writes through and updates the flow, <code>observeData</code>
+returns it, and <code>getData</code> re-reads fresh so the first call is correct before anything has
+subscribed.</p><p>The backend is <code>multiplatform-settings</code> over <code>java.util.prefs.Preferences</code>, under the node
+<code>dev.rectify.io</code>.</p><p>Keys follow <code>pref_&lt;name&gt;</code> and are declared as constants in the implementation. <strong>Never change
+an existing key</strong> — it silently orphans the stored value on every existing install. Add a new
+key and migrate.</p><h2 id="history-room">History — Room<a class="anchor" href="#history-room" aria-label="Link to this section">#</a></h2><p><code>data-database-api</code> holds only generic, composable base interfaces: <code>ReadableDataSource&lt;T&gt;</code>,
+<code>ObservableDataSource&lt;T&gt;</code>, <code>AppendableDataSource&lt;T&gt;</code>, <code>UpsertableDataSource&lt;T&gt;</code>. No
+entity-specific interface lives there — those are defined where they are consumed, by mixing in
+whichever bases apply.</p><p><code>data-database-impl</code> is the Room implementation: two tables, <code>history_entry</code> (one row per sent
+batch) and <code>history_annotation</code> (its per-rect children, with
+<code>FOREIGN KEY … ON DELETE CASCADE</code>, indexed on <code>batchId</code>). The database file is
+<code>~/.rectify/rectify.db</code>.</p><h3 id="no-constructedby">No <code>@ConstructedBy</code><a class="anchor" href="#no-constructedby" aria-label="Link to this section">#</a></h3><p>That annotation and <code>RoomDatabaseConstructor</code> are the Room <strong>KMP</strong> pattern, needed only when an
+<code>expect object</code> constructor has to be generated per target. This is a plain JVM project: Room
+resolves <code>AppDatabase_Impl</code> itself and <code>AppDatabase</code> carries <code>@Database</code> alone. KSP is wired
+with the ordinary <code>ksp(libs.room.compiler)</code> configuration — no per-target entries.</p><h3 id="migrations">Migrations<a class="anchor" href="#migrations" aria-label="Link to this section">#</a></h3><p><code>exportSchema = true</code>; the exported JSON for version 1 is in <code>schemas/</code>. Destructive migration
+is <strong>disabled</strong> — there is no fallback, so a missing migration crashes the app on an existing
+install.</p><p>The current schema shipped at version 1 with no <code>Migration</code>, which is an exception rather than
+the rule: the same change relocated the database from <code>~/rectify.db</code> to <code>~/.rectify/rectify.db</code>,
+a path nothing had ever written to, which is what made skipping it provably safe. The next
+change touching either table on the <em>current</em> path needs a real migration.</p><h2 id="the-handoff-slot">The handoff slot<a class="anchor" href="#the-handoff-slot" aria-label="Link to this section">#</a></h2><p><code>data-handoff-api</code> is the contract shared between the desktop app and the MCP server. It is the
+only module both processes depend on.</p><p>It deliberately does <strong>not</strong> apply the DI convention plugin. That plugin exposes <code>koin-core</code> as
+<code>api()</code>, which would put Koin on the MCP server's classpath for no benefit. The Koin binding for
+<code>AnnotationHandoff</code> lives in <code>presentation-feature-mirror</code> instead.</p><p>The slot is a file at <code>~/.rectify/handoff</code>, with bulk bytes under <code>~/.rectify/history/</code>. Both
+are created on demand, owner-only (<code>rwx------</code>) where the filesystem supports POSIX
+permissions — <code>~</code> is world-readable on a typical Linux box, and these files contain screenshots
+of whatever was on the device.</p><p>A file is the right primitive here precisely because it outlives both processes. Rectify can
+close and the batch is still readable; Claude Code can start afterwards and still get it.</p><h2 id="mappers">Mappers<a class="anchor" href="#mappers" aria-label="Link to this section">#</a></h2><p>Data-layer resources never cross into the domain. <code>data-repository-impl/core/mapper/</code> converts
+between them via <code>ModelResourceMapper</code>, whose <code>toModel</code> and <code>toResource</code> are plain functions —
+which is why they are some of the best-tested code in the repository.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/architecture/di/">
+<span class="pager-dir">Previous</span><span class="pager-title">Dependency injection</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/devices/">
+<span class="pager-dir">Next</span><span class="pager-title">Device transport</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#preferences">Preferences</a></li>
+<li class="lvl-2"><a href="#history-room">History — Room</a></li>
+<li class="lvl-3"><a href="#no-constructedby">No @ConstructedBy</a></li>
+<li class="lvl-3"><a href="#migrations">Migrations</a></li>
+<li class="lvl-2"><a href="#the-handoff-slot">The handoff slot</a></li>
+<li class="lvl-2"><a href="#mappers">Mappers</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

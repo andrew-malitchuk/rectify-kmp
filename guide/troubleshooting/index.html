@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-slug="guide/troubleshooting">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting · Rectify</title>
+<meta name="description" content="Error cards, recovery actions and the diagnostics the status bar reports.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/" class="active">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Troubleshooting</h1><p>Rectify reports problems as structured error cards on the stage rather than as dialogs or log
+lines: an icon, a title, a plain-language body, a copyable command where one would help, a
+primary and secondary action, and a diagnostic footer showing exactly what was observed.</p><p>The footer is the part worth reading when the card itself does not match your situation.</p><h2 id="adb-is-not-on-the-path">adb is not on the PATH<a class="anchor" href="#adb-is-not-on-the-path" aria-label="Link to this section">#</a></h2><p>Rectify probes, in order: the path you chose yourself, <code>$ANDROID_HOME</code>, <code>$ANDROID_SDK_ROOT</code>,
+<code>~/Library/Android/sdk</code>, <code>/opt/homebrew/bin</code>, <code>/usr/local/bin</code>, then <code>PATH</code>.</p><p><code>PATH</code> alone is not enough, because a GUI application launched from Finder does not inherit the
+shell <code>PATH</code> your terminal has — which is why the explicit candidate list exists.</p><p><strong>Fix it</strong> by installing the platform tools, or use <strong>Locate adb…</strong> on the card to point at the
+binary directly. Your choice is remembered and re-read on every probe, so changing it mid-session
+takes effect without a restart.</p><h2 id="no-device-detected">No device detected<a class="anchor" href="#no-device-detected" aria-label="Link to this section">#</a></h2><p><code>adb</code> answers but sees nothing attached.</p><ul><li>USB debugging enabled on the handset?</li><li><strong>Allow</strong> tapped on the authorisation prompt? An unauthorised device is attached but unusable,
+  and the card counts it separately.</li><li>Cable capable of data, not just charge?</li></ul><p><strong>Restart adb server</strong> on the card runs <code>adb kill-server</code> and lets the next poll start it again.
+This is the single most effective action for a device that was working a minute ago.</p><h2 id="multiple-devices-connected">Multiple devices connected<a class="anchor" href="#multiple-devices-connected" aria-label="Link to this section">#</a></h2><p>Not an error — an ambiguity. The card lists what it found inline and defaults its primary action
+to the top one. Pick the one you meant, or use the toolbar chip to open the full picker.</p><h2 id="no-simulator-is-running">No simulator is running<a class="anchor" href="#no-simulator-is-running" aria-label="Link to this section">#</a></h2><p>Xcode knows about your simulators but none is booted. The card offers <strong>Boot simulator</strong> and a
+copyable <code>xcrun simctl boot &lt;udid&gt;</code> line.</p><p>Note the command addresses the simulator by udid, never by name: two simulators can legitimately
+share a name under one runtime, so the name does not identify what the button would boot.</p><h2 id="iphone-not-trusted">iPhone not trusted<a class="anchor" href="#iphone-not-trusted" aria-label="Link to this section">#</a></h2><p>Unlock the device and tap <strong>Trust</strong> on the prompt, then retry. The card also offers <strong>Use
+simulator</strong> as a way out, since a simulator needs no trust relationship.</p><h2 id="xcode-command-line-tools-missing">Xcode command line tools missing<a class="anchor" href="#xcode-command-line-tools-missing" aria-label="Link to this section">#</a></h2><p>Install Xcode, then run <code>xcode-select --install</code>. Rectify uses <code>xcrun</code> and <code>simctl</code> for
+simulators, and <code>idb</code> for physical devices.</p><h2 id="the-stream-dropped-mid-session">The stream dropped mid-session<a class="anchor" href="#the-stream-dropped-mid-session" aria-label="Link to this section">#</a></h2><p>A floating banner over the stale frame, not an error card — your annotations are kept, and
+<strong>Resolve &amp; Send</strong> still works. Press <strong>Reconnect</strong> when the device is back.</p><h2 id="claude-code-gets-nothing-from-the-tool">Claude Code gets nothing from the tool<a class="anchor" href="#claude-code-gets-nothing-from-the-tool" aria-label="Link to this section">#</a></h2><p>Work through these in order:</p><ol><li><strong>Did a batch actually send?</strong> Check the History tab. No row means no payload.</li><li><strong>Was the launcher built?</strong> <code>./gradlew :mcp-application:installDist</code> must have run at least
+   once. There is no packaged distribution.</li><li><strong>Is the path right?</strong> The command in <code>.mcp.json</code> is relative to wherever Claude Code was
+   started, not to the Rectify checkout. Make it absolute if the two differ.</li><li><strong>Same user account?</strong> The slot is at <code>~/.rectify/handoff</code> and is owner-only. Rectify and
+   Claude Code must run as the same user.</li></ol><p>The server writes diagnostics to stderr; Claude Code's MCP logs will show them.</p><h2 id="the-status-bar-as-a-diagnostic">The status bar as a diagnostic<a class="anchor" href="#the-status-bar-as-a-diagnostic" aria-label="Link to this section">#</a></h2><p>The bottom line is the honest account of what the machine is doing:</p><pre><code>● LIVE   adb Android Debug Bridge version 1.0.41 · 1080x2400 · 0.3 fps · polling · latency —
+</code></pre><p>A tool version proves the binary was found and answered. A resolution proves a frame decoded.
+<code>0.0 fps</code> with a device selected means the capture loop is not producing frames, which is a
+different problem from not finding the device at all.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/verify/">
+<span class="pager-dir">Previous</span><span class="pager-title">Verify and history</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/overview/">
+<span class="pager-dir">Next</span><span class="pager-title">Module map</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#adb-is-not-on-the-path">adb is not on the PATH</a></li>
+<li class="lvl-2"><a href="#no-device-detected">No device detected</a></li>
+<li class="lvl-2"><a href="#multiple-devices-connected">Multiple devices connected</a></li>
+<li class="lvl-2"><a href="#no-simulator-is-running">No simulator is running</a></li>
+<li class="lvl-2"><a href="#iphone-not-trusted">iPhone not trusted</a></li>
+<li class="lvl-2"><a href="#xcode-command-line-tools-missing">Xcode command line tools missing</a></li>
+<li class="lvl-2"><a href="#the-stream-dropped-mid-session">The stream dropped mid-session</a></li>
+<li class="lvl-2"><a href="#claude-code-gets-nothing-from-the-tool">Claude Code gets nothing from the tool</a></li>
+<li class="lvl-2"><a href="#the-status-bar-as-a-diagnostic">The status bar as a diagnostic</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-slug="guide/verify">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify and history · Rectify</title>
+<meta name="description" content="Re-capture the device and diff each annotation to confirm the fix landed.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/" class="active">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Verify and history</h1><h2 id="history">History<a class="anchor" href="#history" aria-label="Link to this section">#</a></h2><p><kbd>⌘3</kbd>, or the <strong>History</strong> tab. Every batch you have ever sent, newest first, grouped by
+day. Each row carries a thumbnail, the first comment as a title, the note count, the time, a
+short batch id, and a status chip.</p><p>History survives restarts — it is a real SQLite database at <code>~/.rectify/rectify.db</code>, with the
+frames and crops beside it under <code>~/.rectify/history/</code>.</p><h2 id="verify">Verify<a class="anchor" href="#verify" aria-label="Link to this section">#</a></h2><p>Each row has a <strong>Verify</strong> action. It is not gated on status: nothing in the current version
+automatically marks a batch fixed, so gating would make the button unreachable exactly when you
+want it.</p><p>Verify does four things:</p><ol><li><strong>Loads the batch</strong> back off disk — the original frozen frame and every annotation rectangle.</li><li><strong>Re-captures</strong> the device as it is right now.</li><li><strong>Diffs</strong> each annotation region, comparing pixels against the original and re-reading the
+   view hierarchy for layout changes.</li><li><strong>Reports</strong> a verdict per annotation, not per batch.</li></ol><p>The stage shows BEFORE and AFTER side by side, each with its annotation rectangles drawn on, so
+you can see what the verdict is talking about.</p><h2 id="reading-the-verdicts">Reading the verdicts<a class="anchor" href="#reading-the-verdicts" aria-label="Link to this section">#</a></h2><table><thead><tr><th>Verdict</th><th>Means</th></tr></thead><tbody><tr><td><span class="dot dot-fixed"></span> <strong>Fixed</strong></td><td>The region changed in a way consistent with the report.</td></tr><tr class="intellij-row-even"><td><span class="dot dot-warn"></span> <strong>Still off</strong></td><td>The region is materially unchanged.</td></tr></tbody></table><p>The result panel sums it up as <code>n of m fixed</code>, and each row shows the measurement that led to
+the call — <code>top Δ4dp → 4dp</code>, <code>66×74dp → 66×74dp</code>.</p><p>A combined pixel and hierarchy diff is used rather than pixels alone because a layout fix can
+move a view without changing many pixels, and an unrelated content change can alter a great many
+pixels without touching the bug.</p><h2 id="acting-on-the-result">Acting on the result<a class="anchor" href="#acting-on-the-result" aria-label="Link to this section">#</a></h2><p><strong>Send follow-up</strong> re-stages only the annotations that came back <em>Still off</em> and sends them as a
+new batch — the agent gets the ones that still need work, not a re-run of everything.</p><p><strong>Mark all as verified</strong> closes the batch out by hand, for the cases where you can see the fix
+is right and the diff is being pedantic.</p><p><strong>Back to live</strong> leaves verification and returns to the mirror.</p><h2 id="requirements">Requirements<a class="anchor" href="#requirements" aria-label="Link to this section">#</a></h2><p>Verify needs the device attached and showing the same screen. It re-captures what is in front of
+it — it cannot navigate your app. Get the app to the screen the batch came from first.</p><p>If the device is gone, verification reports that rather than guessing; the batch stays in
+history and can be verified later.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/sending/">
+<span class="pager-dir">Previous</span><span class="pager-title">Sending to Claude Code</span>
+</a>
+<a class="next" href="/rectify-kmp/guide/troubleshooting/">
+<span class="pager-dir">Next</span><span class="pager-title">Troubleshooting</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#history">History</a></li>
+<li class="lvl-2"><a href="#verify">Verify</a></li>
+<li class="lvl-2"><a href="#reading-the-verdicts">Reading the verdicts</a></li>
+<li class="lvl-2"><a href="#acting-on-the-result">Acting on the result</a></li>
+<li class="lvl-2"><a href="#requirements">Requirements</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

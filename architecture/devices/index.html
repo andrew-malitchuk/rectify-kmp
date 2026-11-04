@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/devices">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device transport · Rectify</title>
+<meta name="description" content="Process spawning, tool resolution, parsers, and the capture loop.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/" class="active">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>Device transport</h1><p>How a desktop JVM ends up with a bitmap of a phone screen, and a view tree to go with it.</p><h2 id="one-process-spawn-site">One process-spawn site<a class="anchor" href="#one-process-spawn-site" aria-label="Link to this section">#</a></h2><p><code>ProcessBuilder</code> appears in exactly one file in the entire repository:</p><pre><code>data-device-impl/src/main/kotlin/data/device/impl/core/process/ProcessRunner.kt
+</code></pre><p>It is <code>internal</code>. Everything that needs to run something routes through it. The audit is one
+command, and it must print exactly one path:</p><pre><code class="language-shell">grep -rln &quot;ProcessBuilder&quot; --include=&quot;*.kt&quot; . | grep -v /build/
+</code></pre><p>Four details inside it are load-bearing rather than decorative:</p><ul><li><strong>Two concurrent drains.</strong> stdout and stderr are read on separate coroutines. Reading them
+  sequentially deadlocks the moment a large <code>screencap</code> payload meets a long stderr.</li><li><strong><code>withTimeoutOrNull</code>, never <code>withTimeout</code>.</strong> The repo-wide <code>resultLauncher</code> catches
+  <code>Throwable</code>, which includes <code>CancellationException</code> — a <code>withTimeout</code> here would be swallowed
+  and re-reported as an ordinary failure, hiding real cancellation.</li><li><strong><code>destroyForcibly</code> in <code>finally</code></strong>, plus a live-child registry and a shutdown hook, so closing
+  the window leaves no orphaned <code>adb</code> processes.</li><li><strong><code>spawnDetached</code> is deliberately <em>not</em> registered</strong> with that hook. Booting an emulator
+  starts the user's process, not ours; quitting Rectify must not kill their emulator.</li></ul><h2 id="finding-the-tools">Finding the tools<a class="anchor" href="#finding-the-tools" aria-label="Link to this section">#</a></h2><p><code>ToolResolver</code> probes in a fixed order: the path the user chose, <code>$ANDROID_HOME</code>,
+<code>$ANDROID_SDK_ROOT</code>, <code>~/Library/Android/sdk</code>, <code>/opt/homebrew/bin</code>, <code>/usr/local/bin</code>, then
+<code>PATH</code>.</p><p><code>PATH</code> alone is not enough: a GUI application launched from Finder does not inherit the shell
+<code>PATH</code>, so a developer whose terminal finds <code>adb</code> perfectly well would still see &quot;not found&quot;.</p><p>Successes are cached; the user's override is re-read on <strong>every</strong> probe, so changing it
+mid-session takes effect without a restart.</p><h2 id="parsers-live-in-the-api-module">Parsers live in the api module<a class="anchor" href="#parsers-live-in-the-api-module" aria-label="Link to this section">#</a></h2><p>Every parser — <code>AdbDevicesParser</code>, <code>SimctlDevicesParser</code>, <code>IdbTargetsParser</code>, <code>AvdListParser</code>,
+<code>UiAutomatorDumpParser</code>, <code>WmOutputParser</code>, <code>PngTrim</code> — is in <code>data-device-api</code>, not the impl.</p><p>They are pure functions over strings and bytes. Keeping them in the api module means the
+discovery logic is testable with <code>kotlin.test</code> and <strong>no device attached</strong>, which is most of what
+this feature is. Moving one into <code>data-device-impl</code> would drag the process layer onto the test
+classpath and make those tests need hardware.</p><p>86 tests cover the parsers and their invariants.</p><p>Parsers never throw. Empty, truncated or otherwise unreadable input yields an empty result, and
+drift is caught one layer up — <code>IosHostSourceImpl</code> raises output it did not recognise rather
+than letting a silently-empty parse look like &quot;no devices&quot;.</p><h2 id="the-capture-loop">The capture loop<a class="anchor" href="#the-capture-loop" aria-label="Link to this section">#</a></h2><p><code>ScreencapMirrorTransport</code> is an adaptive single-flight loop:</p><ol><li>Await each capture before issuing the next, so <code>adb</code> processes cannot stack up.</li><li>Trim to the PNG signature.</li><li>Read width and height from the IHDR chunk <strong>per frame</strong>, so device rotation is followed
+   without a reconnect.</li><li>Count overdue slots as dropped frames.</li><li>Delay only the remainder of the capture floor.</li></ol><p>The same class serves both platforms — Android and iOS differ only in which executor they were
+handed.</p><p><strong>This is a staged implementation.</strong> It knowingly does not meet the ~150 ms glass-to-glass
+target in the requirements. <code>MirrorTransport</code> exists as an interface precisely so the real
+transport (scrcpy-server with in-JVM H.264 decode) can drop in without touching the UI. The
+waiver is recorded.</p><p><code>nowMs: () -&gt; Long</code> is injected, defaulting to <code>System::currentTimeMillis</code>, purely so the
+dropped-frame arithmetic and the fps window are testable — wall-clock time cannot be moved by a
+virtual-time dispatcher.</p><h2 id="qualified-bindings">Qualified bindings<a class="anchor" href="#qualified-bindings" aria-label="Link to this section">#</a></h2><p>See <a href="../di/">Dependency injection</a>. The short version: <code>DeviceCommandExecutor</code> and
+<code>MirrorTransport</code> exist once per mirrored platform and are <strong>always</strong> qualified, with no
+unqualified fallback, so a forgotten qualifier fails loudly.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/architecture/data/">
+<span class="pager-dir">Previous</span><span class="pager-title">Data and persistence</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/design-system/">
+<span class="pager-dir">Next</span><span class="pager-title">Design system</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#one-process-spawn-site">One process-spawn site</a></li>
+<li class="lvl-2"><a href="#finding-the-tools">Finding the tools</a></li>
+<li class="lvl-2"><a href="#parsers-live-in-the-api-module">Parsers live in the api module</a></li>
+<li class="lvl-2"><a href="#the-capture-loop">The capture loop</a></li>
+<li class="lvl-2"><a href="#qualified-bindings">Qualified bindings</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

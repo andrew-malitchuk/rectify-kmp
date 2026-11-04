@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" data-slug="index">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rectify</title>
+<meta name="description" content="A desktop tool that turns a live device mirror into an annotation surface for Claude Code.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-landing">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/" class="active">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<div class="hero">
+<h1>Rectify</h1><p>Mirror a connected device, drag a box over the bug, and hand Claude Code a payload it can
+actually act on — the frame, per-annotation crops, the view hierarchy and a generated prompt.
+Then re-capture the device and let Rectify prove, per annotation, that the fix landed.</p><p><a class="cta" href="guide/installation/">Get started</a></p></div>
+<h2 id="the-loop">The loop<a class="anchor" href="#the-loop" aria-label="Link to this section">#</a></h2><p>Every other tool in this space does one leg of it. Rectify's whole claim is the round trip.</p><div class="cards">
+<div class="card">
+<h3 id="mirror"><span class="dot dot-measure"></span>Mirror<a class="anchor" href="#mirror" aria-label="Link to this section">#</a></h3>
+<p>A live frame from an Android handset or emulator over <code>adb</code>, or an iOS simulator
+over <code>xcrun simctl</code> and <code>idb</code>.</p>
+</div>
+<div class="card">
+<h3 id="annotate"><span class="dot dot-annotate"></span>Annotate<a class="anchor" href="#annotate" aria-label="Link to this section">#</a></h3>
+<p>Drag on the frame. The exact pixels freeze, and the box becomes a numbered annotation with
+a comment field.</p>
+</div>
+<div class="card">
+<h3 id="measure"><span class="dot dot-measure"></span>Measure<a class="anchor" href="#measure" aria-label="Link to this section">#</a></h3>
+<p>Hold <kbd>⌥</kbd> and the box snaps to the matched hierarchy node, reporting dp gaps to its
+neighbours.</p>
+</div>
+<div class="card">
+<h3 id="send"><span class="dot dot-warn"></span>Send<a class="anchor" href="#send" aria-label="Link to this section">#</a></h3>
+<p>One action packages frame, crops, hierarchy XML and prompt, and publishes them for the local
+MCP server to serve.</p>
+</div>
+<div class="card">
+<h3 id="verify"><span class="dot dot-fixed"></span>Verify<a class="anchor" href="#verify" aria-label="Link to this section">#</a></h3>
+<p>Re-capture the device and diff each annotated region against the frozen original. Matches
+resolve; mismatches offer a one-click re-send.</p>
+</div>
+</div>
+<h2 id="why-it-exists">Why it exists<a class="anchor" href="#why-it-exists" aria-label="Link to this section">#</a></h2><p>Spotting a visual bug on a real device is easy. Describing it precisely is not.</p><p>The usual path is a screenshot, a sentence of prose about roughly where the problem is, and the
+loss of everything that made the observation useful — the exact region, the pixel or dp gap, the
+view that owns it. Then, once the agent claims a fix, there is no way to check it other than
+re-opening the app and eyeballing the same spot from memory.</p><p>Rectify keeps that context attached to the report, and keeps the original frame around so the
+check is a diff rather than a recollection.</p><h2 id="what-it-is-not">What it is not<a class="anchor" href="#what-it-is-not" aria-label="Link to this section">#</a></h2><ul><li><strong>Not a cloud service.</strong> Everything runs locally. There is no account, no sync and no auth.</li><li><strong>Not a remote-control tool.</strong> The mirror is read-only; Rectify never injects taps or keys.</li><li><strong>Not cross-platform as an app.</strong> Rectify itself runs on the desktop only. The devices it
+  talks to are Android and iOS; see <a href="architecture/overview/">Module map</a> for why that
+  distinction matters when reading the source.</li></ul><h2 id="where-to-go-next">Where to go next<a class="anchor" href="#where-to-go-next" aria-label="Link to this section">#</a></h2><p>If you want to <strong>use</strong> it, start with <a href="guide/installation/">Installation</a> and read the Guide in
+order — it follows the loop above.</p><p>If you want to <strong>work on</strong> it, start with the <a href="architecture/overview/">Module map</a>. The
+architecture section assumes you have the repository open.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="next" href="/rectify-kmp/guide/installation/">
+<span class="pager-dir">Next</span><span class="pager-title">Installation</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#the-loop">The loop</a></li>
+<li class="lvl-3"><a href="#mirror">Mirror</a></li>
+<li class="lvl-3"><a href="#annotate">Annotate</a></li>
+<li class="lvl-3"><a href="#measure">Measure</a></li>
+<li class="lvl-3"><a href="#send">Send</a></li>
+<li class="lvl-3"><a href="#verify">Verify</a></li>
+<li class="lvl-2"><a href="#why-it-exists">Why it exists</a></li>
+<li class="lvl-2"><a href="#what-it-is-not">What it is not</a></li>
+<li class="lvl-2"><a href="#where-to-go-next">Where to go next</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

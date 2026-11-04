@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-slug="guide/sending">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sending to Claude Code · Rectify</title>
+<meta name="description" content="What Resolve and Send packages, and how the MCP handoff works.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/" class="active">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Sending to Claude Code</h1><h2 id="resolve-and-send">Resolve and Send<a class="anchor" href="#resolve-and-send" aria-label="Link to this section">#</a></h2><p>The toolbar's primary action, or <kbd>⌘↵</kbd>. It is disabled while nothing is staged and
+while a send is already in flight.</p><p>The status line reports each step as it happens:</p><pre><code>● Streaming  ›  ● Frozen  ›  ● Dumping hierarchy  ›  ● Sent
+</code></pre><p><code>Dumping hierarchy</code> is the slow one — roughly 2.7 seconds on a typical handset — because it
+shells out to the device and waits for a full view tree.</p><p>On success a toast confirms what went where, with the session id and an <strong>Open session</strong> action
+that copies it. The mirror resumes live and the staged counter returns to zero.</p><h2 id="what-is-in-the-payload">What is in the payload<a class="anchor" href="#what-is-in-the-payload" aria-label="Link to this section">#</a></h2><table><thead><tr><th>Part</th><th>Detail</th></tr></thead><tbody><tr><td><strong>Frame</strong></td><td>The full frozen screenshot, at device resolution.</td></tr><tr class="intellij-row-even"><td><strong>Crops</strong></td><td>One per annotation, with the red outline baked in.</td></tr><tr><td><strong>Hierarchy</strong></td><td>The view-hierarchy XML dump taken at freeze time.</td></tr><tr class="intellij-row-even"><td><strong>Prompt</strong></td><td>Generated text describing each annotation, including any <kbd>⌥</kbd> measurement.</td></tr></tbody></table><p>The crops exist because an agent reading a 1080×2400 frame has to find your region in it first.
+The hierarchy exists because <em>the price label is misaligned</em> is a different instruction from
+<em>the view with id <code>item_price</code> is misaligned</em>.</p><h2 id="how-the-handoff-actually-works">How the handoff actually works<a class="anchor" href="#how-the-handoff-actually-works" aria-label="Link to this section">#</a></h2><p>Rectify does not talk to Claude Code. The two never share a process, a socket or a lifetime.</p><pre><code>Rectify  ──writes──▶  ~/.rectify/handoff  ◀──reads──  rectify-mcp  ──stdio──▶  Claude Code
+</code></pre><ol><li><strong>Rectify publishes.</strong> The batch is written to a slot at <code>~/.rectify/handoff</code>, plus its bulk
+   bytes under <code>~/.rectify/history/</code>.</li><li><strong>Claude Code spawns the server.</strong> <code>rectify-mcp</code> is a separate, deliberately tiny JVM
+   process. Claude Code starts and stops it; you never run it yourself.</li><li><strong>The server reads the slot</strong> and answers one tool, <code>get_latest_annotation</code>, over JSON-RPC.</li></ol><p>The indirection is the point. Rectify can be closed, restarted or crash, and the last batch is
+still there to be read. Claude Code can be started after the fact and still get the payload.
+Neither has to be running when the other is.</p><p>It also explains the MCP server's unusually small dependency list — no Compose, no Koin, no
+graphics stack. Claude Code pays its JVM startup cost on every tool call, so the classpath is
+pinned to the handoff contract and a JSON parser.</p><h2 id="using-it-from-claude-code">Using it from Claude Code<a class="anchor" href="#using-it-from-claude-code" aria-label="Link to this section">#</a></h2><p>With the server registered — see <a href="../installation/">Installation</a> — ask for the latest
+annotation in whatever words you like. Claude Code calls <code>get_latest_annotation</code> and receives
+the frame, the crops, the hierarchy and the prompt.</p><p>A useful habit is to let the prompt do the describing and add only what the boxes cannot say:</p><blockquote><p>Fix the annotations from the latest Rectify batch. The spacing one is the priority.</p></blockquote><h2 id="follow-ups">Follow-ups<a class="anchor" href="#follow-ups" aria-label="Link to this section">#</a></h2><p>After a <a href="../verify/">Verify</a> run finds something still off, the same button becomes <strong>Send
+follow-up</strong> and re-stages just the annotations that failed — not the whole batch.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/measure/">
+<span class="pager-dir">Previous</span><span class="pager-title">Measure mode</span>
+</a>
+<a class="next" href="/rectify-kmp/guide/verify/">
+<span class="pager-dir">Next</span><span class="pager-title">Verify and history</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#resolve-and-send">Resolve and Send</a></li>
+<li class="lvl-2"><a href="#what-is-in-the-payload">What is in the payload</a></li>
+<li class="lvl-2"><a href="#how-the-handoff-actually-works">How the handoff actually works</a></li>
+<li class="lvl-2"><a href="#using-it-from-claude-code">Using it from Claude Code</a></li>
+<li class="lvl-2"><a href="#follow-ups">Follow-ups</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

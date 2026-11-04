@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-slug="guide/annotating">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotating a frame · Rectify</title>
+<meta name="description" content="Drag to freeze a frame, write a comment, and stage a batch of annotations.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/" class="active">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Annotating a frame</h1><h2 id="drag-to-freeze">Drag to freeze<a class="anchor" href="#drag-to-freeze" aria-label="Link to this section">#</a></h2><p>Click and drag anywhere on the live mirror. While you drag you get a dashed red outline, a live
+size readout in device pixels, and ruler guides along the edges so you can line the box up
+against something real.</p><p><strong>Releasing the drag freezes the frame.</strong> The exact pixels under your box at that instant become
+the frozen frame, and the box becomes annotation number 1.</p><p>Freezing is a <em>render</em> decision, not a transport one. The capture loop keeps running behind the
+frozen frame, which is why <strong>Resume live</strong> costs nothing — there is no reconnection to pay for.</p><h2 id="write-the-comment">Write the comment<a class="anchor" href="#write-the-comment" aria-label="Link to this section">#</a></h2><p>Each annotation gets a popover with a numbered badge matching its box, an autofocused comment
+field, a size and position line, and a delete control.</p><ul><li><kbd>↵</kbd> saves the comment.</li><li><kbd>Esc</kbd> dismisses the popover, keeping the annotation.</li><li>The delete control removes the annotation entirely.</li></ul><p>The placeholder asks <em>What's wrong here?</em> because that is the question the payload is answering.
+A comment is optional — an annotation with none is still a region the agent can look at — but a
+sentence of intent is usually worth more than the crop.</p><h2 id="more-than-one">More than one<a class="anchor" href="#more-than-one" aria-label="Link to this section">#</a></h2><p>Keep dragging. Everything outside the annotation boxes dims, so the frozen frame reads as a set
+of marked regions rather than a screenshot with boxes on it.</p><p>When popovers would overlap each other, they relocate to a gutter beside the frame and connect
+back to their boxes with leader lines, rather than stacking on top of each other over the
+content you are trying to describe.</p><p>The toolbar's <strong>staged</strong> counter tracks how many you have. <strong>Clear</strong> removes all of them at
+once — but it is disabled for exactly the window during which a send is assembling the batch,
+so you cannot wipe a batch out from under its own send.</p><h2 id="the-side-panel">The side panel<a class="anchor" href="#the-side-panel" aria-label="Link to this section">#</a></h2><p>Three tabs, switchable with <kbd>⌘1</kbd> <kbd>⌘2</kbd> <kbd>⌘3</kbd>:</p><table><thead><tr><th>Tab</th><th>Shows</th></tr></thead><tbody><tr><td><strong>Notes</strong></td><td>Your annotations, in order, with their comments.</td></tr><tr class="intellij-row-even"><td><strong>Payload</strong></td><td>Exactly what will be sent — see below.</td></tr><tr><td><strong>History</strong></td><td>Every batch you have ever sent. See <a href="../verify/">Verify and history</a>.</td></tr></tbody></table><p>The panel only appears once a device is selected. With nothing to annotate, annotation surfaces
+would be advertising actions that cannot be taken.</p><p>You can drag the panel's leading edge to resize it between 260 and 480 dp. The width is
+remembered across launches.</p><h2 id="the-payload-tab">The Payload tab<a class="anchor" href="#the-payload-tab" aria-label="Link to this section">#</a></h2><p>This is the review step. Nothing here is a summary — it is the actual content of the send:</p><ul><li><strong>Prompt</strong> — the generated text, with a token estimate and an <strong>Edit</strong> affordance if you want
+  to say something the boxes cannot.</li><li><strong>Crops</strong> — a three-column grid of per-annotation cropped images, each with the red outline
+  baked in, captioned with the frame they came from.</li><li><strong>Hierarchy</strong> — the view-hierarchy dump as an indented monospace tree, with matched and
+  flagged nodes marked.</li><li><strong>Footer</strong> — a one-line summary of contents and total size, e.g.
+  <code>frame.png · 3 crops · hierarchy.xml</code>.</li></ul><p>Reading the Payload tab before sending is the cheapest way to notice that a box landed on the
+wrong view.</p><h2 id="resuming">Resuming<a class="anchor" href="#resuming" aria-label="Link to this section">#</a></h2><p><strong>Resume live</strong> unfreezes and goes back to the stream. A successful send does it automatically
+and resets the staged counter to zero — see <a href="../sending/">Sending to Claude Code</a>.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/devices/">
+<span class="pager-dir">Previous</span><span class="pager-title">Connecting a device</span>
+</a>
+<a class="next" href="/rectify-kmp/guide/measure/">
+<span class="pager-dir">Next</span><span class="pager-title">Measure mode</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#drag-to-freeze">Drag to freeze</a></li>
+<li class="lvl-2"><a href="#write-the-comment">Write the comment</a></li>
+<li class="lvl-2"><a href="#more-than-one">More than one</a></li>
+<li class="lvl-2"><a href="#the-side-panel">The side panel</a></li>
+<li class="lvl-2"><a href="#the-payload-tab">The Payload tab</a></li>
+<li class="lvl-2"><a href="#resuming">Resuming</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

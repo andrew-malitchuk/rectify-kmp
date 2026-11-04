@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/overview">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module map · Rectify</title>
+<meta name="description" content="Every module, the layer it belongs to, and the direction dependencies run.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/" class="active">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>Module map</h1><p>Rectify is 22 Gradle modules. The split is strict and the dependency direction never reverses:
+<strong>presentation → domain → data</strong>, with a few shared leaves at the bottom.</p><h2 id="a-warning-before-you-read-the-source">A warning before you read the source<a class="anchor" href="#a-warning-before-you-read-the-source" aria-label="Link to this section">#</a></h2><p><strong>&quot;Android&quot; and &quot;iOS&quot; appear everywhere in this codebase as <em>domain</em> concepts, not build
+targets.</strong></p><p>Rectify is a desktop application. Every module is a plain <code>kotlin(&quot;jvm&quot;)</code> module; there is no
+Kotlin Multiplatform plugin, no <code>commonMain</code>/<code>desktopMain</code> split, no <code>expect</code>/<code>actual</code>, and no
+Android or iOS target anywhere. Sources are in the classic <code>src/main/kotlin</code> and
+<code>src/test/kotlin</code>.</p><p><code>AdbHostSource</code>, <code>IosHostSource</code>, <code>SimctlDevicesParser</code>, the <code>ANDROID_SOURCE</code> and <code>IOS_SOURCE</code>
+Koin qualifiers — those are <strong>the product</strong>. They are how a desktop app talks to phones. They
+are not evidence of a mobile build.</p><p>The repository is still <em>named</em> <code>rectify-kmp</code>, which is also why Compose resource accessors
+generate under <code>rectify_kmp.*</code>. That is a name, not a target.</p><h2 id="entry-points">Entry points<a class="anchor" href="#entry-points" aria-label="Link to this section">#</a></h2><table><thead><tr><th>Module</th><th>Role</th></tr></thead><tbody><tr><td><code>desktop-application</code></td><td>The runnable one. <code>main()</code> calls <code>initKoin()</code> then <code>runDesktopApp()</code>. Nothing else.</td></tr><tr class="intellij-row-even"><td><code>compose-application</code></td><td>The app composition: the Rectify window, the Koin graph assembly. A library — it has no <code>main()</code>.</td></tr><tr><td><code>mcp-application</code></td><td>A second, separate process. The MCP server Claude Code spawns over stdio.</td></tr><tr class="intellij-row-even"><td><code>docs-generator</code></td><td>A build-time tool that renders this site out of <code>docs/</code>.</td></tr></tbody></table><p>The runnable module is separate from the UI module on purpose: <code>compose-application</code> stays a
+library so a harness can compose the shell without a process, and <code>desktop-application</code> owns
+nothing but the entry point and the packaging config.</p><h2 id="layers">Layers<a class="anchor" href="#layers" aria-label="Link to this section">#</a></h2><h3 id="data">Data<a class="anchor" href="#data" aria-label="Link to this section">#</a></h3><table><thead><tr><th>Module</th><th>Contents</th></tr></thead><tbody><tr><td><code>data-core</code></td><td>The <code>Resource</code> marker interface. One file.</td></tr><tr class="intellij-row-even"><td><code>data-device-api</code></td><td>Contracts and <strong>every pure parser</strong> — <code>adb devices</code>, <code>simctl list</code>, <code>idb list-targets</code>, the UiAutomator dump, PNG trimming.</td></tr><tr><td><code>data-device-impl</code></td><td>The process drivers. The only place in the repo that spawns a child process.</td></tr><tr class="intellij-row-even"><td><code>data-preference-api</code> / <code>-impl</code></td><td>Typed preference sources over <code>multiplatform-settings</code>.</td></tr><tr><td><code>data-database-api</code> / <code>-impl</code></td><td>Composable datasource base interfaces, and the Room implementation behind them.</td></tr><tr class="intellij-row-even"><td><code>data-repository-impl</code></td><td>Repository implementations and the mappers that convert resources to domain models.</td></tr><tr><td><code>data-handoff-api</code></td><td>The cross-process handoff contract, shared with <code>mcp-application</code>. Koin-free by design.</td></tr></tbody></table><p>Parsers live in the <strong>api</strong> module, not the impl, deliberately. They are pure functions over
+strings and bytes, so keeping them there means they are testable with no hardware attached —
+which is most of what this feature is. Moving one into <code>data-device-impl</code> would drag the
+process-spawning layer onto the test classpath.</p><h3 id="domain">Domain<a class="anchor" href="#domain" aria-label="Link to this section">#</a></h3><table><thead><tr><th>Module</th><th>Contents</th></tr></thead><tbody><tr><td><code>domain-core</code></td><td>Models and cross-cutting enums. No dependencies on anything above it.</td></tr><tr class="intellij-row-even"><td><code>domain-repository-api</code></td><td>Repository interfaces: <code>DeviceRepository</code>, <code>HistoryRepository</code>, <code>ConfigureRepository</code>.</td></tr><tr><td><code>domain-usecase-api</code></td><td>Use case interfaces — one per operation.</td></tr><tr class="intellij-row-even"><td><code>domain-usecase-impl</code></td><td>Thin implementations, mostly a single repository call each.</td></tr></tbody></table><h3 id="presentation">Presentation<a class="anchor" href="#presentation" aria-label="Link to this section">#</a></h3><table><thead><tr><th>Module</th><th>Contents</th></tr></thead><tbody><tr><td><code>presentation-core-styling</code></td><td>Design tokens: colour, typography, spacing, radii, motion.</td></tr><tr class="intellij-row-even"><td><code>presentation-core-ui</code></td><td>The UI kit, atoms through organisms, plus the window shell.</td></tr><tr><td><code>presentation-core-localisation</code></td><td>String resources.</td></tr><tr class="intellij-row-even"><td><code>presentation-feature-mirror</code></td><td>The whole product surface: discovery, mirroring, annotation, measure, send, verify, history.</td></tr></tbody></table><h3 id="shared">Shared<a class="anchor" href="#shared" aria-label="Link to this section">#</a></h3><p><code>common-core</code> holds the <code>ModelResourceMapper</code> contract and the <code>resultLauncher</code> helper that
+wraps a suspending call into a <code>Result</code>.</p><h2 id="package-layout-inside-a-module">Package layout inside a module<a class="anchor" href="#package-layout-inside-a-module" aria-label="Link to this section">#</a></h2><p>Identical everywhere, and worth internalising before reading any single module:</p><ul><li><strong><code>core/</code></strong> holds <code>internal</code> and <code>private</code> declarations only — infrastructure, wiring,
+  helpers not meant to leave the module.</li><li><strong><code>source/</code></strong> holds everything <code>public</code>, grouped one subfolder per concern.</li><li>A module with no internal declarations has <strong>no <code>core/</code> directory at all</strong>. Do not create an
+  empty one for symmetry.</li></ul><p><code>explicitApi()</code> is enforced repo-wide by the convention plugins, so every public declaration
+needs an explicit visibility modifier and return type. That is what actually polices the
+boundary at compile time rather than leaving it to convention.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/troubleshooting/">
+<span class="pager-dir">Previous</span><span class="pager-title">Troubleshooting</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/state/">
+<span class="pager-dir">Next</span><span class="pager-title">State management</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#a-warning-before-you-read-the-source">A warning before you read the source</a></li>
+<li class="lvl-2"><a href="#entry-points">Entry points</a></li>
+<li class="lvl-2"><a href="#layers">Layers</a></li>
+<li class="lvl-3"><a href="#data">Data</a></li>
+<li class="lvl-3"><a href="#domain">Domain</a></li>
+<li class="lvl-3"><a href="#presentation">Presentation</a></li>
+<li class="lvl-3"><a href="#shared">Shared</a></li>
+<li class="lvl-2"><a href="#package-layout-inside-a-module">Package layout inside a module</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

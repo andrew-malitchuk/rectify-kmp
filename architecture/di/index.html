@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/di">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dependency injection · Rectify</title>
+<meta name="description" content="How the Koin graph is assembled and why module order matters.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/" class="active">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>Dependency injection</h1><p>Koin, assembled once in <code>compose-application</code>'s <code>initKoin()</code> and started from
+<code>desktop-application</code>'s <code>main()</code>.</p><h2 id="the-graph">The graph<a class="anchor" href="#the-graph" aria-label="Link to this section">#</a></h2><pre><code class="language-kotlin">public fun initKoin(config: KoinAppDeclaration = {}) {
+    startKoin {
+        config()
+        modules(
+            dataPreferenceImplModule,
+            dataDatabaseImplModule,
+            dataDeviceImplModule,
+            dataRepositoryImplModule,
+            domainUseCaseImplModule,
+            presentationFeatureMirrorModule,
+        )
+    }
+}
+</code></pre><p>The order reads <strong>data → domain → presentation</strong>. Koin resolves lazily, so the order is
+defensive rather than strictly load-bearing — but it documents the dependency direction at the
+one place where the whole graph is visible, and keeping it is free.</p><h2 id="why-main-starts-it">Why main() starts it<a class="anchor" href="#why-main-starts-it" aria-label="Link to this section">#</a></h2><p>There is no lifecycle callback before <code>main()</code> on the desktop, so the entry point is the only
+place Koin can be started.</p><p><code>initKoin()</code> deliberately does <strong>not</strong> live inside <code>runDesktopApp()</code>. Bootstrapping DI is the
+entry point's job, and <code>runDesktopApp()</code> is shared code that a test or a second host could call
+without wanting a second <code>startKoin</code>.</p><h2 id="the-di-convention-plugin">The DI convention plugin<a class="anchor" href="#the-di-convention-plugin" aria-label="Link to this section">#</a></h2><p><code>dev.rectify.io.convention.di</code> adds Koin dependencies and nothing else — no plugin IDs, no
+targets. It must be applied <strong>alongside</strong> <code>library</code> or <code>feature</code>; on its own the configurations
+it writes to do not exist yet.</p><p><code>koin-core</code> is exposed as <code>api()</code> because consumers need it at compile time to call <code>get()</code> or
+<code>koinInject()</code>. <code>koin-compose</code> and <code>koin-viewmodel</code> are <code>implementation()</code> — a module that
+needs them applies the plugin itself.</p><h2 id="qualifiers">Qualifiers<a class="anchor" href="#qualifiers" aria-label="Link to this section">#</a></h2><p><code>DeviceCommandExecutor</code> and <code>MirrorTransport</code> exist once per <em>mirrored device platform</em>, so
+they are <strong>always</strong> qualified:</p><pre><code class="language-kotlin">single&lt;DeviceCommandExecutor&gt;(named(ANDROID_SOURCE)) { AdbDeviceCommandExecutor(tools = get()) }
+single&lt;DeviceCommandExecutor&gt;(named(IOS_SOURCE)) { IosDeviceCommandExecutor(tools = get(), hosts = get()) }
+single&lt;MirrorTransport&gt;(named(ANDROID_SOURCE)) { ScreencapMirrorTransport(executor = get(named(ANDROID_SOURCE))) }
+single&lt;MirrorTransport&gt;(named(IOS_SOURCE)) { ScreencapMirrorTransport(executor = get(named(IOS_SOURCE))) }
+</code></pre><p>There is deliberately <strong>no unqualified binding</strong> of either to fall back on. A caller that
+forgets the qualifier fails loudly instead of silently resolving whichever platform happened to
+be registered last.</p><p>The constants live in <code>data-device-api</code> so the registration and the consumer cannot spell them
+differently.</p><p>Note that the two transports are the <em>same class</em> twice, differing only in which executor they
+were handed. <code>ScreencapMirrorTransport</code> is reused for iOS, not duplicated.</p><h2 id="the-one-test-that-makes-this-safe">The one test that makes this safe<a class="anchor" href="#the-one-test-that-makes-this-safe" aria-label="Link to this section">#</a></h2><p>A missing registration is a runtime failure that compiling cannot catch, and the failure lands
+on the very first frame. <code>DeviceSourcesModuleTest</code> resolves every binding the graph will be
+asked for at launch:</p><pre><code class="language-kotlin">@Test
+fun everyDeviceDatasourceResolvesOnDesktop() {
+    assertEveryRegistrationResolves(koinFor(dataDeviceImplModule))
+}
+
+@Test
+fun noUnqualifiedExecutorOrTransportResolves() {
+    val koin = koinFor(dataDeviceImplModule)
+    assertNull(koin.getOrNull&lt;DeviceCommandExecutor&gt;())
+    assertNull(koin.getOrNull&lt;MirrorTransport&gt;())
+}
+</code></pre><p>Resolution only — constructing these spawns nothing. It earned its place the hard way: a wave
+of development once left the repository asking for bindings nobody registered, and the whole
+suite stayed green because nothing resolved the graph.</p><p>The second test is the other half of the contract. Without it, an unqualified binding could
+reappear and every &quot;forgot the qualifier&quot; bug would go back to silently working.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/architecture/state/">
+<span class="pager-dir">Previous</span><span class="pager-title">State management</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/data/">
+<span class="pager-dir">Next</span><span class="pager-title">Data and persistence</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#the-graph">The graph</a></li>
+<li class="lvl-2"><a href="#why-main-starts-it">Why main() starts it</a></li>
+<li class="lvl-2"><a href="#the-di-convention-plugin">The DI convention plugin</a></li>
+<li class="lvl-2"><a href="#qualifiers">Qualifiers</a></li>
+<li class="lvl-2"><a href="#the-one-test-that-makes-this-safe">The one test that makes this safe</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

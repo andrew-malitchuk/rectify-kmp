@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-slug="guide/installation">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation · Rectify</title>
+<meta name="description" content="Requirements, building from source, and wiring the MCP server into Claude Code.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/" class="active">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Installation</h1><p>Rectify is not published as a binary yet. You build it from source, which takes one Gradle
+command, and you wire its MCP server into Claude Code, which takes one JSON entry.</p><h2 id="requirements">Requirements<a class="anchor" href="#requirements" aria-label="Link to this section">#</a></h2><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>Host</strong></td><td>macOS. The device tooling below is macOS-first, and packaging targets the OS you build on.</td></tr><tr class="intellij-row-even"><td><strong>JDK</strong></td><td>21 or newer.</td></tr><tr><td><strong>Android devices</strong></td><td><code>adb</code> on your <code>PATH</code>, or an Android SDK at <code>$ANDROID_HOME</code> / <code>$ANDROID_SDK_ROOT</code>.</td></tr><tr class="intellij-row-even"><td><strong>iOS simulators</strong></td><td>Xcode command line tools — <code>xcrun</code> and <code>simctl</code>. <code>idb</code> as well if you want physical devices.</td></tr></tbody></table><p>You need neither toolchain to <em>launch</em> Rectify. It detects what is present and reports the rest
+as a recoverable error card rather than refusing to start.</p><blockquote><p><strong>A note on packaging.</strong> <code>./gradlew packageDmg</code> currently fails on a Homebrew-installed JDK —
+ the Compose plugin blocks it because such builds produce broken bundles. Use a distribution
+ such as Amazon Corretto if you want an installer. Running from Gradle is unaffected.</p></blockquote><h2 id="run-it">Run it<a class="anchor" href="#run-it" aria-label="Link to this section">#</a></h2><pre><code class="language-shell">git clone https://github.com/andrew-malitchuk/rectify-kmp.git
+cd rectify-kmp
+./gradlew :desktop-application:run
+</code></pre><p>The window opens at 1240×820 and starts polling for devices immediately.</p><h2 id="wire-up-the-mcp-server">Wire up the MCP server<a class="anchor" href="#wire-up-the-mcp-server" aria-label="Link to this section">#</a></h2><p>Rectify writes each sent batch to a handoff slot on disk. A separate, very small server process
+reads that slot back out and answers Claude Code over stdio. Claude Code starts and stops that
+process itself — you never run it by hand.</p><p><strong>Build the launcher first.</strong> There is no packaged distribution, so the binary has to exist
+before Claude Code can spawn it:</p><pre><code class="language-shell">./gradlew :mcp-application:installDist
+</code></pre><p>That produces <code>mcp-application/build/install/rectify-mcp/bin/rectify-mcp</code>.</p><p><strong>Then register it.</strong> Copy the example config at the repository root:</p><pre><code class="language-shell">cp .mcp.json.example .mcp.json
+</code></pre><pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;rectify&quot;: {
+      &quot;command&quot;: &quot;./mcp-application/build/install/rectify-mcp/bin/rectify-mcp&quot;,
+      &quot;args&quot;: []
+    }
+  }
+}
+</code></pre><p>The path is relative to wherever Claude Code is started. If you run Claude Code from a different
+directory than the Rectify checkout — which is the normal case, since you are working on <em>your</em>
+project, not on Rectify — make it absolute.</p><p>Restart Claude Code and it will list a <code>rectify</code> server exposing one tool,
+<code>get_latest_annotation</code>.</p><h2 id="verify-the-wiring">Verify the wiring<a class="anchor" href="#verify-the-wiring" aria-label="Link to this section">#</a></h2><p>With Rectify running and at least one batch sent, ask Claude Code to call the tool. It should
+return the most recent annotation batch. If it returns nothing, the two halves are looking at
+different places — see <a href="../troubleshooting/">Troubleshooting</a>.</p><h2 id="where-rectify-keeps-its-data">Where Rectify keeps its data<a class="anchor" href="#where-rectify-keeps-its-data" aria-label="Link to this section">#</a></h2><p>Everything lives under <code>~/.rectify/</code>, created on first use, owner-only where the filesystem
+supports POSIX permissions:</p><table><thead><tr><th>Path</th><th>Contents</th></tr></thead><tbody><tr><td><code>~/.rectify/handoff</code></td><td>The latest published batch — what the MCP server reads.</td></tr><tr class="intellij-row-even"><td><code>~/.rectify/history/</code></td><td>Per-batch frames and crops backing the History tab.</td></tr><tr><td><code>~/.rectify/rectify.db</code></td><td>SQLite database of sent batches.</td></tr></tbody></table><p>Preferences (theme, language, panel width, chosen <code>adb</code> path) are stored separately through the
+JVM's own <code>java.util.prefs</code> under the node <code>dev.rectify.io</code>.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/">
+<span class="pager-dir">Previous</span><span class="pager-title">What Rectify is</span>
+</a>
+<a class="next" href="/rectify-kmp/guide/devices/">
+<span class="pager-dir">Next</span><span class="pager-title">Connecting a device</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#requirements">Requirements</a></li>
+<li class="lvl-2"><a href="#run-it">Run it</a></li>
+<li class="lvl-2"><a href="#wire-up-the-mcp-server">Wire up the MCP server</a></li>
+<li class="lvl-2"><a href="#verify-the-wiring">Verify the wiring</a></li>
+<li class="lvl-2"><a href="#where-rectify-keeps-its-data">Where Rectify keeps its data</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

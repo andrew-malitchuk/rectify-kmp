@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-slug="guide/devices">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connecting a device · Rectify</title>
+<meta name="description" content="Device discovery over adb and simctl/idb, the picker, and starting a mirror.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/" class="active">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Guide</p>
+<h1>Connecting a device</h1><p>Rectify polls for devices every two seconds and shows whatever it finds. There is no connect
+step to remember — plug something in and it appears.</p><h2 id="the-platform-switch">The platform switch<a class="anchor" href="#the-platform-switch" aria-label="Link to this section">#</a></h2><p>The toolbar's leftmost control chooses which world you are looking at: <strong>Android</strong> or <strong>iOS</strong>.
+Each platform has its own discovery loop, its own tool, and its own device list.</p><p>Switching platforms is a clean break. The previous platform's poll is cancelled, its device
+list is cleared, and any device you had selected is forgotten — a Pixel is not a thing the iOS
+tab can mirror, so leaving it named in the toolbar would be a lie.</p><table><thead><tr><th>Platform</th><th>Tool</th><th>What it finds</th></tr></thead><tbody><tr><td>Android</td><td><code>adb devices -l</code></td><td>Physical handsets and running emulators</td></tr><tr class="intellij-row-even"><td>Android</td><td><code>emulator -list-avds</code></td><td>Shut-down AVDs, offered with an inline <strong>Boot</strong> button</td></tr><tr><td>iOS</td><td><code>xcrun simctl list devices available</code></td><td>Simulators, booted or not</td></tr><tr class="intellij-row-even"><td>iOS</td><td><code>idb list-targets</code></td><td>Physical devices, if <code>idb</code> is installed</td></tr></tbody></table><h2 id="the-picker">The picker<a class="anchor" href="#the-picker" aria-label="Link to this section">#</a></h2><p>With a platform selected and something attached, the stage shows <strong>Choose what to mirror</strong>:</p><ul><li><strong>Physical device</strong> — handsets and iPhones.</li><li><strong>Virtual devices</strong> — emulators and simulators. A shut-down one is still listed, with a
+  <strong>Boot</strong> button beside it, so you do not have to leave Rectify to start it.</li></ul><p>Navigate with <kbd>↑</kbd> <kbd>↓</kbd> and commit with <kbd>↵</kbd>, or click. The <strong>Start
+mirroring</strong> button does the same thing as <kbd>↵</kbd>.</p><p><kbd>Esc</kbd> closes the picker — but only once you have something to go back to. Before your
+first selection there is nothing behind it, so <kbd>Esc</kbd> deliberately does nothing rather
+than stranding you on an empty stage.</p><p>Once a device is selected, the toolbar chip shows its name and serial. Click the chip to reopen
+the picker at any time.</p><h2 id="nothing-attached">Nothing attached<a class="anchor" href="#nothing-attached" aria-label="Link to this section">#</a></h2><p>If the tool is present but sees no device, the stage explains what to do rather than showing an
+empty box: plug in a phone with USB debugging on and accept the prompt, or boot an emulator from
+the inline selector. The footer reports what is being polled and how often.</p><p>The copy follows the selected platform. On iOS there is no USB debugging prompt and no AVD, so
+it talks about simulators and <code>xcrun simctl</code> instead.</p><h2 id="the-mirror">The mirror<a class="anchor" href="#the-mirror" aria-label="Link to this section">#</a></h2><p>Once the stream starts the stage shows the live frame, and the status bar reports what is
+actually happening:</p><pre><code>● LIVE   adb Android Debug Bridge version 1.0.41 · 1080x2400 · 0.3 fps · polling · latency —
+</code></pre><p>The frame rate is low on purpose. Rectify captures still frames for annotation, not video for
+playback — the loop is <code>screencap</code>-based, and a higher rate would cost device CPU for a stream
+nobody watches in motion.</p><p>Between pressing <strong>Start mirroring</strong> and the first decoded frame you get a spinner. On a cold
+<code>adb</code> start the gap is long enough that an empty stage would read as a hang.</p><h2 id="if-the-stream-drops">If the stream drops<a class="anchor" href="#if-the-stream-drops" aria-label="Link to this section">#</a></h2><p>A device that disappears mid-session does not throw away your work. A banner appears over the
+now-stale frame explaining what happened, your staged annotations stay pinned to the frozen
+frame, and <strong>Resolve &amp; Send</strong> keeps working — the batch is already captured, and sending it does
+not need the device back.</p><p><strong>Reconnect</strong> in the banner restarts the stream.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/guide/installation/">
+<span class="pager-dir">Previous</span><span class="pager-title">Installation</span>
+</a>
+<a class="next" href="/rectify-kmp/guide/annotating/">
+<span class="pager-dir">Next</span><span class="pager-title">Annotating a frame</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#the-platform-switch">The platform switch</a></li>
+<li class="lvl-2"><a href="#the-picker">The picker</a></li>
+<li class="lvl-2"><a href="#nothing-attached">Nothing attached</a></li>
+<li class="lvl-2"><a href="#the-mirror">The mirror</a></li>
+<li class="lvl-2"><a href="#if-the-stream-drops">If the stream drops</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

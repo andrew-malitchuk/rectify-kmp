@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/state">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State management · Rectify</title>
+<meta name="description" content="The Orbit MVI shape every feature screen follows.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/" class="active">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>State management</h1><p>Feature screens use <a href="https://orbit-mvi.org/">Orbit MVI</a>. <code>presentation-feature-mirror</code> is the
+only feature module and therefore the reference shape — match it rather than inventing a
+variant.</p><h2 id="four-files">Four files<a class="anchor" href="#four-files" aria-label="Link to this section">#</a></h2><p>Under <code>source/&lt;feature&gt;/</code>:</p><table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code>XContract.kt</code></td><td><code>XState</code> (UI snapshot, defaults for every field), <code>XSideEffect</code> (one-shot events), <code>XIntent</code> (every user action)</td></tr><tr class="intellij-row-even"><td><code>XViewModel.kt</code></td><td><code>ContainerHost&lt;XState, XSideEffect&gt;</code>, intent dispatch, all the logic</td></tr><tr><td><code>XScreen.kt</code></td><td>Resolves the ViewModel from Koin, collects state and side effects</td></tr><tr class="intellij-row-even"><td><code>XContent.kt</code></td><td>Stateless. No Koin, no ViewModel — takes state and emits <code>onIntent</code></td></tr></tbody></table><p>The split exists so that everything below <code>XScreen</code> can be rendered from literals. The content
+layer never resolves a dependency, which is why the whole shell can be previewed and screenshot
+without a running Koin graph.</p><h2 id="the-shape">The shape<a class="anchor" href="#the-shape" aria-label="Link to this section">#</a></h2><pre><code class="language-kotlin">class MirrorViewModel(/* use cases */) :
+    ContainerHost&lt;MirrorUiState, MirrorSideEffect&gt;, ViewModel() {
+
+    override val container = container&lt;MirrorUiState, MirrorSideEffect&gt;(MirrorUiState()) {
+        // init-time work only
+    }
+
+    fun handleIntent(intent: MirrorIntent) = when (intent) {
+        is MirrorIntent.SelectPlatform -&gt; selectPlatform(intent.platform)
+        MirrorIntent.ResolveAndSend -&gt; resolveAndSend()
+        // …exhaustive, no else
+    }
+
+    private fun selectPlatform(platform: PlatformModel) = intent {
+        reduce { state.copy(platform = platform, /* … */) }
+    }
+}
+</code></pre><p>The <code>when</code> is exhaustive with no <code>else</code>. A new intent that nobody handles is then a compile
+error rather than a click that silently does nothing.</p><h2 id="derived-state-not-stored-state">Derived state, not stored state<a class="anchor" href="#derived-state-not-stored-state" aria-label="Link to this section">#</a></h2><p><code>MirrorUiState</code> stores facts and derives presentation from them. The stage is the clearest
+example:</p><pre><code class="language-kotlin">val stage: MirrorStage
+    get() = when {
+        isPickerOpen -&gt; MirrorStage.Picker
+        verify != null -&gt; MirrorStage.Verify
+        frozen != null -&gt; MirrorStage.Frozen
+        session is MirrorSession.Streaming -&gt; MirrorStage.Mirror
+        else -&gt; MirrorStage.NoSignal
+    }
+</code></pre><p>The ordering is load-bearing and documented at the property. <code>Verify</code> outranks <code>Frozen</code> because
+a verification run carries its own before/after pixels — showing the pinned live frame
+underneath would be a third frame nobody asked for.</p><p>Storing <code>stage</code> as a field instead would mean every reducer has to remember to update it, and
+the first one that forgets produces a state that contradicts itself.</p><p>Predicates work the same way. <code>hasDeviceTarget</code> drives both the side panel's visibility and the
+toolbar's trailing actions, so the two cannot disagree about what &quot;has a device&quot; means.</p><h2 id="testing">Testing<a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2><p>The ViewModel is where the tests are, and they go through <code>handleIntent</code> rather than calling
+private methods. Two environment facts they all depend on:</p><ul><li>Orbit's dispatcher defaults are <strong>process-wide</strong>. A test class that does not pin them can
+  pass only because a sibling class already did, and then fail when the class order changes.
+  Every suite sets them in <code>@BeforeTest</code> and calls <code>Orbit.resetDefaults()</code> in <code>@AfterTest</code> — on
+  every path, not just the happy one.</li><li>Assertions compare <em>lists of labelled strings</em> rather than individual values, so a failure
+  reports every field at once instead of stopping at the first mismatch.</li></ul><pre><code class="language-kotlin">assertEquals(
+    expected = listOf(&quot;platform=Ios&quot;, &quot;rows=0&quot;, &quot;selectedDeviceId=null&quot;),
+    actual = listOf(
+        &quot;platform=${state.platform}&quot;,
+        &quot;rows=${state.rows.size}&quot;,
+        &quot;selectedDeviceId=${state.selectedDeviceId}&quot;,
+    ),
+)
+</code></pre></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/architecture/overview/">
+<span class="pager-dir">Previous</span><span class="pager-title">Module map</span>
+</a>
+<a class="next" href="/rectify-kmp/architecture/di/">
+<span class="pager-dir">Next</span><span class="pager-title">Dependency injection</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#four-files">Four files</a></li>
+<li class="lvl-2"><a href="#the-shape">The shape</a></li>
+<li class="lvl-2"><a href="#derived-state-not-stored-state">Derived state, not stored state</a></li>
+<li class="lvl-2"><a href="#testing">Testing</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>

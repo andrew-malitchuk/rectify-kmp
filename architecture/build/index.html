@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en" data-slug="architecture/build">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build and testing · Rectify</title>
+<meta name="description" content="Convention plugins, the JVM-only target, and what the test suite covers.">
+<link rel="icon" type="image/png" href="/rectify-kmp/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/rectify-kmp/assets/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem('rectify-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();
+</script>
+</head>
+<body class="is-doc">
+<header class="topbar">
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="brand" href="/rectify-kmp/">
+<img src="/rectify-kmp/assets/icon.png" alt="" width="26" height="26">
+<span>Rectify</span>
+</a>
+<div class="search">
+<input type="search" id="search-input" placeholder="Search the docs" autocomplete="off" aria-label="Search the docs">
+<kbd>/</kbd>
+<div class="search-results" id="search-results" hidden></div>
+</div>
+<div class="topbar-actions">
+<a class="ghost" href="https://github.com/andrew-malitchuk/rectify-kmp" rel="noopener" target="_blank">GitHub</a>
+<button class="ghost theme-toggle" aria-label="Switch colour theme">Theme</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation">
+<p class="nav-section">Overview</p>
+<ul>
+<li><a href="/rectify-kmp/">What Rectify is</a></li>
+</ul>
+<p class="nav-section">Guide</p>
+<ul>
+<li><a href="/rectify-kmp/guide/installation/">Installation</a></li>
+<li><a href="/rectify-kmp/guide/devices/">Connecting a device</a></li>
+<li><a href="/rectify-kmp/guide/annotating/">Annotating a frame</a></li>
+<li><a href="/rectify-kmp/guide/measure/">Measure mode</a></li>
+<li><a href="/rectify-kmp/guide/sending/">Sending to Claude Code</a></li>
+<li><a href="/rectify-kmp/guide/verify/">Verify and history</a></li>
+<li><a href="/rectify-kmp/guide/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="nav-section">Architecture</p>
+<ul>
+<li><a href="/rectify-kmp/architecture/overview/">Module map</a></li>
+<li><a href="/rectify-kmp/architecture/state/">State management</a></li>
+<li><a href="/rectify-kmp/architecture/di/">Dependency injection</a></li>
+<li><a href="/rectify-kmp/architecture/data/">Data and persistence</a></li>
+<li><a href="/rectify-kmp/architecture/devices/">Device transport</a></li>
+<li><a href="/rectify-kmp/architecture/design-system/">Design system</a></li>
+<li><a href="/rectify-kmp/architecture/build/" class="active">Build and testing</a></li>
+</ul>
+</nav>
+<main class="content" id="content">
+<article class="prose">
+<p class="eyebrow">Architecture</p>
+<h1>Build and testing</h1><h2 id="one-target">One target<a class="anchor" href="#one-target" aria-label="Link to this section">#</a></h2><p>Every module applies <code>kotlin(&quot;jvm&quot;)</code>. There is no Kotlin Multiplatform plugin, no platform
+targets, no <code>expect</code>/<code>actual</code>, and sources sit in the classic <code>src/main/kotlin</code> and
+<code>src/test/kotlin</code>.</p><p>Compose Multiplatform is still used — for the renderer and the component library, not for
+multiplatform reach.</p><p>Adding a platform is a migration back to KMP, not a flag: re-add the plugin in the convention
+plugins, split <code>src/main</code> into <code>commonMain</code> plus a platform source set, and add a runnable
+module for the new platform.</p><h2 id="convention-plugins">Convention plugins<a class="anchor" href="#convention-plugins" aria-label="Link to this section">#</a></h2><p>Four, in <code>build-logic/convention</code>, all extending <code>BaseConventionPlugin</code> — a template method
+over three hooks, run in a fixed order: <code>configurePlugin</code> → <code>configureJvm</code> →
+<code>configureDependencies</code>.</p><table><thead><tr><th></th><th><code>application</code></th><th><code>feature</code></th><th><code>library</code></th><th><code>di</code></th></tr></thead><tbody><tr><td><code>kotlin(&quot;jvm&quot;)</code> + <code>java-library</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr class="intellij-row-even"><td>Compose plugins</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr><td>Compose dependencies</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>jvmToolchain(21)</code> + <code>explicitApi()</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td><code>compose.desktop.currentOs</code></td><td>✓</td><td>—</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>kotlin-test</code> on <code>test</code></td><td>—</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td>Koin</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr></tbody></table><p><code>java-library</code> is applied explicitly because <code>kotlin(&quot;jvm&quot;)</code> alone does not guarantee the <code>api</code>
+configuration, and several modules use <code>api(projects.x)</code>.</p><p><code>compose.desktop.currentOs</code> — the Skiko renderer — is only on the <code>application</code> plugin. Only the
+module that actually opens a window needs it.</p><p>Three modules skip convention plugins entirely: <code>desktop-application</code>, <code>mcp-application</code> and
+<code>docs-generator</code>. Each is a binary with its own deliberately minimal classpath, not a library in
+the app's dependency graph. This is documented rather than accidental — do not &quot;fix&quot; it by
+inventing a fifth plugin for a module count of one.</p><h2 id="commands">Commands<a class="anchor" href="#commands" aria-label="Link to this section">#</a></h2><pre><code class="language-shell">./gradlew :desktop-application:run        # run the app
+./gradlew build                           # compile everything and run every test
+./gradlew :presentation-core-ui:test      # one module
+./gradlew :mcp-application:installDist    # build the MCP launcher
+./gradlew generateDocs                    # render this site into docs-generator/build/docs-site
+</code></pre><p><code>./gradlew build</code> is the honest &quot;everything passes&quot; command: one target means no cross-target
+compile step and no separate test invocation to forget.</p><h2 id="testing">Testing<a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2><p><code>kotlin.test</code> is wired <strong>once</strong>, in the library and feature convention plugins. Never add
+<code>kotlin-test</code> module by module.</p><p>A module may still declare a test dependency of its own when the need is genuinely local —
+<code>data-preference-impl</code> adds <code>multiplatform-settings-test</code> because only it fakes a settings
+backend. The rule is about the shared harness, not about banning local fixtures.</p><h3 id="what-is-worth-testing">What is worth testing<a class="anchor" href="#what-is-worth-testing" aria-label="Link to this section">#</a></h3><p><strong>Pure, side-effect-free logic first.</strong> That is where the suite actually lives: parsers,
+<code>clampPanelWidth</code>, <code>shortcutToTab</code>, state transitions, mapper round-trips, the verify
+arithmetic, column-width geometry.</p><p><strong>Do not add a test per <code>*UseCaseImpl</code> by rote.</strong> They are thin wrappers around a repository
+call. Test one directly only when it has branching logic of its own.</p><h3 id="a-convention-worth-copying">A convention worth copying<a class="anchor" href="#a-convention-worth-copying" aria-label="Link to this section">#</a></h3><p>Assertions compare <em>lists of labelled strings</em>, so one failure reports every relevant field
+instead of stopping at the first mismatch:</p><pre><code class="language-kotlin">assertEquals(
+    expected = listOf(&quot;idBefore=PIXEL-9&quot;, &quot;id=null&quot;, &quot;dismissable=false&quot;),
+    actual = listOf(
+        &quot;idBefore=${before.selectedDeviceId}&quot;,
+        &quot;id=${after.selectedDeviceId}&quot;,
+        &quot;dismissable=${after.isPickerDismissable}&quot;,
+    ),
+)
+</code></pre><p>Several tests also carry a <code>MUTATION:</code> note naming the edit that should break them. It is a
+cheap, checkable claim that the test tests something — and it is checked, by making the edit
+and watching it fail.</p><h2 id="documentation">Documentation<a class="anchor" href="#documentation" aria-label="Link to this section">#</a></h2><p>This site is generated by <code>:docs-generator</code> from Markdown in <code>docs/</code>:</p><pre><code>docs/
+├── site.json          # nav manifest — order and titles are editorial
+├── content/           # the Markdown, one file per page
+└── assets/            # stylesheet, search script, icon
+</code></pre><p>Content stays in Markdown as the single source of truth; the generator renders it with the app's
+design tokens. <code>./gradlew generateDocs</code> writes <code>docs-generator/build/docs-site/</code>, and a GitHub
+Actions workflow publishes it to Pages on every push that touches <code>docs/</code> or the generator.</p><p>Preview it locally with any static server — the default build uses root-relative URLs, which
+<code>file://</code> cannot follow:</p><pre><code class="language-shell">./gradlew generateDocs
+python3 -m http.server -d docs-generator/build/docs-site 8000
+</code></pre><p>CI passes the real base path (<code>-PdocsBaseUrl=/rectify-kmp</code>), derived from the repository name
+so a rename does not silently 404 every stylesheet.</p><p>To add a page: write the Markdown under <code>docs/content/</code>, add an entry to <code>site.json</code>. The
+generator fails loudly if a manifest entry points at a file that does not exist.</p></article>
+<nav class="pager" aria-label="Previous and next page">
+<a class="prev" href="/rectify-kmp/architecture/design-system/">
+<span class="pager-dir">Previous</span><span class="pager-title">Design system</span>
+</a>
+</nav>
+</main>
+<aside class="toc" aria-label="On this page">
+<p class="nav-section">On this page</p>
+<ul>
+<li class="lvl-2"><a href="#one-target">One target</a></li>
+<li class="lvl-2"><a href="#convention-plugins">Convention plugins</a></li>
+<li class="lvl-2"><a href="#commands">Commands</a></li>
+<li class="lvl-2"><a href="#testing">Testing</a></li>
+<li class="lvl-3"><a href="#what-is-worth-testing">What is worth testing</a></li>
+<li class="lvl-3"><a href="#a-convention-worth-copying">A convention worth copying</a></li>
+<li class="lvl-2"><a href="#documentation">Documentation</a></li>
+</ul>
+</aside>
+</div>
+<footer class="sitefoot">
+<span>Rectify documentation</span>
+<span class="mono">generated from docs/ · Apache-2.0</span>
+</footer>
+<script src="/rectify-kmp/assets/search.js" defer></script>
+</body>
+</html>
