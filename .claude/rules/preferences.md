@@ -18,11 +18,9 @@ paths:
   `pref_onboarding_completed`, `pref_unit_system`), declared as a `const val KEY_* `in the impl.
   **Never change an existing key** — it silently orphans the stored value on every existing
   install; add a new key and migrate instead.
-- Backend is platform-specific but hidden behind `multiplatform-settings`: Android uses a named
-  `DataStore<Preferences>` (`rectify_prefs`) via a custom `DataStoreSettings` adapter, iOS uses
-  `NSUserDefaults` through the library default, Desktop uses `PreferencesSettings` backed by
-  `java.util.prefs.Preferences` (node `dev.rectify.io`) — see `.claude/rules/platform-coverage.md`
-  for what targets actually exist.
+- Backend is hidden behind `multiplatform-settings`: Desktop uses `PreferencesSettings` backed
+  by `java.util.prefs.Preferences` (node `dev.rectify.io`), registered by
+  `Module.provideSettings()` — see `.claude/rules/platform-coverage.md`.
 - Adding a new preference: contract in `data-preference-api` first (interface + model
   implementing `Resource`), then the `*SourceImpl` in `data-preference-impl`, then register it
   in `DataPreferenceImplModule` — the data source alone isn't wired into the domain layer until

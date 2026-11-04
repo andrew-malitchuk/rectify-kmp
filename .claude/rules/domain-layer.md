@@ -10,7 +10,7 @@ paths:
 
 - `domain-core` — zero dependencies. Holds the `Model` marker interface, the sealed `Failure`
   hierarchy (`Technical.{Database,Platform,Network,Preference}`, `Logic.{NotFound,Business}`),
-  and cross-cutting enums (`ThemeModel`, `OnboardingModel`, `UnitSystemModel`). Nothing here may
+  and cross-cutting enums (`ThemeModel`, the `device`/`history` model groups). Nothing here may
   depend on a repository, a use case, or a platform type.
 - `domain-repository-api` — interfaces only (`ConfigureRepository`). Methods return domain
   models or `Flow<Model?>`, never data-layer resource types.

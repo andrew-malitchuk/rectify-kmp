@@ -8,7 +8,8 @@ paths:
 
 String/font/drawable resources generate under a package derived from `rootProject.name`
 (`settings.gradle.kts`): `rectify-kmp` → `rectify_kmp.<module>.generated.resources.*`
-(hyphens become underscores). You'll see imports like
+(hyphens become underscores). The `kmp` in that package is just the project's name — this is a
+plain JVM project, see `.claude/rules/platform-coverage.md`. You'll see imports like
 `import rectify_kmp.presentation_core_localisation.generated.resources.Res` and
 `...generated.resources.settings_title` across every feature module.
 
@@ -20,6 +21,6 @@ String/font/drawable resources generate under a package derived from `rootProjec
   the next build — don't go edit them by hand across the repo; a stale IDE index showing red
   imports right after the rename just needs a rebuild/resync, not a manual fix.
 - New string resources go in
-  `presentation-core-localisation/src/commonMain/composeResources/values/strings.xml`; the
+  `presentation-core-localisation/src/main/composeResources/values/strings.xml`; the
   generated accessor (`Res.string.<key>`) appears automatically next build — there's no
   separate registration step.

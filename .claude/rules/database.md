@@ -8,7 +8,8 @@ paths:
 
 - `data-database-api` — generic, composable base interfaces only
   (`ReadableDataSource<T>`, `ObservableDataSource<T>`, `AppendableDataSource<T>`,
-  `UpsertableDataSource<T>`, `DeletableDataSource`, `ClearableDataSource`). No concrete
+  `UpsertableDataSource<T>`). `DeletableDataSource`/`ClearableDataSource` were deleted as
+  dead code — add them back only when something implements them. No concrete
   entity-specific interface lives here — define those where they're consumed (e.g. in
   `domain-repository-api` or a feature module) by mixing in whichever base interfaces apply.
 - `data-database-impl` — the Room implementation: `@Entity` classes under `core/entity/`,
@@ -19,18 +20,15 @@ paths:
   `internal`/`private` declarations only, and `explicitApi()` forbids a public member naming an
   internal type. The `@Dao` interface itself stays `internal` under `core/dao/` regardless;
   only the entity classes it returns need to be public.
-- **Room KMP constructor pattern:** `AppDatabaseConstructor` must be declared as
-  `internal expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> { override fun initialize(): AppDatabase }`
-  with an explicit, body-less `override fun initialize()`. Omitting that override is a real bug
-  (not a style preference) — without it Kotlin treats the `expect object` as needing to satisfy
-  the interface itself instead of deferring to the per-platform `actual` KSP generates, and the
-  build fails with "is not abstract and does not implement abstract member".
-- `DatabaseBuilder` is `expect`/`actual` per platform — Android uses `Context` (via Koin),
-  iOS stores in the Documents directory, Desktop stores `rectify.db` under
-  `~/.rectify/` (relocated from directly under `System.getProperty("user.home")` by F-8, same
-  root as the handoff slot). Room's KSP code generation needs a `kspDesktop`
-  configuration entry too (see `build.gradle.kts` — alongside `kspAndroid`/`kspIosArm64`/
-  `kspIosSimulatorArm64`), or the `desktopMain` actual won't compile.
+- **No `@ConstructedBy`/`RoomDatabaseConstructor`.** That pair is the Room *KMP* pattern,
+  needed because a `expect object` constructor has to be generated per target. This is a plain
+  JVM project: Room resolves `AppDatabase_Impl` itself, and `AppDatabase` carries `@Database`
+  alone. Don't reintroduce `AppDatabaseConstructor` — it will not compile without the KMP
+  plugin.
+- `DatabaseBuilder` is a plain `internal fun Module.provideDatabaseBuilder()` storing
+  `rectify.db` under `~/.rectify/` (relocated from directly under
+  `System.getProperty("user.home")` by F-8, same root as the handoff slot). KSP is wired with
+  the ordinary `ksp(libs.room.compiler)` configuration — no per-target `ksp<Target>` entries.
 - Schema changes: bump `@Database(version = ...)` and add a `Migration` to `Migrations.kt`.
   Destructive migration is disabled — there is no fallback path, a missing migration crashes
   the app on existing installs. **Narrow exception:** F-8 added two tables and stayed at

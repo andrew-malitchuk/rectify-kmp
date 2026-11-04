@@ -21,8 +21,8 @@ exception partway through:
    carried in every feature's `XSideEffect` sealed class. The `Screen` renders it in
    `collectSideEffect` as `snackbarHostState.showSnackbar(title = "Error", duration = StackedSnackbarDuration.Short)`.
 
-**Known gap, not a pattern to copy:** every current `ShowError` handler ignores `messageId` and
-shows a hardcoded, unlocalized `"Error"` title (see `AboutScreen`, `OnboardingScreen`,
-`HomeScreen`, `SettingsScreen`). If you wire up real error messages, resolve `messageId` through
+**Known gap, not a pattern to copy:** `ShowError` handlers have historically ignored
+`messageId` and shown a hardcoded, unlocalized `"Error"` title. If you wire up real error
+messages, resolve `messageId` through
 `stringResource()` (see `.claude/rules/localisation.md`) instead of adding another hardcoded
 string — don't treat the current shortcut as the convention to extend.

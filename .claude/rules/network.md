@@ -16,9 +16,9 @@ When you add one, follow the existing data-layer shape instead of inventing a ne
 - `data-network-api` — client-agnostic interfaces only (no Ktor types leak out), resource
   models implementing `data.core.source.resource.Resource`, mirroring `data-database-api`'s
   api/impl split (see `.claude/rules/database.md`).
-- `data-network-impl` — the actual `HttpClient` wiring, platform engines
-  (`ktor-client-okhttp` / `ktor-client-darwin`) wired the same way `data-database-impl` wires
-  `DatabaseBuilder` expect/actual per platform.
+- `data-network-impl` — the actual `HttpClient` wiring, with the JVM engine
+  (`ktor-client-cio`) registered in Koin the same way `data-database-impl` registers its
+  `DatabaseBuilder`.
 - Failures funnel through `Failure.Technical.Network(cause)` (already defined in
   `domain-core`, currently unused — this is its intended consumer).
 - Convert `data-network-api` resources to domain models via a `ModelResourceMapper` in
