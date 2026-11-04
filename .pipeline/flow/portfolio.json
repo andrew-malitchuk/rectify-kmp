@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T06:27:58Z",
+  "generatedAt": "2026-10-21T19:31:25Z",
   "producedBy": "sdd-flow-generate-portfolio",
   "sources": {
     "prd": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/prd/docs",
@@ -257,7 +257,7 @@
         },
         "sdd": {
           "status": "done",
-          "stage": "review",
+          "stage": "done",
           "verdict": "complete-with-waivers",
           "spec": "/Users/andrew-malitchuk/StudioProjects/rectify-kmp/.pipeline/sdd/docs/ios-platform-support",
           "inputPrepared": false
