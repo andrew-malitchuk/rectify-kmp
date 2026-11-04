@@ -1,116 +1,137 @@
-# Rectify KMP
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="rectify-kmp — mirror a connected Android device or iOS simulator, annotate a frozen frame, and hand the result to Claude Code over MCP" width="100%">
+</p>
 
-A Kotlin Multiplatform (KMP) starter template targeting **Android**, **iOS**, and **Desktop** (JVM), with shared UI via Compose Multiplatform.
+# Rectify
 
-## Overview
+**Mirror a device, box the bug, hand it to Claude Code — then prove it was fixed.**
 
-Rectify KMP is a modular, production-ready KMP template. It ships with a complete build system, dependency injection wiring, type-safe navigation, a full UI component library, onboarding flow, settings screen, about screen, and localisation/theme infrastructure — ready to extend with your own domain logic.
+Spotting a visual bug on a real device is easy. Describing it precisely is not. The usual path
+is a screenshot, a sentence of prose about roughly where the problem is, and the loss of
+everything that made the observation useful — the exact region, the pixel or dp gap, the view
+that owns it. And once the agent claims a fix, there is no way to check it other than re-opening
+the app and eyeballing the same spot from memory.
 
-## Module Structure
+Rectify keeps that context attached to the report, and keeps the original frame around so the
+check is a diff rather than a recollection.
+
+## The loop
+
+Every other tool in this space does one leg of it. Rectify's claim is the round trip.
+
+| | |
+|---|---|
+| **Mirror** | A live frame from an Android handset or emulator over `adb`, or an iOS simulator over `xcrun simctl` and `idb`. |
+| **Annotate** | Drag on the frame. The exact pixels freeze, and the box becomes a numbered annotation with a comment field. |
+| **Measure** | Hold <kbd>⌥</kbd> and the box snaps to the matched hierarchy node, reporting dp gaps to its neighbours. |
+| **Send** | One action packages frame, crops, hierarchy XML and a generated prompt, and publishes them for the local MCP server to serve. |
+| **Verify** | Re-capture the device and diff each annotated region against the frozen original. Matches resolve; mismatches offer a one-click re-send. |
+
+## Quick start
+
+Requires **macOS** and **JDK 21+**. `adb` on your `PATH` for Android devices, Xcode command line
+tools for iOS simulators — Rectify launches without either and reports what is missing as a
+recoverable error card.
+
+```shell
+git clone https://github.com/andrew-malitchuk/rectify-kmp.git
+cd rectify-kmp
+./gradlew :desktop-application:run
+```
+
+Then wire the handoff into Claude Code. Rectify writes each sent batch to a slot on disk; a small
+server process reads it back out over stdio, and Claude Code spawns that process itself:
+
+```shell
+./gradlew :mcp-application:installDist   # the binary must exist before Claude Code can spawn it
+cp .mcp.json.example .mcp.json           # make the path absolute if you run Claude Code elsewhere
+```
+
+Restart Claude Code and it lists a `rectify` server exposing one tool, `get_latest_annotation`.
+Full walkthrough: [Installation](docs/content/guide/installation.md).
+
+## Documentation
+
+The guide and the architecture notes are built from `docs/` and published to GitHub Pages:
+
+```shell
+./gradlew generateDocs
+python3 -m http.server -d docs-generator/build/docs-site 8000
+```
+
+See [`docs/README.md`](docs/README.md) for how the site is authored and deployed.
+
+## What it is not
+
+- **Not a cloud service.** Everything runs locally under `~/.rectify/`. No account, no sync, no auth.
+- **Not a remote-control tool.** The mirror is read-only; Rectify never injects taps or keys.
+- **Not a multiplatform app.** Rectify runs on the desktop only.
+
+That last point is worth repeating while reading the source: **"Android" and "iOS" are domain
+concepts here, not build targets.** Every module is a plain `kotlin("jvm")` module with the
+classic `src/main` / `src/test` layout — `AdbHostSource`, `SimctlDevicesParser` and friends are
+the product, not a platform source set.
+
+## Architecture
+
+<details>
+<summary>Module map</summary>
 
 ```
 rectify-kmp/
 ├── build-logic/convention/          ← Gradle convention plugins
-├── compose-application/             ← KMP app entry point (common, Android, iOS, desktop)
-├── aos-application/                 ← Android-specific application module
-├── desktop-application/             ← Plain-JVM desktop application module
-├── ios-application/                 ← Xcode project / iOS entry point
+├── compose-application/             ← App composition + the Rectify window
+├── desktop-application/             ← Plain-JVM module hosting main()
+├── mcp-application/                 ← MCP server binary Claude Code spawns over stdio
+├── docs-generator/                  ← Renders docs/ into the GitHub Pages site
 │
-├── presentation-feature-splash/     ← Splash screen
-├── presentation-feature-onboarding/ ← First-launch onboarding flow
-├── presentation-feature-home/       ← Home screen
-├── presentation-feature-settings/   ← Settings screen (incl. language picker)
-├── presentation-feature-about/      ← About screen
-│
+├── presentation-feature-mirror/     ← Device discovery, mirroring, annotate & send
 ├── presentation-core-ui/            ← Shared UI component library (atoms → organisms)
 ├── presentation-core-styling/       ← Theme tokens, colours, typography
-├── presentation-core-localisation/  ← String resources & language switching
-├── presentation-core-navigation-api/   ← Destination sealed class & AppNavigator interface
-├── presentation-core-navigation-impl/  ← Navigation host (Navigation 3)
+├── presentation-core-localisation/  ← String resources
 │
 ├── domain-core/                     ← Shared domain models
 ├── domain-repository-api/           ← Repository interfaces
 ├── domain-usecase-api/              ← Use case interfaces
-├── domain-usecase-impl/             ← Use case implementations (theme, language, onboarding, unit system)
+├── domain-usecase-impl/             ← Use case implementations (theme, language, device, history)
 │
 ├── data-core/                       ← Shared data-layer utilities
+├── data-device-api/                 ← Device discovery / mirroring contracts and parsers
+├── data-device-impl/                ← adb / emulator / xcrun / idb process drivers
+├── data-handoff-api/                ← Cross-process handoff contract shared with the MCP server
 ├── data-preference-api/             ← Preference source interfaces
-├── data-preference-impl/            ← Preference implementations (DataStore / NSUserDefaults)
+├── data-preference-impl/            ← Preference implementations (java.util.prefs)
 ├── data-database-api/               ← Local database contracts
-├── data-database-impl/              ← Room database implementation (skeleton + example entity)
+├── data-database-impl/              ← Room database implementation (sent-batch history)
 ├── data-repository-impl/            ← Repository implementations
 └── common-core/                     ← Shared utilities
 ```
 
-## Convention Plugins
+Four convention plugins under `dev.rectify.io.convention` configure them — `application`,
+`feature`, `library` and `di`. Explicit API mode is on everywhere.
 
-Defined in `build-logic/convention` under the `dev.rectify.io.convention` namespace:
+</details>
 
-| Plugin ID | Purpose |
-|---|---|
-| `dev.rectify.io.convention.application` | Android/iOS app module setup |
-| `dev.rectify.io.convention.feature` | Feature modules with Compose & Orbit MVI |
-| `dev.rectify.io.convention.library` | Shared library modules |
-| `dev.rectify.io.convention.di` | Koin DI wiring |
-
-## Build Commands
-
-```bash
-# Build Android debug APK
-./gradlew :aos-application:assembleDebug
-
-# Run all checks
-./gradlew check
-
-# Build iOS debug framework (used by Xcode)
-./gradlew :compose-application:linkDebugFrameworkIosArm64
-
-# Run the desktop app
-./gradlew :desktop-application:run
-
-# Clean build
-./gradlew clean
-```
-
-For iOS, open `ios-application/` in Xcode 16+ and run from there.
-
-## Tech Stack
+### Tech stack
 
 | Aspect | Library |
 |---|---|
 | UI | Compose Multiplatform 1.12.1, Material3 |
 | State management | Orbit MVI 12.0.1 |
 | Dependency injection | Koin 4.2.2 |
-| Navigation | AndroidX Navigation 3 |
 | Local database | Room 2.8.5 |
 | Preferences | multiplatform-settings 1.3.0 |
 | Serialization | kotlinx-serialization 1.11.0 |
 | Coroutines | kotlinx-coroutines 1.11.0 |
 | Build | Gradle 9.8.1, Kotlin 2.4.21, JVM 21 |
-| Android | minSdk 27, targetSdk 37 |
 
-## Prerequisites
+### Building
 
-- Android Studio Ladybug or newer
-- Xcode 16+ (for iOS)
-- JDK 21 (for Desktop)
+```shell
+./gradlew build    # compile everything and run every suite
+./gradlew check    # all checks
+```
 
 ## License
 
-Apache 2.0 License
-
-```
-Copyright (c) 2026 Andrew Malitchuk
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
+Apache 2.0 — see [LICENSE](LICENSE). Copyright (c) 2026 Andrew Malitchuk.
