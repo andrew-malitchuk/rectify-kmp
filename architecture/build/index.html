@@ -72,7 +72,11 @@ module for the new platform.</p><h2 id="convention-plugins">Convention plugins<a
 over three hooks, run in a fixed order: <code>configurePlugin</code> → <code>configureJvm</code> →
 <code>configureDependencies</code>.</p><table><thead><tr><th></th><th><code>application</code></th><th><code>feature</code></th><th><code>library</code></th><th><code>di</code></th></tr></thead><tbody><tr><td><code>kotlin(&quot;jvm&quot;)</code> + <code>java-library</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr class="intellij-row-even"><td>Compose plugins</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr><td>Compose dependencies</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>jvmToolchain(21)</code> + <code>explicitApi()</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td><code>compose.desktop.currentOs</code></td><td>✓</td><td>—</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>kotlin-test</code> on <code>test</code></td><td>—</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td>Koin</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr></tbody></table><p><code>java-library</code> is applied explicitly because <code>kotlin(&quot;jvm&quot;)</code> alone does not guarantee the <code>api</code>
 configuration, and several modules use <code>api(projects.x)</code>.</p><p><code>compose.desktop.currentOs</code> — the Skiko renderer — is only on the <code>application</code> plugin. Only the
-module that actually opens a window needs it.</p><p>Three modules skip convention plugins entirely: <code>desktop-application</code>, <code>data-mcp-impl</code> and
+module that actually opens a window needs it.</p><h2 id="where-the-version-lives">Where the version lives<a class="anchor" href="#where-the-version-lives" aria-label="Link to this section">#</a></h2><p><code>versionName</code> in <code>gradle/libs.versions.toml</code>, and nowhere else. <code>:desktop-application</code> reads it
+for <code>packageVersion</code>, <code>:compose-application</code> generates <code>RECTIFY_VERSION</code> from it into
+<code>build/generated/version/</code>, and the MCP endpoint is handed the app's version at startup instead
+of carrying its own. Before this, the status bar and the endpoint both claimed <code>0.4</code> against a
+0.2.0 release — two hardcoded literals nobody remembered to bump.</p><h2 id="convention-plugins-2">Convention plugins<a class="anchor" href="#convention-plugins-2" aria-label="Link to this section">#</a></h2><p>Three modules skip convention plugins entirely: <code>desktop-application</code>, <code>data-mcp-impl</code> and
 <code>docs-generator</code>. Each is a binary with its own deliberately minimal classpath, not a library in
 the app's dependency graph. This is documented rather than accidental — do not &quot;fix&quot; it by
 inventing a fifth plugin for a module count of one.</p><h2 id="commands">Commands<a class="anchor" href="#commands" aria-label="Link to this section">#</a></h2><pre><code class="language-shell">./gradlew :desktop-application:run        # run the app
@@ -120,6 +124,8 @@ generator fails loudly if a manifest entry points at a file that does not exist.
 <ul>
 <li class="lvl-2"><a href="#one-target">One target</a></li>
 <li class="lvl-2"><a href="#convention-plugins">Convention plugins</a></li>
+<li class="lvl-2"><a href="#where-the-version-lives">Where the version lives</a></li>
+<li class="lvl-2"><a href="#convention-plugins-2">Convention plugins</a></li>
 <li class="lvl-2"><a href="#commands">Commands</a></li>
 <li class="lvl-2"><a href="#testing">Testing</a></li>
 <li class="lvl-3"><a href="#what-is-worth-testing">What is worth testing</a></li>
