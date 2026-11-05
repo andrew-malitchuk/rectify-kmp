@@ -63,30 +63,40 @@
 <main class="content" id="content">
 <article class="prose">
 <p class="eyebrow">Guide</p>
-<h1>Installation</h1><p>Rectify is not published as a binary yet. You build it from source, which takes one Gradle
-command, and you wire its MCP server into Claude Code, which takes one JSON entry.</p><h2 id="requirements">Requirements<a class="anchor" href="#requirements" aria-label="Link to this section">#</a></h2><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>Host</strong></td><td>macOS. The device tooling below is macOS-first, and packaging targets the OS you build on.</td></tr><tr class="intellij-row-even"><td><strong>JDK</strong></td><td>21 or newer.</td></tr><tr><td><strong>Android devices</strong></td><td><code>adb</code> on your <code>PATH</code>, or an Android SDK at <code>$ANDROID_HOME</code> / <code>$ANDROID_SDK_ROOT</code>.</td></tr><tr class="intellij-row-even"><td><strong>iOS simulators</strong></td><td>Xcode command line tools — <code>xcrun</code> and <code>simctl</code>. <code>idb</code> as well if you want physical devices.</td></tr></tbody></table><p>You need neither toolchain to <em>launch</em> Rectify. It detects what is present and reports the rest
+<h1>Installation</h1><h2 id="quick-install">Quick install<a class="anchor" href="#quick-install" aria-label="Link to this section">#</a></h2><p>The fastest path — no build tools required.</p><ol><li><p>Download <code>Rectify-*.dmg</code> from the
+   <a href="https://github.com/andrew-malitchuk/rectify-kmp/releases/latest">latest GitHub Release</a>.</p></li><li><p>Open the DMG and drag <strong>Rectify</strong> into <code>/Applications</code>.</p></li><li><p>The build is unsigned and unnotarised, so Gatekeeper refuses it on first launch.
+   Right-click the app and choose <strong>Open</strong>, or clear the quarantine flag:</p><pre><code class="language-shell">xattr -dr com.apple.quarantine /Applications/Rectify.app
+</code></pre></li><li><p>Open Rectify and <a href="#wire-up-the-mcp-server">point Claude Code at it</a> — one command, which
+   the app itself puts on your clipboard.</p></li></ol><blockquote><p><strong>Apple Silicon only.</strong> Compose Desktop packages for the OS and architecture it is built
+ on, and the release is built on arm64. On an Intel Mac, build from source.</p></blockquote><blockquote><p><strong>The About box says 1.0.0.</strong> jpackage refuses a macOS bundle version whose first component
+ is zero, so the bundle carries <code>1.0.0</code> while the release is <code>0.1.0</code>. The tag and the
+ changelog are the source of truth.</p></blockquote><hr /><h2 id="build-from-source">Build from source<a class="anchor" href="#build-from-source" aria-label="Link to this section">#</a></h2><h3 id="requirements">Requirements<a class="anchor" href="#requirements" aria-label="Link to this section">#</a></h3><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>Host</strong></td><td>macOS. The device tooling below is macOS-first, and packaging targets the OS you build on.</td></tr><tr class="intellij-row-even"><td><strong>JDK</strong></td><td>21 or newer.</td></tr><tr><td><strong>Android devices</strong></td><td><code>adb</code> on your <code>PATH</code>, or an Android SDK at <code>$ANDROID_HOME</code> / <code>$ANDROID_SDK_ROOT</code>.</td></tr><tr class="intellij-row-even"><td><strong>iOS simulators</strong></td><td>Xcode command line tools — <code>xcrun</code> and <code>simctl</code>. <code>idb</code> as well if you want physical devices.</td></tr></tbody></table><p>You need neither toolchain to <em>launch</em> Rectify. It detects what is present and reports the rest
 as a recoverable error card rather than refusing to start.</p><blockquote><p><strong>A note on packaging.</strong> <code>./gradlew packageDmg</code> currently fails on a Homebrew-installed JDK —
  the Compose plugin blocks it because such builds produce broken bundles. Use a distribution
- such as Amazon Corretto if you want an installer. Running from Gradle is unaffected.</p></blockquote><h2 id="run-it">Run it<a class="anchor" href="#run-it" aria-label="Link to this section">#</a></h2><pre><code class="language-shell">git clone https://github.com/andrew-malitchuk/rectify-kmp.git
+ such as Amazon Corretto if you want an installer. Running from Gradle is unaffected.</p></blockquote><h3 id="run-it">Run it<a class="anchor" href="#run-it" aria-label="Link to this section">#</a></h3><pre><code class="language-shell">git clone https://github.com/andrew-malitchuk/rectify-kmp.git
 cd rectify-kmp
 ./gradlew :desktop-application:run
-</code></pre><p>The window opens at 1240×820 and starts polling for devices immediately.</p><h2 id="wire-up-the-mcp-server">Wire up the MCP server<a class="anchor" href="#wire-up-the-mcp-server" aria-label="Link to this section">#</a></h2><p>Rectify writes each sent batch to a handoff slot on disk. A separate, very small server process
-reads that slot back out and answers Claude Code over stdio. Claude Code starts and stops that
-process itself — you never run it by hand.</p><p><strong>Build the launcher first.</strong> There is no packaged distribution, so the binary has to exist
-before Claude Code can spawn it:</p><pre><code class="language-shell">./gradlew :mcp-application:installDist
-</code></pre><p>That produces <code>mcp-application/build/install/rectify-mcp/bin/rectify-mcp</code>.</p><p><strong>Then register it.</strong> Copy the example config at the repository root:</p><pre><code class="language-shell">cp .mcp.json.example .mcp.json
+</code></pre><p>The window opens at 1240×820 and starts polling for devices immediately.</p><h2 id="wire-up-the-mcp-server">Wire up the MCP server<a class="anchor" href="#wire-up-the-mcp-server" aria-label="Link to this section">#</a></h2><p>Rectify serves the Model Context Protocol itself, on the loopback interface, for as long as the
+app is open. There is nothing to install and nothing to spawn — no second binary, no JDK of its
+own, no absolute path to get wrong.</p><p>Click <strong><code>MCP :7391</code></strong> in Rectify's status bar. That copies the registration line for the port
+this instance actually bound:</p><pre><code class="language-shell">claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
+</code></pre><p>Or write it into a config file yourself — copy the example at the repository root:</p><pre><code class="language-shell">cp .mcp.json.example .mcp.json
 </code></pre><pre><code class="language-json">{
   &quot;mcpServers&quot;: {
     &quot;rectify&quot;: {
-      &quot;command&quot;: &quot;./mcp-application/build/install/rectify-mcp/bin/rectify-mcp&quot;,
-      &quot;args&quot;: []
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;http://127.0.0.1:7391/mcp&quot;
     }
   }
 }
-</code></pre><p>The path is relative to wherever Claude Code is started. If you run Claude Code from a different
-directory than the Rectify checkout — which is the normal case, since you are working on <em>your</em>
-project, not on Rectify — make it absolute.</p><p>Restart Claude Code and it will list a <code>rectify</code> server exposing one tool,
-<code>get_latest_annotation</code>.</p><h2 id="verify-the-wiring">Verify the wiring<a class="anchor" href="#verify-the-wiring" aria-label="Link to this section">#</a></h2><p>With Rectify running and at least one batch sent, ask Claude Code to call the tool. It should
+</code></pre><p>Restart Claude Code and it will list a <code>rectify</code> server exposing one tool,
+<code>get_latest_annotation</code>.</p><h3 id="what-the-status-bar-tells-you">What the status bar tells you<a class="anchor" href="#what-the-status-bar-tells-you" aria-label="Link to this section">#</a></h3><table><thead><tr><th>Reads</th><th>Means</th></tr></thead><tbody><tr><td><code>MCP :7391</code></td><td>The endpoint is up on the default port. Click to copy the registration line.</td></tr><tr class="intellij-row-even"><td><code>MCP :7392</code> (or higher)</td><td>7391 was taken, so Rectify moved. Re-register with the copied line.</td></tr><tr><td><code>MCP off</code></td><td>No port in the scan range could be bound. Everything except the handoff still works.</td></tr></tbody></table><h3 id="two-things-the-endpoint-deliberately-refuses">Two things the endpoint deliberately refuses<a class="anchor" href="#two-things-the-endpoint-deliberately-refuses" aria-label="Link to this section">#</a></h3><ul><li><strong>Requests from anywhere but this machine.</strong> It binds the loopback address only, never the
+  wildcard — an MCP endpoint on <code>0.0.0.0</code> would offer your latest screenshots to everyone on the
+  network.</li><li><strong>Cross-origin requests.</strong> Any page in your browser can POST to <code>127.0.0.1</code>. Browsers always
+  send an <code>Origin</code> header on such a request, and a non-local one is refused, so a website you
+  happen to have open cannot read what you were debugging.</li></ul><p><strong>The app has to be running.</strong> This is the trade against the old out-of-process server, which
+could answer while Rectify was closed. In practice the app is open anyway — you just annotated
+in it, and you will return to it for Verify.</p><h2 id="verify-the-wiring">Verify the wiring<a class="anchor" href="#verify-the-wiring" aria-label="Link to this section">#</a></h2><p>With Rectify running and at least one batch sent, ask Claude Code to call the tool. It should
 return the most recent annotation batch. If it returns nothing, the two halves are looking at
 different places — see <a href="../troubleshooting/">Troubleshooting</a>.</p><h2 id="where-rectify-keeps-its-data">Where Rectify keeps its data<a class="anchor" href="#where-rectify-keeps-its-data" aria-label="Link to this section">#</a></h2><p>Everything lives under <code>~/.rectify/</code>, created on first use, owner-only where the filesystem
 supports POSIX permissions:</p><table><thead><tr><th>Path</th><th>Contents</th></tr></thead><tbody><tr><td><code>~/.rectify/handoff</code></td><td>The latest published batch — what the MCP server reads.</td></tr><tr class="intellij-row-even"><td><code>~/.rectify/history/</code></td><td>Per-batch frames and crops backing the History tab.</td></tr><tr><td><code>~/.rectify/rectify.db</code></td><td>SQLite database of sent batches.</td></tr></tbody></table><p>Preferences (theme, language, panel width, chosen <code>adb</code> path) are stored separately through the
@@ -103,9 +113,13 @@ JVM's own <code>java.util.prefs</code> under the node <code>dev.rectify.io</code
 <aside class="toc" aria-label="On this page">
 <p class="nav-section">On this page</p>
 <ul>
-<li class="lvl-2"><a href="#requirements">Requirements</a></li>
-<li class="lvl-2"><a href="#run-it">Run it</a></li>
+<li class="lvl-2"><a href="#quick-install">Quick install</a></li>
+<li class="lvl-2"><a href="#build-from-source">Build from source</a></li>
+<li class="lvl-3"><a href="#requirements">Requirements</a></li>
+<li class="lvl-3"><a href="#run-it">Run it</a></li>
 <li class="lvl-2"><a href="#wire-up-the-mcp-server">Wire up the MCP server</a></li>
+<li class="lvl-3"><a href="#what-the-status-bar-tells-you">What the status bar tells you</a></li>
+<li class="lvl-3"><a href="#two-things-the-endpoint-deliberately-refuses">Two things the endpoint deliberately refuses</a></li>
 <li class="lvl-2"><a href="#verify-the-wiring">Verify the wiring</a></li>
 <li class="lvl-2"><a href="#where-rectify-keeps-its-data">Where Rectify keeps its data</a></li>
 </ul>

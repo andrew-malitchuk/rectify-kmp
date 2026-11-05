@@ -72,13 +72,12 @@ module for the new platform.</p><h2 id="convention-plugins">Convention plugins<a
 over three hooks, run in a fixed order: <code>configurePlugin</code> → <code>configureJvm</code> →
 <code>configureDependencies</code>.</p><table><thead><tr><th></th><th><code>application</code></th><th><code>feature</code></th><th><code>library</code></th><th><code>di</code></th></tr></thead><tbody><tr><td><code>kotlin(&quot;jvm&quot;)</code> + <code>java-library</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr class="intellij-row-even"><td>Compose plugins</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr><td>Compose dependencies</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>jvmToolchain(21)</code> + <code>explicitApi()</code></td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td><code>compose.desktop.currentOs</code></td><td>✓</td><td>—</td><td>—</td><td>—</td></tr><tr class="intellij-row-even"><td><code>kotlin-test</code> on <code>test</code></td><td>—</td><td>✓</td><td>✓</td><td>—</td></tr><tr><td>Koin</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr></tbody></table><p><code>java-library</code> is applied explicitly because <code>kotlin(&quot;jvm&quot;)</code> alone does not guarantee the <code>api</code>
 configuration, and several modules use <code>api(projects.x)</code>.</p><p><code>compose.desktop.currentOs</code> — the Skiko renderer — is only on the <code>application</code> plugin. Only the
-module that actually opens a window needs it.</p><p>Three modules skip convention plugins entirely: <code>desktop-application</code>, <code>mcp-application</code> and
+module that actually opens a window needs it.</p><p>Three modules skip convention plugins entirely: <code>desktop-application</code>, <code>data-mcp-impl</code> and
 <code>docs-generator</code>. Each is a binary with its own deliberately minimal classpath, not a library in
 the app's dependency graph. This is documented rather than accidental — do not &quot;fix&quot; it by
 inventing a fifth plugin for a module count of one.</p><h2 id="commands">Commands<a class="anchor" href="#commands" aria-label="Link to this section">#</a></h2><pre><code class="language-shell">./gradlew :desktop-application:run        # run the app
 ./gradlew build                           # compile everything and run every test
 ./gradlew :presentation-core-ui:test      # one module
-./gradlew :mcp-application:installDist    # build the MCP launcher
 ./gradlew generateDocs                    # render this site into docs-generator/build/docs-site
 </code></pre><p><code>./gradlew build</code> is the honest &quot;everything passes&quot; command: one target means no cross-target
 compile step and no separate test invocation to forget.</p><h2 id="testing">Testing<a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2><p><code>kotlin.test</code> is wired <strong>once</strong>, in the library and feature convention plugins. Never add
