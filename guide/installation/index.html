@@ -78,9 +78,9 @@ cd rectify-kmp
 ./gradlew :desktop-application:run
 </code></pre><p>The window opens at 1240×820 and starts polling for devices immediately.</p><h2 id="wire-up-the-mcp-server">Wire up the MCP server<a class="anchor" href="#wire-up-the-mcp-server" aria-label="Link to this section">#</a></h2><p>Rectify serves the Model Context Protocol itself, on the loopback interface, for as long as the
 app is open. There is nothing to install and nothing to spawn — no second binary, no JDK of its
-own, no absolute path to get wrong.</p><p>Click <strong><code>MCP :7391</code></strong> in Rectify's status bar. That copies the registration line for the port
-this instance actually bound:</p><pre><code class="language-shell">claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
-</code></pre><p>Or write it into a config file yourself — copy the example at the repository root:</p><pre><code class="language-shell">cp .mcp.json.example .mcp.json
+own, no absolute path to get wrong.</p><p>Click <strong><code>MCP :7391</code></strong> in Rectify's status bar. A card opens with the registration line for the
+port this instance actually bound, and a <strong>Copy</strong> button:</p><pre><code class="language-shell">claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
+</code></pre><p>Run it once in the project you want Claude Code to work in.</p><p>Or write it into a config file yourself — copy the example at the repository root:</p><pre><code class="language-shell">cp .mcp.json.example .mcp.json
 </code></pre><pre><code class="language-json">{
   &quot;mcpServers&quot;: {
     &quot;rectify&quot;: {
