@@ -13,13 +13,18 @@ a config file.
 ## Changed
 
 - **The MCP endpoint moved into the app**, served over loopback HTTP at
-  `http://127.0.0.1:7391/mcp` for as long as the window is open. Registering it is one line,
-  and clicking `MCP :7391` in the status bar copies it with the port actually bound — Rectify
-  scans past a taken port rather than failing to start.
-- **The status bar reports the endpoint.** `MCP :7391` when it is up, `MCP off` when no port
-  could be bound. Whether the agent can reach Rectify was previously invisible in the UI.
+  `http://127.0.0.1:7391/mcp` for as long as the window is open.
 - `:mcp-application` became `:data-mcp-impl` — a library consumed by the app, not a binary.
   The JSON-RPC dispatcher crossed over unchanged, tests included.
+
+## Added
+
+- **A connect card in the status bar.** Clicking `MCP :7391` opens the `claude mcp add` line in
+  full, with a Copy button. The command is shown rather than silently copied because the port in
+  it is the one this instance bound — Rectify scans past a taken port instead of failing to
+  start, so the number is not always 7391.
+- **The status bar reports the endpoint at all.** `MCP :7391` when it is up, `MCP off` when no
+  port could be bound. Whether the agent could reach Rectify was previously invisible in the UI.
 
 ## Removed
 
