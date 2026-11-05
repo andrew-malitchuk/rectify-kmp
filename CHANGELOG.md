@@ -4,6 +4,46 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.2.0] - 2026-11-05
+
+Rectify now serves the Model Context Protocol itself. The separate MCP server process is gone,
+and with it the second download, the JDK it needed, and the absolute path you had to paste into
+a config file.
+
+## Changed
+
+- **The MCP endpoint moved into the app**, served over loopback HTTP at
+  `http://127.0.0.1:7391/mcp` for as long as the window is open. Registering it is one line,
+  and clicking `MCP :7391` in the status bar copies it with the port actually bound — Rectify
+  scans past a taken port rather than failing to start.
+- **The status bar reports the endpoint.** `MCP :7391` when it is up, `MCP off` when no port
+  could be bound. Whether the agent can reach Rectify was previously invisible in the UI.
+- `:mcp-application` became `:data-mcp-impl` — a library consumed by the app, not a binary.
+  The JSON-RPC dispatcher crossed over unchanged, tests included.
+
+## Removed
+
+- **The standalone `rectify-mcp` server and its release artifact.** There is nothing to install
+  alongside the app any more, and no separate JDK 21 requirement for the handoff to work.
+
+## Security
+
+- The endpoint binds the loopback address only, never the wildcard, and refuses any request
+  carrying a non-local `Origin` — closing the path by which a page in the user's browser could
+  have read screenshots of whatever they were debugging.
+
+## Upgrading from 0.1.0
+
+Remove the old stdio entry and register the endpoint instead:
+
+```shell
+claude mcp remove rectify
+claude mcp add --transport http rectify http://127.0.0.1:7391/mcp
+```
+
+The `rectify-mcp` directory you unpacked can be deleted. Annotation batches already in
+`~/.rectify/` are read by the new endpoint unchanged.
+
 # [0.1.0] - 2026-11-04
 
 First public release. Rectify mirrors a connected Android device or iOS simulator, turns a
