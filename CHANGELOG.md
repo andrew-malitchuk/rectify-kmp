@@ -10,13 +10,6 @@ Rectify now serves the Model Context Protocol itself. The separate MCP server pr
 and with it the second download, the JDK it needed, and the absolute path you had to paste into
 a config file.
 
-## Changed
-
-- **The MCP endpoint moved into the app**, served over loopback HTTP at
-  `http://127.0.0.1:7391/mcp` for as long as the window is open.
-- `:mcp-application` became `:data-mcp-impl` — a library consumed by the app, not a binary.
-  The JSON-RPC dispatcher crossed over unchanged, tests included.
-
 ## Added
 
 - **A connect card in the status bar.** Clicking `MCP :7391` opens the `claude mcp add` line in
@@ -25,6 +18,13 @@ a config file.
   start, so the number is not always 7391.
 - **The status bar reports the endpoint at all.** `MCP :7391` when it is up, `MCP off` when no
   port could be bound. Whether the agent could reach Rectify was previously invisible in the UI.
+
+## Changed
+
+- **The MCP endpoint moved into the app**, served over loopback HTTP at
+  `http://127.0.0.1:7391/mcp` for as long as the window is open.
+- `:mcp-application` became `:data-mcp-impl` — a library consumed by the app, not a binary.
+  The JSON-RPC dispatcher crossed over unchanged, tests included.
 
 ## Removed
 
