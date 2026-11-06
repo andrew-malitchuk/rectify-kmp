@@ -76,7 +76,7 @@ the picker at any time.</p><h2 id="nothing-attached">Nothing attached<a class="a
 empty box: plug in a phone with USB debugging on and accept the prompt, or boot an emulator from
 the inline selector. The footer reports what is being polled and how often.</p><p>The copy follows the selected platform. On iOS there is no USB debugging prompt and no AVD, so
 it talks about simulators and <code>xcrun simctl</code> instead.</p><h2 id="the-mirror">The mirror<a class="anchor" href="#the-mirror" aria-label="Link to this section">#</a></h2><p>Once the stream starts the stage shows the live frame, and the status bar reports what is
-actually happening:</p><pre><code>● LIVE   adb Android Debug Bridge version 1.0.41 · 1080x2400 · 0.3 fps · polling · latency —
+actually happening:</p><p><img src="../../assets/screenshots/mirror.png" alt="A live mirror of a connected Pixel with the annotation panel on the right" /></p><pre><code>● LIVE   adb Android Debug Bridge version 1.0.41 · 1080x2400 · 0.3 fps · polling · latency —
 </code></pre><p>The frame rate is low on purpose. Rectify captures still frames for annotation, not video for
 playback — the loop is <code>screencap</code>-based, and a higher rate would cost device CPU for a stream
 nobody watches in motion.</p><p>Between pressing <strong>Start mirroring</strong> and the first decoded frame you get a spinner. On a cold
